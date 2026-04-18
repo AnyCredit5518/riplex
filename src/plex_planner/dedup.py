@@ -72,6 +72,27 @@ def _streams_match(a: ScannedFile, b: ScannedFile) -> bool:
     return a.stream_fingerprint == b.stream_fingerprint
 
 
+def _chapters_match(a: ScannedFile, b: ScannedFile) -> bool:
+    """Check whether two files have compatible chapter layouts.
+
+    Files with different chapter counts are different content.
+    Files with the same chapter count but different chapter durations
+    (beyond tolerance) are different content.  Files with no chapters
+    are considered compatible (fall through to other checks).
+    """
+    # If neither has chapters, can't discriminate, treat as compatible
+    if not a.chapter_durations and not b.chapter_durations:
+        return True
+    # Different chapter counts -> different content
+    if len(a.chapter_durations) != len(b.chapter_durations):
+        return False
+    # Compare each chapter duration (within tolerance)
+    for ca, cb in zip(a.chapter_durations, b.chapter_durations):
+        if abs(ca - cb) > _DURATION_TOLERANCE_S:
+            return False
+    return True
+
+
 def find_duplicates_tier1(files: list[ScannedFile]) -> list[DuplicateGroup]:
     """Detect duplicates using metadata fingerprinting (fast).
 
@@ -79,6 +100,7 @@ def find_duplicates_tier1(files: list[ScannedFile]) -> list[DuplicateGroup]:
       - Duration within 5 seconds
       - File size within 2%
       - Identical stream layout (codec, resolution, channels, languages)
+      - Compatible chapter layout (same count and durations)
     """
     if len(files) < 2:
         return []
@@ -102,6 +124,7 @@ def find_duplicates_tier1(files: list[ScannedFile]) -> list[DuplicateGroup]:
             _duration_close(a, b)
             and _size_similar(a, b)
             and _streams_match(a, b)
+            and _chapters_match(a, b)
         ):
             log.debug("Tier1 duplicate pair: %s <-> %s (dur=%ds/%ds)",
                       a.name, b.name, a.duration_seconds, b.duration_seconds)
@@ -390,15 +413,12 @@ def confirm_duplicates_tier2(group: DuplicateGroup) -> DuplicateGroup | None:
 
 def find_duplicates(
     scanned: list[ScannedDisc],
-    *,
-    use_perceptual_hash: bool = False,
 ) -> list[DuplicateGroup]:
     """Find duplicate files across all scanned discs.
 
-    Args:
-        scanned: Disc groups from :func:`scanner.scan_folder`.
-        use_perceptual_hash: If True, run tier-2 visual confirmation on
-            tier-1 candidates (adds ~1s per candidate file).
+    Tier 1 narrows candidates via metadata (duration, size, streams,
+    chapters).  Tier 2 always confirms via perceptual hashing so that
+    different content with similar metadata is never misidentified.
 
     Returns:
         List of :class:`DuplicateGroup` objects. Each group has a
@@ -407,23 +427,23 @@ def find_duplicates(
     all_files = [f for d in scanned for f in d.files]
     groups = find_duplicates_tier1(all_files)
 
-    if use_perceptual_hash:
-        confirmed: list[DuplicateGroup] = []
-        for g in groups:
-            result = confirm_duplicates_tier2(g)
-            if result is not None:
-                confirmed.append(result)
-        groups = confirmed
+    confirmed: list[DuplicateGroup] = []
+    for g in groups:
+        result = confirm_duplicates_tier2(g)
+        if result is not None:
+            confirmed.append(result)
+    groups = confirmed
 
     return groups
 
 
 def find_all_redundant(
     scanned: list[ScannedDisc],
-    *,
-    use_perceptual_hash: bool = False,
 ) -> tuple[list[DuplicateGroup], list[CompilationGroup]]:
     """Find both exact duplicates and compilation ('play all') files.
+
+    Duplicate detection always uses perceptual hash confirmation.
+    Compilation detection does not (it uses chapter-duration matching).
 
     Runs compilation detection per disc group so compilations are only
     matched against files from the same disc/folder.
@@ -431,9 +451,7 @@ def find_all_redundant(
     Returns:
         A tuple of (duplicate_groups, compilation_groups).
     """
-    duplicates = find_duplicates(
-        scanned, use_perceptual_hash=use_perceptual_hash,
-    )
+    duplicates = find_duplicates(scanned)
     log.debug("find_all_redundant: %d duplicate group(s) found", len(duplicates))
 
     # Remove exact duplicates first so they don't confuse compilation detection

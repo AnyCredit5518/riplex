@@ -97,6 +97,48 @@ class TestTier1:
         groups = find_duplicates_tier1([a, b])
         assert groups == []
 
+    def test_different_chapter_durations_not_duplicates(self):
+        """TV episodes: same duration/size/streams but different chapters."""
+        fp = "mpeg2video:720x480|ac3:eng:2ch|ac3:fre:2ch"
+        a = _make_file("s01e01.mkv", duration=1278, size=600_000_000,
+                        fingerprint=fp, chapters=7,
+                        chapter_durations=[61, 60, 111, 503, 515, 30, 1])
+        b = _make_file("s01e02.mkv", duration=1279, size=601_000_000,
+                        fingerprint=fp, chapters=7,
+                        chapter_durations=[61, 60, 96, 452, 578, 30, 1])
+        groups = find_duplicates_tier1([a, b])
+        assert groups == []
+
+    def test_different_chapter_counts_not_duplicates(self):
+        """Files with same duration but different chapter counts."""
+        fp = "mpeg2video:720x480|ac3:eng:2ch"
+        a = _make_file("a.mkv", duration=1278, size=600_000_000,
+                        fingerprint=fp, chapters=6,
+                        chapter_durations=[61, 60, 503, 515, 30, 1])
+        b = _make_file("b.mkv", duration=1278, size=600_000_000,
+                        fingerprint=fp, chapters=7,
+                        chapter_durations=[61, 60, 111, 503, 515, 30, 1])
+        groups = find_duplicates_tier1([a, b])
+        assert groups == []
+
+    def test_same_chapters_still_duplicates(self):
+        """True duplicates with matching chapter durations are still caught."""
+        a = _make_file("t17.mkv", duration=2087, size=6_887_298_291,
+                        chapter_durations=[500, 500, 500, 587])
+        b = _make_file("t02.mkv", duration=2085, size=6_883_114_933,
+                        chapter_durations=[500, 500, 500, 585])
+        groups = find_duplicates_tier1([a, b])
+        assert len(groups) == 1
+
+    def test_no_chapters_still_duplicates(self):
+        """Files with no chapter data still match via other criteria."""
+        a = _make_file("a.mkv", duration=2087, size=6_887_298_291,
+                        chapters=0, chapter_durations=[])
+        b = _make_file("b.mkv", duration=2085, size=6_883_114_933,
+                        chapters=0, chapter_durations=[])
+        groups = find_duplicates_tier1([a, b])
+        assert len(groups) == 1
+
 
 # ---------------------------------------------------------------------------
 # dhash / hamming tests

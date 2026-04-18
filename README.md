@@ -18,8 +18,8 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 **Organize mode (`organize`)**
 - Scans MakeMKV rip folders and extracts MKV metadata via ffprobe
 - Detects and removes duplicate MKV files (same content ripped from different playlists)
-  - Tier 1: fast metadata fingerprint (duration, file size, stream layout)
-  - Tier 2: optional perceptual hashing via ffmpeg for visual confirmation
+  - Tier 1: fast metadata fingerprint (duration, file size, stream layout, chapter durations)
+  - Tier 2: perceptual hashing via ffmpeg for visual confirmation
 - Detects and removes "play all" compilation files (e.g. a single MKV that concatenates multiple episodes)
   - Matches individual chapter durations to other files with the same stream layout
   - Supports both one-chapter-per-file and grouped chapters (consecutive chapters summing to a file's duration)
@@ -275,14 +275,6 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --format "Blu-ray 4K" --rele
 plex-planner organize E:\Media\_MakeMKV\Oppenheimer --format "Blu-ray 4K" --release 2
 ```
 
-### Organize: perceptual hash dedup
-
-If tier-1 metadata dedup is not confident enough, enable perceptual hashing for visual confirmation (adds ~1s per file):
-
-```bash
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --visual-hash
-```
-
 ### Organize: unmatched file policy
 
 Files that can't be confidently matched are handled by the `--unmatched` flag:
@@ -380,7 +372,6 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
 | `--release` | Regional release: 1-based index or name keyword (default: `america`) |
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
-| `--visual-hash` | Use perceptual hashing to confirm duplicates (~1s/file) |
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
@@ -436,7 +427,7 @@ tests/
 
 The metadata provider is abstracted behind a clean interface (`MetadataProvider`). The default implementation uses TMDb, which is the same source Plex uses for its metadata agents. The provider can be swapped out for TheTVDB or any other source by implementing the interface.
 
-The organize workflow chains several stages: scanning (ffprobe), dedup (metadata fingerprint with optional perceptual hash, plus compilation/play-all detection via chapter analysis), TMDb lookup, dvdcompare disc extras lookup, disc-constrained matching (mapping scanned folders to disc numbers via naming heuristics, then matching files to extras by runtime), chapter-to-missing split detection, and finally building Plex-canonical paths and moving files. Comprehensive debug logging captures every decision for post-run analysis.
+The organize workflow chains several stages: scanning (ffprobe), dedup (metadata fingerprint with perceptual hash confirmation, plus compilation/play-all detection via chapter analysis), TMDb lookup, dvdcompare disc extras lookup, disc-constrained matching (mapping scanned folders to disc numbers via naming heuristics, then matching files to extras by runtime), chapter-to-missing split detection, and finally building Plex-canonical paths and moving files. Comprehensive debug logging captures every decision for post-run analysis.
 
 ## Naming Rules
 

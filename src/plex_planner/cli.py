@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -66,6 +67,22 @@ def _setup_logging(verbose: bool = False) -> Path:
     return log_file
 
 
+_TRAILING_YEAR_RE = re.compile(r"\s*\(\d{4}\)\s*$")
+
+
+def _strip_year_from_title(name: str) -> tuple[str, int | None]:
+    """Strip a trailing ``(YYYY)`` from a folder name.
+
+    Returns ``(clean_title, year)`` where *year* is the extracted value
+    or ``None`` if no trailing year was found.
+    """
+    m = _TRAILING_YEAR_RE.search(name)
+    if m:
+        year = int(m.group().strip().strip("()"))
+        return name[: m.start()].strip(), year
+    return name, None
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plex-planner",
@@ -116,12 +133,6 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Actually move files (default: dry-run preview only).",
-    )
-    org_parser.add_argument(
-        "--visual-hash",
-        action="store_true",
-        default=False,
-        help="Use perceptual hashing to confirm detected duplicates (~1s/file).",
     )
     org_parser.add_argument("--json", action="store_true", default=False)
     org_parser.add_argument("--api-key", default=None)
@@ -328,7 +339,12 @@ async def _run_organize(args: argparse.Namespace) -> int:
 
         if has_root_mkvs or (has_sub_mkvs and not any(folder.glob("*/*/*.mkv"))):
             # Single folder mode: MKVs at root or one level of subfolders
-            title = args.title or folder.name
+            if args.title:
+                title = args.title
+            else:
+                title, inferred_year = _strip_year_from_title(folder.name)
+                if inferred_year and not getattr(args, "year", None):
+                    args.year = inferred_year
             return await _organize_single(
                 folder, title, args, output_root, provider,
             )
@@ -384,7 +400,12 @@ async def _organize_batch(
                 pass  # handled below
 
         # Override title from group detection
-        title = args.title or group.title
+        if args.title:
+            title = args.title
+        else:
+            title, inferred_year = _strip_year_from_title(group.title)
+            if inferred_year and not getattr(args, "year", None):
+                args.year = inferred_year
 
         if len(group.folders) == 1:
             rc = await _organize_single(
@@ -504,9 +525,7 @@ async def _organize_with_scanned(
             log.debug("Auto-detected format: %s", disc_format)
 
     # Detect and remove duplicates + compilations
-    dup_groups, comp_groups = find_all_redundant(
-        scanned, use_perceptual_hash=getattr(args, "visual_hash", False),
-    )
+    dup_groups, comp_groups = find_all_redundant(scanned)
     if dup_groups:
         dup_count = sum(len(g.duplicates) for g in dup_groups)
         print(f"Detected {dup_count} duplicate(s) in {len(dup_groups)} group(s):", file=sys.stderr)
@@ -541,18 +560,22 @@ async def _organize_with_scanned(
     print(f"TMDb: {result.canonical_title} ({result.year})", file=sys.stderr)
 
     # Look up dvdcompare disc metadata
-    print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
-    try:
-        discs = await lookup_discs(
-            title,
-            disc_format=disc_format,
-            release=getattr(args, "release", "america"),
-        )
-        print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
-    except LookupError as exc:
-        print(f"Warning: dvdcompare lookup failed: {exc}", file=sys.stderr)
-        print("Proceeding without disc metadata.", file=sys.stderr)
+    if disc_format == "DVD":
+        print("Note: DVD format detected. dvdcompare does not support DVD releases; skipping disc metadata lookup.", file=sys.stderr)
         discs = []
+    else:
+        print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+        try:
+            discs = await lookup_discs(
+                title,
+                disc_format=disc_format,
+                release=getattr(args, "release", "america"),
+            )
+            print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
+        except LookupError as exc:
+            print(f"Warning: dvdcompare lookup failed: {exc}", file=sys.stderr)
+            print("Proceeding without disc metadata.", file=sys.stderr)
+            discs = []
 
     # Map folders to discs and match
     if discs:
