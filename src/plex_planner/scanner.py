@@ -37,7 +37,7 @@ def _probe_file(path: Path) -> ScannedFile:
                 "format=duration,nb_streams"
                 ":stream=codec_type,codec_name,width,height,channels"
                 ":stream_tags=language"
-                ":format_tags=",
+                ":format_tags=title,PLEX_PLANNER",
                 "-show_chapters",
                 str(path),
             ],
@@ -64,8 +64,15 @@ def _probe_file(path: Path) -> ScannedFile:
     except (KeyError, ValueError):
         stream_count = 0
 
+    # Format tags (title, organized marker)
+    format_tags = data.get("format", {}).get("tags", {})
+    title_tag = format_tags.get("title") or format_tags.get("TITLE")
+    organized_tag = format_tags.get("PLEX_PLANNER") or format_tags.get("plex_planner")
+
     # Stream fingerprint: compact string describing the stream layout
     fingerprint_parts: list[str] = []
+    max_width = 0
+    max_height = 0
     for s in data.get("streams", []):
         ct = s.get("codec_type", "?")
         cn = s.get("codec_name", "?")
@@ -73,6 +80,10 @@ def _probe_file(path: Path) -> ScannedFile:
         if ct == "video":
             w = s.get("width", 0)
             h = s.get("height", 0)
+            if w > max_width:
+                max_width = w
+            if h > max_height:
+                max_height = h
             fingerprint_parts.append(f"{cn}:{w}x{h}")
         elif ct == "audio":
             ch = s.get("channels", 0)
@@ -101,10 +112,15 @@ def _probe_file(path: Path) -> ScannedFile:
         stream_fingerprint=fingerprint,
         chapter_count=chapter_count,
         chapter_durations=chapter_durations,
+        title_tag=title_tag,
+        max_width=max_width,
+        max_height=max_height,
+        organized_tag=organized_tag,
     )
     log.debug(
-        "Probed %s: %ds, %d streams, fp=%s, %d chapters, chd=%s",
+        "Probed %s: %ds, %d streams, fp=%s, %d chapters, chd=%s, title=%s, res=%dx%d",
         name, duration, stream_count, fingerprint, chapter_count, chapter_durations,
+        title_tag, max_width, max_height,
     )
     return sf
 

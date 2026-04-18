@@ -113,6 +113,10 @@ class ScannedFile:
     stream_fingerprint: str = ""  # e.g. "h264:1920x1080|ac3:eng:2ch|sub:eng|sub:spa"
     chapter_count: int = 0
     chapter_durations: list[int] = field(default_factory=list)  # per-chapter duration in seconds
+    title_tag: str | None = None  # MKV container title tag (disc label)
+    max_width: int = 0  # max video stream width (e.g. 3840)
+    max_height: int = 0  # max video stream height (e.g. 2160)
+    organized_tag: str | None = None  # plex-planner organized marker
 
 
 @dataclass

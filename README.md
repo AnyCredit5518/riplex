@@ -30,6 +30,10 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Automatically splits multi-episode "play all" files by chapters (using mkvmerge) when chapter count matches TMDb Season 00 episodes
 - Detects files whose chapters match missing disc entries and converts them to chapter-based splits
 - Routes unmatched files to Plex extras folders with `--unmatched extras`
+- Tags organized files with a `PLEX_PLANNER` MKV global tag via mkvpropedit; re-runs skip tagged files unless `--force`
+- Auto-detects disc format from video resolution (3840x2160 = 4K, 1920x1080 = Blu-ray, 720x480 = DVD) when `--format` not specified
+- Detects incomplete/still-ripping files (0 duration or no streams) and skips them with a warning
+- Batch mode: point `organize` at a parent folder containing multiple rip subfolders; auto-groups by title, auto-detects format, and processes each title in sequence
 - Debug logging to `%TEMP%\plex-planner\plex-planner.log` on every run; `--verbose` prints to stderr
 - Dry-run preview by default, `--execute` to actually move files
 
@@ -44,6 +48,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - A TMDb API key (free at https://www.themoviedb.org/settings/api)
 - ffprobe (from ffmpeg, required for `organize` mode)
 - mkvmerge (from MKVToolNix, required for chapter splitting in `organize` mode)
+- mkvpropedit (from MKVToolNix, required for organized tagging in `organize` mode)
 - [dvdcompare-scraper](../dvdcompare-scraper) (file dependency, required for `organize` mode)
 
 ## Installation
@@ -298,6 +303,46 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched move --execute
 plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched extras
 ```
 
+### Organize: batch mode
+
+Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
+
+```bash
+plex-planner organize E:\Media\_MakeMKV
+```
+
+Output:
+```
+Batch mode: found 3 title group(s).
+  Batman Begins (1 folder(s): Batman Begins)
+  Dark Knight Rises (1 folder(s): Dark Knight Rises)
+  The Dark Knight (1 folder(s): The Dark Knight)
+
+============================================================
+[1/3] Batman Begins
+============================================================
+Scanning E:\Media\_MakeMKV\Batman Begins ...
+...
+```
+
+Multi-disc rips in separate folders (e.g. "Planet Earth III - Disc 1", "Planet Earth III - Disc 2") are automatically grouped into a single title.
+
+### Organize: re-organize (--force)
+
+After a successful `--execute`, each organized file is tagged with a `PLEX_PLANNER` marker in the MKV container (via mkvpropedit). Subsequent runs automatically skip these files:
+
+```bash
+# First run organizes everything
+plex-planner organize E:\Media\_MakeMKV\Oppenheimer --execute
+
+# Second run skips already-organized files
+plex-planner organize E:\Media\_MakeMKV\Oppenheimer
+# "Skipping 17 already-organized file(s)."
+
+# Force re-organize
+plex-planner organize E:\Media\_MakeMKV\Oppenheimer --force
+```
+
 ### Organize: debug logging
 
 Every `organize` run writes detailed debug logs to `%TEMP%\plex-planner\plex-planner.log`. The log captures every decision: file probing, duplicate/compilation detection, disc mapping heuristics, target matching, destination routing, and chapter split logic.
@@ -331,7 +376,7 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
 | `--title` | Override title (default: folder name) |
 | `--year` | Release year |
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
-| `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
+| `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`). Auto-detected from resolution if omitted. |
 | `--release` | Regional release: 1-based index or name keyword (default: `america`) |
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
@@ -339,6 +384,7 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--force` | Re-organize files even if already tagged as organized |
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 
@@ -369,10 +415,12 @@ src/plex_planner/
     disc_provider.py        # dvdcompare.net disc extras metadata bridge
     organizer.py            # Plex destination path builder and file mover
     splitter.py             # Chapter-based MKV splitting via mkvmerge
+    tagger.py               # MKV organized tagging via mkvpropedit
 tests/
     test_cache.py
     test_config.py
     test_dedup.py
+    test_detect.py
     test_disc_provider.py
     test_formatter.py
     test_matcher.py
@@ -381,6 +429,7 @@ tests/
     test_planner.py
     test_scanner.py
     test_splitter.py
+    test_tagger.py
 ```
 
 ## Architecture

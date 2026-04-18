@@ -11,6 +11,7 @@ from pathlib import Path
 
 from plex_planner.config import get_api_key, get_output_root
 from plex_planner.dedup import find_all_redundant, find_duplicates, remove_duplicates
+from plex_planner.detect import detect_format, detect_incomplete, group_title_folders
 from plex_planner.disc_provider import _convert_film, lookup_discs
 from plex_planner.formatter import to_json, to_text
 from plex_planner.matcher import (
@@ -141,6 +142,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Bypass the local cache and fetch fresh data from APIs.",
+    )
+    org_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Re-organize files even if they are already tagged as organized.",
     )
 
     return parser
@@ -304,10 +311,135 @@ async def _run_organize(args: argparse.Namespace) -> int:
         print(f"Error: not a directory: {folder}", file=sys.stderr)
         return 1
 
-    title = args.title or folder.name
     output_val = get_output_root(args.output)
     output_root = Path(output_val) if output_val else folder.parent
 
+    api_key = get_api_key(getattr(args, "api_key", None))
+    try:
+        provider = TmdbProvider(api_key=api_key)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        # Detect batch vs single mode
+        has_root_mkvs = any(folder.glob("*.mkv"))
+        has_sub_mkvs = any(folder.glob("*/*.mkv"))
+
+        if has_root_mkvs or (has_sub_mkvs and not any(folder.glob("*/*/*.mkv"))):
+            # Single folder mode: MKVs at root or one level of subfolders
+            title = args.title or folder.name
+            return await _organize_single(
+                folder, title, args, output_root, provider,
+            )
+        elif has_sub_mkvs or any(folder.glob("*/*/*.mkv")):
+            # Batch mode: subfolders contain rip folders
+            return await _organize_batch(
+                folder, args, output_root, provider,
+            )
+        else:
+            print("No MKV files found.", file=sys.stderr)
+            return 1
+    finally:
+        await provider.close()
+
+
+async def _organize_batch(
+    root: Path,
+    args: argparse.Namespace,
+    output_root: Path,
+    provider: TmdbProvider,
+) -> int:
+    """Batch organize: auto-detect title groups and process each."""
+    groups = group_title_folders(root)
+    if not groups:
+        print("No title groups found.", file=sys.stderr)
+        return 1
+
+    print(f"Batch mode: found {len(groups)} title group(s).", file=sys.stderr)
+    for g in groups:
+        folders = ", ".join(f.name for f in g.folders)
+        print(f"  {g.title} ({len(g.folders)} folder(s): {folders})", file=sys.stderr)
+
+    overall_rc = 0
+    for i, group in enumerate(groups):
+        print(f"\n{'='*60}", file=sys.stderr)
+        print(f"[{i+1}/{len(groups)}] {group.title}", file=sys.stderr)
+        print(f"{'='*60}", file=sys.stderr)
+
+        # Use the first folder if single, otherwise the group has
+        # subfolders that scanner will pick up. For multi-folder groups
+        # (like "Planet Earth III - Disc 1/2/3"), we need to find a
+        # common parent or use the first folder's parent.
+        if len(group.folders) == 1:
+            target_folder = group.folders[0]
+        else:
+            # Multiple folders share the same parent (root)
+            # Create a virtual scan by passing the root and filtering
+            target_folder = group.folders[0]
+            # If folders share a parent, scanner should handle subfolders
+            # Check if all folders are immediate children of root
+            if all(f.parent == root for f in group.folders):
+                # We need to scan each folder and combine results
+                pass  # handled below
+
+        # Override title from group detection
+        title = args.title or group.title
+
+        if len(group.folders) == 1:
+            rc = await _organize_single(
+                target_folder, title, args, output_root, provider,
+            )
+        else:
+            # Multi-folder group: scan all folders and combine
+            rc = await _organize_multi_folder(
+                group.folders, title, args, output_root, provider,
+            )
+
+        if rc != 0 and rc != 1:
+            overall_rc = rc
+        elif rc == 1 and overall_rc == 0:
+            overall_rc = 1
+
+    return overall_rc
+
+
+async def _organize_multi_folder(
+    folders: list[Path],
+    title: str,
+    args: argparse.Namespace,
+    output_root: Path,
+    provider: TmdbProvider,
+) -> int:
+    """Organize a title group spanning multiple folders."""
+    from plex_planner.models import ScannedDisc
+
+    all_scanned: list[ScannedDisc] = []
+    for folder in folders:
+        print(f"Scanning {folder} ...", file=sys.stderr)
+        try:
+            scanned = scan_folder(folder)
+            all_scanned.extend(scanned)
+        except RuntimeError as exc:
+            print(f"Error scanning {folder}: {exc}", file=sys.stderr)
+
+    if not all_scanned:
+        print(f"No MKV files found for {title}.", file=sys.stderr)
+        return 1
+
+    return await _organize_with_scanned(
+        all_scanned, title, args, output_root, provider,
+    )
+
+
+async def _organize_single(
+    folder: Path,
+    title: str,
+    args: argparse.Namespace,
+    output_root: Path,
+    provider: TmdbProvider,
+) -> int:
+    """Organize a single rip folder."""
     # Step 1: Scan MKV files
     print(f"Scanning {folder} ...", file=sys.stderr)
     try:
@@ -316,15 +448,64 @@ async def _run_organize(args: argparse.Namespace) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
+    return await _organize_with_scanned(
+        scanned, title, args, output_root, provider,
+    )
+
+
+async def _organize_with_scanned(
+    scanned: list,
+    title: str,
+    args: argparse.Namespace,
+    output_root: Path,
+    provider: TmdbProvider,
+) -> int:
+    """Core organize pipeline operating on already-scanned disc groups."""
     total_files = sum(len(d.files) for d in scanned)
     print(f"Found {total_files} MKV files in {len(scanned)} disc group(s).", file=sys.stderr)
     if total_files == 0:
         print("No MKV files found.", file=sys.stderr)
         return 1
 
-    # Step 1b: Detect and remove duplicates + compilations
+    # Skip already-organized files (unless --force)
+    if not getattr(args, "force", False):
+        skipped = 0
+        for disc in scanned:
+            before = len(disc.files)
+            disc.files = [f for f in disc.files if not f.organized_tag]
+            skipped += before - len(disc.files)
+        if skipped:
+            total_files = sum(len(d.files) for d in scanned)
+            print(f"Skipping {skipped} already-organized file(s).", file=sys.stderr)
+            if total_files == 0:
+                print("All files already organized. Use --force to re-organize.", file=sys.stderr)
+                return 0
+
+    # Detect incomplete files
+    incomplete = detect_incomplete(scanned)
+    if incomplete:
+        print(f"Warning: {len(incomplete)} file(s) appear incomplete (still ripping?):", file=sys.stderr)
+        for f in incomplete:
+            print(f"  {f.name} (0 duration / no streams)", file=sys.stderr)
+        # Remove incomplete files from scanned
+        incomplete_paths = {f.path for f in incomplete}
+        for disc in scanned:
+            disc.files = [f for f in disc.files if f.path not in incomplete_paths]
+        total_files = sum(len(d.files) for d in scanned)
+        if total_files == 0:
+            print("No complete MKV files found.", file=sys.stderr)
+            return 1
+
+    # Auto-detect format if not specified
+    disc_format = getattr(args, "disc_format", None)
+    if not disc_format:
+        disc_format = detect_format(scanned)
+        if disc_format:
+            log.debug("Auto-detected format: %s", disc_format)
+
+    # Detect and remove duplicates + compilations
     dup_groups, comp_groups = find_all_redundant(
-        scanned, use_perceptual_hash=args.visual_hash,
+        scanned, use_perceptual_hash=getattr(args, "visual_hash", False),
     )
     if dup_groups:
         dup_count = sum(len(g.duplicates) for g in dup_groups)
@@ -342,19 +523,12 @@ async def _run_organize(args: argparse.Namespace) -> int:
         total_files = sum(len(d.files) for d in scanned)
         print(f"Proceeding with {total_files} files after dedup.", file=sys.stderr)
 
-    # Step 2: Look up TMDb metadata
-    api_key = get_api_key(getattr(args, "api_key", None))
-    try:
-        provider = TmdbProvider(api_key=api_key)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        return 1
-
+    # Look up TMDb metadata
     try:
         request = SearchRequest(
             title=title,
-            year=args.year,
-            media_type=args.media_type,
+            year=getattr(args, "year", None),
+            media_type=getattr(args, "media_type", "auto"),
         )
         result = await plan(request, provider)
     except LookupError as exc:
@@ -363,18 +537,16 @@ async def _run_organize(args: argparse.Namespace) -> int:
     except Exception as exc:
         print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
         return 1
-    finally:
-        await provider.close()
 
     print(f"TMDb: {result.canonical_title} ({result.year})", file=sys.stderr)
 
-    # Step 3: Look up dvdcompare disc metadata
+    # Look up dvdcompare disc metadata
     print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
     try:
         discs = await lookup_discs(
             title,
-            disc_format=args.disc_format,
-            release=args.release,
+            disc_format=disc_format,
+            release=getattr(args, "release", "america"),
         )
         print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
     except LookupError as exc:
@@ -382,14 +554,14 @@ async def _run_organize(args: argparse.Namespace) -> int:
         print("Proceeding without disc metadata.", file=sys.stderr)
         discs = []
 
-    # Step 4: Map folders to discs and match
+    # Map folders to discs and match
     if discs:
         folder_map = map_folders_to_discs(scanned, discs, result)
-        for folder, disc_num in folder_map.items():
+        for folder_name, disc_num in folder_map.items():
             if disc_num is not None:
-                print(f"  {folder} -> Disc {disc_num}", file=sys.stderr)
+                print(f"  {folder_name} -> Disc {disc_num}", file=sys.stderr)
             else:
-                print(f"  {folder} -> (unmapped, global fallback)", file=sys.stderr)
+                print(f"  {folder_name} -> (unmapped, global fallback)", file=sys.stderr)
 
     result_obj = match_discs(scanned, discs, result)
     print(
@@ -399,26 +571,41 @@ async def _run_organize(args: argparse.Namespace) -> int:
         file=sys.stderr,
     )
 
-    # Step 5: Build organize plan
+    # Build organize plan
     file_map = {f.name: f.path for d in scanned for f in d.files}
     scanned_map = {f.name: f for d in scanned for f in d.files}
     targets = collect_disc_targets(discs, result) if discs else None
+    unmatched_policy = getattr(args, "unmatched", "ignore")
     org_plan = build_organize_plan(
         result_obj, result, output_root, file_map,
         scanned_files=scanned_map, disc_targets=targets,
-        unmatched_policy=args.unmatched,
+        unmatched_policy=unmatched_policy,
     )
 
-    # Step 6: Output
-    dry_run = not args.execute
-    unmatched_dir = output_root / "_Unmatched" / title if args.unmatched == "move" else None
-    actions = execute_plan(org_plan, dry_run=dry_run, unmatched_policy=args.unmatched, unmatched_dir=unmatched_dir)
+    # Output
+    dry_run = not getattr(args, "execute", False)
+    unmatched_dir = output_root / "_Unmatched" / title if unmatched_policy == "move" else None
+    actions = execute_plan(org_plan, dry_run=dry_run, unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir)
     if dry_run:
         print("\n--- DRY RUN (use --execute to move files) ---\n")
     else:
         print("\n--- EXECUTING ---\n")
     for line in actions:
         print(line)
+
+    # Tag organized files after successful execute
+    if not dry_run:
+        from plex_planner.tagger import tag_organized
+        tagged = 0
+        for move in org_plan.moves:
+            if tag_organized(move.destination, move.label):
+                tagged += 1
+        for split in org_plan.splits:
+            for dest, label in zip(split.chapter_destinations, split.chapter_labels):
+                if tag_organized(dest, label):
+                    tagged += 1
+        if tagged:
+            log.info("Tagged %d file(s) as organized", tagged)
 
     return 0
 
