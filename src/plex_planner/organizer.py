@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -86,6 +87,18 @@ def _extract_feature_type(label: str) -> str:
     if "(" in label and label.endswith(")"):
         return label[label.rfind("(") + 1 : -1]
     return ""
+
+
+_TRAILER_PATTERN = re.compile(
+    r"^(trailer|teaser|tv\s*spot|promo)", re.IGNORECASE,
+)
+
+
+def _infer_extras_folder(title: str) -> str:
+    """Infer a Plex extras folder from the title when no type annotation exists."""
+    if _TRAILER_PATTERN.search(title.lstrip("-").strip().strip('"')):
+        return "Trailers"
+    return "Featurettes"
 
 
 def _find_episode_by_title(
@@ -460,9 +473,10 @@ def _compute_destination(
                 # No TMDb match; can't produce a valid Plex filename.
                 log.debug("  -> no TMDb match for title '%s', returning None", title_part)
                 return None
+            folder = _infer_extras_folder(title_part)
             safe = sanitize_filename(title_part)
-            dest = base / f"{safe}.mkv"
-            log.debug("  -> movie disc content: %s", dest)
+            dest = base / folder / f"{safe}.mkv"
+            log.debug("  -> movie extras '%s': %s", folder, dest)
             return dest
 
     # Fallback: put in Other

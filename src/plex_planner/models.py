@@ -117,6 +117,7 @@ class ScannedFile:
     max_width: int = 0  # max video stream width (e.g. 3840)
     max_height: int = 0  # max video stream height (e.g. 2160)
     organized_tag: str | None = None  # plex-planner organized marker
+    perceptual_hash: int | None = None  # 64-bit dhash for duplicate detection
 
 
 @dataclass

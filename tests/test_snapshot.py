@@ -1,0 +1,168 @@
+"""Tests for the snapshot capture/load round-trip."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from plex_planner.models import ScannedDisc, ScannedFile
+from plex_planner.snapshot import (
+    SNAPSHOT_VERSION,
+    _dict_to_file,
+    _file_to_dict,
+    capture,
+    load,
+    save,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_file(**overrides) -> ScannedFile:
+    defaults = dict(
+        name="title_t00.mkv",
+        path="/fake/title_t00.mkv",
+        duration_seconds=7200,
+        size_bytes=5_000_000_000,
+        stream_count=4,
+        stream_fingerprint="hevc:3840x2160|truehd:eng:8ch|sub:eng|sub:spa",
+        chapter_count=28,
+        chapter_durations=[300] * 28,
+        title_tag="My Movie",
+        max_width=3840,
+        max_height=2160,
+        organized_tag=None,
+        perceptual_hash=123456789,
+    )
+    defaults.update(overrides)
+    return ScannedFile(**defaults)
+
+
+def _make_discs() -> list[ScannedDisc]:
+    return [
+        ScannedDisc(
+            folder_name="Movie Title",
+            files=[
+                _make_file(name="title_t00.mkv", duration_seconds=7200),
+                _make_file(name="title_t01.mkv", duration_seconds=180, chapter_count=0, chapter_durations=[]),
+            ],
+        ),
+        ScannedDisc(
+            folder_name="Special Features",
+            files=[
+                _make_file(name="title_t02.mkv", duration_seconds=600),
+            ],
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# _file_to_dict / _dict_to_file round-trip
+# ---------------------------------------------------------------------------
+
+class TestFileRoundTrip:
+    def test_round_trip_preserves_all_fields(self):
+        original = _make_file()
+        d = _file_to_dict(original)
+        restored = _dict_to_file(d)
+
+        assert restored.name == original.name
+        assert restored.duration_seconds == original.duration_seconds
+        assert restored.size_bytes == original.size_bytes
+        assert restored.stream_count == original.stream_count
+        assert restored.stream_fingerprint == original.stream_fingerprint
+        assert restored.chapter_count == original.chapter_count
+        assert restored.chapter_durations == original.chapter_durations
+        assert restored.title_tag == original.title_tag
+        assert restored.max_width == original.max_width
+        assert restored.max_height == original.max_height
+        assert restored.organized_tag == original.organized_tag
+        assert restored.perceptual_hash == original.perceptual_hash
+
+    def test_dict_does_not_include_path(self):
+        d = _file_to_dict(_make_file())
+        assert "path" not in d
+
+    def test_restored_path_is_synthetic(self):
+        f = _make_file(name="bonus.mkv")
+        restored = _dict_to_file(_file_to_dict(f))
+        assert restored.path == "bonus.mkv"
+
+    def test_missing_optional_fields_use_defaults(self):
+        minimal = {"name": "test.mkv"}
+        restored = _dict_to_file(minimal)
+        assert restored.duration_seconds == 0
+        assert restored.stream_fingerprint == ""
+        assert restored.chapter_durations == []
+        assert restored.title_tag is None
+        assert restored.organized_tag is None
+        assert restored.perceptual_hash is None
+
+
+# ---------------------------------------------------------------------------
+# save / load round-trip
+# ---------------------------------------------------------------------------
+
+class TestSaveLoad:
+    def test_save_creates_valid_json(self, tmp_path, monkeypatch):
+        discs = _make_discs()
+        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+
+        out = tmp_path / "test.snapshot.json"
+        save(Path("/fake/folder"), out)
+
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert data["snapshot_version"] == SNAPSHOT_VERSION
+        assert "created" in data
+        assert data["source_folder"] == str(Path("/fake/folder"))
+        assert len(data["groups"]) == 2
+        assert len(data["groups"][0]["files"]) == 2
+        assert len(data["groups"][1]["files"]) == 1
+
+    def test_load_returns_scanned_discs(self, tmp_path, monkeypatch):
+        discs = _make_discs()
+        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+
+        out = tmp_path / "test.snapshot.json"
+        save(Path("/fake/folder"), out)
+        loaded = load(out)
+
+        assert len(loaded) == 2
+        assert loaded[0].folder_name == "Movie Title"
+        assert len(loaded[0].files) == 2
+        assert loaded[0].files[0].duration_seconds == 7200
+        assert loaded[0].files[1].duration_seconds == 180
+        assert loaded[1].folder_name == "Special Features"
+
+    def test_load_preserves_metadata(self, tmp_path, monkeypatch):
+        discs = _make_discs()
+        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+
+        out = tmp_path / "test.snapshot.json"
+        save(Path("/fake/folder"), out)
+        loaded = load(out)
+
+        f = loaded[0].files[0]
+        assert f.stream_fingerprint == "hevc:3840x2160|truehd:eng:8ch|sub:eng|sub:spa"
+        assert f.chapter_count == 28
+        assert f.chapter_durations == [300] * 28
+        assert f.title_tag == "My Movie"
+        assert f.max_width == 3840
+        assert f.max_height == 2160
+
+    def test_load_rejects_wrong_version(self, tmp_path):
+        data = {
+            "snapshot_version": 999,
+            "created": "2025-01-01",
+            "source_folder": "/fake",
+            "groups": [],
+        }
+        out = tmp_path / "bad.json"
+        out.write_text(json.dumps(data), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="Unsupported snapshot version"):
+            load(out)

@@ -28,6 +28,7 @@ from plex_planner.models import SearchRequest
 from plex_planner.organizer import build_organize_plan, execute_plan
 from plex_planner.planner import plan
 from plex_planner.scanner import scan_folder
+from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save as snapshot_save
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +69,24 @@ def _setup_logging(verbose: bool = False) -> Path:
 
 
 _TRAILING_YEAR_RE = re.compile(r"\s*\(\d{4}\)\s*$")
+
+
+def _infer_title_from_scanned(scanned: list) -> str | None:
+    """Derive a clean title from MKV title_tag metadata.
+
+    Picks the title_tag of the longest file (most likely the main feature).
+    Returns ``None`` when no useful title_tag is present.
+    """
+    all_files = [f for d in scanned for f in d.files]
+    if not all_files:
+        return None
+    longest = max(all_files, key=lambda f: f.duration_seconds)
+    tag = longest.title_tag
+    if not tag or not tag.strip():
+        return None
+    # Strip trailing year if embedded, e.g. "Waterworld (1995)"
+    clean, _ = _strip_year_from_title(tag.strip())
+    return clean or None
 
 
 def _strip_year_from_title(name: str) -> tuple[str, int | None]:
@@ -160,6 +179,23 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Re-organize files even if they are already tagged as organized.",
     )
+    org_parser.add_argument(
+        "--snapshot",
+        default=None,
+        help="Load a snapshot JSON file instead of scanning a real folder. Forces dry-run mode.",
+    )
+
+    # --- snapshot ---
+    snap_parser = subs.add_parser(
+        "snapshot",
+        help="Capture a metadata snapshot of a MakeMKV rip folder.",
+    )
+    snap_parser.add_argument("folder", help="Path to a MakeMKV rip folder.")
+    snap_parser.add_argument(
+        "-o", "--output",
+        default=None,
+        help="Output file path (default: <folder>.snapshot.json in current directory).",
+    )
 
     return parser
 
@@ -240,7 +276,26 @@ def _parse_match_args(match_args: list[str]) -> list[tuple[str, int]]:
 async def _run(args: argparse.Namespace) -> int:
     if args.command == "organize":
         return await _run_organize(args)
+    if args.command == "snapshot":
+        return _run_snapshot(args)
     return await _run_plan(args)
+
+
+def _run_snapshot(args: argparse.Namespace) -> int:
+    """Capture a metadata snapshot of a rip folder."""
+    folder = Path(args.folder)
+    if not folder.is_dir():
+        print(f"Error: not a directory: {folder}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        output = Path(args.output)
+    else:
+        output = Path(f"{folder.name}.snapshot.json")
+
+    snapshot_save(folder, output)
+    print(f"Snapshot saved to {output}")
+    return 0
 
 
 async def _run_plan(args: argparse.Namespace) -> int:
@@ -293,7 +348,7 @@ async def _run_plan(args: argparse.Namespace) -> int:
 def main() -> None:
     # Backward compatibility: if the first arg isn't a known subcommand,
     # treat as the legacy "plan" invocation.
-    _SUBCOMMANDS = {"plan", "organize"}
+    _SUBCOMMANDS = {"plan", "organize", "snapshot"}
     if len(sys.argv) > 1 and sys.argv[1] not in _SUBCOMMANDS and sys.argv[1] != "-h" and sys.argv[1] != "--help":
         sys.argv.insert(1, "plan")
 
@@ -316,6 +371,45 @@ async def _run_organize(args: argparse.Namespace) -> int:
     if getattr(args, "no_cache", False):
         from plex_planner import cache
         cache.disable()
+
+    # Snapshot mode: load metadata from JSON, force dry-run
+    snapshot_path = getattr(args, "snapshot", None)
+    if snapshot_path:
+        snapshot_file = Path(snapshot_path)
+        if not snapshot_file.is_file():
+            print(f"Error: snapshot file not found: {snapshot_file}", file=sys.stderr)
+            return 1
+        if getattr(args, "execute", False):
+            print("Error: --execute is not allowed with --snapshot (always dry-run).", file=sys.stderr)
+            return 1
+        args.execute = False
+
+        scanned = snapshot_load(snapshot_file)
+        print(f"Loaded snapshot from {snapshot_file}", file=sys.stderr)
+
+        folder = Path(args.folder)
+        output_val = get_output_root(args.output)
+        output_root = Path(output_val) if output_val else folder.parent
+
+        if args.title:
+            title = args.title
+        else:
+            title, inferred_year = _strip_year_from_title(folder.name)
+            if inferred_year and not getattr(args, "year", None):
+                args.year = inferred_year
+
+        api_key = get_api_key(getattr(args, "api_key", None))
+        try:
+            provider = TmdbProvider(api_key=api_key)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        try:
+            return await _organize_with_scanned(
+                scanned, title, args, output_root, provider,
+            )
+        finally:
+            await provider.close()
 
     folder = Path(args.folder)
     if not folder.is_dir():
@@ -502,19 +596,21 @@ async def _organize_with_scanned(
                 print("All files already organized. Use --force to re-organize.", file=sys.stderr)
                 return 0
 
-    # Detect incomplete files
+    # Detect unusable files (incomplete, no audio)
     incomplete = detect_incomplete(scanned)
     if incomplete:
-        print(f"Warning: {len(incomplete)} file(s) appear incomplete (still ripping?):", file=sys.stderr)
+        print(f"Removing {len(incomplete)} unusable file(s):", file=sys.stderr)
         for f in incomplete:
-            print(f"  {f.name} (0 duration / no streams)", file=sys.stderr)
-        # Remove incomplete files from scanned
+            if f.duration_seconds == 0 or f.stream_count == 0:
+                print(f"  {f.name} (incomplete: 0 duration / no streams)", file=sys.stderr)
+            else:
+                print(f"  {f.name} ({f.duration_seconds}s, no audio)", file=sys.stderr)
         incomplete_paths = {f.path for f in incomplete}
         for disc in scanned:
             disc.files = [f for f in disc.files if f.path not in incomplete_paths]
         total_files = sum(len(d.files) for d in scanned)
         if total_files == 0:
-            print("No complete MKV files found.", file=sys.stderr)
+            print("No usable MKV files found.", file=sys.stderr)
             return 1
 
     # Auto-detect format if not specified
@@ -542,12 +638,32 @@ async def _organize_with_scanned(
         total_files = sum(len(d.files) for d in scanned)
         print(f"Proceeding with {total_files} files after dedup.", file=sys.stderr)
 
+    # Infer title from MKV title_tag when no --title override was given
+    if not getattr(args, "title", None):
+        inferred = _infer_title_from_scanned(scanned)
+        if inferred and inferred.lower() != title.lower():
+            log.debug("Title inferred from MKV title_tag: %r (was %r)", inferred, title)
+            title = inferred
+
+    # Auto-detect media type from file durations when mode is "auto":
+    # a feature-length main file (> 90 min) strongly suggests a movie.
+    # 90 min chosen to clear HBO-style long episodes (~70-80 min) while
+    # still catching the shortest typical movies (~100+ min).
+    media_type = getattr(args, "media_type", "auto")
+    if media_type == "auto":
+        all_files = [f for d in scanned for f in d.files]
+        if all_files:
+            longest_dur = max(f.duration_seconds for f in all_files)
+            if longest_dur > 5400:  # > 90 minutes
+                media_type = "movie"
+                log.debug("Auto-detected media_type='movie' (longest file %ds)", longest_dur)
+
     # Look up TMDb metadata
     try:
         request = SearchRequest(
             title=title,
             year=getattr(args, "year", None),
-            media_type=getattr(args, "media_type", "auto"),
+            media_type=media_type,
         )
         result = await plan(request, provider)
     except LookupError as exc:
@@ -559,23 +675,19 @@ async def _organize_with_scanned(
 
     print(f"TMDb: {result.canonical_title} ({result.year})", file=sys.stderr)
 
-    # Look up dvdcompare disc metadata
-    if disc_format == "DVD":
-        print("Note: DVD format detected. dvdcompare does not support DVD releases; skipping disc metadata lookup.", file=sys.stderr)
-        discs = []
-    else:
-        print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
-        try:
-            discs = await lookup_discs(
-                title,
-                disc_format=disc_format,
-                release=getattr(args, "release", "america"),
-            )
-            print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
-        except LookupError as exc:
-            print(f"Warning: dvdcompare lookup failed: {exc}", file=sys.stderr)
-            print("Proceeding without disc metadata.", file=sys.stderr)
-            discs = []
+    # Look up dvdcompare disc metadata using TMDb canonical title
+    dvdcompare_title = result.canonical_title
+    print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+    try:
+        discs = await lookup_discs(
+            dvdcompare_title,
+            disc_format=disc_format,
+            release=getattr(args, "release", "america"),
+        )
+        print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
+    except LookupError as exc:
+        print(f"Error: dvdcompare lookup failed: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     # Map folders to discs and match
     if discs:

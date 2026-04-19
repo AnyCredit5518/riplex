@@ -385,19 +385,26 @@ def compute_dhash(path: str, duration_seconds: int) -> int | None:
     return _dhash(raw)
 
 
+def _get_dhash(f: ScannedFile) -> int | None:
+    """Get a perceptual hash, preferring the pre-computed value on the file."""
+    if f.perceptual_hash is not None:
+        return f.perceptual_hash
+    return compute_dhash(f.path, f.duration_seconds)
+
+
 def confirm_duplicates_tier2(group: DuplicateGroup) -> DuplicateGroup | None:
     """Use perceptual hashing to confirm a tier-1 duplicate group.
 
     Returns the group unchanged if confirmed, or None if the visual
     hashes don't match (meaning they aren't real duplicates).
     """
-    keep_hash = compute_dhash(group.keep.path, group.keep.duration_seconds)
+    keep_hash = _get_dhash(group.keep)
     if keep_hash is None:
         return group  # can't disprove, keep the tier-1 result
 
     confirmed_dupes: list[ScannedFile] = []
     for dup in group.duplicates:
-        dup_hash = compute_dhash(dup.path, dup.duration_seconds)
+        dup_hash = _get_dhash(dup)
         if dup_hash is None or _hamming(keep_hash, dup_hash) <= _DHASH_HAMMING_THRESHOLD:
             confirmed_dupes.append(dup)
 

@@ -38,6 +38,18 @@ class TestSanitizeFilename:
     def test_empty_string(self):
         assert sanitize_filename("") == ""
 
+    def test_strips_leading_dashes(self):
+        assert sanitize_filename('---- "The Bat"') == "The Bat"
+
+    def test_strips_leading_dashes_no_quotes(self):
+        assert sanitize_filename("---- Behind the Story") == "Behind the Story"
+
+    def test_preserves_internal_hyphens(self):
+        assert sanitize_filename("High-Altitude Hijacking") == "High-Altitude Hijacking"
+
+    def test_strips_surrounding_quotes(self):
+        assert sanitize_filename('"A Girl\'s Gotta Eat"') == "A Girl's Gotta Eat"
+
 
 class TestFormatRuntime:
     def test_minutes_only(self):

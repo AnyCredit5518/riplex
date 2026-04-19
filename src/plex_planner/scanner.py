@@ -7,6 +7,7 @@ import logging
 import subprocess
 from pathlib import Path
 
+from plex_planner.dedup import compute_dhash
 from plex_planner.models import ScannedDisc, ScannedFile
 
 log = logging.getLogger(__name__)
@@ -103,6 +104,8 @@ def _probe_file(path: Path) -> ScannedFile:
         except (KeyError, ValueError):
             chapter_durations.append(0)
 
+    phash = compute_dhash(abs_path, duration)
+
     sf = ScannedFile(
         name=name,
         path=abs_path,
@@ -116,6 +119,7 @@ def _probe_file(path: Path) -> ScannedFile:
         max_width=max_width,
         max_height=max_height,
         organized_tag=organized_tag,
+        perceptual_hash=phash,
     )
     log.debug(
         "Probed %s: %ds, %d streams, fp=%s, %d chapters, chd=%s, title=%s, res=%dx%d",

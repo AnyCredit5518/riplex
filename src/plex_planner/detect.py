@@ -66,16 +66,30 @@ def detect_format(discs: list[ScannedDisc]) -> str | None:
 
 
 def detect_incomplete(discs: list[ScannedDisc]) -> list[ScannedFile]:
-    """Find files that appear to still be ripping (0 duration, no streams).
+    """Find files that are unusable: still ripping or missing audio.
 
-    Returns a list of files that should be skipped.
+    Catches:
+    - Files with 0 duration or 0 streams (still being written by MakeMKV).
+    - Files with no audio streams (silent warning/menu clips).
+
+    Returns a list of files that should be discarded.
     """
     incomplete: list[ScannedFile] = []
     for disc in discs:
         for f in disc.files:
             if f.duration_seconds == 0 or f.stream_count == 0:
                 incomplete.append(f)
+            elif not _has_audio(f.stream_fingerprint):
+                incomplete.append(f)
     return incomplete
+
+
+def _has_audio(fingerprint: str) -> bool:
+    """Return True if the stream fingerprint contains an audio stream."""
+    for part in fingerprint.split("|"):
+        if "ch" in part and not part.startswith("sub:"):
+            return True
+    return False
 
 
 def _normalize_title(folder_name: str) -> str:

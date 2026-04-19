@@ -43,8 +43,15 @@ def sanitize_filename(name: str) -> str:
     """Remove or replace characters that are illegal in Windows filenames.
 
     Colons are removed (with surrounding space collapsed) to keep titles
-    readable. Other illegal characters are stripped outright.
+    readable. Other illegal characters are stripped outright. Leading
+    dash prefixes (e.g. ``---- "Title"``) from dvdcompare child entries
+    are stripped along with surrounding quotes.
     """
+    # Strip leading dashes used as dvdcompare child-entry markers
+    name = name.lstrip("-").strip()
+    # Strip surrounding quotes
+    if len(name) >= 2 and name[0] == '"' and name[-1] == '"':
+        name = name[1:-1]
     # Handle colon specifically: "Title: Subtitle" -> "Title Subtitle"
     name = name.replace(": ", " ").replace(":", "")
     # Strip remaining illegal chars

@@ -72,7 +72,8 @@ class TestDetectIncomplete:
     def test_zero_duration(self):
         discs = [ScannedDisc(folder_name="D1", files=[
             ScannedFile(name="a.mkv", path="/a.mkv", duration_seconds=0, stream_count=3),
-            ScannedFile(name="b.mkv", path="/b.mkv", duration_seconds=100, stream_count=3),
+            ScannedFile(name="b.mkv", path="/b.mkv", duration_seconds=100, stream_count=3,
+                        stream_fingerprint="h264:1920x1080|ac3:eng:6ch"),
         ])]
         incomplete = detect_incomplete(discs)
         assert len(incomplete) == 1
@@ -87,12 +88,32 @@ class TestDetectIncomplete:
 
     def test_all_complete(self):
         discs = [ScannedDisc(folder_name="D1", files=[
-            ScannedFile(name="a.mkv", path="/a.mkv", duration_seconds=100, stream_count=3),
+            ScannedFile(name="a.mkv", path="/a.mkv", duration_seconds=100, stream_count=3,
+                        stream_fingerprint="h264:1920x1080|ac3:eng:6ch"),
         ])]
         assert detect_incomplete(discs) == []
 
     def test_empty_discs(self):
         assert detect_incomplete([]) == []
+
+    def test_no_audio_is_incomplete(self):
+        discs = [ScannedDisc(folder_name="D1", files=[
+            ScannedFile(name="warn.mkv", path="/warn.mkv", duration_seconds=340,
+                        stream_count=1, stream_fingerprint="h264:1920x1080"),
+            ScannedFile(name="movie.mkv", path="/movie.mkv", duration_seconds=7200,
+                        stream_count=4, stream_fingerprint="hevc:3840x2160|truehd:eng:8ch|sub:eng|sub:spa"),
+        ])]
+        incomplete = detect_incomplete(discs)
+        assert len(incomplete) == 1
+        assert incomplete[0].name == "warn.mkv"
+
+    def test_subtitle_only_no_audio_is_incomplete(self):
+        discs = [ScannedDisc(folder_name="D1", files=[
+            ScannedFile(name="menu.mkv", path="/menu.mkv", duration_seconds=60,
+                        stream_count=2, stream_fingerprint="h264:1920x1080|sub:eng"),
+        ])]
+        incomplete = detect_incomplete(discs)
+        assert len(incomplete) == 1
 
 
 class TestNormalizeTitle:

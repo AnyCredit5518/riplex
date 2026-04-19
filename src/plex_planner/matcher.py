@@ -201,10 +201,16 @@ def collect_disc_targets(
 
         # Collect non-play-all extras as targets; play-all entries are
         # redundant when individual parts are also listed on the disc.
+        # Also skip "The Film ..." entries on film discs: they represent
+        # the main feature which is already covered by the movie target.
         play_all_extras: list[PlannedExtra] = []
         regular_extras: list[PlannedExtra] = []
         for ex in disc.extras:
             if ex.runtime_seconds <= 0:
+                continue
+            if disc.is_film and ex.title.lower().startswith("the film"):
+                log.debug("Disc %d: skipping film entry '%s' (covered by movie target)",
+                          disc.number, ex.title)
                 continue
             if _PLAY_ALL_RE.search(ex.title):
                 play_all_extras.append(ex)
