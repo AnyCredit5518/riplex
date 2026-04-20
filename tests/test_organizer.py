@@ -11,7 +11,51 @@ from plex_planner.models import (
     PlannedShow,
     ScannedFile,
 )
-from plex_planner.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder
+from plex_planner.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder, _extras_folder
+
+
+class TestExtrasFolder:
+    def test_exact_trailer(self):
+        assert _extras_folder("trailer") == "Trailers"
+
+    def test_exact_trailers(self):
+        assert _extras_folder("Trailers") == "Trailers"
+
+    def test_compound_trailer(self):
+        assert _extras_folder("4K remastered trailer") == "Trailers"
+
+    def test_theatrical_trailer(self):
+        assert _extras_folder("theatrical trailer") == "Trailers"
+
+    def test_exact_documentary(self):
+        assert _extras_folder("documentary") == "Featurettes"
+
+    def test_documentaries(self):
+        assert _extras_folder("documentaries") == "Featurettes"
+
+    def test_documentary_trailing_colon(self):
+        assert _extras_folder("documentary:") == "Featurettes"
+
+    def test_archival_featurette(self):
+        assert _extras_folder("archival featurette") == "Featurettes"
+
+    def test_short_feature(self):
+        assert _extras_folder("short feature") == "Shorts"
+
+    def test_exact_short(self):
+        assert _extras_folder("short") == "Shorts"
+
+    def test_behind_the_scenes_montage(self):
+        assert _extras_folder("behind-the-scenes montage") == "Behind The Scenes"
+
+    def test_interactive_feature_is_other(self):
+        assert _extras_folder("interactive feature") == "Other"
+
+    def test_empty_is_other(self):
+        assert _extras_folder("") == "Other"
+
+    def test_none_like_is_other(self):
+        assert _extras_folder("Art Gallery") == "Other"
 
 
 class TestInferExtrasFolder:

@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 # Map dvdcompare feature_type strings to Plex extras folder names
 _EXTRAS_FOLDER_MAP: dict[str, str] = {
     "documentary": "Featurettes",
+    "documentaries": "Featurettes",
     "featurette": "Featurettes",
     "featurettes": "Featurettes",
     "behind-the-scenes montage": "Behind The Scenes",
@@ -41,7 +42,21 @@ _EXTRAS_FOLDER_MAP: dict[str, str] = {
     "deleted scenes": "Deleted Scenes",
     "trailer": "Trailers",
     "trailers": "Trailers",
+    "short": "Shorts",
 }
+
+# Keyword fallback: if the feature_type *contains* one of these words, use
+# the mapped folder.  Checked in order; first match wins.
+_EXTRAS_KEYWORD_MAP: list[tuple[str, str]] = [
+    ("trailer", "Trailers"),
+    ("behind-the-scenes", "Behind The Scenes"),
+    ("behind the scenes", "Behind The Scenes"),
+    ("deleted scene", "Deleted Scenes"),
+    ("interview", "Interviews"),
+    ("documentary", "Featurettes"),
+    ("featurette", "Featurettes"),
+    ("short", "Shorts"),
+]
 
 
 @dataclass
@@ -79,7 +94,16 @@ def _extras_folder(feature_type: str) -> str:
     """Map a feature type to a Plex extras folder name."""
     if not feature_type:
         return "Other"
-    return _EXTRAS_FOLDER_MAP.get(feature_type.lower(), "Other")
+    normalized = feature_type.lower().strip().rstrip(":")
+    # Exact match first
+    result = _EXTRAS_FOLDER_MAP.get(normalized)
+    if result:
+        return result
+    # Keyword fallback for compound types like "4K remastered trailer"
+    for keyword, folder in _EXTRAS_KEYWORD_MAP:
+        if keyword in normalized:
+            return folder
+    return "Other"
 
 
 def _extract_feature_type(label: str) -> str:
