@@ -37,6 +37,22 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Debug logging to `%TEMP%\plex-planner\plex-planner.log` on every run; `--verbose` prints to stderr
 - Dry-run preview by default, `--execute` to actually move files
 
+**Rip guide mode (`rip-guide`)**
+- Shows disc contents and recommended rip strategy *before* ripping in MakeMKV
+- Looks up TMDb for canonical title/year, then dvdcompare for full disc breakdown
+- Outputs recommended `_MakeMKV/Title (Year)/Disc N/` folder structure
+- Per-disc content listings with runtimes, chapter counts, and feature types
+- Identifies film discs, extras discs, and play-all groups
+- Suggests which MakeMKV titles to rip vs skip (play-all detection, duplicate avoidance)
+- `--create-folders` pre-creates the directory structure for ripping
+- Human-readable text and JSON output modes
+
+**Snapshot mode (`snapshot`)**
+- Captures a metadata snapshot of a MakeMKV rip folder to a JSON file
+- Records every file's duration, size, streams, chapters, resolution, title tag, and perceptual hash
+- Allows offline replay of the organize workflow (via `organize --snapshot`)
+- Useful for debugging, testing, and sharing disc layouts without sharing actual video files
+
 **General**
 - File-based JSON caching for dvdcompare (30-day TTL) and TMDb (7-day TTL) responses, stored in the OS cache directory; bypass with `--no-cache`
 - Windows-safe filename normalization
@@ -345,6 +361,77 @@ Add `--verbose` to also print debug output to stderr:
 plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
 ```
 
+### Rip guide: plan before ripping
+
+Before inserting a disc, use `rip-guide` to see what's on it and how to rip efficiently:
+
+```bash
+plex-planner rip-guide "Frozen Planet II"
+```
+
+Output:
+```
+Frozen Planet II (2022) [TV Show]
+============================================================
+
+Recommended rip folder structure:
+  _MakeMKV/Frozen Planet II (2022)/Disc 1/ [Blu-ray 4K] (episodes)
+  _MakeMKV/Frozen Planet II (2022)/Disc 2/ [Blu-ray 4K] (episodes + extras)
+  _MakeMKV/Frozen Planet II (2022)/Disc 3/ [Blu-ray] (episodes)
+  _MakeMKV/Frozen Planet II (2022)/Disc 4/ [Blu-ray] (episodes)
+
+Disc contents (4 disc(s)):
+------------------------------------------------------------
+
+  Disc 1 [Blu-ray 4K]
+    Episodes (3, total 2:36:33):
+      Frozen Worlds (52:11)
+      Frozen Ocean (51:47)
+      Frozen Peaks (52:35)
+  ...
+
+Rip tips:
+  - Disc 1: has 3 episodes (total 2:36:33). If MakeMKV shows a single
+    title with 3 or more chapters totaling ~2:36:33, that is the play-all.
+    You can rip just that one title; plex-planner will split it by chapters.
+  ...
+```
+
+The play-all tip is key: instead of ripping 4 titles per disc (~130 GB), rip one play-all title per disc (~65 GB). plex-planner's chapter-split logic handles the rest.
+
+### Rip guide: pre-create folder structure
+
+```bash
+plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
+```
+
+This creates the recommended `_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` folders so you can point MakeMKV's output at the correct disc subfolder as you rip.
+
+### Rip guide: movie with extras
+
+```bash
+plex-planner rip-guide "Oppenheimer" --year 2023
+```
+
+For movies, the guide identifies which disc has the main film vs extras, and labels play-all bonus groups appropriately.
+
+### Snapshot: capture disc metadata
+
+```bash
+plex-planner snapshot E:\Media\_MakeMKV\Oppenheimer
+```
+
+Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, resolution, title tag, perceptual hash). Useful for:
+
+- Sharing disc layouts for debugging without sharing video files
+- Offline testing of the organize workflow
+- Documenting what was on a disc before organizing
+
+```bash
+# Replay organize against a snapshot (always dry-run)
+plex-planner organize E:\Media\_MakeMKV\Oppenheimer --snapshot Oppenheimer.snapshot.json
+```
+
 ## CLI Reference
 
 ### `plan` subcommand
@@ -379,6 +466,29 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 
+### `rip-guide` subcommand
+
+| Option | Description |
+|---|---|
+| `title` | Movie or TV show title (required) |
+| `--year` | Release year |
+| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
+| `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--output` | Output root for `--create-folders` (or set `PLEX_ROOT` env var, or config) |
+| `--create-folders` | Pre-create the recommended MakeMKV rip folder structure |
+| `--json` | Output as JSON |
+| `--verbose`, `-v` | Print debug logging to stderr |
+| `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--api-key` | TMDb API key |
+
+### `snapshot` subcommand
+
+| Option | Description |
+|---|---|
+| `folder` | Path to a MakeMKV rip folder (required) |
+| `-o`, `--output` | Output file path (default: `<folder>.snapshot.json` in current directory) |
+
 ## Running Tests
 
 ```bash
@@ -390,7 +500,7 @@ pytest
 ```
 src/plex_planner/
     __init__.py
-    cli.py                  # CLI entry point (plan + organize subcommands)
+    cli.py                  # CLI entry point (plan, organize, rip-guide, snapshot subcommands)
     config.py               # Config file loading and setting resolution
     models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
     metadata_provider.py    # Abstract provider interface
@@ -401,6 +511,8 @@ src/plex_planner/
     planner.py              # Core planning orchestrator
     matcher.py              # Runtime-based file matching with disc constraints
     scanner.py              # MakeMKV folder scanner (ffprobe-based metadata extraction)
+    snapshot.py             # Snapshot capture and loading (JSON serialization of scan results)
+    detect.py               # Format auto-detection, title grouping, incomplete file detection
     dedup.py                # Duplicate MKV detection (metadata fingerprint + perceptual hash)
     cache.py                # File-based JSON cache with TTL (dvdcompare, TMDb)
     disc_provider.py        # dvdcompare.net disc extras metadata bridge
@@ -409,6 +521,7 @@ src/plex_planner/
     tagger.py               # MKV organized tagging via mkvpropedit
 tests/
     test_cache.py
+    test_cli_utils.py
     test_config.py
     test_dedup.py
     test_detect.py
@@ -418,14 +531,23 @@ tests/
     test_normalize.py
     test_organizer.py
     test_planner.py
+    test_rip_guide.py
     test_scanner.py
     test_splitter.py
     test_tagger.py
+    snapshots/              # MKV metadata snapshots for offline test replay
 ```
 
 ## Architecture
 
 The metadata provider is abstracted behind a clean interface (`MetadataProvider`). The default implementation uses TMDb, which is the same source Plex uses for its metadata agents. The provider can be swapped out for TheTVDB or any other source by implementing the interface.
+
+The tool has four modes:
+
+- **`plan`**: TMDb lookup only. Outputs Plex-canonical folder structure and filenames.
+- **`rip-guide`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping. Helps users decide which MakeMKV titles to rip vs skip, and creates correct folder structure.
+- **`organize`**: The full pipeline. Scans MKV files, deduplicates, looks up TMDb + dvdcompare, matches files by runtime, and moves everything into Plex folder layout.
+- **`snapshot`**: Captures MKV metadata to JSON for offline replay and debugging.
 
 The organize workflow chains several stages: scanning (ffprobe), dedup (metadata fingerprint with perceptual hash confirmation, plus compilation/play-all detection via chapter analysis), TMDb lookup, dvdcompare disc extras lookup, disc-constrained matching (mapping scanned folders to disc numbers via naming heuristics, then matching files to extras by runtime), chapter-to-missing split detection, and finally building Plex-canonical paths and moving files. Comprehensive debug logging captures every decision for post-run analysis.
 
