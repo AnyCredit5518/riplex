@@ -25,7 +25,7 @@ These durations match the ripped bonus files almost exactly.
 
 1. Run snapshot dry run:
    ```
-   plex-planner organize \"_MakeMKV/Batman Begins\" ^
+   plex-planner organize \"path/to/rips/Batman Begins\" ^
      --snapshot "tests\snapshots\Batman Begins.snapshot.json" --year 2005
    ```
 2. Observe: auto-detects "Blu-ray 4K", fetches sparse 4K page, only 3 matches out of 13 files.

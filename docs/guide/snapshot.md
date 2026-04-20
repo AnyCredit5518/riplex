@@ -5,7 +5,7 @@ The `snapshot` command captures a metadata snapshot of a MakeMKV rip folder to a
 ## Capture a snapshot
 
 ```bash
-plex-planner snapshot _MakeMKV/Oppenheimer
+plex-planner snapshot path/to/rips/Oppenheimer
 ```
 
 By default, the snapshot is written to `Oppenheimer.snapshot.json` in the current directory.
@@ -13,7 +13,7 @@ By default, the snapshot is written to `Oppenheimer.snapshot.json` in the curren
 ## Custom output path
 
 ```bash
-plex-planner snapshot _MakeMKV/Oppenheimer -o snapshots/oppenheimer.json
+plex-planner snapshot path/to/rips/Oppenheimer -o snapshots/oppenheimer.json
 ```
 
 ## Replay with organize
@@ -21,7 +21,7 @@ plex-planner snapshot _MakeMKV/Oppenheimer -o snapshots/oppenheimer.json
 Snapshots can be replayed through the organize workflow for offline testing and debugging:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --snapshot Oppenheimer.snapshot.json
+plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.json
 ```
 
 Snapshot replays are always dry-run, regardless of the `--execute` flag.

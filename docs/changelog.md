@@ -8,9 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- Replaced all personal/machine-specific paths with generic relative paths across all docs and README
-- CLI examples now use relative paths (e.g. `_MakeMKV/Oppenheimer` instead of absolute drive paths)
-- Output examples use relative paths (e.g. `Movies/...` instead of absolute paths)
+- Replaced all personal/machine-specific paths with generic placeholders across all docs and README
+- CLI examples now use `path/to/rips/Title` for user-supplied input paths
+- Tool output examples (rip-guide folder structure) use `<output_root>/_MakeMKV/` to clarify the staging directory
+- Output destination examples use relative paths (e.g. `Movies/...`, `TV Shows/...`)
 - Config examples use `/path/to/media` placeholder
 - Debug log references changed to "OS temp directory" instead of platform-specific paths
 - Removed personal Python install path from `.github/copilot-instructions.md`

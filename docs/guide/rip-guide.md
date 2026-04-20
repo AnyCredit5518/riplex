@@ -39,13 +39,13 @@ Rip tips:
 
 ## Pre-create folder structure
 
-Add `--create-folders` to create the recommended `_MakeMKV/` subfolders for ripping:
+Add `--create-folders` to create the recommended rip subfolders under your output root:
 
 ```bash
 plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
-This creates folders like `_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
+This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
 
 ## Movie with extras
 

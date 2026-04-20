@@ -7,7 +7,7 @@ The `organize` command is the main pipeline. It scans MakeMKV rip folders, dedup
 ## Basic usage
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K"
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K"
 ```
 
 This will:
@@ -23,13 +23,13 @@ This will:
 Add `--execute` to actually move the files:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
 ```
 
 ## TV shows (multi-disc)
 
 ```bash
-plex-planner organize "_MakeMKV/PLANET EARTH II" --type tv --format "Blu-ray 4K"
+plex-planner organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
 ```
 
 Multi-disc rips in separate folders (e.g. "Planet Earth III - Disc 1", "Planet Earth III - Disc 2") are automatically grouped into a single title.
@@ -43,8 +43,8 @@ When the scanner detects that a file has chapter markers matching the number of 
 dvdcompare lists multiple regional releases. By default, the first American release is used. You can specify a different release:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release uk
-plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release 2
+plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
+plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
 ```
 
 ## Unmatched file policy
@@ -59,7 +59,7 @@ Files that cannot be confidently matched are handled by the `--unmatched` flag:
 | `extras` | Route files >= 60s to the Plex `Other/` extras folder, named `Extra 1.mkv`, `Extra 2.mkv`, etc. |
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --unmatched extras
+plex-planner organize path/to/rips/Oppenheimer --unmatched extras
 ```
 
 ## Batch mode
@@ -67,7 +67,7 @@ plex-planner organize _MakeMKV/Oppenheimer --unmatched extras
 Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
 
 ```bash
-plex-planner organize _MakeMKV
+plex-planner organize path/to/rips
 ```
 
 Multi-disc rips in separate folders are automatically grouped into a single title.
@@ -78,14 +78,14 @@ After a successful `--execute`, each organized file is tagged with a `PLEX_PLANN
 
 ```bash
 # First run organizes everything
-plex-planner organize _MakeMKV/Oppenheimer --execute
+plex-planner organize path/to/rips/Oppenheimer --execute
 
 # Second run skips already-organized files
-plex-planner organize _MakeMKV/Oppenheimer
+plex-planner organize path/to/rips/Oppenheimer
 # "Skipping 17 already-organized file(s)."
 
 # Force re-organize
-plex-planner organize _MakeMKV/Oppenheimer --force
+plex-planner organize path/to/rips/Oppenheimer --force
 ```
 
 ## Duplicate detection
@@ -108,7 +108,7 @@ Duplicate MKV files (same content ripped from different playlists) are automatic
 Every `organize` run writes detailed debug logs to the OS temp directory. Add `--verbose` to also print debug output to stderr:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --verbose
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --verbose
 ```
 
 ## Options

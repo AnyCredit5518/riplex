@@ -40,7 +40,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 **Rip guide mode (`rip-guide`)**
 - Shows disc contents and recommended rip strategy *before* ripping in MakeMKV
 - Looks up TMDb for canonical title/year, then dvdcompare for full disc breakdown
-- Outputs recommended `_MakeMKV/Title (Year)/Disc N/` folder structure
+- Outputs recommended staging folder structure: `<output_root>/_MakeMKV/Title (Year)/Disc N/`
 - Per-disc content listings with runtimes, chapter counts, and feature types
 - Identifies film discs, extras discs, and play-all groups
 - Suggests which MakeMKV titles to rip vs skip (play-all detection, duplicate avoidance)
@@ -180,7 +180,7 @@ This produces a match report comparing each ripped file's duration against the p
 ### Organize: scan and sort a MakeMKV rip folder
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K"
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K"
 ```
 
 This will:
@@ -194,7 +194,7 @@ This will:
 
 Output:
 ```
-Scanning _MakeMKV/Oppenheimer ...
+Scanning path/to/rips/Oppenheimer ...
 Found 9 MKV files in 2 disc group(s).
 Detected 1 duplicate(s) in 1 group(s):
   DUPLICATE: Special Features_t02.mkv (keeping Special Features_t17.mkv)
@@ -216,18 +216,18 @@ Found 3 disc(s) on dvdcompare.
 Add `--execute` to actually move the files:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
 ```
 
 ### Organize: TV show (multi-disc)
 
 ```bash
-plex-planner organize "_MakeMKV/PLANET EARTH II" --type tv --format "Blu-ray 4K"
+plex-planner organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
 ```
 
 Output:
 ```
-Scanning _MakeMKV/PLANET EARTH II ...
+Scanning path/to/rips/PLANET EARTH II ...
 Found 7 MKV files in 3 disc group(s).
 TMDb: Planet Earth II (2016)
 Looking up disc metadata on dvdcompare.net ...
@@ -287,8 +287,8 @@ With `--execute`, this uses mkvmerge to split the file by chapters and moves eac
 dvdcompare lists multiple regional releases. By default, the first American release is used. You can specify a different release by name keyword or 1-based index:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release uk
-plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release 2
+plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
+plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
 ```
 
 ### Organize: unmatched file policy
@@ -302,13 +302,13 @@ Files that can't be confidently matched are handled by the `--unmatched` flag:
 
 ```bash
 # Preview what would happen
-plex-planner organize _MakeMKV/Oppenheimer --unmatched move
+plex-planner organize path/to/rips/Oppenheimer --unmatched move
 
 # Actually move matched files and relocate unmatched ones
-plex-planner organize _MakeMKV/Oppenheimer --unmatched move --execute
+plex-planner organize path/to/rips/Oppenheimer --unmatched move --execute
 
 # Route unmatched files to the Plex extras folder
-plex-planner organize _MakeMKV/Oppenheimer --unmatched extras
+plex-planner organize path/to/rips/Oppenheimer --unmatched extras
 ```
 
 ### Organize: batch mode
@@ -316,7 +316,7 @@ plex-planner organize _MakeMKV/Oppenheimer --unmatched extras
 Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
 
 ```bash
-plex-planner organize _MakeMKV
+plex-planner organize path/to/rips
 ```
 
 Output:
@@ -329,7 +329,7 @@ Batch mode: found 3 title group(s).
 ============================================================
 [1/3] Batman Begins
 ============================================================
-Scanning _MakeMKV/Batman Begins ...
+Scanning path/to/rips/Batman Begins ...
 ...
 ```
 
@@ -341,14 +341,14 @@ After a successful `--execute`, each organized file is tagged with a `PLEX_PLANN
 
 ```bash
 # First run organizes everything
-plex-planner organize _MakeMKV/Oppenheimer --execute
+plex-planner organize path/to/rips/Oppenheimer --execute
 
 # Second run skips already-organized files
-plex-planner organize _MakeMKV/Oppenheimer
+plex-planner organize path/to/rips/Oppenheimer
 # "Skipping 17 already-organized file(s)."
 
 # Force re-organize
-plex-planner organize _MakeMKV/Oppenheimer --force
+plex-planner organize path/to/rips/Oppenheimer --force
 ```
 
 ### Organize: debug logging
@@ -358,7 +358,7 @@ Every `organize` run writes detailed debug logs to the OS temp directory. The lo
 Add `--verbose` to also print debug output to stderr:
 
 ```bash
-plex-planner organize _MakeMKV/Oppenheimer --year 2023 --verbose
+plex-planner organize path/to/rips/Oppenheimer --year 2023 --verbose
 ```
 
 ### Rip guide: plan before ripping
@@ -405,7 +405,7 @@ The play-all tip is key: instead of ripping 4 titles per disc (~130 GB), rip one
 plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
-This creates the recommended `_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` folders so you can point MakeMKV's output at the correct disc subfolder as you rip.
+This creates the recommended `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` folders so you can point MakeMKV's output at the correct disc subfolder as you rip.
 
 ### Rip guide: movie with extras
 
@@ -418,7 +418,7 @@ For movies, the guide identifies which disc has the main film vs extras, and lab
 ### Snapshot: capture disc metadata
 
 ```bash
-plex-planner snapshot _MakeMKV/Oppenheimer
+plex-planner snapshot path/to/rips/Oppenheimer
 ```
 
 Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, resolution, title tag, perceptual hash). Useful for:
@@ -429,7 +429,7 @@ Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, 
 
 ```bash
 # Replay organize against a snapshot (always dry-run)
-plex-planner organize _MakeMKV/Oppenheimer --snapshot Oppenheimer.snapshot.json
+plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.json
 ```
 
 ## CLI Reference

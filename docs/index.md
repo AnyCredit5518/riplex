@@ -25,10 +25,10 @@ pip install -e ".[dev]"
 plex-planner rip-guide "Frozen Planet II"
 
 # After ripping, organize into Plex structure (dry-run by default)
-plex-planner organize _MakeMKV/Oppenheimer
+plex-planner organize path/to/rips/Oppenheimer
 
 # Actually move the files
-plex-planner organize _MakeMKV/Oppenheimer --execute
+plex-planner organize path/to/rips/Oppenheimer --execute
 ```
 
 See [Installation](getting-started/installation.md) for full setup instructions.
