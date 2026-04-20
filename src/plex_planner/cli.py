@@ -436,6 +436,25 @@ def _format_seconds(seconds: int) -> str:
     return f"{m}:{s:02d}"
 
 
+def _disc_role(disc, is_movie: bool) -> str:
+    """Return a short role label for a disc in the folder listing."""
+    if disc.is_film:
+        return " (main film)"
+    if is_movie:
+        # For movies, episodes on non-film discs are play-all bonus groups
+        if disc.extras or disc.episodes:
+            return " (extras)"
+        return ""
+    # TV show
+    if disc.episodes and not disc.extras:
+        return " (episodes)"
+    if disc.extras and not disc.episodes:
+        return " (extras)"
+    if disc.episodes and disc.extras:
+        return " (episodes + extras)"
+    return ""
+
+
 def _print_rip_guide(
     canonical: str,
     year: int,
@@ -455,13 +474,7 @@ def _print_rip_guide(
         for disc in discs:
             label = f"Disc {disc.number}"
             fmt_str = f" [{disc.disc_format}]" if disc.disc_format else ""
-            role = ""
-            if disc.is_film:
-                role = " (main film)"
-            elif disc.extras and not disc.episodes:
-                role = " (extras)"
-            elif disc.episodes:
-                role = " (episodes)"
+            role = _disc_role(disc, is_movie)
             print(f"  _MakeMKV/{folder_base}/{label}/{fmt_str}{role}")
     else:
         print(f"  _MakeMKV/{folder_base}/")
@@ -481,10 +494,8 @@ def _print_rip_guide(
 
     for disc in discs:
         fmt_str = f" [{disc.disc_format}]" if disc.disc_format else ""
-        role = ""
-        if disc.is_film:
-            role = " ** MAIN FILM **"
-        print(f"\n  Disc {disc.number}{fmt_str}{role}")
+        role_tag = " ** MAIN FILM **" if disc.is_film else ""
+        print(f"\n  Disc {disc.number}{fmt_str}{role_tag}")
 
         if disc.is_film and movie_runtime:
             print(f"    The Film: {_format_seconds(movie_runtime)}")
@@ -494,12 +505,14 @@ def _print_rip_guide(
         if not items and disc.is_film:
             continue
 
-        # Detect play-all entries (episodes with sequential numbering suggest
-        # they came from a play-all group with children)
         has_episodes = bool(disc.episodes)
         has_extras = bool(disc.extras)
 
-        if has_episodes:
+        # For movies, "episodes" on a non-film disc are really play-all
+        # bonus feature groups (dvdcompare models them as children).
+        episodes_are_extras = is_movie and has_episodes and not disc.is_film
+
+        if has_episodes and not episodes_are_extras:
             total_ep_runtime = sum(e.runtime_seconds for e in disc.episodes)
             print(f"    Episodes ({len(disc.episodes)}, total {_format_seconds(total_ep_runtime)}):")
             for ep in disc.episodes:
@@ -513,6 +526,12 @@ def _print_rip_guide(
                 f"that is the play-all. You can rip just that one title; "
                 f"plex-planner will split it by chapters."
             )
+        elif episodes_are_extras:
+            total_ep_runtime = sum(e.runtime_seconds for e in disc.episodes)
+            print(f"    Extras - play-all group ({len(disc.episodes)} items, total {_format_seconds(total_ep_runtime)}):")
+            for ep in disc.episodes:
+                rt = _format_seconds(ep.runtime_seconds) if ep.runtime_seconds else "?"
+                print(f"      {ep.title} ({rt})")
 
         if has_extras:
             total_extra_runtime = sum(e.runtime_seconds for e in disc.extras)
@@ -525,7 +544,7 @@ def _print_rip_guide(
     # Summary and tips
     total_features = sum(len(d.episodes) + len(d.extras) for d in discs)
     film_discs = [d for d in discs if d.is_film]
-    extras_discs = [d for d in discs if not d.is_film and d.extras]
+    extras_discs = [d for d in discs if not d.is_film and (d.extras or d.episodes)]
 
     print(f"\n{'=' * 60}")
     print("Rip tips:")

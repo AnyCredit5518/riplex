@@ -11,7 +11,33 @@ from plex_planner.models import (
     PlannedShow,
     ScannedFile,
 )
-from plex_planner.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan
+from plex_planner.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder
+
+
+class TestInferExtrasFolder:
+    def test_trailer(self):
+        assert _infer_extras_folder("Trailer 1") == "Trailers"
+
+    def test_teaser(self):
+        assert _infer_extras_folder("Teaser") == "Trailers"
+
+    def test_promo(self):
+        assert _infer_extras_folder("Promo clip") == "Trailers"
+
+    def test_tv_spot(self):
+        assert _infer_extras_folder("TV Spot 3") == "Trailers"
+
+    def test_promoting_is_featurette(self):
+        assert _infer_extras_folder("Promoting Dystopia: Rendering the Poster Art") == "Featurettes"
+
+    def test_promotional_is_featurette(self):
+        assert _infer_extras_folder("Promotional featurette") == "Featurettes"
+
+    def test_regular_featurette(self):
+        assert _infer_extras_folder("Making Of") == "Featurettes"
+
+    def test_quoted_trailer(self):
+        assert _infer_extras_folder('"Trailer"') == "Trailers"
 
 
 class TestBuildOrganizePlanMovie:

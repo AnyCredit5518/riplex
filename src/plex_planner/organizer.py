@@ -90,7 +90,7 @@ def _extract_feature_type(label: str) -> str:
 
 
 _TRAILER_PATTERN = re.compile(
-    r"^(trailer|teaser|tv\s*spot|promo)", re.IGNORECASE,
+    r"^(trailer|teaser|tv\s*spot|promo)\b", re.IGNORECASE,
 )
 
 

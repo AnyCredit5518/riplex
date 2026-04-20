@@ -6,6 +6,7 @@ import pytest
 
 from plex_planner.cli import (
     _create_rip_folders,
+    _disc_role,
     _format_seconds,
     _print_rip_guide,
     _rip_guide_json,
@@ -125,6 +126,74 @@ class TestPrintRipGuide:
         out = capsys.readouterr().out
 
         assert 'plex-planner organize "_MakeMKV/Blade Runner (1982)"' in out
+
+    def test_movie_play_all_extras_not_labeled_episodes(self, capsys):
+        """For movies, play-all children on non-film disc show as extras, not episodes."""
+        discs = [
+            PlannedDisc(number=1, disc_format="Blu-ray 4K", is_film=True),
+            PlannedDisc(
+                number=2,
+                disc_format="Blu-ray",
+                is_film=False,
+                episodes=[
+                    PlannedEpisode(season_number=0, episode_number=1, title="Behind the Scenes Part 1", runtime="", runtime_seconds=1200),
+                    PlannedEpisode(season_number=0, episode_number=2, title="Behind the Scenes Part 2", runtime="", runtime_seconds=1300),
+                ],
+                extras=[
+                    PlannedExtra(title="Trailer", runtime_seconds=120, feature_type="trailers"),
+                ],
+            ),
+        ]
+        _print_rip_guide("Oppenheimer", 2023, True, 10812, discs)
+        out = capsys.readouterr().out
+
+        # Should NOT say "Episodes" for a movie extras disc
+        lines = out.split("\n")
+        disc2_section = "\n".join(lines[lines.index(next(l for l in lines if "Disc 2" in l)):])
+        assert "Episodes (" not in disc2_section
+        assert "play-all group" in disc2_section
+        assert "Behind the Scenes Part 1" in out
+        # Disc 2 role should be "extras" not "episodes"
+        assert "(extras)" in out
+
+
+# ---------------------------------------------------------------------------
+# _disc_role
+# ---------------------------------------------------------------------------
+
+
+class TestDiscRole:
+    def test_film_disc(self):
+        disc = PlannedDisc(number=1, disc_format="Blu-ray 4K", is_film=True)
+        assert _disc_role(disc, is_movie=True) == " (main film)"
+        assert _disc_role(disc, is_movie=False) == " (main film)"
+
+    def test_movie_extras_disc_with_episodes(self):
+        disc = PlannedDisc(
+            number=2, disc_format="Blu-ray", is_film=False,
+            episodes=[PlannedEpisode(0, 1, "BTS", "", 600)],
+        )
+        assert _disc_role(disc, is_movie=True) == " (extras)"
+
+    def test_tv_episodes_disc(self):
+        disc = PlannedDisc(
+            number=1, disc_format="Blu-ray", is_film=False,
+            episodes=[PlannedEpisode(0, 1, "Ep 1", "", 3000)],
+        )
+        assert _disc_role(disc, is_movie=False) == " (episodes)"
+
+    def test_tv_mixed_disc(self):
+        disc = PlannedDisc(
+            number=1, disc_format="Blu-ray", is_film=False,
+            episodes=[PlannedEpisode(0, 1, "Ep 1", "", 3000)],
+            extras=[PlannedExtra(title="BTS", runtime_seconds=600)],
+        )
+        assert _disc_role(disc, is_movie=False) == " (episodes + extras)"
+
+    def test_empty_disc(self):
+        disc = PlannedDisc(number=1, disc_format="Blu-ray", is_film=False)
+        assert _disc_role(disc, is_movie=True) == ""
+        assert _disc_role(disc, is_movie=False) == ""
 
 
 # ---------------------------------------------------------------------------
