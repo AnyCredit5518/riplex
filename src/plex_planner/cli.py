@@ -24,7 +24,7 @@ from plex_planner.matcher import (
     parse_duration,
 )
 from plex_planner.metadata_sources.tmdb import TmdbProvider
-from plex_planner.models import SearchRequest
+from plex_planner.models import PlannedMovie, SearchRequest
 from plex_planner.organizer import build_organize_plan, execute_plan
 from plex_planner.planner import plan
 from plex_planner.scanner import scan_folder
@@ -202,6 +202,57 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output file path (default: <folder>.snapshot.json in current directory).",
     )
 
+    # --- rip-guide ---
+    guide_parser = subs.add_parser(
+        "rip-guide",
+        help="Show disc contents and recommended rip strategy before ripping.",
+    )
+    guide_parser.add_argument("title", help="Movie or TV show title.")
+    guide_parser.add_argument("--year", type=int, help="Release year.")
+    guide_parser.add_argument(
+        "--type",
+        dest="media_type",
+        choices=["movie", "tv", "auto"],
+        default="auto",
+        help="Force media type. Default: auto-detect.",
+    )
+    guide_parser.add_argument(
+        "--format",
+        dest="disc_format",
+        default=None,
+        help="Disc format filter for dvdcompare (e.g. 'Blu-ray 4K').",
+    )
+    guide_parser.add_argument(
+        "--release",
+        default="america",
+        help="Regional release: 1-based index or name keyword (default: america).",
+    )
+    guide_parser.add_argument(
+        "--output",
+        default=None,
+        help="Output root for --create-folders (or set PLEX_ROOT env var, or config).",
+    )
+    guide_parser.add_argument(
+        "--create-folders",
+        action="store_true",
+        default=False,
+        help="Pre-create the recommended MakeMKV rip folder structure.",
+    )
+    guide_parser.add_argument("--json", action="store_true", default=False)
+    guide_parser.add_argument("--api-key", default=None)
+    guide_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        default=False,
+        help="Print debug logging to stderr in addition to the log file.",
+    )
+    guide_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=False,
+        help="Bypass the local cache and fetch fresh data from APIs.",
+    )
+
     return parser
 
 
@@ -283,6 +334,8 @@ async def _run(args: argparse.Namespace) -> int:
         return await _run_organize(args)
     if args.command == "snapshot":
         return _run_snapshot(args)
+    if args.command == "rip-guide":
+        return await _run_rip_guide(args)
     return await _run_plan(args)
 
 
@@ -301,6 +354,235 @@ def _run_snapshot(args: argparse.Namespace) -> int:
     snapshot_save(folder, output)
     print(f"Snapshot saved to {output}")
     return 0
+
+
+async def _run_rip_guide(args: argparse.Namespace) -> int:
+    """Show disc contents and recommended rip strategy (Tier 1: dvdcompare only)."""
+    log_file = _setup_logging(verbose=getattr(args, "verbose", False))
+    log.info("plex-planner rip-guide: args=%s", vars(args))
+    print(f"Debug log: {log_file}", file=sys.stderr)
+
+    if getattr(args, "no_cache", False):
+        from plex_planner import cache
+        cache.disable()
+
+    api_key = get_api_key(getattr(args, "api_key", None))
+    try:
+        provider = TmdbProvider(api_key=api_key)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        request = SearchRequest(
+            title=args.title,
+            year=getattr(args, "year", None),
+            media_type=getattr(args, "media_type", "auto"),
+        )
+        result = await plan(request, provider)
+    except LookupError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        await provider.close()
+
+    canonical = result.canonical_title
+    year = result.year
+    is_movie = isinstance(result, PlannedMovie)
+    movie_runtime = result.runtime_seconds if is_movie else None
+
+    # Look up dvdcompare disc metadata
+    disc_format = getattr(args, "disc_format", None)
+    release = getattr(args, "release", "america")
+    dvdcompare_title = canonical
+    print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+    discs: list = []
+    try:
+        discs = await lookup_discs(dvdcompare_title, disc_format=disc_format, release=release)
+    except LookupError:
+        print("Warning: no dvdcompare data found. Guide will be limited to TMDb info.", file=sys.stderr)
+
+    if getattr(args, "json", False):
+        print(_rip_guide_json(canonical, year, is_movie, movie_runtime, discs))
+        return 0
+
+    _print_rip_guide(canonical, year, is_movie, movie_runtime, discs)
+
+    # Optionally create folders
+    if getattr(args, "create_folders", False) and discs:
+        output_val = get_output_root(getattr(args, "output", None))
+        if not output_val:
+            print("Error: --output or output_root config required for --create-folders.", file=sys.stderr)
+            return 1
+        makemkv_root = Path(output_val) / "_MakeMKV" / f"{canonical} ({year})"
+        created = _create_rip_folders(makemkv_root, discs)
+        if created:
+            print(f"\nCreated {len(created)} folder(s) under {makemkv_root}")
+            for p in created:
+                print(f"  {p}")
+
+    return 0
+
+
+def _format_seconds(seconds: int) -> str:
+    """Format seconds as MM:SS or H:MM:SS."""
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
+def _print_rip_guide(
+    canonical: str,
+    year: int,
+    is_movie: bool,
+    movie_runtime: int | None,
+    discs: list,
+) -> None:
+    """Print a human-readable rip guide to stdout."""
+    media_label = "Movie" if is_movie else "TV Show"
+    print(f"\n{canonical} ({year}) [{media_label}]")
+    print("=" * 60)
+
+    # Recommended folder structure
+    print(f"\nRecommended rip folder structure:")
+    folder_base = f"{canonical} ({year})"
+    if discs:
+        for disc in discs:
+            label = f"Disc {disc.number}"
+            fmt_str = f" [{disc.disc_format}]" if disc.disc_format else ""
+            role = ""
+            if disc.is_film:
+                role = " (main film)"
+            elif disc.extras and not disc.episodes:
+                role = " (extras)"
+            elif disc.episodes:
+                role = " (episodes)"
+            print(f"  _MakeMKV/{folder_base}/{label}/{fmt_str}{role}")
+    else:
+        print(f"  _MakeMKV/{folder_base}/")
+
+    if not discs:
+        print("\nNo dvdcompare disc data available.")
+        if movie_runtime:
+            print(f"Main feature runtime: {_format_seconds(movie_runtime)}")
+        print("Tip: rip all titles and use 'plex-planner organize' to sort them.")
+        return
+
+    # Per-disc breakdown
+    print(f"\nDisc contents ({len(discs)} disc(s)):")
+    print("-" * 60)
+
+    play_all_tips: list[str] = []
+
+    for disc in discs:
+        fmt_str = f" [{disc.disc_format}]" if disc.disc_format else ""
+        role = ""
+        if disc.is_film:
+            role = " ** MAIN FILM **"
+        print(f"\n  Disc {disc.number}{fmt_str}{role}")
+
+        if disc.is_film and movie_runtime:
+            print(f"    The Film: {_format_seconds(movie_runtime)}")
+
+        items = disc.episodes + disc.extras
+
+        if not items and disc.is_film:
+            continue
+
+        # Detect play-all entries (episodes with sequential numbering suggest
+        # they came from a play-all group with children)
+        has_episodes = bool(disc.episodes)
+        has_extras = bool(disc.extras)
+
+        if has_episodes:
+            total_ep_runtime = sum(e.runtime_seconds for e in disc.episodes)
+            print(f"    Episodes ({len(disc.episodes)}, total {_format_seconds(total_ep_runtime)}):")
+            for ep in disc.episodes:
+                rt = _format_seconds(ep.runtime_seconds) if ep.runtime_seconds else "?"
+                print(f"      {ep.title} ({rt})")
+            play_all_tips.append(
+                f"Disc {disc.number}: has {len(disc.episodes)} episodes "
+                f"(total {_format_seconds(total_ep_runtime)}). "
+                f"If MakeMKV shows a single title with {len(disc.episodes)} "
+                f"or more chapters totaling ~{_format_seconds(total_ep_runtime)}, "
+                f"that is the play-all. You can rip just that one title; "
+                f"plex-planner will split it by chapters."
+            )
+
+        if has_extras:
+            total_extra_runtime = sum(e.runtime_seconds for e in disc.extras)
+            print(f"    Extras ({len(disc.extras)}, total {_format_seconds(total_extra_runtime)}):")
+            for extra in disc.extras:
+                rt = _format_seconds(extra.runtime_seconds) if extra.runtime_seconds else "?"
+                ftype = f" [{extra.feature_type}]" if extra.feature_type else ""
+                print(f"      {extra.title} ({rt}){ftype}")
+
+    # Summary and tips
+    total_features = sum(len(d.episodes) + len(d.extras) for d in discs)
+    film_discs = [d for d in discs if d.is_film]
+    extras_discs = [d for d in discs if not d.is_film and d.extras]
+
+    print(f"\n{'=' * 60}")
+    print("Rip tips:")
+
+    if film_discs:
+        film_nums = ", ".join(str(d.number) for d in film_discs)
+        print(f"  - Main film is on disc {film_nums}.")
+
+    if play_all_tips:
+        for tip in play_all_tips:
+            print(f"  - {tip}")
+
+    if extras_discs:
+        nums = ", ".join(str(d.number) for d in extras_discs)
+        print(f"  - Extras are on disc {nums}. Rip all titles from extras discs;")
+        print(f"    plex-planner will match each by runtime to its dvdcompare entry.")
+
+    if total_features > 0:
+        print(f"  - {total_features} total feature(s) across {len(discs)} disc(s).")
+
+    print(f"  - After ripping, run: plex-planner organize \"_MakeMKV/{folder_base}\"")
+
+
+def _rip_guide_json(
+    canonical: str,
+    year: int,
+    is_movie: bool,
+    movie_runtime: int | None,
+    discs: list,
+) -> str:
+    """Return JSON representation of the rip guide."""
+    import json
+    import dataclasses
+
+    data: dict = {
+        "title": canonical,
+        "year": year,
+        "media_type": "movie" if is_movie else "tv",
+        "movie_runtime_seconds": movie_runtime,
+        "recommended_folder": f"{canonical} ({year})",
+        "discs": [dataclasses.asdict(d) for d in discs],
+    }
+    return json.dumps(data, indent=2)
+
+
+def _create_rip_folders(makemkv_root: Path, discs: list) -> list[Path]:
+    """Create the recommended disc subfolder structure.
+
+    Returns list of created directories.
+    """
+    created: list[Path] = []
+    for disc in discs:
+        folder = makemkv_root / f"Disc {disc.number}"
+        if not folder.exists():
+            folder.mkdir(parents=True, exist_ok=True)
+            created.append(folder)
+    return created
 
 
 async def _run_plan(args: argparse.Namespace) -> int:
@@ -353,7 +635,7 @@ async def _run_plan(args: argparse.Namespace) -> int:
 def main() -> None:
     # Backward compatibility: if the first arg isn't a known subcommand,
     # treat as the legacy "plan" invocation.
-    _SUBCOMMANDS = {"plan", "organize", "snapshot"}
+    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide"}
     if len(sys.argv) > 1 and sys.argv[1] not in _SUBCOMMANDS and sys.argv[1] != "-h" and sys.argv[1] != "--help":
         sys.argv.insert(1, "plan")
 
