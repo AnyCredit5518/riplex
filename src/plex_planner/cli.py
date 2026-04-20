@@ -69,6 +69,9 @@ def _setup_logging(verbose: bool = False) -> Path:
 
 
 _TRAILING_YEAR_RE = re.compile(r"\s*\(\d{4}\)\s*$")
+_TRAILING_DISC_RE = re.compile(
+    r"\s*[-_]?\s*(?:D(?:isc)?\s*\d+)\s*$", re.IGNORECASE,
+)
 
 
 def _infer_title_from_scanned(scanned: list) -> str | None:
@@ -84,8 +87,10 @@ def _infer_title_from_scanned(scanned: list) -> str | None:
     tag = longest.title_tag
     if not tag or not tag.strip():
         return None
+    # Strip trailing disc label (e.g. "SEVEN WORLDS ONE PLANET D1")
+    clean = _TRAILING_DISC_RE.sub("", tag.strip())
     # Strip trailing year if embedded, e.g. "Waterworld (1995)"
-    clean, _ = _strip_year_from_title(tag.strip())
+    clean, _ = _strip_year_from_title(clean)
     return clean or None
 
 

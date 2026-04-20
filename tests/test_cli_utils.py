@@ -76,3 +76,15 @@ class TestInferTitleFromScanned:
             _make_file("a.mkv", 8000, "Blade Runner: The Final Cut"),
         ])]
         assert _infer_title_from_scanned(scanned) == "Blade Runner: The Final Cut"
+
+    def test_strips_trailing_disc_label(self):
+        scanned = [_make_disc([
+            _make_file("a.mkv", 8000, "SEVEN WORLDS ONE PLANET D1"),
+        ])]
+        assert _infer_title_from_scanned(scanned) == "SEVEN WORLDS ONE PLANET"
+
+    def test_strips_disc_with_word(self):
+        scanned = [_make_disc([
+            _make_file("a.mkv", 8000, "Planet Earth III Disc 2"),
+        ])]
+        assert _infer_title_from_scanned(scanned) == "Planet Earth III"

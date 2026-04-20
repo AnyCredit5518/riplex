@@ -1,0 +1,306 @@
+{
+  "snapshot_version": 1,
+  "created": "2026-04-20T00:50:04.550938+00:00",
+  "source_folder": "E:\\Media\\_MakeMKV\\SEVEN WORLDS ONE PLANET",
+  "groups": [
+    {
+      "folder_name": "D1",
+      "files": [
+        {
+          "name": "SEVEN WORLDS ONE PLANET D1_t00.mkv",
+          "duration_seconds": 3246,
+          "size_bytes": 27039806191,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            585,
+            619,
+            582,
+            628,
+            833
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D1",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 2143001043400239188
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D1_t01.mkv",
+          "duration_seconds": 3081,
+          "size_bytes": 28238274588,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            808,
+            582,
+            664,
+            402,
+            624
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D1",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 16782920078964822032
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D1_t02.mkv",
+          "duration_seconds": 3100,
+          "size_bytes": 29367251583,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            666,
+            669,
+            572,
+            455,
+            739
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D1",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 11339479442828185375
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D1_t03.mkv",
+          "duration_seconds": 9429,
+          "size_bytes": 84645322332,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 15,
+          "chapter_durations": [
+            585,
+            619,
+            582,
+            628,
+            833,
+            809,
+            582,
+            664,
+            402,
+            624,
+            667,
+            669,
+            572,
+            455,
+            739
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D1",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 4724857677753797158
+        }
+      ]
+    },
+    {
+      "folder_name": "D2",
+      "files": [
+        {
+          "name": "SEVEN WORLDS ONE PLANET D2_t00.mkv",
+          "duration_seconds": 3154,
+          "size_bytes": 26999411027,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            722,
+            591,
+            474,
+            592,
+            777
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D2",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 1737036443508313411
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D2_t01.mkv",
+          "duration_seconds": 3068,
+          "size_bytes": 24947731919,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            701,
+            400,
+            747,
+            672,
+            548
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D2",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 3038321340020501925
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D2_t02.mkv",
+          "duration_seconds": 6222,
+          "size_bytes": 51947138199,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 10,
+          "chapter_durations": [
+            722,
+            591,
+            474,
+            592,
+            776,
+            701,
+            400,
+            747,
+            672,
+            548
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D2",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 15984809520167357291
+        }
+      ]
+    },
+    {
+      "folder_name": "D3",
+      "files": [
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t00.mkv",
+          "duration_seconds": 3196,
+          "size_bytes": 9255689577,
+          "stream_count": 4,
+          "stream_fingerprint": "h264:1920x1080|dts:eng:2ch|dts:eng:2ch|sub:eng",
+          "chapter_count": 7,
+          "chapter_durations": [
+            572,
+            424,
+            510,
+            460,
+            381,
+            289,
+            562
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 1920,
+          "max_height": 1080,
+          "organized_tag": null,
+          "perceptual_hash": 13472731374910687102
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t01.mkv",
+          "duration_seconds": 3125,
+          "size_bytes": 24426478600,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            665,
+            644,
+            688,
+            629,
+            501
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 17142372758298293185
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t02.mkv",
+          "duration_seconds": 3110,
+          "size_bytes": 24327661733,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 5,
+          "chapter_durations": [
+            495,
+            913,
+            707,
+            500,
+            496
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 306333148445573763
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t03.mkv",
+          "duration_seconds": 6235,
+          "size_bytes": 48754135564,
+          "stream_count": 6,
+          "stream_fingerprint": "hevc:3840x2160|dts:eng:6ch|dts:eng:6ch|truehd:eng:8ch|ac3:eng:6ch|sub:eng",
+          "chapter_count": 10,
+          "chapter_durations": [
+            665,
+            644,
+            688,
+            629,
+            500,
+            495,
+            913,
+            707,
+            500,
+            496
+          ],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 3840,
+          "max_height": 2160,
+          "organized_tag": null,
+          "perceptual_hash": 8528175284136135190
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t04.mkv",
+          "duration_seconds": 175,
+          "size_bytes": 507307493,
+          "stream_count": 4,
+          "stream_fingerprint": "h264:1920x1080|dts:eng:2ch|dts:eng:2ch|sub:eng",
+          "chapter_count": 0,
+          "chapter_durations": [],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 1920,
+          "max_height": 1080,
+          "organized_tag": null,
+          "perceptual_hash": 14106333012996588423
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t05.mkv",
+          "duration_seconds": 346,
+          "size_bytes": 1002838665,
+          "stream_count": 4,
+          "stream_fingerprint": "h264:1920x1080|dts:eng:2ch|dts:eng:2ch|sub:eng",
+          "chapter_count": 0,
+          "chapter_durations": [],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 1920,
+          "max_height": 1080,
+          "organized_tag": null,
+          "perceptual_hash": 292874713268525072
+        },
+        {
+          "name": "SEVEN WORLDS ONE PLANET D3_t06.mkv",
+          "duration_seconds": 133,
+          "size_bytes": 360578267,
+          "stream_count": 4,
+          "stream_fingerprint": "h264:1920x1080|dts:eng:2ch|dts:eng:2ch|sub:eng",
+          "chapter_count": 0,
+          "chapter_durations": [],
+          "title_tag": "SEVEN WORLDS ONE PLANET D3",
+          "max_width": 1920,
+          "max_height": 1080,
+          "organized_tag": null,
+          "perceptual_hash": 7596806585751776539
+        }
+      ]
+    }
+  ]
+}
