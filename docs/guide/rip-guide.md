@@ -65,6 +65,61 @@ The play-all tip is key: instead of ripping 4 individual episode titles per disc
 plex-planner rip-guide "Frozen Planet II" --json
 ```
 
+When combined with `--drive`, the JSON includes a `disc_analysis` object with per-title recommendations:
+
+```bash
+plex-planner rip-guide "Frozen Planet II" --drive 0 --json
+```
+
+## Live disc analysis
+
+Add `--drive` to read the physical disc in real time via makemkvcon and cross-reference its titles against dvdcompare metadata.
+
+```bash
+plex-planner rip-guide "Frozen Planet II" --drive 0
+```
+
+The `--drive` flag accepts:
+
+- A drive index: `--drive 0`
+- A device name: `--drive D:`
+- Auto-detect: `--drive auto` (uses the first drive with a disc inserted)
+
+This appends a title-by-title analysis table after the dvdcompare guide:
+
+```
+============================================================
+Live disc analysis: Frozen Planet II - Disc 2
+============================================================
+
+    #   Duration      Size        Res   Ch  Recommendation
+  ---  ---------  --------  ---------  ---  ----------------------------------------
+    0      50:25   12.0 GB  1920x1080    5  Play-all (1080p) - skip (individual 4K titles available)
+    1      52:20   22.7 GB  3840x2160    6  Frozen Worlds (4K) - rip this
+    2      52:06   21.2 GB  3840x2160    6  Frozen Ocean (4K) - rip this
+    3      51:53   19.7 GB  3840x2160    6  Frozen Peaks (4K) - rip this
+    4    2:36:21   63.6 GB  3840x2160   18  Play-all (4K, 18 ch, 3 segments) - skip (rip #1, #2, #3 individually)
+
+  Rip titles: 1, 2, 3 (63.6 GB total)
+  Skip titles: 0, 4
+```
+
+Each title is classified as one of:
+
+- **MAIN FILM**: runtime matches TMDb within 60 seconds (movies only)
+- **Named episode/extra**: duration-matched to a dvdcompare entry within 30 seconds
+- **Play-all**: duration matches the sum of other titles at the same resolution, or the dvdcompare total
+- **Episode**: substantial title on a multi-title disc (no dvdcompare match)
+- **Very short**: under 2 minutes, likely a menu or intro
+- **Unknown content**: fallback for unrecognized titles
+
+The summary line lists recommended rip/skip title indices with total size.
+
+### Requirements
+
+- [MakeMKV](https://www.makemkv.com/) must be installed. `makemkvcon` is located automatically from PATH or standard install paths.
+- Close the MakeMKV GUI before using `--drive`, as only one process can access the drive at a time.
+
 ## Options
 
 | Option | Description |
@@ -74,9 +129,10 @@ plex-planner rip-guide "Frozen Planet II" --json
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
 | `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--drive` | Read live disc info: drive index (`0`), device (`D:`), or `auto` |
 | `--output` | Output root for `--create-folders` (or set `PLEX_ROOT` env var, or config) |
 | `--create-folders` | Pre-create the recommended MakeMKV rip folder structure |
-| `--json` | Output as JSON |
+| `--json` | Output as JSON (includes `disc_analysis` when `--drive` is also set) |
 | `--verbose`, `-v` | Print debug logging to stderr |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |

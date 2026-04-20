@@ -55,7 +55,7 @@ plex-planner organize <folder> [options]
 
 ## `rip-guide`
 
-Show disc contents and recommended rip strategy before ripping.
+Show disc contents and recommended rip strategy before ripping. Optionally reads the physical disc via makemkvcon.
 
 ```bash
 plex-planner rip-guide <title> [options]
@@ -68,9 +68,10 @@ plex-planner rip-guide <title> [options]
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
 | `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--drive` | Read live disc info: drive index (`0`), device (`D:`), or `auto` |
 | `--output` | Output root for `--create-folders` (or set `PLEX_ROOT` env var, or config) |
 | `--create-folders` | Pre-create the recommended MakeMKV rip folder structure |
-| `--json` | Output as JSON |
+| `--json` | Output as JSON (includes `disc_analysis` when `--drive` is also set) |
 | `--verbose`, `-v` | Print debug logging to stderr |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |
