@@ -5,7 +5,7 @@ Complete reference for all plex-planner subcommands and their options.
 ## Global behavior
 
 - **Dry-run by default**: The `organize` command previews changes without moving files. Add `--execute` to apply.
-- **Logging**: Every `organize` run writes debug logs to `%TEMP%\plex-planner\plex-planner.log`. Add `--verbose` for stderr output.
+- **Logging**: Every `organize` run writes debug logs to the OS temp directory. Add `--verbose` for stderr output.
 - **Caching**: dvdcompare responses are cached for 30 days, TMDb for 7 days. Use `--no-cache` to bypass.
 
 ## `plan`

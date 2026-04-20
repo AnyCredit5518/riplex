@@ -20,7 +20,7 @@ Example:
 
 ```toml
 tmdb_api_key = "your_api_key_here"
-output_root = "E:\\Media"
+output_root = "/path/to/media"
 ```
 
 ## Settings
@@ -28,4 +28,4 @@ output_root = "E:\\Media"
 | Setting | CLI flag | Env var | Config key | Description |
 |---|---|---|---|---|
 | TMDb API key | `--api-key` | `TMDB_API_KEY` | `tmdb_api_key` | Required for all commands |
-| Output root | `--output` | `PLEX_ROOT` | `output_root` | Root directory for organized output (e.g. `E:\Media`). Plex subfolders like `Movies\` and `TV Shows\` are created under this. |
+| Output root | `--output` | `PLEX_ROOT` | `output_root` | Root directory for organized output. Plex subfolders like `Movies/` and `TV Shows/` are created under this. |

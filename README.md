@@ -34,7 +34,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Auto-detects disc format from video resolution (3840x2160 = 4K, 1920x1080 = Blu-ray, 720x480 = DVD) when `--format` not specified
 - Detects incomplete/still-ripping files (0 duration or no streams) and skips them with a warning
 - Batch mode: point `organize` at a parent folder containing multiple rip subfolders; auto-groups by title, auto-detects format, and processes each title in sequence
-- Debug logging to `%TEMP%\plex-planner\plex-planner.log` on every run; `--verbose` prints to stderr
+- Debug logging to the OS temp directory on every run; `--verbose` prints to stderr
 - Dry-run preview by default, `--execute` to actually move files
 
 **Rip guide mode (`rip-guide`)**
@@ -80,13 +80,13 @@ Create a config file at `%APPDATA%\plex-planner\config.toml` (Windows) or `~/.co
 
 ```toml
 tmdb_api_key = "your_api_key_here"
-output_root = "E:\\Media"
+output_root = "/path/to/media"
 ```
 
 | Key | Description |
 |---|---|
 | `tmdb_api_key` | TMDb API key |
-| `output_root` | Root directory for organized output (e.g. `E:\Media`). Plex subfolders like `Movies\` and `TV Shows\` are created under this. |
+| `output_root` | Root directory for organized output. Plex subfolders like `Movies\` and `TV Shows\` are created under this. |
 
 Both settings can also be provided via environment variables or CLI flags:
 
@@ -180,7 +180,7 @@ This produces a match report comparing each ripped file's duration against the p
 ### Organize: scan and sort a MakeMKV rip folder
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --format "Blu-ray 4K"
+plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K"
 ```
 
 This will:
@@ -194,7 +194,7 @@ This will:
 
 Output:
 ```
-Scanning E:\Media\_MakeMKV\Oppenheimer ...
+Scanning _MakeMKV/Oppenheimer ...
 Found 9 MKV files in 2 disc group(s).
 Detected 1 duplicate(s) in 1 group(s):
   DUPLICATE: Special Features_t02.mkv (keeping Special Features_t17.mkv)
@@ -208,7 +208,7 @@ Found 3 disc(s) on dvdcompare.
 --- DRY RUN (use --execute to move files) ---
 
   WOULD MOVE: Special Features_t17.mkv
-          TO: E:\Media\Movies\Oppenheimer (2023)\Interviews\Meet the Press Q&A Panel Oppenheimer.mkv
+          TO: Movies/Oppenheimer (2023)/Interviews/Meet the Press Q&A Panel Oppenheimer.mkv
        MATCH: [high] Disc 3: Meet the Press Q&A Panel: Oppenheimer (interviews)
   ...
 ```
@@ -216,18 +216,18 @@ Found 3 disc(s) on dvdcompare.
 Add `--execute` to actually move the files:
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
+plex-planner organize _MakeMKV/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
 ```
 
 ### Organize: TV show (multi-disc)
 
 ```bash
-plex-planner organize "E:\Media\_MakeMKV\PLANET EARTH II" --type tv --format "Blu-ray 4K"
+plex-planner organize "_MakeMKV/PLANET EARTH II" --type tv --format "Blu-ray 4K"
 ```
 
 Output:
 ```
-Scanning E:\Media\_MakeMKV\PLANET EARTH II ...
+Scanning _MakeMKV/PLANET EARTH II ...
 Found 7 MKV files in 3 disc group(s).
 TMDb: Planet Earth II (2016)
 Looking up disc metadata on dvdcompare.net ...
@@ -240,31 +240,31 @@ Matched 7 files, 0 unmatched, 0 missing.
 --- DRY RUN (use --execute to move files) ---
 
   WOULD MOVE: PLANET EARTH II - DISC 1_t01.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e01 - Islands.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e01 - Islands.mkv
        MATCH: [high] Disc 1: Islands
 
   WOULD MOVE: PLANET EARTH II - DISC 1_t02.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e02 - Mountains.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e02 - Mountains.mkv
        MATCH: [high] Disc 1: Mountains
 
   WOULD MOVE: PLANET EARTH II - DISC 1_t00.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e03 - Jungles.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e03 - Jungles.mkv
        MATCH: [high] Disc 1: Jungles
 
   WOULD MOVE: PLANET EARTH II - DISC 2_t00.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e04 - Deserts.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e04 - Deserts.mkv
        MATCH: [low] Disc 2: Deserts
 
   WOULD MOVE: PLANET EARTH II - DISC 2_t02.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e05 - Grasslands.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e05 - Grasslands.mkv
        MATCH: [high] Disc 2: Grasslands
 
   WOULD MOVE: PLANET EARTH II - DISC 2_t01.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Season 01\Planet Earth II (2016) - s01e06 - Cities.mkv
+          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e06 - Cities.mkv
        MATCH: [low] Disc 2: Cities
 
   WOULD MOVE: PLANET EARTH II DIARIES_t00.mkv
-          TO: E:\Media\TV Shows\Planet Earth II (2016)\Featurettes\Planet Earth Diaries.mkv
+          TO: TV Shows/Planet Earth II (2016)/Featurettes/Planet Earth Diaries.mkv
        MATCH: [high] Disc 3: Planet Earth Diaries (featurettes)
 ```
 
@@ -273,9 +273,9 @@ When the scanner detects that a file (like Planet Earth Diaries) has chapter mar
 ```
   WOULD SPLIT: PLANET EARTH II DIARIES_t00.mkv
      ORIGINAL: Disc 3: Planet Earth Diaries (featurettes)
-   CHAPTER -> E:\Media\TV Shows\Planet Earth II (2016)\Season 00\Planet Earth II (2016) - s00e01 - Diaries Islands.mkv
+   CHAPTER -> TV Shows/Planet Earth II (2016)/Season 00/Planet Earth II (2016) - s00e01 - Diaries Islands.mkv
       MATCH: [high] s00e01 - Diaries: Islands
-   CHAPTER -> E:\Media\TV Shows\Planet Earth II (2016)\Season 00\Planet Earth II (2016) - s00e02 - Diaries Mountains.mkv
+   CHAPTER -> TV Shows/Planet Earth II (2016)/Season 00/Planet Earth II (2016) - s00e02 - Diaries Mountains.mkv
       MATCH: [high] s00e02 - Diaries: Mountains
    ...
 ```
@@ -287,8 +287,8 @@ With `--execute`, this uses mkvmerge to split the file by chapters and moves eac
 dvdcompare lists multiple regional releases. By default, the first American release is used. You can specify a different release by name keyword or 1-based index:
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --format "Blu-ray 4K" --release uk
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --format "Blu-ray 4K" --release 2
+plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release uk
+plex-planner organize _MakeMKV/Oppenheimer --format "Blu-ray 4K" --release 2
 ```
 
 ### Organize: unmatched file policy
@@ -302,13 +302,13 @@ Files that can't be confidently matched are handled by the `--unmatched` flag:
 
 ```bash
 # Preview what would happen
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched move
+plex-planner organize _MakeMKV/Oppenheimer --unmatched move
 
 # Actually move matched files and relocate unmatched ones
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched move --execute
+plex-planner organize _MakeMKV/Oppenheimer --unmatched move --execute
 
 # Route unmatched files to the Plex extras folder
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched extras
+plex-planner organize _MakeMKV/Oppenheimer --unmatched extras
 ```
 
 ### Organize: batch mode
@@ -316,7 +316,7 @@ plex-planner organize E:\Media\_MakeMKV\Oppenheimer --unmatched extras
 Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV
+plex-planner organize _MakeMKV
 ```
 
 Output:
@@ -329,7 +329,7 @@ Batch mode: found 3 title group(s).
 ============================================================
 [1/3] Batman Begins
 ============================================================
-Scanning E:\Media\_MakeMKV\Batman Begins ...
+Scanning _MakeMKV/Batman Begins ...
 ...
 ```
 
@@ -341,24 +341,24 @@ After a successful `--execute`, each organized file is tagged with a `PLEX_PLANN
 
 ```bash
 # First run organizes everything
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --execute
+plex-planner organize _MakeMKV/Oppenheimer --execute
 
 # Second run skips already-organized files
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer
+plex-planner organize _MakeMKV/Oppenheimer
 # "Skipping 17 already-organized file(s)."
 
 # Force re-organize
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --force
+plex-planner organize _MakeMKV/Oppenheimer --force
 ```
 
 ### Organize: debug logging
 
-Every `organize` run writes detailed debug logs to `%TEMP%\plex-planner\plex-planner.log`. The log captures every decision: file probing, duplicate/compilation detection, disc mapping heuristics, target matching, destination routing, and chapter split logic.
+Every `organize` run writes detailed debug logs to the OS temp directory. The log captures every decision: file probing, duplicate/compilation detection, disc mapping heuristics, target matching, destination routing, and chapter split logic.
 
 Add `--verbose` to also print debug output to stderr:
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --year 2023 --verbose
+plex-planner organize _MakeMKV/Oppenheimer --year 2023 --verbose
 ```
 
 ### Rip guide: plan before ripping
@@ -418,7 +418,7 @@ For movies, the guide identifies which disc has the main film vs extras, and lab
 ### Snapshot: capture disc metadata
 
 ```bash
-plex-planner snapshot E:\Media\_MakeMKV\Oppenheimer
+plex-planner snapshot _MakeMKV/Oppenheimer
 ```
 
 Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, resolution, title tag, perceptual hash). Useful for:
@@ -429,7 +429,7 @@ Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, 
 
 ```bash
 # Replay organize against a snapshot (always dry-run)
-plex-planner organize E:\Media\_MakeMKV\Oppenheimer --snapshot Oppenheimer.snapshot.json
+plex-planner organize _MakeMKV/Oppenheimer --snapshot Oppenheimer.snapshot.json
 ```
 
 ## CLI Reference

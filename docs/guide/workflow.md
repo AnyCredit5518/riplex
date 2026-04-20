@@ -37,7 +37,7 @@ Open MakeMKV and point the output folder at the appropriate `Disc N/` subfolder 
 Once all discs are ripped, run `organize` in dry-run mode (the default):
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\"Planet Earth II"
+plex-planner organize "_MakeMKV/Planet Earth II"
 ```
 
 This scans the MKV files, deduplicates, looks up metadata, matches files to episodes and extras, and prints a preview of where each file will be moved.
@@ -47,7 +47,7 @@ This scans the MKV files, deduplicates, looks up metadata, matches files to epis
 If the preview looks correct, add `--execute`:
 
 ```bash
-plex-planner organize E:\Media\_MakeMKV\"Planet Earth II" --execute
+plex-planner organize "_MakeMKV/Planet Earth II" --execute
 ```
 
 Files are moved (and split if needed) into Plex folder structure. Each file gets tagged so re-runs skip it automatically.
