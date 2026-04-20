@@ -1,0 +1,60 @@
+# MkDocs configuration for plex-planner documentation.
+#
+# This file is ready for use once MkDocs Material is installed:
+#   pip install mkdocs-material
+#   mkdocs serve        # local preview at http://127.0.0.1:8000
+#   mkdocs build        # static site in site/
+#   mkdocs gh-deploy    # push to GitHub Pages
+#
+# See: https://squidfunk.github.io/mkdocs-material/
+
+site_name: plex-planner
+site_description: Plan and organize MakeMKV disc rips into Plex-compatible folder structures.
+repo_url: https://github.com/OWNER/plex-planner  # TODO: update after publishing
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+
+markdown_extensions:
+  - admonitions
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+  - User Guide:
+      - Typical Workflow: guide/workflow.md
+      - Rip Guide: guide/rip-guide.md
+      - Organizing Files: guide/organize.md
+      - Planning: guide/plan.md
+      - Snapshots: guide/snapshot.md
+  - CLI Reference: reference/cli.md
+  - Architecture: architecture.md
+  - Plex Naming Rules: naming-rules.md
+  - Changelog: changelog.md
