@@ -14,14 +14,10 @@ from plex_planner.config import get_api_key, get_output_root
 from plex_planner.dedup import find_all_redundant, find_duplicates, remove_duplicates
 from plex_planner.detect import detect_format, detect_incomplete, group_title_folders
 from plex_planner.disc_provider import _convert_film, lookup_discs
-from plex_planner.formatter import to_json, to_text
 from plex_planner.matcher import (
     collect_disc_targets,
-    format_match_report,
     map_folders_to_discs,
     match_discs,
-    match_files,
-    parse_duration,
 )
 from plex_planner.metadata_sources.tmdb import TmdbProvider
 from plex_planner.models import PlannedMovie, SearchRequest
@@ -116,10 +112,6 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     subs = parser.add_subparsers(dest="command")
-
-    # --- plan (default / legacy) ---
-    plan_parser = subs.add_parser("plan", help="Look up metadata and output a plan.")
-    _add_plan_args(plan_parser)
 
     # --- organize ---
     org_parser = subs.add_parser(
@@ -259,81 +251,98 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Bypass the local cache and fetch fresh data from APIs.",
     )
-
-    return parser
-
-
-def _add_plan_args(parser: argparse.ArgumentParser) -> None:
-    """Add the plan-mode arguments to a parser."""
-    parser.add_argument(
-        "title",
-        nargs="?",
-        help="Movie or TV show title to look up.",
-    )
-    parser.add_argument(
-        "--year",
-        type=int,
-        default=None,
-        help="Release year (strongly recommended for accuracy).",
-    )
-    parser.add_argument(
-        "--type",
-        dest="media_type",
-        choices=["movie", "tv", "auto"],
-        default="auto",
-        help="Force media type. Default: auto-detect.",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output as JSON instead of human-readable text.",
-    )
-    parser.add_argument(
+    guide_parser.add_argument(
         "--no-specials",
         action="store_true",
         default=False,
         help="Exclude specials (Season 00) for TV shows.",
     )
-    parser.add_argument(
+    guide_parser.add_argument(
         "--no-extras",
         action="store_true",
         default=False,
         help="Omit recommended extras folder skeleton.",
     )
-    parser.add_argument(
-        "--match",
-        nargs="+",
-        metavar="FILE:DURATION",
-        help=(
-            "Match ripped files by duration. Format: filename:duration "
-            "(e.g. title_t00.mkv:48m12s title_t01.mkv:47m58s)"
-        ),
+
+    # --- plan (deprecated alias for rip-guide) ---
+    plan_parser = subs.add_parser(
+        "plan",
+        help="(Deprecated) Alias for rip-guide.",
     )
-    parser.add_argument(
-        "--api-key",
-        default=None,
-        help="TMDb API key (or set TMDB_API_KEY env var, or config file).",
+    # Mirror all rip-guide args so plan parses the same CLI.
+    plan_parser.add_argument("title", nargs="?", help="Movie or TV show title.")
+    plan_parser.add_argument("--year", type=int, help="Release year.")
+    plan_parser.add_argument(
+        "--type", dest="media_type", choices=["movie", "tv", "auto"],
+        default="auto",
+    )
+    plan_parser.add_argument("--format", dest="disc_format", default=None)
+    plan_parser.add_argument("--release", default="america")
+    plan_parser.add_argument("--output", default=None)
+    plan_parser.add_argument("--create-folders", action="store_true", default=False)
+    plan_parser.add_argument("--json", action="store_true", default=False)
+    plan_parser.add_argument("--api-key", default=None)
+    plan_parser.add_argument("--drive", default=None)
+    plan_parser.add_argument("--verbose", "-v", action="store_true", default=False)
+    plan_parser.add_argument("--no-cache", action="store_true", default=False)
+    plan_parser.add_argument("--no-specials", action="store_true", default=False)
+    plan_parser.add_argument("--no-extras", action="store_true", default=False)
+
+    # --- rip ---
+    rip_parser = subs.add_parser(
+        "rip",
+        help="Read a disc, recommend titles, and rip via makemkvcon.",
+    )
+    rip_parser.add_argument("title", help="Movie or TV show title.")
+    rip_parser.add_argument(
+        "--drive",
+        required=True,
+        help="Drive index (e.g. 0), device name (e.g. D:), or 'auto'.",
+    )
+    rip_parser.add_argument("--year", type=int, help="Release year.")
+    rip_parser.add_argument(
+        "--type", dest="media_type", choices=["movie", "tv", "auto"],
+        default="auto",
+    )
+    rip_parser.add_argument(
+        "--format", dest="disc_format", default=None,
+        help="Disc format filter for dvdcompare (e.g. 'Blu-ray 4K').",
+    )
+    rip_parser.add_argument(
+        "--release", default="america",
+        help="Regional release: 1-based index or name keyword (default: america).",
+    )
+    rip_parser.add_argument(
+        "--output", default=None,
+        help="Output root directory (or set PLEX_ROOT env var, or config).",
+    )
+    rip_parser.add_argument(
+        "--titles", default=None,
+        help="Comma-separated title indices to rip (overrides auto-recommendation).",
+    )
+    rip_parser.add_argument(
+        "--all", dest="rip_all", action="store_true", default=False,
+        help="Rip all titles (skip recommendation filter).",
+    )
+    rip_parser.add_argument(
+        "--yes", "-y", action="store_true", default=False,
+        help="Skip confirmation prompt.",
+    )
+    rip_parser.add_argument(
+        "--organize", dest="auto_organize", action="store_true", default=False,
+        help="Automatically run organize after ripping.",
+    )
+    rip_parser.add_argument("--json", action="store_true", default=False)
+    rip_parser.add_argument("--api-key", default=None)
+    rip_parser.add_argument(
+        "--verbose", "-v", action="store_true", default=False,
+    )
+    rip_parser.add_argument(
+        "--no-cache", action="store_true", default=False,
     )
 
+    return parser
 
-def _parse_match_args(match_args: list[str]) -> list[tuple[str, int]]:
-    """Parse --match arguments into (filename, seconds) tuples."""
-    files: list[tuple[str, int]] = []
-    for arg in match_args:
-        if ":" not in arg:
-            print(f"Warning: skipping invalid match arg '{arg}' (expected file:duration)", file=sys.stderr)
-            continue
-        # Split on last colon to handle filenames with colons (unlikely on Windows)
-        idx = arg.rfind(":")
-        name = arg[:idx]
-        dur_str = arg[idx + 1 :]
-        seconds = parse_duration(dur_str)
-        if seconds <= 0:
-            print(f"Warning: could not parse duration for '{arg}'", file=sys.stderr)
-            continue
-        files.append((name, seconds))
-    return files
 
 
 async def _run(args: argparse.Namespace) -> int:
@@ -341,9 +350,18 @@ async def _run(args: argparse.Namespace) -> int:
         return await _run_organize(args)
     if args.command == "snapshot":
         return _run_snapshot(args)
+    if args.command == "plan":
+        print(
+            "Warning: 'plan' is deprecated, use 'rip-guide' instead.",
+            file=sys.stderr,
+        )
+        return await _run_rip_guide(args)
     if args.command == "rip-guide":
         return await _run_rip_guide(args)
-    return await _run_plan(args)
+    if args.command == "rip":
+        return await _run_rip(args)
+    # Unknown or missing command
+    return 1
 
 
 def _run_snapshot(args: argparse.Namespace) -> int:
@@ -385,6 +403,8 @@ async def _run_rip_guide(args: argparse.Namespace) -> int:
             title=args.title,
             year=getattr(args, "year", None),
             media_type=getattr(args, "media_type", "auto"),
+            include_specials=not getattr(args, "no_specials", False),
+            include_extras_skeleton=not getattr(args, "no_extras", False),
         )
         result = await plan(request, provider)
     except LookupError as exc:
@@ -476,14 +496,6 @@ async def _run_rip_guide(args: argparse.Namespace) -> int:
 
     return 0
 
-
-def _format_seconds(seconds: int) -> str:
-    """Format seconds as MM:SS or H:MM:SS."""
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    if h:
-        return f"{h}:{m:02d}:{s:02d}"
-    return f"{m}:{s:02d}"
 
 
 def _disc_role(disc, is_movie: bool) -> str:
@@ -640,26 +652,16 @@ def _rip_guide_json(
     }
 
     if disc_info is not None:
-        # Build dvd_entries for classification
-        dvd_entries: list[tuple[str, int, str]] = []
-        total_episode_runtime = 0
-        episode_count = 0
-        for disc in discs:
-            for ep in disc.episodes:
-                dvd_entries.append((ep.title, ep.runtime_seconds, "episode"))
-                total_episode_runtime += ep.runtime_seconds
-                episode_count += 1
-            for ex in disc.extras:
-                dvd_entries.append((ex.title, ex.runtime_seconds, ex.feature_type or "extra"))
+        dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(discs)
 
         titles_json = []
         for t in disc_info.titles:
-            recommendation = _classify_title(
+            recommendation = classify_title(
                 t, disc_info.titles, dvd_entries,
                 is_movie, movie_runtime,
                 total_episode_runtime, episode_count,
             )
-            skip = _is_skip_title(
+            skip = is_skip_title(
                 t, disc_info.titles, is_movie, movie_runtime,
                 total_episode_runtime, episode_count,
             )
@@ -702,335 +704,307 @@ def _create_rip_folders(makemkv_root: Path, discs: list) -> list[Path]:
     return created
 
 
-def _print_disc_analysis(
+# Disc analysis functions are in disc_analysis.py; import for use here.
+from plex_planner.disc_analysis import (  # noqa: E402
+    build_dvd_entries,
+    classify_title,
+    find_duration_match,
+    format_seconds as _format_seconds,
+    is_skip_title,
+    print_disc_analysis as _print_disc_analysis,
+)
+
+
+def _detect_disc_number(
     disc_info,
     dvdcompare_discs: list,
-    is_movie: bool,
-    movie_runtime: int | None,
-) -> None:
-    """Print live disc analysis cross-referencing makemkvcon vs dvdcompare."""
-    from plex_planner.makemkv import DiscInfo
+) -> int | None:
+    """Auto-detect which dvdcompare disc number the physical disc corresponds to.
 
-    print(f"\n{'=' * 60}")
-    print(f"Live disc analysis: {disc_info.disc_name}")
-    print(f"{'=' * 60}")
+    Tries two strategies:
+    1. Parse the volume label for a disc number (e.g. "FROZEN_PLANET_II_D2" -> 2)
+    2. Match live title durations against each dvdcompare disc's episodes.
 
-    titles = disc_info.titles
-    if not titles:
-        print("  No titles found on disc.")
-        return
-
-    # Build a flat list of all dvdcompare entries with runtimes for matching
-    dvd_entries: list[tuple[str, int, str]] = []  # (name, runtime_sec, type)
-    for disc in dvdcompare_discs:
-        for ep in disc.episodes:
-            dvd_entries.append((ep.title, ep.runtime_seconds, "episode"))
-        for ex in disc.extras:
-            dvd_entries.append((ex.title, ex.runtime_seconds, ex.feature_type or "extra"))
-
-    # Compute total episode runtime for play-all detection
-    total_episode_runtime = 0
-    episode_count = 0
-    for disc in dvdcompare_discs:
-        for ep in disc.episodes:
-            total_episode_runtime += ep.runtime_seconds
-            episode_count += 1
-
-    # Classify and match each makemkvcon title
-    print(f"\n  {'#':>3}  {'Duration':>9}  {'Size':>8}  {'Res':>9}  {'Ch':>3}  {'Recommendation'}")
-    print(f"  {'':->3}  {'':->9}  {'':->8}  {'':->9}  {'':->3}  {'':->40}")
-
-    for t in titles:
-        dur_str = _format_seconds(t.duration_seconds)
-        size_gb = t.size_bytes / (1024 ** 3)
-        size_str = f"{size_gb:.1f} GB"
-        res_str = t.resolution or "?"
-        ch_str = str(t.chapters)
-
-        recommendation = _classify_title(
-            t, titles, dvd_entries,
-            is_movie, movie_runtime,
-            total_episode_runtime, episode_count,
-        )
-
-        print(f"  {t.index:>3}  {dur_str:>9}  {size_str:>8}  {res_str:>9}  {ch_str:>3}  {recommendation}")
-
-    # Summary
-    rip_titles = [
-        t for t in titles
-        if not _is_skip_title(t, titles, is_movie, movie_runtime,
-                              total_episode_runtime, episode_count)
-    ]
-    skip_titles = [t for t in titles if t not in rip_titles]
-
-    if rip_titles:
-        rip_indices = ", ".join(str(t.index) for t in rip_titles)
-        total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
-        print(f"\n  Rip titles: {rip_indices} ({total_size:.1f} GB total)")
-    if skip_titles:
-        skip_indices = ", ".join(str(t.index) for t in skip_titles)
-        print(f"  Skip titles: {skip_indices}")
-
-
-def _classify_title(
-    title,
-    all_titles: list,
-    dvd_entries: list[tuple[str, int, str]],
-    is_movie: bool,
-    movie_runtime: int | None,
-    total_episode_runtime: int,
-    episode_count: int,
-) -> str:
-    """Return a human-readable recommendation for a makemkvcon title."""
-    dur = title.duration_seconds
-    is_4k = "3840" in (title.resolution or "")
-    res_label = "4K" if is_4k else "1080p"
-
-    # Check if this is the main movie
-    if is_movie and movie_runtime:
-        if abs(dur - movie_runtime) < 60:
-            return f"MAIN FILM ({res_label}) - rip this"
-
-    # Check if this is a play-all (dvdcompare total)
-    if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
-        same_res_individuals = [
-            t for t in all_titles
-            if t is not title
-            and t.resolution == title.resolution
-            and t.duration_seconds < dur * 0.8
-            and t.duration_seconds > 120
-        ]
-        if same_res_individuals:
-            return (
-                f"Play-all ({res_label}, {title.chapters} chapters) - "
-                f"rip this OR the {len(same_res_individuals)} individual titles"
-            )
-        return f"Play-all ({res_label}, {title.chapters} chapters) - rip this"
-
-    # Disc-internal play-all detection: check if duration matches sum of other
-    # titles at the same resolution (when no dvdcompare data available)
-    play_all_match = _detect_play_all(title, all_titles)
-    if play_all_match:
-        parts = play_all_match
-        part_indices = ", ".join(f"#{t.index}" for t in parts)
-        return (
-            f"Play-all ({res_label}, {title.chapters} ch, {title.segment_count} segments) - "
-            f"skip (rip {part_indices} individually)"
-        )
-
-    # Check if this is a lower-resolution play-all (e.g. 1080p play-all of 4K episodes)
-    cross_res_match = _detect_cross_res_play_all(title, all_titles)
-    if cross_res_match:
-        other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
-        return f"Play-all ({res_label}) - skip (individual {other_res} titles available)"
-
-    # Check if this matches a single dvdcompare episode
-    best_match = _find_duration_match(dur, dvd_entries)
-    if best_match:
-        name, _, entry_type = best_match
-        # Check for a duplicate at different resolution
-        dups = [
-            t for t in all_titles
-            if t is not title
-            and abs(t.duration_seconds - dur) < 30
-            and t.resolution != title.resolution
-        ]
-        if dups:
-            dup_res = "4K" if "3840" in dups[0].resolution else "1080p"
-            if is_4k:
-                return f"{name} ({res_label}) - rip this (skip #{dups[0].index} {dup_res} duplicate)"
-            else:
-                return f"{name} ({res_label}) - skip (rip #{dups[0].index} {dup_res} instead)"
-        return f"{name} ({res_label}) - rip this"
-
-    # Short title, likely menu/intro
-    if dur < 120:
-        return "Very short - skip"
-
-    # Fall back: individual episode on a multi-title disc
-    other_substantial = [
-        t for t in all_titles
-        if t is not title
-        and t.duration_seconds > 120
-        and t.resolution == title.resolution
-    ]
-    if other_substantial:
-        return f"Episode ({res_label}) - rip this"
-
-    return f"Unknown content ({res_label}, {_format_seconds(dur)}) - rip to be safe"
-
-
-def _detect_play_all(title, all_titles: list) -> list | None:
-    """Detect if this title is a play-all of other same-resolution titles.
-
-    Returns the list of individual titles that sum to this one, or None.
+    Returns the disc number (1-based) or None if detection fails.
     """
-    dur = title.duration_seconds
-    if dur < 300:  # Ignore very short titles
+    # Strategy 1: volume label
+    label = disc_info.disc_name or ""
+    match = re.search(r"[_\s-]D(?:isc\s*)?(\d+)\b", label, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+
+    # Strategy 2: duration matching against dvdcompare discs
+    if not dvdcompare_discs or not disc_info.titles:
         return None
 
-    # Find substantial titles at the same resolution (excluding this one)
-    same_res = [
-        t for t in all_titles
-        if t is not title
-        and t.resolution == title.resolution
-        and t.duration_seconds > 120
-        and t.duration_seconds < dur * 0.8  # Must be shorter than this title
-    ]
-    if len(same_res) < 2:
+    # Collect substantial title durations from the live disc
+    live_durations = sorted(
+        [t.duration_seconds for t in disc_info.titles if t.duration_seconds > 120],
+        reverse=True,
+    )
+    if not live_durations:
         return None
 
-    total = sum(t.duration_seconds for t in same_res)
-    # Allow up to 30 seconds tolerance per title for segment gaps
-    tolerance = max(60, len(same_res) * 15)
-    if abs(dur - total) <= tolerance:
-        return same_res
-    return None
+    best_disc = None
+    best_score = -1
 
-
-def _detect_cross_res_play_all(title, all_titles: list) -> list | None:
-    """Detect if this title is a lower-res play-all of higher-res individual titles.
-
-    For example, a 1080p play-all when individual 4K episodes exist.
-    """
-    dur = title.duration_seconds
-    if dur < 300:
-        return None
-
-    # Find substantial titles at a different resolution
-    diff_res = [
-        t for t in all_titles
-        if t is not title
-        and t.resolution != title.resolution
-        and t.duration_seconds > 120
-        and t.duration_seconds < dur * 0.8
-    ]
-    if len(diff_res) < 2:
-        return None
-
-    total = sum(t.duration_seconds for t in diff_res)
-    tolerance = max(60, len(diff_res) * 15)
-    if abs(dur - total) <= tolerance:
-        return diff_res
-    return None
-
-
-def _is_skip_title(
-    title,
-    all_titles: list,
-    is_movie: bool,
-    movie_runtime: int | None,
-    total_episode_runtime: int,
-    episode_count: int,
-) -> bool:
-    """Return True if this title should be skipped."""
-    dur = title.duration_seconds
-    is_4k = "3840" in (title.resolution or "")
-
-    # Always skip very short titles
-    if dur < 120:
-        return True
-
-    # Skip lower-resolution duplicates when a 4K version exists
-    if not is_4k:
-        for t in all_titles:
-            if t is not title and "3840" in (t.resolution or "") and abs(t.duration_seconds - dur) < 30:
-                return True
-
-    # Skip dvdcompare-based play-all if individual episodes exist at same resolution
-    if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
-        same_res_individuals = [
-            t for t in all_titles
-            if t is not title
-            and t.resolution == title.resolution
-            and t.duration_seconds < dur * 0.8
-            and t.duration_seconds > 120
-        ]
-        if len(same_res_individuals) >= episode_count:
-            return True
-
-    # Skip disc-internal play-all (same resolution)
-    if _detect_play_all(title, all_titles):
-        return True
-
-    # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
-    if _detect_cross_res_play_all(title, all_titles):
-        return True
-
-    return False
-
-
-def _find_duration_match(
-    duration_seconds: int,
-    entries: list[tuple[str, int, str]],
-    tolerance: int = 30,
-) -> tuple[str, int, str] | None:
-    """Find the best dvdcompare entry matching a duration."""
-    best = None
-    best_diff = tolerance + 1
-    for name, runtime, etype in entries:
-        if runtime <= 0:
+    for disc in dvdcompare_discs:
+        ep_durations = sorted(
+            [ep.runtime_seconds for ep in disc.episodes if ep.runtime_seconds > 0],
+            reverse=True,
+        )
+        if not ep_durations:
             continue
-        diff = abs(duration_seconds - runtime)
-        if diff < best_diff:
-            best = (name, runtime, etype)
-            best_diff = diff
-    return best
+
+        # Count how many live titles match an episode within 60 seconds
+        matched = 0
+        used = set()
+        for live_dur in live_durations:
+            for i, ep_dur in enumerate(ep_durations):
+                if i not in used and abs(live_dur - ep_dur) < 60:
+                    matched += 1
+                    used.add(i)
+                    break
+
+        # Score: fraction of episodes matched
+        score = matched / len(ep_durations) if ep_durations else 0
+        if score > best_score:
+            best_score = score
+            best_disc = disc.number
+
+    # Require at least 50% of episodes to match
+    if best_score >= 0.5:
+        return best_disc
+    return None
 
 
-async def _run_plan(args: argparse.Namespace) -> int:
-    if not args.title:
-        print("Error: title is required for plan mode.", file=sys.stderr)
+async def _run_rip(args: argparse.Namespace) -> int:
+    """Read a disc, show analysis, and rip recommended titles."""
+    from plex_planner.makemkv import (
+        find_makemkvcon,
+        run_disc_info,
+        run_drive_list,
+        run_rip,
+    )
+
+    log_file = _setup_logging(verbose=getattr(args, "verbose", False))
+    log.info("plex-planner rip: args=%s", vars(args))
+    print(f"Debug log: {log_file}", file=sys.stderr)
+
+    if getattr(args, "no_cache", False):
+        from plex_planner import cache
+        cache.disable()
+
+    # Find makemkvcon
+    exe = find_makemkvcon()
+    if not exe:
+        print("Error: makemkvcon not found. Install MakeMKV or ensure makemkvcon is on PATH.", file=sys.stderr)
         return 1
 
-    api_key = get_api_key(args.api_key)
+    # Resolve drive
+    drive_arg = args.drive
+    if drive_arg == "auto":
+        print("Scanning drives ...", file=sys.stderr)
+        drives = run_drive_list(exe)
+        active = [d for d in drives if d.has_disc]
+        if not active:
+            print("Error: no disc found in any drive.", file=sys.stderr)
+            return 1
+        print(f"Found disc in drive {active[0].index}: {active[0].disc_label} ({active[0].device})", file=sys.stderr)
+        drive_idx = active[0].index
+    else:
+        try:
+            drive_idx = int(drive_arg)
+        except ValueError:
+            drive_idx = drive_arg
+
+    # Read disc info
+    print("Reading disc info ...", file=sys.stderr)
+    try:
+        disc_info = run_disc_info(drive_idx, exe)
+    except (RuntimeError, FileNotFoundError) as exc:
+        print(f"Error reading disc: {exc}", file=sys.stderr)
+        return 1
+
+    if not disc_info.titles:
+        print("Error: no titles found on disc.", file=sys.stderr)
+        return 1
+
+    # TMDb lookup
+    api_key = get_api_key(getattr(args, "api_key", None))
     try:
         provider = TmdbProvider(api_key=api_key)
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    request = SearchRequest(
-        title=args.title,
-        year=args.year,
-        media_type=args.media_type,
-        include_specials=not args.no_specials,
-        include_extras_skeleton=not args.no_extras,
-    )
-
     try:
+        request = SearchRequest(
+            title=args.title,
+            year=getattr(args, "year", None),
+            media_type=getattr(args, "media_type", "auto"),
+        )
         result = await plan(request, provider)
     except LookupError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
-        print(f"Error fetching metadata: {exc}", file=sys.stderr)
+        print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
         return 1
     finally:
         await provider.close()
 
-    if args.json:
-        print(to_json(result))
+    canonical = result.canonical_title
+    year = result.year
+    is_movie = isinstance(result, PlannedMovie)
+    movie_runtime = result.runtime_seconds if is_movie else None
+
+    # dvdcompare lookup
+    disc_format = getattr(args, "disc_format", None)
+    release = getattr(args, "release", "america")
+    discs: list = []
+    print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+    try:
+        discs = await lookup_discs(canonical, disc_format=disc_format, release=release)
+    except LookupError:
+        print("Warning: no dvdcompare data found.", file=sys.stderr)
+    except Exception as exc:
+        print(f"Warning: dvdcompare lookup failed ({type(exc).__name__}).", file=sys.stderr)
+
+    # Show disc analysis
+    _print_disc_analysis(disc_info, discs, is_movie, movie_runtime)
+
+    # Determine which titles to rip
+    dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(discs)
+
+    if getattr(args, "titles", None):
+        # User override
+        try:
+            rip_indices = [int(x.strip()) for x in args.titles.split(",")]
+        except ValueError:
+            print("Error: --titles must be comma-separated integers.", file=sys.stderr)
+            return 1
+        rip_titles = [t for t in disc_info.titles if t.index in rip_indices]
+        if not rip_titles:
+            print("Error: none of the specified title indices exist on disc.", file=sys.stderr)
+            return 1
+    elif getattr(args, "rip_all", False):
+        rip_titles = list(disc_info.titles)
     else:
-        print(to_text(result))
+        rip_titles = [
+            t for t in disc_info.titles
+            if not is_skip_title(
+                t, disc_info.titles, is_movie, movie_runtime,
+                total_episode_runtime, episode_count,
+            )
+        ]
 
-    # Optional matching
-    if args.match:
-        ripped = _parse_match_args(args.match)
-        if ripped:
-            candidates = match_files(ripped, result)
-            print()
-            print(format_match_report(candidates))
+    if not rip_titles:
+        print("\nNo titles to rip.", file=sys.stderr)
+        return 0
 
-    return 0
+    # Output directory
+    output_val = get_output_root(getattr(args, "output", None))
+    if not output_val:
+        print("Error: --output or output_root config required.", file=sys.stderr)
+        return 1
+
+    disc_number = _detect_disc_number(disc_info, discs)
+    folder_base = f"{canonical} ({year})"
+    if disc_number:
+        disc_folder = f"Disc {disc_number}"
+    else:
+        disc_folder = "Disc 1"
+        if discs and len(discs) > 1:
+            print(f"\nWarning: could not auto-detect disc number. Defaulting to '{disc_folder}'.", file=sys.stderr)
+            print("  Use --titles and manually organize if this is wrong.", file=sys.stderr)
+
+    output_dir = Path(output_val) / "_MakeMKV" / folder_base / disc_folder
+
+    # Confirmation
+    total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
+    rip_indices_str = ", ".join(str(t.index) for t in rip_titles)
+    print(f"\nWill rip {len(rip_titles)} title(s) [{rip_indices_str}] ({total_size:.1f} GB)")
+    print(f"Output: {output_dir}")
+
+    if not getattr(args, "yes", False):
+        try:
+            answer = input("Proceed? [Y/n] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nAborted.", file=sys.stderr)
+            return 1
+        if answer and answer not in ("y", "yes"):
+            print("Aborted.", file=sys.stderr)
+            return 0
+
+    # Rip each title
+    results = []
+    for i, t in enumerate(rip_titles, 1):
+        print(f"\nRipping title {t.index} ({i}/{len(rip_titles)}): "
+              f"{_format_seconds(t.duration_seconds)}, "
+              f"{t.size_bytes / (1024**3):.1f} GB ...")
+
+        def _progress_cb(progress):
+            if progress.max_val > 0:
+                pct = progress.current * 100 // progress.max_val
+                print(f"\r  Progress: {pct}%", end="", flush=True)
+
+        rip_result = run_rip(
+            drive_idx, t.index, output_dir,
+            makemkvcon=exe,
+            progress_callback=_progress_cb,
+        )
+        print()  # newline after progress
+
+        results.append(rip_result)
+        if rip_result.success:
+            print(f"  Done: {rip_result.output_file}")
+        else:
+            print(f"  FAILED: {rip_result.error_message}", file=sys.stderr)
+
+    # Summary
+    succeeded = [r for r in results if r.success]
+    failed = [r for r in results if not r.success]
+
+    print(f"\n{'=' * 60}")
+    print(f"Rip complete: {len(succeeded)} succeeded, {len(failed)} failed")
+    if succeeded:
+        print(f"Output: {output_dir}")
+    if failed:
+        for r in failed:
+            print(f"  FAILED title {r.title_index}: {r.error_message}", file=sys.stderr)
+
+    # Auto-organize
+    if getattr(args, "auto_organize", False) and succeeded and not failed:
+        print(f"\nRunning organize on {output_dir.parent} ...")
+        organize_args = argparse.Namespace(
+            folder=str(output_dir.parent),
+            title=canonical,
+            year=year,
+            media_type="movie" if is_movie else "tv",
+            disc_format=disc_format,
+            release=release,
+            output=output_val,
+            execute=True,
+            json=False,
+            api_key=getattr(args, "api_key", None),
+            unmatched="extras",
+            verbose=getattr(args, "verbose", False),
+            no_cache=getattr(args, "no_cache", False),
+            force=False,
+            snapshot=None,
+        )
+        return await _run_organize(organize_args)
+
+    return 1 if failed else 0
 
 
 def main() -> None:
     # Backward compatibility: if the first arg isn't a known subcommand,
-    # treat as the legacy "plan" invocation.
-    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide"}
+    # default to rip-guide (formerly plan).
+    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide", "rip"}
     if len(sys.argv) > 1 and sys.argv[1] not in _SUBCOMMANDS and sys.argv[1] != "-h" and sys.argv[1] != "--help":
-        sys.argv.insert(1, "plan")
+        sys.argv.insert(1, "rip-guide")
 
     parser = _build_parser()
     args = parser.parse_args()

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from plex_planner.makemkv import parse_disc_info, parse_drive_list
+from plex_planner.makemkv import parse_disc_info, parse_drive_list, _parse_progress
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -108,3 +108,21 @@ class TestParseDiscInfoEmpty:
         output = 'MSG:1005,0,1,"MakeMKV started","",""'
         info = parse_disc_info(output)
         assert info.titles == []
+
+
+class TestParseProgress:
+    def test_valid_line(self):
+        p = _parse_progress("PRGV:100,500,1000")
+        assert p is not None
+        assert p.current == 100
+        assert p.total == 500
+        assert p.max_val == 1000
+
+    def test_not_progress_line(self):
+        assert _parse_progress("MSG:1005,0,1,\"hello\"") is None
+
+    def test_incomplete_line(self):
+        assert _parse_progress("PRGV:100") is None
+
+    def test_non_numeric(self):
+        assert _parse_progress("PRGV:abc,def,ghi") is None

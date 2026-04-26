@@ -8,7 +8,9 @@ Complete reference for all plex-planner subcommands and their options.
 - **Logging**: Every `organize` run writes debug logs to the OS temp directory. Add `--verbose` for stderr output.
 - **Caching**: dvdcompare responses are cached for 30 days, TMDb for 7 days. Use `--no-cache` to bypass.
 
-## `plan`
+## `plan` (deprecated)
+
+> **Deprecated**: `plan` is now an alias for `rip-guide`. Use `rip-guide` instead.
 
 Look up a title on TMDb and output the Plex-canonical folder structure and filenames.
 
@@ -16,16 +18,7 @@ Look up a title on TMDb and output the Plex-canonical folder structure and filen
 plex-planner plan <title> [options]
 ```
 
-| Option | Description |
-|---|---|
-| `title` | Movie or TV show title (required) |
-| `--year` | Release year (strongly recommended) |
-| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
-| `--json` | Output as JSON |
-| `--no-specials` | Exclude Season 00 specials |
-| `--no-extras` | Omit extras folder skeleton |
-| `--match` | Match ripped files by duration (format: `file:duration`) |
-| `--api-key` | TMDb API key |
+All options are identical to `rip-guide`. A deprecation warning is printed to stderr on each invocation.
 
 ## `organize`
 
@@ -75,6 +68,34 @@ plex-planner rip-guide <title> [options]
 | `--verbose`, `-v` | Print debug logging to stderr |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |
+
+## `rip`
+
+Rip selected titles from a physical disc using makemkvcon. Combines disc analysis, title selection, and optional post-rip organize into a single command.
+
+```bash
+plex-planner rip <title> --drive <drive> [options]
+```
+
+| Option | Description |
+|---|---|
+| `title` | Movie or TV show title (required) |
+| `--drive` | Drive index (`0`), device (`D:`), or `auto` (required) |
+| `--year` | Release year |
+| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
+| `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--titles` | Comma-separated title indices to rip (e.g. `1,2,3`) |
+| `--all` | Rip all titles on the disc |
+| `--yes`, `-y` | Skip confirmation prompt |
+| `--organize` | Auto-organize ripped files into Plex layout after ripping |
+| `--json` | Output rip results as JSON |
+| `--verbose`, `-v` | Print debug logging to stderr |
+| `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--api-key` | TMDb API key |
+
+When neither `--titles` nor `--all` is specified, the command auto-selects titles using disc analysis (skipping play-all compilations, lower-resolution duplicates, and very short titles).
 
 ## `snapshot`
 

@@ -262,3 +262,141 @@ def run_drive_list(makemkvcon: Path | None = None) -> list[DriveInfo]:
     )
     output = result.stdout + result.stderr
     return parse_drive_list(output)
+
+
+# ---- ripping ----
+
+@dataclass
+class RipProgress:
+    """Progress update from a makemkvcon rip."""
+
+    title_index: int
+    current: int  # current progress value
+    total: int  # total for this title
+    max_val: int  # overall max
+
+
+@dataclass
+class RipResult:
+    """Result of ripping a single title."""
+
+    title_index: int
+    success: bool
+    output_file: str  # path to the output MKV
+    error_message: str = ""
+
+
+def _parse_progress(line: str) -> RipProgress | None:
+    """Parse a PRGV line from makemkvcon robot output.
+
+    Format: PRGV:current,total,max
+    """
+    if not line.startswith("PRGV:"):
+        return None
+    parts = line[5:].split(",")
+    if len(parts) < 3:
+        return None
+    try:
+        return RipProgress(
+            title_index=-1,  # caller sets this
+            current=int(parts[0]),
+            total=int(parts[1]),
+            max_val=int(parts[2]),
+        )
+    except ValueError:
+        return None
+
+
+def run_rip(
+    drive: int | str,
+    title_index: int,
+    output_dir: Path,
+    makemkvcon: Path | None = None,
+    progress_callback=None,
+) -> RipResult:
+    """Rip a single title from a disc via makemkvcon mkv.
+
+    Args:
+        drive: Drive index (int) or device name (str).
+        title_index: The title index to rip.
+        output_dir: Directory to write the output MKV into.
+        makemkvcon: Path to makemkvcon executable. Auto-detected if None.
+        progress_callback: Optional callable(RipProgress) for progress updates.
+
+    Returns:
+        RipResult with success status and output file path.
+    """
+    exe = makemkvcon or find_makemkvcon()
+    if not exe:
+        raise FileNotFoundError("makemkvcon not found.")
+
+    if isinstance(drive, int):
+        source = f"disc:{drive}"
+    elif drive.startswith("disc:") or drive.startswith("dev:"):
+        source = drive
+    else:
+        source = f"dev:{drive}"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [str(exe), "-r", "mkv", source, str(title_index), str(output_dir)]
+    log.info("Running: %s", " ".join(cmd))
+
+    errors: list[str] = []
+    output_file = ""
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    try:
+        for line in proc.stdout:
+            line = line.rstrip("\n\r")
+            log.debug("makemkvcon: %s", line)
+
+            # Progress updates
+            progress = _parse_progress(line)
+            if progress and progress_callback:
+                progress.title_index = title_index
+                progress_callback(progress)
+
+            # Detect output filename from MSG
+            if line.startswith("MSG:") and "saved to" in line.lower():
+                # MSG code messages sometimes contain the output path
+                pass
+
+            # Track error messages (MSG:5xxx are errors)
+            if line.startswith("MSG:5"):
+                parts = _split_robot_line(line[4:])
+                if len(parts) >= 4:
+                    errors.append(parts[3])
+
+            # Detect the output filename from TINFO or the filesystem
+            if line.startswith("CINFO:") or line.startswith("TINFO:"):
+                pass  # Already parsed
+
+        proc.wait()
+    except Exception:
+        proc.kill()
+        proc.wait()
+        raise
+
+    # Find the output MKV file
+    mkv_files = sorted(output_dir.glob("*.mkv"), key=lambda p: p.stat().st_mtime)
+    if mkv_files:
+        output_file = str(mkv_files[-1])
+
+    success = proc.returncode == 0 and not errors
+    error_msg = "; ".join(errors) if errors else ""
+
+    if not success and not error_msg:
+        error_msg = f"makemkvcon exited with code {proc.returncode}"
+
+    return RipResult(
+        title_index=title_index,
+        success=success,
+        output_file=output_file,
+        error_message=error_msg,
+    )

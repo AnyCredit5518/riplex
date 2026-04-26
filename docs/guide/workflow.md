@@ -12,7 +12,15 @@ plex-planner rip-guide "Planet Earth II"
 
 This shows every disc in the set, what episodes and extras are on each disc, and how long each item is. It also gives tips about play-all titles you can rip instead of individual episodes.
 
-## 2. Create the rip folder structure
+If a disc is already in the drive, add `--drive` to include live disc analysis:
+
+```bash
+plex-planner rip-guide "Planet Earth II" --drive 0
+```
+
+This reads the disc's title list and cross-references it against dvdcompare metadata, showing which titles to rip and which to skip (play-all compilations, lower-resolution duplicates, etc.).
+
+## 2. Create the rip folder structure (optional)
 
 Add `--create-folders` to pre-create the rip subfolders under your output root:
 
@@ -28,9 +36,27 @@ This creates folders like:
 <output_root>/_MakeMKV/Planet Earth II (2016)/Disc 3/
 ```
 
-## 3. Rip with MakeMKV
+This step is optional when using `plex-planner rip`, which creates output folders automatically.
 
-Open MakeMKV and point the output folder at the appropriate `Disc N/` subfolder for each disc. Rip all titles, or follow the play-all tips from the rip guide to rip fewer, larger files.
+## 3. Rip the disc
+
+Use the `rip` subcommand to read the disc, auto-select the right titles, and rip them:
+
+```bash
+plex-planner rip "Planet Earth II" --drive 0
+```
+
+This will:
+1. Read the disc via makemkvcon
+2. Look up metadata on TMDb and dvdcompare
+3. Show a disc analysis table with rip recommendations
+4. Prompt for confirmation, then rip the selected titles
+
+Add `--yes` to skip the confirmation prompt. Use `--titles 1,2,3` to override the auto-selection, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
+
+Repeat for each disc in the set, swapping discs between runs.
+
+> **Fallback**: You can also rip manually with MakeMKV. Point the output folder at the appropriate `Disc N/` subfolder and rip all titles, or follow the play-all tips from the rip guide to rip fewer, larger files.
 
 ## 4. Preview the organize plan
 
