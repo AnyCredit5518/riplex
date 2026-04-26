@@ -367,8 +367,9 @@ def run_rip(
                 # MSG code messages sometimes contain the output path
                 pass
 
-            # Track error messages (MSG:5xxx are errors)
-            if line.startswith("MSG:5"):
+            # Track error messages (MSG:3xxx are actual errors;
+            # MSG:5xxx are informational: evaluation notices, hash tables, etc.)
+            if line.startswith("MSG:3"):
                 parts = _split_robot_line(line[4:])
                 if len(parts) >= 4:
                     errors.append(parts[3])
