@@ -734,11 +734,13 @@ def _parse_volume_label(label: str) -> str | None:
     if not label or len(label) < 4:
         return None
 
-    # Strip disc number suffix (e.g. _D2, -Disc3, _Disc_1, " - Disc 1")
-    cleaned = re.sub(r"[\s_-]*D(?:isc[_\s]*)?\d+\b", "", label, flags=re.IGNORECASE)
+    # Strip disc number suffix including its leading separator.
+    # Matches: "_D2", "-Disc3", " - Disc 1", "_Disc_1"
+    # Won't match titles with dashes like "Spider-Man" or "X-Men".
+    cleaned = re.sub(r"[\s_-]+D(?:isc[\s_]*)?\d+\s*$", "", label, flags=re.IGNORECASE)
 
-    # Replace underscores with spaces, strip trailing separators
-    cleaned = cleaned.replace("_", " ").strip().rstrip("- ").strip()
+    # Replace underscores with spaces
+    cleaned = cleaned.replace("_", " ").strip()
 
     if len(cleaned) < 3:
         return None

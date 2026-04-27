@@ -137,6 +137,15 @@ class TestParseVolumeLabel:
     def test_spaced_dash_disc_suffix_d2(self):
         assert _parse_volume_label("A Perfect Planet - D2") == "A Perfect Planet"
 
+    def test_preserves_hyphenated_title(self):
+        assert _parse_volume_label("SPIDER-MAN") == "Spider-man"
+
+    def test_preserves_hyphen_with_disc_suffix(self):
+        assert _parse_volume_label("X-MEN_D1") == "X-men"
+
+    def test_preserves_mid_title_dash(self):
+        assert _parse_volume_label("ANT-MAN_AND_THE_WASP_Disc_1") == "Ant-man And The Wasp"
+
 
 # ---------------------------------------------------------------------------
 # _detect_disc_format
