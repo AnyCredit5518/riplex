@@ -293,11 +293,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "rip",
         help="Read a disc, recommend titles, and rip via makemkvcon.",
     )
-    rip_parser.add_argument("title", help="Movie or TV show title.")
+    rip_parser.add_argument(
+        "title", nargs="?", default=None,
+        help="Movie or TV show title (auto-detected from volume label if omitted).",
+    )
     rip_parser.add_argument(
         "--drive",
-        required=True,
-        help="Drive index (e.g. 0), device name (e.g. D:), or 'auto'.",
+        default="auto",
+        help="Drive index (e.g. 0), device name (e.g. D:), or 'auto' (default: auto).",
     )
     rip_parser.add_argument("--year", type=int, help="Release year.")
     rip_parser.add_argument(
@@ -306,11 +309,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     rip_parser.add_argument(
         "--format", dest="disc_format", default=None,
-        help="Disc format filter for dvdcompare (e.g. 'Blu-ray 4K').",
+        help="Disc format filter for dvdcompare (auto-detected from disc resolution if omitted).",
     )
     rip_parser.add_argument(
-        "--release", default="america",
-        help="Regional release: 1-based index or name keyword (default: america).",
+        "--release", default=None,
+        help="Regional release: 1-based index or name keyword (default: auto-detect).",
     )
     rip_parser.add_argument(
         "--output", default=None,
@@ -715,6 +718,120 @@ from plex_planner.disc_analysis import (  # noqa: E402
 )
 
 
+def _parse_volume_label(label: str) -> str | None:
+    """Extract a human-readable title from a disc volume label.
+
+    Examples:
+        "FROZEN_PLANET_II_D2" -> "Frozen Planet II"
+        "PLANET_EARTH_III-Disc3" -> "Planet Earth III"
+        "BLADE_RUNNER_2049" -> "Blade Runner 2049"
+        "TGUN2" -> None (too short/ambiguous)
+    """
+    if not label or len(label) < 4:
+        return None
+
+    # Strip disc number suffix (e.g. _D2, -Disc3, _Disc_1)
+    cleaned = re.sub(r"[_\s-]D(?:isc[_\s]*)?\d+\b", "", label, flags=re.IGNORECASE)
+
+    # Replace underscores with spaces and title-case
+    cleaned = cleaned.replace("_", " ").strip()
+
+    if len(cleaned) < 3:
+        return None
+
+    # Title-case, preserving roman numerals
+    words = cleaned.split()
+    result = []
+    for w in words:
+        if re.fullmatch(r"[IVXLCDM]+", w, re.IGNORECASE):
+            result.append(w.upper())
+        else:
+            result.append(w.capitalize())
+    return " ".join(result)
+
+
+def _detect_disc_format(disc_info) -> str | None:
+    """Auto-detect dvdcompare format string from disc title resolutions.
+
+    Returns "Blu-ray 4K" if any title is 3840-wide, else "Blu-ray".
+    """
+    if not disc_info.titles:
+        return None
+    for t in disc_info.titles:
+        if t.resolution and "3840" in t.resolution:
+            return "Blu-ray 4K"
+    return "Blu-ray"
+
+
+def _auto_select_release(
+    film,
+    disc_info,
+    preferred: str = "america",
+) -> tuple[list, str]:
+    """Try to auto-select the best dvdcompare release for a disc.
+
+    Strategy:
+    1. Try the preferred release keyword (default "america")
+    2. If that fails, score each release by duration matching against the disc
+    3. If duration matching fails, fall back to the first release
+
+    Returns (PlannedDisc list, release_name) or ([], "").
+    """
+    from dvdcompare.cli import select_releases
+
+    if not film.releases:
+        return [], ""
+
+    # Strategy 1: try preferred release
+    try:
+        selected = select_releases(film.releases, preferred)
+        discs = _convert_film(film, preferred)
+        return discs, selected[0].name
+    except LookupError:
+        pass
+
+    # Strategy 2: duration matching across all releases
+    if disc_info and disc_info.titles:
+        live_durations = sorted(
+            [t.duration_seconds for t in disc_info.titles if t.duration_seconds > 120],
+            reverse=True,
+        )
+        if live_durations:
+            best_release = None
+            best_score = -1
+
+            for rel_idx, rel in enumerate(film.releases, 1):
+                ep_durations = sorted(
+                    [f.runtime_seconds for d in rel.discs for f in d.features
+                     if f.runtime_seconds and f.runtime_seconds > 120],
+                    reverse=True,
+                )
+                if not ep_durations:
+                    continue
+
+                matched = 0
+                used = set()
+                for live_dur in live_durations:
+                    for i, ep_dur in enumerate(ep_durations):
+                        if i not in used and abs(live_dur - ep_dur) < 60:
+                            matched += 1
+                            used.add(i)
+                            break
+
+                score = matched / len(ep_durations)
+                if score > best_score:
+                    best_score = score
+                    best_release = rel_idx
+
+            if best_release and best_score >= 0.3:
+                discs = _convert_film(film, str(best_release))
+                return discs, film.releases[best_release - 1].name
+
+    # Strategy 3: fall back to first release
+    discs = _convert_film(film, "1")
+    return discs, film.releases[0].name
+
+
 def _detect_disc_number(
     disc_info,
     dvdcompare_discs: list,
@@ -780,6 +897,9 @@ def _detect_disc_number(
 
 async def _run_rip(args: argparse.Namespace) -> int:
     """Read a disc, show analysis, and rip recommended titles."""
+    import json as json_mod
+    import time
+
     from plex_planner.makemkv import (
         find_makemkvcon,
         run_disc_info,
@@ -802,7 +922,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
         return 1
 
     # Resolve drive
-    drive_arg = args.drive
+    drive_arg = getattr(args, "drive", "auto") or "auto"
     if drive_arg == "auto":
         print("Scanning drives ...", file=sys.stderr)
         drives = run_drive_list(exe)
@@ -812,11 +932,13 @@ async def _run_rip(args: argparse.Namespace) -> int:
             return 1
         print(f"Found disc in drive {active[0].index}: {active[0].disc_label} ({active[0].device})", file=sys.stderr)
         drive_idx = active[0].index
+        volume_label = active[0].disc_label
     else:
         try:
             drive_idx = int(drive_arg)
         except ValueError:
             drive_idx = drive_arg
+        volume_label = None
 
     # Read disc info
     print("Reading disc info ...", file=sys.stderr)
@@ -830,6 +952,27 @@ async def _run_rip(args: argparse.Namespace) -> int:
         print("Error: no titles found on disc.", file=sys.stderr)
         return 1
 
+    # If drive wasn't auto, get label from disc_info
+    if volume_label is None:
+        volume_label = disc_info.disc_name or ""
+
+    # Auto-detect title from volume label if not provided
+    title_arg = getattr(args, "title", None)
+    if not title_arg:
+        title_arg = _parse_volume_label(volume_label)
+        if title_arg:
+            print(f"Auto-detected title from volume label: {title_arg}", file=sys.stderr)
+        else:
+            print("Error: could not detect title from volume label. Provide a title argument.", file=sys.stderr)
+            return 1
+
+    # Auto-detect disc format from resolution if not provided
+    disc_format = getattr(args, "disc_format", None)
+    if not disc_format:
+        disc_format = _detect_disc_format(disc_info)
+        if disc_format:
+            log.info("Auto-detected disc format: %s", disc_format)
+
     # TMDb lookup
     api_key = get_api_key(getattr(args, "api_key", None))
     try:
@@ -840,7 +983,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
 
     try:
         request = SearchRequest(
-            title=args.title,
+            title=title_arg,
             year=getattr(args, "year", None),
             media_type=getattr(args, "media_type", "auto"),
         )
@@ -859,15 +1002,25 @@ async def _run_rip(args: argparse.Namespace) -> int:
     is_movie = isinstance(result, PlannedMovie)
     movie_runtime = result.runtime_seconds if is_movie else None
 
-    # dvdcompare lookup
-    disc_format = getattr(args, "disc_format", None)
-    release = getattr(args, "release", "america")
+    # dvdcompare lookup with auto-release fallback
+    release = getattr(args, "release", None)
     discs: list = []
+    release_name = ""
     print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
     try:
-        discs = await lookup_discs(canonical, disc_format=disc_format, release=release)
-    except LookupError:
-        print("Warning: no dvdcompare data found.", file=sys.stderr)
+        if release:
+            # Explicit release specified, use it directly
+            discs = await lookup_discs(canonical, disc_format=disc_format, release=release)
+            release_name = release
+        else:
+            # Auto-detect: fetch the film, then pick the best release
+            from dvdcompare.scraper import find_film
+            film = await find_film(canonical, disc_format)
+            discs, release_name = _auto_select_release(film, disc_info)
+            if release_name:
+                print(f"  Selected release: {release_name}", file=sys.stderr)
+    except LookupError as exc:
+        print(f"Warning: {exc}", file=sys.stderr)
     except Exception as exc:
         print(f"Warning: dvdcompare lookup failed ({type(exc).__name__}).", file=sys.stderr)
 
@@ -938,41 +1091,137 @@ async def _run_rip(args: argparse.Namespace) -> int:
             return 0
 
     # Rip each title
+    rip_start = time.monotonic()
     results = []
     for i, t in enumerate(rip_titles, 1):
         print(f"\nRipping title {t.index} ({i}/{len(rip_titles)}): "
               f"{_format_seconds(t.duration_seconds)}, "
               f"{t.size_bytes / (1024**3):.1f} GB ...")
 
-        def _progress_cb(progress):
+        title_start = time.monotonic()
+        last_pct = [-1]
+
+        def _progress_cb(progress, _last=last_pct):
             if progress.max_val > 0:
                 pct = progress.current * 100 // progress.max_val
-                print(f"\r  Progress: {pct}%", end="", flush=True)
+                if pct != _last[0]:
+                    _last[0] = pct
+                    bar_width = 30
+                    filled = bar_width * pct // 100
+                    bar = "=" * filled + ">" * (1 if filled < bar_width else 0) + " " * (bar_width - filled - 1)
+                    elapsed = time.monotonic() - title_start
+                    elapsed_str = _format_seconds(int(elapsed))
+                    print(f"\r  [{bar}] {pct:3d}%  {elapsed_str}", end="", flush=True)
 
         rip_result = run_rip(
             drive_idx, t.index, output_dir,
             makemkvcon=exe,
             progress_callback=_progress_cb,
         )
+
+        elapsed = time.monotonic() - title_start
         print()  # newline after progress
 
         results.append(rip_result)
         if rip_result.success:
-            print(f"  Done: {rip_result.output_file}")
+            print(f"  Done: {rip_result.output_file} ({_format_seconds(int(elapsed))})")
         else:
             print(f"  FAILED: {rip_result.error_message}", file=sys.stderr)
 
     # Summary
+    total_elapsed = time.monotonic() - rip_start
     succeeded = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
 
     print(f"\n{'=' * 60}")
-    print(f"Rip complete: {len(succeeded)} succeeded, {len(failed)} failed")
+    print(f"Rip complete: {len(succeeded)} succeeded, {len(failed)} failed"
+          f" ({_format_seconds(int(total_elapsed))})")
     if succeeded:
         print(f"Output: {output_dir}")
     if failed:
         for r in failed:
             print(f"  FAILED title {r.title_index}: {r.error_message}", file=sys.stderr)
+
+    # Write rip manifest
+    if succeeded:
+        manifest = {
+            "title": canonical,
+            "year": year,
+            "type": "movie" if is_movie else "tv",
+            "disc_number": disc_number,
+            "disc_label": volume_label,
+            "format": disc_format,
+            "release": release_name,
+            "files": [],
+        }
+        for r in results:
+            if not r.success:
+                continue
+            t = next((t for t in disc_info.titles if t.index == r.title_index), None)
+            classification = ""
+            if t:
+                classification = classify_title(
+                    t, disc_info.titles, dvd_entries,
+                    is_movie, movie_runtime,
+                    total_episode_runtime, episode_count,
+                )
+                # Strip " - rip this" / " - skip ..." suffix for the manifest
+                if " - " in classification:
+                    classification = classification[:classification.rindex(" - ")]
+            manifest["files"].append({
+                "filename": Path(r.output_file).name if r.output_file else "",
+                "title_index": r.title_index,
+                "duration": t.duration_seconds if t else 0,
+                "resolution": t.resolution if t else "",
+                "size_bytes": t.size_bytes if t else 0,
+                "classification": classification,
+            })
+
+        manifest_path = output_dir / "_rip_manifest.json"
+        manifest_path.write_text(json_mod.dumps(manifest, indent=2), encoding="utf-8")
+        log.info("Wrote rip manifest: %s", manifest_path)
+
+    # Write debug snapshot (disc_info + metadata for troubleshooting)
+    try:
+        snapshot = {
+            "disc_name": disc_info.disc_name,
+            "drive": str(drive_idx),
+            "title_count": len(disc_info.titles),
+            "titles": [
+                {
+                    "index": t.index,
+                    "duration_seconds": t.duration_seconds,
+                    "resolution": t.resolution,
+                    "size_bytes": t.size_bytes,
+                    "chapters": getattr(t, "chapter_count", None),
+                }
+                for t in disc_info.titles
+            ],
+            "tmdb": {
+                "canonical_title": canonical,
+                "year": year,
+                "type": "movie" if is_movie else "tv",
+                "movie_runtime": movie_runtime,
+            },
+            "dvdcompare": {
+                "release": release_name,
+                "disc_count": len(discs),
+                "discs": [
+                    {
+                        "number": d.number,
+                        "episode_count": len(d.episodes),
+                        "extra_count": len(d.extras),
+                    }
+                    for d in discs
+                ],
+            },
+            "ripped_titles": [t.index for t in rip_titles],
+        }
+        snapshot_path = output_dir / "_rip_snapshot.json"
+        snapshot_path.write_text(json_mod.dumps(snapshot, indent=2), encoding="utf-8")
+        log.info("Wrote rip snapshot: %s", snapshot_path)
+    except Exception as exc:
+        log.warning("Failed to write rip snapshot: %s", exc)
 
     # Auto-organize
     if getattr(args, "auto_organize", False) and succeeded and not failed:
@@ -983,7 +1232,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
             year=year,
             media_type="movie" if is_movie else "tv",
             disc_format=disc_format,
-            release=release,
+            release=release_name or "1",
             output=output_val,
             execute=True,
             json=False,

@@ -2,7 +2,12 @@
 
 import pytest
 
-from plex_planner.cli import _infer_title_from_scanned, _strip_year_from_title
+from plex_planner.cli import (
+    _detect_disc_format,
+    _infer_title_from_scanned,
+    _parse_volume_label,
+    _strip_year_from_title,
+)
 from plex_planner.models import ScannedDisc, ScannedFile
 
 
@@ -88,3 +93,77 @@ class TestInferTitleFromScanned:
             _make_file("a.mkv", 8000, "Planet Earth III Disc 2"),
         ])]
         assert _infer_title_from_scanned(scanned) == "Planet Earth III"
+
+
+# ---------------------------------------------------------------------------
+# _parse_volume_label
+# ---------------------------------------------------------------------------
+
+
+class TestParseVolumeLabel:
+    def test_frozen_planet_ii_d2(self):
+        assert _parse_volume_label("FROZEN_PLANET_II_D2") == "Frozen Planet II"
+
+    def test_planet_earth_iii_disc3(self):
+        assert _parse_volume_label("PLANET_EARTH_III-Disc3") == "Planet Earth III"
+
+    def test_blade_runner_2049(self):
+        assert _parse_volume_label("BLADE_RUNNER_2049") == "Blade Runner 2049"
+
+    def test_top_gun(self):
+        assert _parse_volume_label("TOP_GUN") == "Top Gun"
+
+    def test_disc_suffix_word_form(self):
+        assert _parse_volume_label("OPPENHEIMER_Disc_1") == "Oppenheimer"
+
+    def test_returns_none_for_short(self):
+        assert _parse_volume_label("AB") is None
+
+    def test_returns_none_for_empty(self):
+        assert _parse_volume_label("") is None
+
+    def test_returns_none_for_none(self):
+        assert _parse_volume_label(None) is None
+
+    def test_preserves_roman_numerals(self):
+        assert _parse_volume_label("ROCKY_IV") == "Rocky IV"
+
+    def test_preserves_mixed_roman(self):
+        assert _parse_volume_label("STAR_WARS_III") == "Star Wars III"
+
+
+# ---------------------------------------------------------------------------
+# _detect_disc_format
+# ---------------------------------------------------------------------------
+
+
+class TestDetectDiscFormat:
+    def _make_disc_info(self, resolutions):
+        from plex_planner.makemkv import DiscInfo, DiscTitle
+
+        titles = [
+            DiscTitle(
+                index=i, name=f"title_{i}", duration_seconds=3600,
+                chapters=10, size_bytes=1_000_000, filename=f"t{i}.mkv",
+                playlist=f"000{i}.mpls", resolution=res,
+                video_codec="Mpeg4",
+            )
+            for i, res in enumerate(resolutions)
+        ]
+        return DiscInfo(disc_name="TEST", disc_type="Blu-ray disc", titles=titles)
+
+    def test_4k_detected(self):
+        info = self._make_disc_info(["3840x2160", "1920x1080"])
+        assert _detect_disc_format(info) == "Blu-ray 4K"
+
+    def test_bluray_hd(self):
+        info = self._make_disc_info(["1920x1080", "1920x1080"])
+        assert _detect_disc_format(info) == "Blu-ray"
+
+    def test_no_titles(self):
+        info = self._make_disc_info([])
+        assert _detect_disc_format(info) is None
+
+    def test_single_4k_title(self):
+        info = self._make_disc_info(["3840x2160"])
+        assert _detect_disc_format(info) == "Blu-ray 4K"

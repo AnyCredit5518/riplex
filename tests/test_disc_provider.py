@@ -195,7 +195,7 @@ class TestConvertFilmEdgeCases:
         film = FilmComparison(title="Empty", releases=[])
         assert _convert_film(film) == []
 
-    def test_release_not_found_exits(self):
+    def test_release_not_found_raises(self):
         film = _oppenheimer_film()
-        with pytest.raises(SystemExit):
+        with pytest.raises(LookupError):
             _convert_film(film, "nonexistent")
