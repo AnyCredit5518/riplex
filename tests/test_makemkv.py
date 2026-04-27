@@ -137,7 +137,7 @@ class TestParseProgress:
 
 
 class TestRunRipMsgDetection:
-    """Verify that MSG:3xxx are captured as errors and MSG:5xxx are not."""
+    """Verify that success/failure is determined by exit code only."""
 
     def _make_mock_proc(self, lines, returncode=0):
         """Create a mock Popen that yields the given lines from stdout."""
@@ -171,8 +171,27 @@ class TestRunRipMsgDetection:
         assert result.output_file == str(fake_mkv)
 
     @patch("plex_planner.makemkv.subprocess.Popen")
-    def test_msg3_treated_as_error(self, mock_popen, tmp_path):
-        """MSG:3xxx (real errors) should cause failure."""
+    def test_msg3_info_with_zero_exit_is_success(self, mock_popen, tmp_path):
+        """MSG:3xxx informational messages with exit code 0 should succeed."""
+        lines = [
+            'MSG:3007,0,0,"Using direct disc access mode","",""',
+            'MSG:3307,0,2,"File 00026.mpls was added as title #0","",""',
+            'MSG:3025,0,3,"Title #00005.m2ts has length of 6 seconds","",""',
+            'MSG:5011,0,0,"Operation successfully completed","",""',
+            'MSG:5036,0,1,"Copy complete. 1 titles saved.","",""',
+        ]
+        mock_popen.return_value = self._make_mock_proc(lines, returncode=0)
+
+        fake_mkv = tmp_path / "title_t00.mkv"
+        fake_mkv.write_bytes(b"\x00" * 100)
+
+        result = run_rip(0, 0, tmp_path, makemkvcon=Path("fake_makemkvcon"))
+        assert result.success is True
+        assert result.error_message == ""
+
+    @patch("plex_planner.makemkv.subprocess.Popen")
+    def test_nonzero_exit_is_failure(self, mock_popen, tmp_path):
+        """Non-zero exit code should report failure regardless of MSG codes."""
         lines = [
             'MSG:3025,0,3,"Error Scsi error - MEDIUM ERROR:NO SEEK COMPLETE","",""',
         ]
@@ -180,7 +199,7 @@ class TestRunRipMsgDetection:
 
         result = run_rip(0, 0, tmp_path, makemkvcon=Path("fake_makemkvcon"))
         assert result.success is False
-        assert "Scsi error" in result.error_message
+        assert "exited with code 1" in result.error_message
 
     @patch("plex_planner.makemkv.subprocess.Popen")
     def test_nonzero_exit_no_msg(self, mock_popen, tmp_path):
@@ -191,3 +210,23 @@ class TestRunRipMsgDetection:
         result = run_rip(0, 0, tmp_path, makemkvcon=Path("fake_makemkvcon"))
         assert result.success is False
         assert "exited with code 1" in result.error_message
+
+    @patch("plex_planner.makemkv.subprocess.Popen")
+    def test_rip_log_written(self, mock_popen, tmp_path):
+        """Per-title makemkvcon log should be written to output dir."""
+        lines = [
+            'MSG:1005,0,1,"MakeMKV started","",""',
+            'MSG:5036,0,1,"Copy complete. 1 titles saved.","",""',
+        ]
+        mock_popen.return_value = self._make_mock_proc(lines, returncode=0)
+
+        fake_mkv = tmp_path / "title_t00.mkv"
+        fake_mkv.write_bytes(b"\x00" * 100)
+
+        run_rip(0, 0, tmp_path, makemkvcon=Path("fake_makemkvcon"))
+
+        log_file = tmp_path / "_makemkvcon_t00.log"
+        assert log_file.exists()
+        content = log_file.read_text(encoding="utf-8")
+        assert "MakeMKV started" in content
+        assert "Copy complete" in content

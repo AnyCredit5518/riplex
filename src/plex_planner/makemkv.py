@@ -341,8 +341,8 @@ def run_rip(
     cmd = [str(exe), "-r", "mkv", source, str(title_index), str(output_dir)]
     log.info("Running: %s", " ".join(cmd))
 
-    errors: list[str] = []
     output_file = ""
+    raw_lines: list[str] = []
 
     proc = subprocess.Popen(
         cmd,
@@ -355,6 +355,7 @@ def run_rip(
         for line in proc.stdout:
             line = line.rstrip("\n\r")
             log.debug("makemkvcon: %s", line)
+            raw_lines.append(line)
 
             # Progress updates
             progress = _parse_progress(line)
@@ -362,37 +363,27 @@ def run_rip(
                 progress.title_index = title_index
                 progress_callback(progress)
 
-            # Detect output filename from MSG
-            if line.startswith("MSG:") and "saved to" in line.lower():
-                # MSG code messages sometimes contain the output path
-                pass
-
-            # Track error messages (MSG:3xxx are actual errors;
-            # MSG:5xxx are informational: evaluation notices, hash tables, etc.)
-            if line.startswith("MSG:3"):
-                parts = _split_robot_line(line[4:])
-                if len(parts) >= 4:
-                    errors.append(parts[3])
-
-            # Detect the output filename from TINFO or the filesystem
-            if line.startswith("CINFO:") or line.startswith("TINFO:"):
-                pass  # Already parsed
-
         proc.wait()
     except Exception:
         proc.kill()
         proc.wait()
         raise
 
+    # Write per-title makemkvcon log to output directory
+    rip_log_path = output_dir / f"_makemkvcon_t{title_index:02d}.log"
+    try:
+        rip_log_path.write_text("\n".join(raw_lines) + "\n", encoding="utf-8")
+    except OSError as exc:
+        log.warning("Failed to write rip log %s: %s", rip_log_path, exc)
+
     # Find the output MKV file
     mkv_files = sorted(output_dir.glob("*.mkv"), key=lambda p: p.stat().st_mtime)
     if mkv_files:
         output_file = str(mkv_files[-1])
 
-    success = proc.returncode == 0 and not errors
-    error_msg = "; ".join(errors) if errors else ""
-
-    if not success and not error_msg:
+    success = proc.returncode == 0
+    error_msg = ""
+    if not success:
         error_msg = f"makemkvcon exited with code {proc.returncode}"
 
     return RipResult(
