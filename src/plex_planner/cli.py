@@ -332,6 +332,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip confirmation prompt.",
     )
     rip_parser.add_argument(
+        "--dry-run", "-n", action="store_true", default=False,
+        help="Show analysis and what would be ripped, then exit without ripping.",
+    )
+    rip_parser.add_argument(
         "--organize", dest="auto_organize", action="store_true", default=False,
         help="Automatically run organize after ripping.",
     )
@@ -730,11 +734,11 @@ def _parse_volume_label(label: str) -> str | None:
     if not label or len(label) < 4:
         return None
 
-    # Strip disc number suffix (e.g. _D2, -Disc3, _Disc_1)
-    cleaned = re.sub(r"[_\s-]D(?:isc[_\s]*)?\d+\b", "", label, flags=re.IGNORECASE)
+    # Strip disc number suffix (e.g. _D2, -Disc3, _Disc_1, " - Disc 1")
+    cleaned = re.sub(r"[\s_-]*D(?:isc[_\s]*)?\d+\b", "", label, flags=re.IGNORECASE)
 
-    # Replace underscores with spaces and title-case
-    cleaned = cleaned.replace("_", " ").strip()
+    # Replace underscores with spaces, strip trailing separators
+    cleaned = cleaned.replace("_", " ").strip().rstrip("- ").strip()
 
     if len(cleaned) < 3:
         return None
@@ -1079,6 +1083,9 @@ async def _run_rip(args: argparse.Namespace) -> int:
     rip_indices_str = ", ".join(str(t.index) for t in rip_titles)
     print(f"\nWill rip {len(rip_titles)} title(s) [{rip_indices_str}] ({total_size:.1f} GB)")
     print(f"Output: {output_dir}")
+
+    if getattr(args, "dry_run", False):
+        return 0
 
     if not getattr(args, "yes", False):
         try:

@@ -131,6 +131,12 @@ class TestParseVolumeLabel:
     def test_preserves_mixed_roman(self):
         assert _parse_volume_label("STAR_WARS_III") == "Star Wars III"
 
+    def test_spaced_dash_disc_suffix(self):
+        assert _parse_volume_label("The Green Planet - Disc 1") == "The Green Planet"
+
+    def test_spaced_dash_disc_suffix_d2(self):
+        assert _parse_volume_label("A Perfect Planet - D2") == "A Perfect Planet"
+
 
 # ---------------------------------------------------------------------------
 # _detect_disc_format
