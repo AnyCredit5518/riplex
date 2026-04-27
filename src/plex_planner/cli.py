@@ -769,6 +769,39 @@ def _detect_disc_format(disc_info) -> str | None:
     return "Blu-ray"
 
 
+def _infer_media_type(disc_info) -> str:
+    """Infer 'movie' or 'tv' from disc title structure.
+
+    Heuristic: if a disc has 2+ non-play-all titles with durations
+    between 15 and 75 minutes, it's likely a TV disc. A single long
+    title (75+ minutes) suggests a movie disc.
+
+    Returns "movie", "tv", or "auto" if ambiguous.
+    """
+    if not disc_info.titles:
+        return "auto"
+
+    # Identify candidate episode titles: substantial duration, low segment count
+    candidates = [
+        t for t in disc_info.titles
+        if t.duration_seconds >= 900  # 15+ minutes
+        and t.segment_count <= 1      # not a play-all
+    ]
+
+    if not candidates:
+        return "auto"
+
+    episode_length = [t for t in candidates if t.duration_seconds < 4500]  # < 75 min
+    movie_length = [t for t in candidates if t.duration_seconds >= 4500]   # >= 75 min
+
+    if len(episode_length) >= 2 and len(movie_length) == 0:
+        return "tv"
+    if len(movie_length) == 1 and len(episode_length) == 0:
+        return "movie"
+
+    return "auto"
+
+
 def _auto_select_release(
     film,
     disc_info,
@@ -979,6 +1012,13 @@ async def _run_rip(args: argparse.Namespace) -> int:
         if disc_format:
             log.info("Auto-detected disc format: %s", disc_format)
 
+    # Infer media type from disc structure if not specified
+    media_type_arg = getattr(args, "media_type", "auto")
+    if media_type_arg == "auto":
+        media_type_arg = _infer_media_type(disc_info)
+        if media_type_arg != "auto":
+            log.info("Inferred media type from disc structure: %s", media_type_arg)
+
     # TMDb lookup
     api_key = get_api_key(getattr(args, "api_key", None))
     try:
@@ -991,7 +1031,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
         request = SearchRequest(
             title=title_arg,
             year=getattr(args, "year", None),
-            media_type=getattr(args, "media_type", "auto"),
+            media_type=media_type_arg,
         )
         result = await plan(request, provider)
     except LookupError as exc:

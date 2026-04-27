@@ -4,6 +4,7 @@ import pytest
 
 from plex_planner.cli import (
     _detect_disc_format,
+    _infer_media_type,
     _infer_title_from_scanned,
     _parse_volume_label,
     _strip_year_from_title,
@@ -182,3 +183,60 @@ class TestDetectDiscFormat:
     def test_single_4k_title(self):
         info = self._make_disc_info(["3840x2160"])
         assert _detect_disc_format(info) == "Blu-ray 4K"
+
+
+# ---------------------------------------------------------------------------
+# _infer_media_type
+# ---------------------------------------------------------------------------
+
+
+class TestInferMediaType:
+    def _make_disc_info(self, title_specs):
+        """Create a DiscInfo from a list of (duration_seconds, segment_count) tuples."""
+        from plex_planner.makemkv import DiscInfo, DiscTitle
+
+        titles = [
+            DiscTitle(
+                index=i, name=f"title_{i}", duration_seconds=dur,
+                chapters=10, size_bytes=1_000_000, filename=f"t{i}.mkv",
+                playlist=f"000{i}.mpls", resolution="1920x1080",
+                video_codec="Mpeg4", segment_count=seg,
+            )
+            for i, (dur, seg) in enumerate(title_specs)
+        ]
+        return DiscInfo(disc_name="TEST", disc_type="Blu-ray disc", titles=titles)
+
+    def test_tv_three_episodes_plus_playall(self):
+        # 3 x ~50 min episodes + 1 play-all (3 segments)
+        info = self._make_disc_info([
+            (3022, 1), (3126, 1), (3076, 1), (9226, 3),
+        ])
+        assert _infer_media_type(info) == "tv"
+
+    def test_movie_single_feature(self):
+        # Single 2-hour movie
+        info = self._make_disc_info([(7200, 1)])
+        assert _infer_media_type(info) == "movie"
+
+    def test_movie_with_short_extras(self):
+        # Movie + short featurettes under 15 min
+        info = self._make_disc_info([
+            (7200, 1), (600, 1), (480, 1), (300, 1),
+        ])
+        assert _infer_media_type(info) == "movie"
+
+    def test_auto_for_ambiguous(self):
+        # Movie-length title + episode-length titles
+        info = self._make_disc_info([
+            (5400, 1), (3000, 1), (3000, 1),
+        ])
+        assert _infer_media_type(info) == "auto"
+
+    def test_auto_for_no_titles(self):
+        info = self._make_disc_info([])
+        assert _infer_media_type(info) == "auto"
+
+    def test_tv_two_episodes(self):
+        # 2 x ~45 min episodes
+        info = self._make_disc_info([(2700, 1), (2700, 1)])
+        assert _infer_media_type(info) == "tv"
