@@ -397,6 +397,68 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip interactive prompts, use best-guess defaults.",
     )
 
+    # --- orchestrate ---
+    orch_parser = subs.add_parser(
+        "orchestrate",
+        help="Multi-disc rip and organize pipeline.",
+    )
+    orch_parser.add_argument(
+        "title", nargs="?", default=None,
+        help="Movie or TV show title (auto-detected from volume label if omitted).",
+    )
+    orch_parser.add_argument(
+        "--drive",
+        default="auto",
+        help="Drive index (e.g. 0), device name (e.g. D:), or 'auto' (default: auto).",
+    )
+    orch_parser.add_argument("--year", type=int, help="Release year.")
+    orch_parser.add_argument(
+        "--type", dest="media_type", choices=["movie", "tv", "auto"],
+        default="auto",
+    )
+    orch_parser.add_argument(
+        "--format", dest="disc_format", default=None,
+        help="Disc format filter for dvdcompare (auto-detected from disc resolution if omitted).",
+    )
+    orch_parser.add_argument(
+        "--release", default=None,
+        help="Regional release: 1-based index or name keyword (default: auto-detect).",
+    )
+    orch_parser.add_argument(
+        "--output", default=None,
+        help="Output root directory (or set PLEX_ROOT env var, or config).",
+    )
+    orch_parser.add_argument(
+        "--yes", "-y", action="store_true", default=False,
+        help="Skip confirmation prompts.",
+    )
+    orch_parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Actually rip and organize (default: dry-run preview only).",
+    )
+    orch_parser.add_argument(
+        "--unmatched",
+        choices=["ignore", "move", "delete", "extras"],
+        default="extras",
+        help="Policy for unmatched files during organize (default: extras).",
+    )
+    orch_parser.add_argument("--json", action="store_true", default=False)
+    orch_parser.add_argument("--api-key", default=None)
+    orch_parser.add_argument(
+        "--verbose", "-v", action="store_true", default=False,
+    )
+    orch_parser.add_argument(
+        "--no-cache", action="store_true", default=False,
+    )
+    orch_parser.add_argument(
+        "--auto",
+        action="store_true",
+        default=False,
+        help="Skip interactive prompts, use best-guess defaults.",
+    )
+
     return parser
 
 
@@ -416,6 +478,8 @@ async def _run(args: argparse.Namespace) -> int:
         return await _run_rip_guide(args)
     if args.command == "rip":
         return await _run_rip(args)
+    if args.command == "orchestrate":
+        return await _run_orchestrate(args)
     # Unknown or missing command
     return 1
 
@@ -1011,6 +1075,24 @@ def _detect_disc_number(
     # Require at least 50% of episodes to match
     if best_score >= 0.5:
         return best_disc
+
+    # Strategy 3: for movies, match by disc format/resolution
+    # If the live disc has 4K content and only one dvdcompare disc is 4K, that's our match
+    live_resolutions = {t.resolution for t in disc_info.titles if t.resolution}
+    has_4k = any("2160" in r for r in live_resolutions)
+    has_1080 = any("1080" in r for r in live_resolutions)
+
+    format_candidates = []
+    for disc in dvdcompare_discs:
+        fmt = (getattr(disc, "disc_format", "") or "").lower()
+        if has_4k and ("4k" in fmt or "uhd" in fmt):
+            format_candidates.append(disc.number)
+        elif has_1080 and not has_4k and "4k" not in fmt and "uhd" not in fmt and "blu" in fmt:
+            format_candidates.append(disc.number)
+
+    if len(format_candidates) == 1:
+        return format_candidates[0]
+
     return None
 
 
@@ -1379,10 +1461,481 @@ async def _run_rip(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+# ---- helpers for disc content summaries ----
+
+def _find_ripped_discs(output_dir: Path) -> set[int]:
+    """Scan output_dir for Disc N subdirectories with a _rip_manifest.json."""
+    ripped: set[int] = set()
+    if not output_dir.exists():
+        return ripped
+    for child in output_dir.iterdir():
+        if child.is_dir() and (child / "_rip_manifest.json").exists():
+            m = re.match(r"Disc\s+(\d+)", child.name, re.IGNORECASE)
+            if m:
+                ripped.add(int(m.group(1)))
+    return ripped
+
+
+def _disc_content_summary(disc) -> str:
+    """Return a short comma-separated summary of a dvdcompare disc's content."""
+    titles = []
+    for ep in disc.episodes:
+        titles.append(ep.title)
+    for ex in disc.extras:
+        titles.append(ex.title)
+    if not titles:
+        return "(no content listed)"
+    # Truncate if too many items
+    if len(titles) > 4:
+        return ", ".join(titles[:4]) + f", ... ({len(titles)} items)"
+    return ", ".join(titles)
+
+
+def _print_disc_overview(
+    dvdcompare_discs: list,
+    release_name: str,
+    ripped_discs: set[int],
+    inserted_disc: int | None,
+) -> None:
+    """Print a formatted overview of all discs in the release."""
+    print(f"\n{release_name} [{len(dvdcompare_discs)} discs]")
+    for disc in dvdcompare_discs:
+        fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
+        summary = _disc_content_summary(disc)
+        status = ""
+        if disc.number in ripped_discs:
+            status = "  [RIPPED]"
+        elif disc.number == inserted_disc:
+            status = "  [INSERTED]"
+        fmt_str = f" ({fmt})" if fmt else ""
+        print(f"  Disc {disc.number}{fmt_str}: {summary}{status}")
+    print()
+
+
+async def _run_orchestrate(args: argparse.Namespace) -> int:
+    """Multi-disc rip and organize pipeline."""
+    import json as json_mod
+    import time
+
+    from plex_planner.makemkv import (
+        find_makemkvcon,
+        run_disc_info,
+        run_drive_list,
+        run_rip,
+    )
+
+    log_file = _setup_logging(verbose=getattr(args, "verbose", False))
+    log.info("plex-planner orchestrate: args=%s", vars(args))
+    print(f"Debug log: {log_file}", file=sys.stderr)
+
+    dry_run = not getattr(args, "execute", False)
+    if dry_run:
+        print(f"\n{_dry_run_banner('rip and organize')}\n")
+    else:
+        print("\n--- EXECUTING ---\n")
+
+    if getattr(args, "no_cache", False):
+        from plex_planner import cache
+        cache.disable()
+
+    # Find makemkvcon
+    exe = find_makemkvcon()
+    if not exe:
+        print("Error: makemkvcon not found. Install MakeMKV or ensure makemkvcon is on PATH.", file=sys.stderr)
+        return 1
+
+    # Resolve drive
+    drive_arg = getattr(args, "drive", "auto") or "auto"
+    if drive_arg == "auto":
+        print("Scanning drives ...", file=sys.stderr)
+        drives = run_drive_list(exe)
+        active = [d for d in drives if d.has_disc]
+        if not active:
+            print("Error: no disc found in any drive.", file=sys.stderr)
+            return 1
+        print(f"Found disc in drive {active[0].index}: {active[0].disc_label} ({active[0].device})", file=sys.stderr)
+        drive_idx = active[0].index
+        volume_label = active[0].disc_label
+    else:
+        try:
+            drive_idx = int(drive_arg)
+        except ValueError:
+            drive_idx = drive_arg
+        volume_label = None
+
+    # Read initial disc info
+    print("Reading disc info ...", file=sys.stderr)
+    try:
+        disc_info = run_disc_info(drive_idx, exe)
+    except (RuntimeError, FileNotFoundError) as exc:
+        print(f"Error reading disc: {exc}", file=sys.stderr)
+        return 1
+
+    if not disc_info.titles:
+        print("Error: no titles found on disc.", file=sys.stderr)
+        return 1
+
+    if volume_label is None:
+        volume_label = disc_info.disc_name or ""
+
+    # Auto-detect title
+    title_arg = getattr(args, "title", None)
+    if not title_arg:
+        title_arg = _parse_volume_label(volume_label)
+        if title_arg:
+            print(f"Auto-detected title from volume label: {title_arg}", file=sys.stderr)
+            title_arg = prompt_text("Title", default=title_arg)
+        else:
+            print("Error: could not detect title from volume label. Provide a title argument.", file=sys.stderr)
+            return 1
+
+    # Auto-detect disc format
+    disc_format = getattr(args, "disc_format", None)
+    if not disc_format:
+        disc_format = _detect_disc_format(disc_info)
+        if disc_format:
+            log.info("Auto-detected disc format: %s", disc_format)
+
+    # Infer media type
+    media_type_arg = getattr(args, "media_type", "auto")
+    if media_type_arg == "auto":
+        media_type_arg = _infer_media_type(disc_info)
+        if media_type_arg != "auto":
+            log.info("Inferred media type from disc structure: %s", media_type_arg)
+
+    # TMDb lookup
+    api_key = get_api_key(getattr(args, "api_key", None))
+    try:
+        provider = TmdbProvider(api_key=api_key)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        request = SearchRequest(
+            title=title_arg,
+            year=getattr(args, "year", None),
+            media_type=media_type_arg,
+        )
+        result = await plan(request, provider)
+    except LookupError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        await provider.close()
+
+    canonical = result.canonical_title
+    year = result.year
+    is_movie = isinstance(result, PlannedMovie)
+    movie_runtime = result.runtime_seconds if is_movie else None
+
+    print(f"TMDb: {canonical} ({year})", file=sys.stderr)
+
+    # dvdcompare lookup
+    release = getattr(args, "release", None)
+    discs: list = []
+    release_name = ""
+    print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+    try:
+        from dvdcompare.scraper import find_film
+        film = await find_film(canonical, disc_format)
+        discs, release_name = _select_dvdcompare_release(
+            film, disc_info=disc_info, preferred=release,
+        )
+    except SystemExit:
+        raise
+    except LookupError as exc:
+        print(f"Error: dvdcompare lookup failed: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Error: dvdcompare lookup failed ({type(exc).__name__}): {exc}", file=sys.stderr)
+        return 1
+
+    if not discs:
+        print("Error: no disc metadata found on dvdcompare.", file=sys.stderr)
+        return 1
+
+    # Output directory
+    output_val = get_output_root(getattr(args, "output", None))
+    if not output_val:
+        print("Error: --output or output_root config required.", file=sys.stderr)
+        return 1
+
+    folder_base = f"{canonical} ({year})"
+    rip_root = Path(output_val) / "_MakeMKV" / folder_base
+
+    # Detect which disc is currently inserted
+    current_disc_num = _detect_disc_number(disc_info, discs)
+
+    # Resume: detect already-ripped discs from manifest files
+    ripped_discs = _find_ripped_discs(rip_root)
+
+    # Show disc overview
+    _print_disc_overview(discs, release_name, ripped_discs, current_disc_num)
+
+    if ripped_discs:
+        ripped_list = ", ".join(str(n) for n in sorted(ripped_discs))
+        print(f"Previously ripped: Disc {ripped_list}", file=sys.stderr)
+
+    # ---- Per-disc rip loop ----
+    any_ripped = len(ripped_discs) > 0
+    any_failed = False
+    disc_order = sorted(discs, key=lambda d: d.number)
+
+    # Start from the inserted disc if possible, otherwise from first unripped
+    if current_disc_num:
+        # Reorder: inserted disc first, then remaining in order
+        start_disc = next((d for d in disc_order if d.number == current_disc_num), None)
+        remaining = [d for d in disc_order if d.number != current_disc_num]
+        disc_order = ([start_disc] if start_disc else []) + remaining
+
+    for disc_idx, disc in enumerate(disc_order):
+        if disc.number in ripped_discs:
+            continue
+
+        # Check if we need the user to insert this disc
+        need_insert = (disc_idx > 0) or (current_disc_num != disc.number)
+
+        if need_insert and not dry_run:
+            summary = _disc_content_summary(disc)
+            fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
+            fmt_str = f" ({fmt})" if fmt else ""
+            print(f"\nInsert Disc {disc.number}{fmt_str}: {summary}")
+            if not prompt_confirm("Disc inserted and ready?"):
+                # User said no, offer skip or finish
+                action = prompt_choice(
+                    "What would you like to do?",
+                    ["Skip this disc", "Finish and organize"],
+                    default=0,
+                )
+                if action == 1:
+                    break
+                continue
+
+            # Re-read disc info after insertion
+            print("Reading disc info ...", file=sys.stderr)
+            try:
+                disc_info = run_disc_info(drive_idx, exe)
+            except (RuntimeError, FileNotFoundError) as exc:
+                print(f"Error reading disc: {exc}", file=sys.stderr)
+                any_failed = True
+                continue
+
+            # Verify disc number
+            detected = _detect_disc_number(disc_info, discs)
+            if detected and detected != disc.number:
+                print(f"Warning: expected Disc {disc.number} but detected Disc {detected}.", file=sys.stderr)
+                if not prompt_confirm("Continue anyway?"):
+                    continue
+
+        # Prompt: rip, skip, or finish
+        if not dry_run:
+            summary = _disc_content_summary(disc)
+            fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
+            fmt_str = f" ({fmt})" if fmt else ""
+            action = prompt_choice(
+                f"Disc {disc.number}{fmt_str}: {summary}",
+                [
+                    "Rip this disc",
+                    "Skip this disc",
+                    "Finish and organize",
+                ],
+                default=0,
+            )
+            if action == 1:
+                continue
+            if action == 2:
+                break
+
+        # In dry-run, we can only analyze the currently-inserted disc.
+        # For other discs, show a placeholder based on dvdcompare metadata.
+        is_current_disc = (disc.number == current_disc_num)
+        output_dir = rip_root / f"Disc {disc.number}"
+
+        if dry_run and not is_current_disc:
+            summary = _disc_content_summary(disc)
+            fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
+            fmt_str = f" ({fmt})" if fmt else ""
+            print(f"\nDisc {disc.number}{fmt_str}: {summary}")
+            print(f"  Would prompt for insertion and rip to: {output_dir}")
+            ripped_discs.add(disc.number)
+            continue
+
+        # Show disc analysis for the currently-inserted disc
+        dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(discs)
+        _print_disc_analysis(disc_info, discs, is_movie, movie_runtime)
+
+        # Filter titles to rip (smart filtering)
+        rip_titles = [
+            t for t in disc_info.titles
+            if not is_skip_title(
+                t, disc_info.titles, is_movie, movie_runtime,
+                total_episode_runtime, episode_count,
+            )
+        ]
+
+        if not rip_titles:
+            print(f"\nNo titles to rip on Disc {disc.number}.", file=sys.stderr)
+            continue
+
+        total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
+        rip_indices_str = ", ".join(str(t.index) for t in rip_titles)
+        print(f"\nWill rip {len(rip_titles)} title(s) [{rip_indices_str}] ({total_size:.1f} GB)")
+        print(f"Output: {output_dir}")
+
+        if dry_run:
+            ripped_discs.add(disc.number)
+            continue
+
+        if not getattr(args, "yes", False):
+            if not prompt_confirm("Proceed?"):
+                continue
+
+        # Rip each title on this disc
+        rip_start = time.monotonic()
+        results = []
+        for i, t in enumerate(rip_titles, 1):
+            print(f"\nRipping title {t.index} ({i}/{len(rip_titles)}): "
+                  f"{_format_seconds(t.duration_seconds)}, "
+                  f"{t.size_bytes / (1024**3):.1f} GB ...")
+
+            title_start = time.monotonic()
+            last_pct = [-1]
+
+            def _progress_cb(progress, _last=last_pct):
+                if progress.max_val > 0:
+                    pct = progress.current * 100 // progress.max_val
+                    if pct != _last[0]:
+                        _last[0] = pct
+                        bar_width = 30
+                        filled = bar_width * pct // 100
+                        bar = "=" * filled + ">" * (1 if filled < bar_width else 0) + " " * (bar_width - filled - 1)
+                        elapsed = time.monotonic() - title_start
+                        elapsed_str = _format_seconds(int(elapsed))
+                        print(f"\r  [{bar}] {pct:3d}%  {elapsed_str}", end="", flush=True)
+
+            rip_result = run_rip(
+                drive_idx, t.index, output_dir,
+                makemkvcon=exe,
+                progress_callback=_progress_cb,
+            )
+
+            elapsed = time.monotonic() - title_start
+            print()  # newline after progress
+
+            results.append(rip_result)
+            if rip_result.success:
+                print(f"  Done: {rip_result.output_file} ({_format_seconds(int(elapsed))})")
+            else:
+                print(f"  FAILED: {rip_result.error_message}", file=sys.stderr)
+                any_failed = True
+
+        # Disc rip summary
+        total_elapsed = time.monotonic() - rip_start
+        succeeded = [r for r in results if r.success]
+        failed = [r for r in results if not r.success]
+
+        print(f"\nDisc {disc.number}: {len(succeeded)} succeeded, {len(failed)} failed"
+              f" ({_format_seconds(int(total_elapsed))})")
+
+        # Write rip manifest
+        if succeeded:
+            manifest = {
+                "title": canonical,
+                "year": year,
+                "type": "movie" if is_movie else "tv",
+                "disc_number": disc.number,
+                "disc_label": volume_label,
+                "format": disc_format,
+                "release": release_name,
+                "files": [],
+            }
+            for r in results:
+                if not r.success:
+                    continue
+                t = next((t for t in disc_info.titles if t.index == r.title_index), None)
+                classification = ""
+                if t:
+                    classification = classify_title(
+                        t, disc_info.titles, dvd_entries,
+                        is_movie, movie_runtime,
+                        total_episode_runtime, episode_count,
+                    )
+                    if " - " in classification:
+                        classification = classification[:classification.rindex(" - ")]
+                manifest["files"].append({
+                    "filename": Path(r.output_file).name if r.output_file else "",
+                    "title_index": r.title_index,
+                    "duration": t.duration_seconds if t else 0,
+                    "resolution": t.resolution if t else "",
+                    "size_bytes": t.size_bytes if t else 0,
+                    "classification": classification,
+                })
+
+            manifest_path = output_dir / "_rip_manifest.json"
+            manifest_path.write_text(json_mod.dumps(manifest, indent=2), encoding="utf-8")
+            log.info("Wrote rip manifest: %s", manifest_path)
+            ripped_discs.add(disc.number)
+            any_ripped = True
+
+    # ---- Summary ----
+    if ripped_discs:
+        ripped_list = ", ".join(str(n) for n in sorted(ripped_discs))
+        print(f"\n{'=' * 60}")
+        print(f"Rip phase complete. Discs ripped: {ripped_list}")
+        print(f"Output: {rip_root}")
+
+    # ---- Organize phase ----
+    if not any_ripped and not ripped_discs:
+        print("\nNo discs were ripped. Nothing to organize.", file=sys.stderr)
+        return 0
+
+    # In dry-run, skip organize if the rip folder doesn't actually exist
+    if dry_run and not rip_root.exists():
+        print(f"\n{'=' * 60}")
+        print("Organize phase (skipped in dry-run, no ripped files yet)")
+        print(f"{'=' * 60}")
+        print(f"\nRe-run with --execute to rip and organize:\n  {_build_execute_command()}")
+        return 0
+
+    print(f"\n{'=' * 60}")
+    print("Organize phase")
+    print(f"{'=' * 60}")
+
+    organize_args = argparse.Namespace(
+        folder=str(rip_root),
+        title=canonical,
+        year=year,
+        media_type="movie" if is_movie else "tv",
+        disc_format=disc_format,
+        release=release_name or "1",
+        output=output_val,
+        execute=not dry_run,
+        json=False,
+        api_key=getattr(args, "api_key", None),
+        unmatched=getattr(args, "unmatched", "extras"),
+        verbose=getattr(args, "verbose", False),
+        no_cache=getattr(args, "no_cache", False),
+        force=False,
+        snapshot=None,
+        auto=True,  # skip interactive prompts in organize since we resolved metadata above
+    )
+    org_result = await _run_organize(organize_args)
+
+    if dry_run:
+        # Replace the organize hint with an orchestrate hint
+        print(f"\nRe-run with --execute to rip and organize:\n  {_build_execute_command()}")
+
+    return org_result if not any_failed else 1
+
+
 def main() -> None:
     # Backward compatibility: if the first arg isn't a known subcommand,
     # default to rip-guide (formerly plan).
-    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide", "rip"}
+    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide", "rip", "orchestrate"}
     if len(sys.argv) > 1 and sys.argv[1] not in _SUBCOMMANDS and sys.argv[1] != "-h" and sys.argv[1] != "--help":
         sys.argv.insert(1, "rip-guide")
 

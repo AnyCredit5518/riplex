@@ -5,14 +5,16 @@ import pytest
 from plex_planner.cli import (
     _build_execute_command,
     _detect_disc_format,
+    _disc_content_summary,
     _dry_run_banner,
     _execute_hint,
+    _find_ripped_discs,
     _infer_media_type,
     _infer_title_from_scanned,
     _parse_volume_label,
     _strip_year_from_title,
 )
-from plex_planner.models import ScannedDisc, ScannedFile
+from plex_planner.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc, ScannedFile
 
 
 # ---------------------------------------------------------------------------
@@ -413,3 +415,78 @@ class TestExecuteHint:
         hint = _execute_hint("rip")
         assert "Re-run with --execute to rip:" in hint
         assert "plex-planner rip --execute" in hint
+
+
+# ---------------------------------------------------------------------------
+# Orchestrate helpers: _disc_content_summary / _find_ripped_discs
+# ---------------------------------------------------------------------------
+
+
+def _make_planned_disc(number, fmt="Blu-ray 4K", episodes=None, extras=None):
+    return PlannedDisc(
+        number=number,
+        disc_format=fmt,
+        episodes=episodes or [],
+        extras=extras or [],
+    )
+
+
+def _ep(title, season=1, episode=1):
+    return PlannedEpisode(
+        season_number=season, episode_number=episode,
+        title=title, runtime="50m", runtime_seconds=3000,
+    )
+
+
+class TestDiscContentSummary:
+    def test_episodes_only(self):
+        disc = _make_planned_disc(1, episodes=[_ep("Ep 1"), _ep("Ep 2", episode=2)])
+        assert _disc_content_summary(disc) == "Ep 1, Ep 2"
+
+    def test_episodes_and_extras(self):
+        disc = _make_planned_disc(1,
+            episodes=[_ep("Ep 1")],
+            extras=[PlannedExtra(title="Behind the Scenes")],
+        )
+        result = _disc_content_summary(disc)
+        assert "Ep 1" in result
+        assert "Behind the Scenes" in result
+
+    def test_truncation(self):
+        disc = _make_planned_disc(1, episodes=[
+            _ep(f"Episode {i}", episode=i)
+            for i in range(1, 7)
+        ])
+        summary = _disc_content_summary(disc)
+        assert "..." in summary
+        assert "6 items" in summary
+
+    def test_empty_disc(self):
+        disc = _make_planned_disc(1)
+        assert _disc_content_summary(disc) == "(no content listed)"
+
+
+class TestFindRippedDiscs:
+    def test_empty_dir(self, tmp_path):
+        assert _find_ripped_discs(tmp_path) == set()
+
+    def test_nonexistent_dir(self, tmp_path):
+        assert _find_ripped_discs(tmp_path / "nope") == set()
+
+    def test_finds_manifests(self, tmp_path):
+        d1 = tmp_path / "Disc 1"
+        d1.mkdir()
+        (d1 / "_rip_manifest.json").write_text("{}")
+        d3 = tmp_path / "Disc 3"
+        d3.mkdir()
+        (d3 / "_rip_manifest.json").write_text("{}")
+        # Disc 2 exists but no manifest
+        d2 = tmp_path / "Disc 2"
+        d2.mkdir()
+        assert _find_ripped_discs(tmp_path) == {1, 3}
+
+    def test_ignores_non_disc_folders(self, tmp_path):
+        other = tmp_path / "Extras"
+        other.mkdir()
+        (other / "_rip_manifest.json").write_text("{}")
+        assert _find_ripped_discs(tmp_path) == set()
