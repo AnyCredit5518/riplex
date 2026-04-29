@@ -17,6 +17,10 @@ from plex_planner.normalize import (
     format_runtime,
     movie_file_name,
 )
+from plex_planner.ui import is_interactive, prompt_choice
+
+
+_MAX_TMDB_CHOICES = 8
 
 
 async def plan(
@@ -46,13 +50,26 @@ async def plan(
     return await _plan_show(best, provider, request)
 
 
+def _format_tmdb_option(r: MetadataSearchResult) -> str:
+    """Format a single TMDb result for display in a numbered list."""
+    year_str = str(r.year) if r.year else "?"
+    overview = r.overview[:80] + "..." if len(r.overview) > 80 else r.overview
+    parts = [f"{r.title} ({year_str}) [{r.media_type}]"]
+    if overview:
+        parts.append(f"  {overview}")
+    return " - ".join(parts) if overview else parts[0]
+
+
 def _pick_best(
     results: list[MetadataSearchResult],
     request: SearchRequest,
 ) -> MetadataSearchResult:
     """Select the best match from search results.
 
-    Prefers exact year match, then exact title match, then first result.
+    In interactive mode, presents a numbered list when the match is
+    ambiguous (multiple exact title matches, or no exact match at all).
+    In non-interactive mode, prefers exact year match, then exact title
+    match by popularity, then first result.
     """
     # If a year was provided, filter to matches first
     if request.year:
@@ -60,12 +77,30 @@ def _pick_best(
         if year_matches:
             results = year_matches
 
-    # Prefer exact title match (case-insensitive)
+    # Find exact title matches (case-insensitive)
     query_lower = request.title.lower()
-    for r in results:
-        if r.title.lower() == query_lower:
-            return r
+    exact = [r for r in results if r.title.lower() == query_lower]
 
+    # Unambiguous: single exact match with year, or only one exact match
+    if len(exact) == 1:
+        return exact[0]
+    if request.year and exact:
+        # Year was provided and we already filtered; first exact match wins
+        return exact[0]
+
+    # Ambiguous or no exact match: prompt in interactive mode
+    if is_interactive():
+        candidates = results[:_MAX_TMDB_CHOICES]
+        # Determine the auto-pick, then reorder so it's first
+        auto_pick = exact[0] if exact else results[0]
+        reordered = [auto_pick] + [r for r in candidates if r is not auto_pick]
+        options = [_format_tmdb_option(r) for r in reordered]
+        chosen = prompt_choice("Select a TMDb match:", options, default=0)
+        return reordered[chosen]
+
+    # Non-interactive fallback: first exact title match, then first result
+    if exact:
+        return exact[0]
     return results[0]
 
 

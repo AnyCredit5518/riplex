@@ -16,6 +16,7 @@ class MetadataSearchResult:
     year: int | None
     media_type: Literal["movie", "tv"]
     overview: str = ""
+    popularity: float = 0.0
 
 
 @dataclass

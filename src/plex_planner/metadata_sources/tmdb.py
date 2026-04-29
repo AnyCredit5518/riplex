@@ -86,7 +86,7 @@ class TmdbProvider(MetadataProvider):
 
         # Sort by descending popularity (TMDb returns popularity-ordered, but
         # we merged two lists).
-        results.sort(key=lambda r: r.overview, reverse=False)
+        results.sort(key=lambda r: r.popularity, reverse=True)
         return results
 
     async def _search_movies(
@@ -109,6 +109,7 @@ class TmdbProvider(MetadataProvider):
                     year=item_year,
                     media_type="movie",
                     overview=item.get("overview", ""),
+                    popularity=item.get("popularity", 0.0),
                 )
             )
         return out
@@ -133,6 +134,7 @@ class TmdbProvider(MetadataProvider):
                     year=item_year,
                     media_type="tv",
                     overview=item.get("overview", ""),
+                    popularity=item.get("popularity", 0.0),
                 )
             )
         return out
