@@ -13,8 +13,10 @@ from plex_planner.snapshot import (
     _dict_to_file,
     _file_to_dict,
     capture,
+    capture_from_scanned,
     load,
     save,
+    save_from_scanned,
 )
 
 
@@ -166,3 +168,48 @@ class TestSaveLoad:
 
         with pytest.raises(ValueError, match="Unsupported snapshot version"):
             load(out)
+
+
+# ---------------------------------------------------------------------------
+# capture_from_scanned / save_from_scanned (no rescan)
+# ---------------------------------------------------------------------------
+
+class TestFromScanned:
+    def test_capture_from_scanned_matches_capture(self, monkeypatch):
+        discs = _make_discs()
+        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+
+        via_scan = capture(Path("/fake/folder"))
+        via_pre = capture_from_scanned(Path("/fake/folder"), discs)
+
+        # Same structure except timestamp
+        assert via_scan["snapshot_version"] == via_pre["snapshot_version"]
+        assert via_scan["source_folder"] == via_pre["source_folder"]
+        assert len(via_scan["groups"]) == len(via_pre["groups"])
+        for g1, g2 in zip(via_scan["groups"], via_pre["groups"]):
+            assert g1["folder_name"] == g2["folder_name"]
+            assert len(g1["files"]) == len(g2["files"])
+
+    def test_save_from_scanned_creates_loadable_file(self, tmp_path):
+        discs = _make_discs()
+        out = tmp_path / "test.snapshot.json"
+        save_from_scanned(Path("/fake/folder"), discs, out)
+
+        loaded = load(out)
+        assert len(loaded) == 2
+        assert loaded[0].folder_name == "Movie Title"
+        assert len(loaded[0].files) == 2
+
+    def test_save_from_scanned_does_not_call_scan(self, tmp_path, monkeypatch):
+        """Confirm save_from_scanned never invokes scan_folder."""
+        def boom(_):
+            raise AssertionError("scan_folder should not be called")
+        monkeypatch.setattr("plex_planner.snapshot.scan_folder", boom)
+
+        discs = _make_discs()
+        out = tmp_path / "no_scan.snapshot.json"
+        save_from_scanned(Path("/fake/folder"), discs, out)
+
+        assert out.exists()
+        loaded = load(out)
+        assert len(loaded) == 2

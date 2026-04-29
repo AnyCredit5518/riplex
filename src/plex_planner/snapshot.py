@@ -42,9 +42,35 @@ def capture(folder: Path) -> dict:
     }
 
 
+def capture_from_scanned(folder: Path, discs: list[ScannedDisc]) -> dict:
+    """Build a snapshot dict from already-scanned data (no rescan)."""
+    return {
+        "snapshot_version": SNAPSHOT_VERSION,
+        "created": datetime.now(timezone.utc).isoformat(),
+        "source_folder": str(folder),
+        "groups": [
+            {
+                "folder_name": disc.folder_name,
+                "files": [_file_to_dict(f) for f in disc.files],
+            }
+            for disc in discs
+        ],
+    }
+
+
 def save(folder: Path, output: Path) -> Path:
     """Scan *folder*, write a snapshot JSON to *output*, return the path."""
     data = capture(folder)
+    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    log.info("Snapshot saved: %s (%d group(s), %d file(s))",
+             output, len(data["groups"]),
+             sum(len(g["files"]) for g in data["groups"]))
+    return output
+
+
+def save_from_scanned(folder: Path, discs: list[ScannedDisc], output: Path) -> Path:
+    """Write a snapshot JSON from already-scanned data, return the path."""
+    data = capture_from_scanned(folder, discs)
     output.write_text(json.dumps(data, indent=2), encoding="utf-8")
     log.info("Snapshot saved: %s (%d group(s), %d file(s))",
              output, len(data["groups"]),
