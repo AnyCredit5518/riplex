@@ -338,7 +338,7 @@ def run_rip(
         source = f"dev:{drive}"
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [str(exe), "-r", "mkv", source, str(title_index), str(output_dir)]
+    cmd = [str(exe), "-r", "--progress=-same", "mkv", source, str(title_index), str(output_dir)]
     log.info("Running: %s", " ".join(cmd))
 
     output_file = ""
