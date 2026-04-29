@@ -40,12 +40,26 @@ When the scanner detects that a file has chapter markers matching the number of 
 
 ## Regional release selection
 
-dvdcompare lists multiple regional releases. By default, the first American release is used. You can specify a different release:
+dvdcompare lists multiple regional releases. In interactive mode (the default when running in a terminal), you will be presented with all available releases to choose from:
+
+```
+Select a dvdcompare release:
+  1. North America (4K Ultra HD) [4 discs] *
+  2. United Kingdom (4K Ultra HD) [4 discs]
+  3. Germany (4K Ultra HD) [3 discs]
+Choice [1-3, default=1]:
+```
+
+Press Enter to accept the default (marked with `*`) or type a number.
+
+You can also specify a release directly:
 
 ```bash
 plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
 plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
 ```
+
+Use `--auto` to skip the prompt and use the best-guess default (American release).
 
 ## Unmatched file policy
 
@@ -130,3 +144,20 @@ plex-planner organize path/to/rips/Oppenheimer --year 2023 --verbose
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 | `--snapshot` | Replay from a snapshot JSON file instead of scanning live files |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
+
+## Interactive mode
+
+When running in a terminal (stdin is a TTY), `organize` presents interactive prompts at several decision points:
+
+1. **Title confirmation**: After inferring the title from the folder name or MKV metadata, you can confirm or correct it.
+2. **TMDb disambiguation**: If multiple TMDb matches exist for the title, a numbered list is shown for selection.
+3. **dvdcompare release**: If multiple regional releases exist, a numbered list is shown (defaults to the American release).
+
+To skip all prompts and use automatic defaults, pass `--auto`:
+
+```bash
+plex-planner organize path/to/rips/Oppenheimer --auto
+```
+
+Non-TTY environments (piped input, cron jobs, CI) are automatically non-interactive.

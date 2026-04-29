@@ -48,11 +48,13 @@ plex-planner rip "Planet Earth II" --drive 0
 
 This will:
 1. Read the disc via makemkvcon
-2. Look up metadata on TMDb and dvdcompare
-3. Show a disc analysis table with rip recommendations
-4. Prompt for confirmation, then rip the selected titles
+2. Confirm the auto-detected title (you can correct it at the prompt)
+3. Look up metadata on TMDb (with disambiguation if multiple matches exist)
+4. Look up disc metadata on dvdcompare (with release selection if multiple regions)
+5. Show a disc analysis table with rip recommendations
+6. Prompt for confirmation, then rip the selected titles
 
-Add `--yes` to skip the confirmation prompt. Use `--titles 1,2,3` to override the auto-selection, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
+Add `--yes` to skip the final rip confirmation prompt. Use `--auto` to also skip all interactive selection prompts (title, TMDb, release). Use `--titles 1,2,3` to override the auto-selection, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
 
 Repeat for each disc in the set, swapping discs between runs.
 

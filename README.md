@@ -54,6 +54,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Useful for debugging, testing, and sharing disc layouts without sharing actual video files
 
 **General**
+- Interactive mode by default: numbered-list prompts for ambiguous TMDb matches, dvdcompare release selection, and title confirmation when running in a terminal. Pass `--auto` to skip all prompts for scripted/scheduled use.
 - File-based JSON caching for dvdcompare (30-day TTL) and TMDb (7-day TTL) responses, stored in the OS cache directory; bypass with `--no-cache`
 - Windows-safe filename normalization
 - Configurable output root via CLI flag, environment variable, or config file

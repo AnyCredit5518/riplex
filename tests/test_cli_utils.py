@@ -3,7 +3,10 @@
 import pytest
 
 from plex_planner.cli import (
+    _build_execute_command,
     _detect_disc_format,
+    _dry_run_banner,
+    _execute_hint,
     _infer_media_type,
     _infer_title_from_scanned,
     _parse_volume_label,
@@ -240,3 +243,173 @@ class TestInferMediaType:
         # 2 x ~45 min episodes
         info = self._make_disc_info([(2700, 1), (2700, 1)])
         assert _infer_media_type(info) == "tv"
+
+
+# ---------------------------------------------------------------------------
+# _pick_best (interactive TMDb selection)
+# ---------------------------------------------------------------------------
+
+from plex_planner.metadata_provider import MetadataSearchResult
+from plex_planner.planner import _pick_best, _format_tmdb_option
+from plex_planner.models import SearchRequest
+from plex_planner import ui
+import plex_planner.planner as _planner_mod
+
+
+def _result(title, year, media_type="tv", popularity=1.0):
+    return MetadataSearchResult(
+        source_id=f"{media_type}:{year}",
+        title=title,
+        year=year,
+        media_type=media_type,
+        overview="",
+        popularity=popularity,
+    )
+
+
+def _set_interactive(monkeypatch, val: bool):
+    """Patch is_interactive in both ui and planner modules."""
+    monkeypatch.setattr(ui, "is_interactive", lambda: val)
+    monkeypatch.setattr(_planner_mod, "is_interactive", lambda: val)
+
+
+class TestPickBest:
+    def test_single_exact_match_no_prompt(self, monkeypatch):
+        """Single exact title match returns immediately, no interactive prompt."""
+        _set_interactive(monkeypatch, True)
+        results = [_result("Dynasties", 2018), _result("American Dynasties", 2019)]
+        req = SearchRequest(title="Dynasties")
+        assert _pick_best(results, req).year == 2018
+
+    def test_exact_title_and_year_no_prompt(self, monkeypatch):
+        """Exact title+year match returns immediately."""
+        _set_interactive(monkeypatch, True)
+        results = [_result("Dynasties", 2018), _result("Dynasties", 2003)]
+        req = SearchRequest(title="Dynasties", year=2018)
+        assert _pick_best(results, req).year == 2018
+
+    def test_multiple_exact_matches_interactive_prompts(self, monkeypatch, capsys):
+        """Multiple exact title matches trigger an interactive prompt."""
+        _set_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "2")
+        results = [
+            _result("Dynasties", 2018, popularity=5.0),
+            _result("Dynasties", 2003, popularity=0.1),
+        ]
+        req = SearchRequest(title="Dynasties")
+        chosen = _pick_best(results, req)
+        assert chosen.year == 2003  # user picked #2
+
+    def test_multiple_exact_matches_noninteractive_picks_first(self, monkeypatch):
+        """Non-interactive mode picks the first exact match (highest popularity)."""
+        _set_interactive(monkeypatch, False)
+        results = [
+            _result("Dynasties", 2018, popularity=5.0),
+            _result("Dynasties", 2003, popularity=0.1),
+        ]
+        req = SearchRequest(title="Dynasties")
+        assert _pick_best(results, req).year == 2018
+
+    def test_no_exact_match_interactive_prompts(self, monkeypatch):
+        """No exact match triggers interactive prompt."""
+        _set_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "1")
+        results = [
+            _result("Dynasty Warriors", 2021, "movie"),
+            _result("Dynasties", 2018),
+        ]
+        req = SearchRequest(title="Dynasty")
+        chosen = _pick_best(results, req)
+        assert chosen.title == "Dynasty Warriors"
+
+    def test_no_exact_match_noninteractive_first_result(self, monkeypatch):
+        """Non-interactive with no exact match returns first result."""
+        _set_interactive(monkeypatch, False)
+        results = [_result("Dynasty Warriors", 2021, "movie")]
+        req = SearchRequest(title="Dynasty")
+        assert _pick_best(results, req).title == "Dynasty Warriors"
+
+
+class TestFormatTmdbOption:
+    def test_format_with_overview(self):
+        r = _result("Dynasties", 2018)
+        r.overview = "David Attenborough explores animal family dynamics"
+        text = _format_tmdb_option(r)
+        assert "Dynasties (2018) [tv]" in text
+        assert "David Attenborough" in text
+
+    def test_truncates_long_overview(self):
+        r = _result("Test", 2020)
+        r.overview = "A" * 100
+        text = _format_tmdb_option(r)
+        assert "..." in text
+
+    def test_no_year(self):
+        r = _result("Unknown", None)
+        text = _format_tmdb_option(r)
+        assert "(?) [tv]" in text
+
+
+# ---------------------------------------------------------------------------
+# _build_execute_command / _dry_run_banner / _execute_hint
+# ---------------------------------------------------------------------------
+
+
+class TestBuildExecuteCommand:
+    def test_basic(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "folder"])
+        assert _build_execute_command() == "plex-planner organize folder --execute"
+
+    def test_quotes_spaces(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "E:\\My Folder\\rip"])
+        result = _build_execute_command()
+        assert '"E:\\My Folder\\rip"' in result
+        assert result.endswith("--execute")
+
+    def test_strips_dry_run(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "--dry-run"])
+        result = _build_execute_command()
+        assert "--dry-run" not in result
+        assert "--execute" in result
+
+    def test_strips_n_flag(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "-n"])
+        result = _build_execute_command()
+        assert "-n" not in result
+        assert "--execute" in result
+
+    def test_no_double_execute(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "--execute"])
+        result = _build_execute_command()
+        assert result.count("--execute") == 1
+
+    def test_strips_exe_path(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", [
+            "C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\plex-planner.exe",
+            "organize", "folder",
+        ])
+        result = _build_execute_command()
+        assert result.startswith("plex-planner ")
+        assert "C:\\Users" not in result
+
+
+class TestDryRunBanner:
+    def test_move_files(self):
+        assert _dry_run_banner("move files") == "--- DRY RUN (pass --execute to move files) ---"
+
+    def test_rip(self):
+        assert _dry_run_banner("rip") == "--- DRY RUN (pass --execute to rip) ---"
+
+
+class TestExecuteHint:
+    def test_organize(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "folder"])
+        hint = _execute_hint("organize")
+        assert "Re-run with --execute to apply these changes:" in hint
+        assert "plex-planner organize folder --execute" in hint
+
+    def test_rip(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["plex-planner", "rip"])
+        hint = _execute_hint("rip")
+        assert "Re-run with --execute to rip:" in hint
+        assert "plex-planner rip --execute" in hint

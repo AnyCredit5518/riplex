@@ -24,11 +24,42 @@ from plex_planner.models import PlannedMovie, SearchRequest
 from plex_planner.organizer import build_organize_plan, execute_plan
 from plex_planner.planner import plan
 from plex_planner.scanner import scan_folder
-from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save as snapshot_save
+from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save as snapshot_save, save_from_scanned as snapshot_save_from_scanned
+from plex_planner.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text, set_auto_mode
 
 log = logging.getLogger(__name__)
 
 _LOG_DIR = Path(tempfile.gettempdir()) / "plex-planner"
+
+
+def _build_execute_command() -> str:
+    """Reconstruct the current CLI invocation with ``--execute`` appended.
+
+    Strips any ``--dry-run`` / ``-n`` flags and quotes arguments that
+    contain spaces so the result is safe to copy/paste.
+    """
+    raw = sys.argv[:]
+    # Remove --dry-run / -n (backwards-compat flag on rip)
+    cleaned = [a for a in raw if a not in ("--dry-run", "-n")]
+    # Don't double-add --execute
+    if "--execute" not in cleaned:
+        cleaned.append("--execute")
+    # Replace full exe path with just the basename
+    if cleaned:
+        cleaned[0] = Path(cleaned[0]).stem
+    parts = [f'"{a}"' if " " in a else a for a in cleaned]
+    return " ".join(parts)
+
+
+def _dry_run_banner(verb: str) -> str:
+    """Return the banner printed at the start of a dry-run."""
+    return f"--- DRY RUN (pass --execute to {verb}) ---"
+
+
+def _execute_hint(subcommand: str) -> str:
+    """Return the end-of-run hint with a copy-pasteable command."""
+    verb = "apply these changes" if subcommand == "organize" else "rip"
+    return f"Re-run with --execute to {verb}:\n  {_build_execute_command()}"
 
 
 def _setup_logging(verbose: bool = False) -> Path:
@@ -136,8 +167,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     org_parser.add_argument(
         "--release",
-        default="america",
-        help="Regional release: 1-based index or name keyword (default: america).",
+        default=None,
+        help="Regional release: 1-based index or name keyword (default: auto-detect).",
     )
     org_parser.add_argument(
         "--output",
@@ -180,6 +211,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--snapshot",
         default=None,
         help="Load a snapshot JSON file instead of scanning a real folder. Forces dry-run mode.",
+    )
+    org_parser.add_argument(
+        "--auto",
+        action="store_true",
+        default=False,
+        help="Skip interactive prompts, use best-guess defaults.",
     )
 
     # --- snapshot ---
@@ -332,8 +369,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip confirmation prompt.",
     )
     rip_parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Actually rip (default: dry-run preview only).",
+    )
+    rip_parser.add_argument(
         "--dry-run", "-n", action="store_true", default=False,
-        help="Show analysis and what would be ripped, then exit without ripping.",
+        help=argparse.SUPPRESS,  # kept for backwards compat; dry-run is now default
     )
     rip_parser.add_argument(
         "--organize", dest="auto_organize", action="store_true", default=False,
@@ -346,6 +389,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     rip_parser.add_argument(
         "--no-cache", action="store_true", default=False,
+    )
+    rip_parser.add_argument(
+        "--auto",
+        action="store_true",
+        default=False,
+        help="Skip interactive prompts, use best-guess defaults.",
     )
 
     return parser
@@ -802,17 +851,20 @@ def _infer_media_type(disc_info) -> str:
     return "auto"
 
 
-def _auto_select_release(
+def _select_dvdcompare_release(
     film,
-    disc_info,
-    preferred: str = "america",
+    disc_info=None,
+    preferred: str | None = None,
 ) -> tuple[list, str]:
-    """Try to auto-select the best dvdcompare release for a disc.
+    """Select the best dvdcompare release for a disc.
 
-    Strategy:
-    1. Try the preferred release keyword (default "america")
-    2. If that fails, score each release by duration matching against the disc
-    3. If duration matching fails, fall back to the first release
+    Selection strategy:
+    1. If *preferred* keyword given, keyword-match against release names.
+       Error + exit if not found.
+    2. If no *preferred*, try duration matching against *disc_info* (rip only).
+    3. Fall back to first release.
+    4. Reorder releases so the recommended one is first.
+    5. If interactive and >1 release, let the user pick from the list.
 
     Returns (PlannedDisc list, release_name) or ([], "").
     """
@@ -821,25 +873,33 @@ def _auto_select_release(
     if not film.releases:
         return [], ""
 
-    # Strategy 1: try preferred release
-    try:
-        selected = select_releases(film.releases, preferred)
-        discs = _convert_film(film, preferred)
-        return discs, selected[0].name
-    except LookupError:
-        pass
+    # --- determine recommended release index ---
+    rec_idx = 0  # 0-based index into film.releases
 
-    # Strategy 2: duration matching across all releases
-    if disc_info and disc_info.titles:
+    if preferred:
+        # Keyword match against release names
+        try:
+            selected = select_releases(film.releases, preferred)
+            rec_idx = next(
+                i for i, r in enumerate(film.releases) if r is selected[0]
+            )
+        except (LookupError, StopIteration):
+            print(f"Error: no release matching '{preferred}'.", file=sys.stderr)
+            print("Available releases:", file=sys.stderr)
+            for i, r in enumerate(film.releases, 1):
+                print(f"  {i}. {r.name}", file=sys.stderr)
+            sys.exit(1)
+    elif disc_info and disc_info.titles:
+        # Duration matching (rip only)
         live_durations = sorted(
             [t.duration_seconds for t in disc_info.titles if t.duration_seconds > 120],
             reverse=True,
         )
         if live_durations:
-            best_release = None
+            best_idx = None
             best_score = -1
 
-            for rel_idx, rel in enumerate(film.releases, 1):
+            for rel_idx, rel in enumerate(film.releases):
                 ep_durations = sorted(
                     [f.runtime_seconds for d in rel.discs for f in d.features
                      if f.runtime_seconds and f.runtime_seconds > 120],
@@ -860,15 +920,35 @@ def _auto_select_release(
                 score = matched / len(ep_durations)
                 if score > best_score:
                     best_score = score
-                    best_release = rel_idx
+                    best_idx = rel_idx
 
-            if best_release and best_score >= 0.3:
-                discs = _convert_film(film, str(best_release))
-                return discs, film.releases[best_release - 1].name
+            if best_idx is not None and best_score >= 0.3:
+                rec_idx = best_idx
 
-    # Strategy 3: fall back to first release
-    discs = _convert_film(film, "1")
-    return discs, film.releases[0].name
+    # --- reorder releases so recommended is first ---
+    releases = [film.releases[rec_idx]] + [
+        r for i, r in enumerate(film.releases) if i != rec_idx
+    ]
+
+    # --- interactive selection ---
+    if is_interactive() and len(releases) > 1:
+        options = []
+        for rel in releases:
+            disc_count = len(rel.discs) if rel.discs else 0
+            disc_word = "disc" if disc_count == 1 else "discs"
+            options.append(f"{rel.name} [{disc_count} {disc_word}]")
+        chosen_idx = prompt_choice(
+            "Select a dvdcompare release:", options, default=0,
+        )
+    else:
+        chosen_idx = 0
+
+    # --- convert chosen release ---
+    chosen_release = releases[chosen_idx]
+    # Find the 1-based index in the original film.releases for _convert_film
+    orig_idx = next(i for i, r in enumerate(film.releases) if r is chosen_release)
+    discs = _convert_film(film, str(orig_idx + 1))
+    return discs, chosen_release.name
 
 
 def _detect_disc_number(
@@ -950,6 +1030,12 @@ async def _run_rip(args: argparse.Namespace) -> int:
     log.info("plex-planner rip: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
+    dry_run = not getattr(args, "execute", False)
+    if dry_run:
+        print(f"\n{_dry_run_banner('rip')}\n")
+    else:
+        print("\n--- EXECUTING ---\n")
+
     if getattr(args, "no_cache", False):
         from plex_planner import cache
         cache.disable()
@@ -1001,6 +1087,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
         title_arg = _parse_volume_label(volume_label)
         if title_arg:
             print(f"Auto-detected title from volume label: {title_arg}", file=sys.stderr)
+            title_arg = prompt_text("Title", default=title_arg)
         else:
             print("Error: could not detect title from volume label. Provide a title argument.", file=sys.stderr)
             return 1
@@ -1048,23 +1135,21 @@ async def _run_rip(args: argparse.Namespace) -> int:
     is_movie = isinstance(result, PlannedMovie)
     movie_runtime = result.runtime_seconds if is_movie else None
 
-    # dvdcompare lookup with auto-release fallback
+    # dvdcompare lookup
     release = getattr(args, "release", None)
     discs: list = []
     release_name = ""
     print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
     try:
-        if release:
-            # Explicit release specified, use it directly
-            discs = await lookup_discs(canonical, disc_format=disc_format, release=release)
-            release_name = release
-        else:
-            # Auto-detect: fetch the film, then pick the best release
-            from dvdcompare.scraper import find_film
-            film = await find_film(canonical, disc_format)
-            discs, release_name = _auto_select_release(film, disc_info)
-            if release_name:
-                print(f"  Selected release: {release_name}", file=sys.stderr)
+        from dvdcompare.scraper import find_film
+        film = await find_film(canonical, disc_format)
+        discs, release_name = _select_dvdcompare_release(
+            film, disc_info=disc_info, preferred=release,
+        )
+        if release_name:
+            print(f"  Selected release: {release_name}", file=sys.stderr)
+    except SystemExit:
+        raise
     except LookupError as exc:
         print(f"Warning: {exc}", file=sys.stderr)
     except Exception as exc:
@@ -1126,16 +1211,13 @@ async def _run_rip(args: argparse.Namespace) -> int:
     print(f"\nWill rip {len(rip_titles)} title(s) [{rip_indices_str}] ({total_size:.1f} GB)")
     print(f"Output: {output_dir}")
 
-    if getattr(args, "dry_run", False):
+    dry_run = not getattr(args, "execute", False)
+    if dry_run:
+        print(f"\n{_execute_hint('rip')}")
         return 0
 
     if not getattr(args, "yes", False):
-        try:
-            answer = input("Proceed? [Y/n] ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\nAborted.", file=sys.stderr)
-            return 1
-        if answer and answer not in ("y", "yes"):
+        if not prompt_confirm("Proceed?"):
             print("Aborted.", file=sys.stderr)
             return 0
 
@@ -1311,6 +1393,7 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
+    set_auto_mode(getattr(args, "auto", False))
     sys.exit(asyncio.run(_run(args)))
 
 
@@ -1319,6 +1402,12 @@ async def _run_organize(args: argparse.Namespace) -> int:
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
     log.info("plex-planner organize: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
+
+    dry_run = not getattr(args, "execute", False)
+    if dry_run:
+        print(f"\n{_dry_run_banner('move files')}\n")
+    else:
+        print("\n--- EXECUTING ---\n")
 
     if getattr(args, "no_cache", False):
         from plex_planner import cache
@@ -1486,6 +1575,11 @@ async def _organize_multi_folder(
         print(f"Scanning {folder} ...", file=sys.stderr)
         try:
             scanned = scan_folder(folder)
+            # Auto-generate snapshot per disc folder if missing
+            snapshot_out = folder / f"{folder.name}.snapshot.json"
+            if not snapshot_out.exists():
+                snapshot_save_from_scanned(folder, scanned, snapshot_out)
+                print(f"Snapshot saved to {snapshot_out}", file=sys.stderr)
             all_scanned.extend(scanned)
         except RuntimeError as exc:
             print(f"Error scanning {folder}: {exc}", file=sys.stderr)
@@ -1514,6 +1608,12 @@ async def _organize_single(
     except RuntimeError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
+
+    # Auto-generate snapshot if one doesn't exist yet
+    snapshot_out = folder / f"{folder.name}.snapshot.json"
+    if not snapshot_out.exists():
+        snapshot_save_from_scanned(folder, scanned, snapshot_out)
+        print(f"Snapshot saved to {snapshot_out}", file=sys.stderr)
 
     return await _organize_with_scanned(
         scanned, title, args, output_root, provider,
@@ -1596,19 +1696,26 @@ async def _organize_with_scanned(
         if inferred and inferred.lower() != title.lower():
             log.debug("Title inferred from MKV title_tag: %r (was %r)", inferred, title)
             title = inferred
+        title = prompt_text("Title", default=title)
 
-    # Auto-detect media type from file durations when mode is "auto":
-    # a feature-length main file (> 90 min) strongly suggests a movie.
-    # 90 min chosen to clear HBO-style long episodes (~70-80 min) while
-    # still catching the shortest typical movies (~100+ min).
+    # Auto-detect media type from file durations when mode is "auto".
+    # Two heuristics:
+    #   TV:    2+ files in the 15-75 min range, none above 75 min
+    #   Movie: a single feature-length file (> 90 min)
     media_type = getattr(args, "media_type", "auto")
     if media_type == "auto":
         all_files = [f for d in scanned for f in d.files]
         if all_files:
-            longest_dur = max(f.duration_seconds for f in all_files)
-            if longest_dur > 5400:  # > 90 minutes
-                media_type = "movie"
-                log.debug("Auto-detected media_type='movie' (longest file %ds)", longest_dur)
+            episode_range = [f for f in all_files if 900 <= f.duration_seconds <= 4500]
+            above_episode = [f for f in all_files if f.duration_seconds > 4500]
+            if len(episode_range) >= 2 and not above_episode:
+                media_type = "tv"
+                log.debug("Auto-detected media_type='tv' (%d episode-length files)", len(episode_range))
+            elif all_files:
+                longest_dur = max(f.duration_seconds for f in all_files)
+                if longest_dur > 5400:  # > 90 minutes
+                    media_type = "movie"
+                    log.debug("Auto-detected media_type='movie' (longest file %ds)", longest_dur)
 
     # Look up TMDb metadata
     try:
@@ -1630,13 +1737,16 @@ async def _organize_with_scanned(
     # Look up dvdcompare disc metadata using TMDb canonical title
     dvdcompare_title = result.canonical_title
     print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+    release = getattr(args, "release", None)
     try:
-        discs = await lookup_discs(
-            dvdcompare_title,
-            disc_format=disc_format,
-            release=getattr(args, "release", "america"),
+        from dvdcompare.scraper import find_film
+        film = await find_film(dvdcompare_title, disc_format)
+        discs, release_name = _select_dvdcompare_release(
+            film, preferred=release,
         )
         print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
+    except SystemExit:
+        raise
     except LookupError as exc:
         print(f"Error: dvdcompare lookup failed: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -1673,12 +1783,11 @@ async def _organize_with_scanned(
     dry_run = not getattr(args, "execute", False)
     unmatched_dir = output_root / "_Unmatched" / title if unmatched_policy == "move" else None
     actions = execute_plan(org_plan, dry_run=dry_run, unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir)
-    if dry_run:
-        print("\n--- DRY RUN (use --execute to move files) ---\n")
-    else:
-        print("\n--- EXECUTING ---\n")
     for line in actions:
         print(line)
+
+    if dry_run:
+        print(f"\n{_execute_hint('organize')}")
 
     # Tag organized files after successful execute
     if not dry_run:

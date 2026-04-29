@@ -4,7 +4,8 @@ Complete reference for all plex-planner subcommands and their options.
 
 ## Global behavior
 
-- **Dry-run by default**: The `organize` command previews changes without moving files. Add `--execute` to apply.
+- **Interactive by default**: When stdin is a terminal, `organize` and `rip` present numbered lists for ambiguous TMDb matches, dvdcompare release selection, and title confirmation. Pass `--auto` to skip all interactive prompts and use best-guess defaults. Non-TTY environments (piped input, cron jobs) are automatically non-interactive.
+- **Dry-run by default**: Both `organize` and `rip` preview changes without acting. Add `--execute` to apply.
 - **Logging**: Every `organize` run writes debug logs to the OS temp directory. Add `--verbose` for stderr output.
 - **Caching**: dvdcompare responses are cached for 30 days, TMDb for 7 days. Use `--no-cache` to bypass.
 
@@ -35,7 +36,7 @@ plex-planner organize <folder> [options]
 | `--year` | Release year |
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`). Auto-detected from resolution if omitted. |
-| `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
@@ -45,6 +46,7 @@ plex-planner organize <folder> [options]
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 | `--snapshot` | Replay from a snapshot JSON file instead of scanning live files |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
 
 ## `rip-guide`
 
@@ -79,16 +81,18 @@ plex-planner rip <title> --drive <drive> [options]
 
 | Option | Description |
 |---|---|
-| `title` | Movie or TV show title (required) |
-| `--drive` | Drive index (`0`), device (`D:`), or `auto` (required) |
+| `title` | Movie or TV show title (auto-detected from volume label if omitted) |
+| `--drive` | Drive index (`0`), device (`D:`), or `auto` (default: `auto`) |
 | `--year` | Release year |
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
-| `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
 | `--titles` | Comma-separated title indices to rip (e.g. `1,2,3`) |
 | `--all` | Rip all titles on the disc |
-| `--yes`, `-y` | Skip confirmation prompt |
+| `--yes`, `-y` | Skip the final rip confirmation prompt |
+| `--execute` | Actually rip (default: dry-run preview only) |
+| `--auto` | Skip interactive prompts (title, TMDb, release selection), use best-guess defaults |
 | `--organize` | Auto-organize ripped files into Plex layout after ripping |
 | `--json` | Output rip results as JSON |
 | `--verbose`, `-v` | Print debug logging to stderr |
