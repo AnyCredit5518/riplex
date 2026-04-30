@@ -1,11 +1,11 @@
-# Rip Guide
+# Lookup
 
-The `rip-guide` command shows disc contents and recommended rip strategy *before* you start ripping in MakeMKV. It looks up TMDb for the canonical title and year, then queries dvdcompare.net for the full disc breakdown.
+The `lookup` command shows disc contents and recommended rip strategy *before* you start ripping in MakeMKV. It looks up TMDb for the canonical title and year, then queries dvdcompare.net for the full disc breakdown.
 
 ## Basic usage
 
 ```bash
-plex-planner rip-guide "Frozen Planet II"
+plex-planner lookup "Frozen Planet II"
 ```
 
 Output:
@@ -42,7 +42,7 @@ Rip tips:
 Add `--create-folders` to create the recommended rip subfolders under your output root:
 
 ```bash
-plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
+plex-planner lookup "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
 This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
@@ -50,7 +50,7 @@ This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` t
 ## Movie with extras
 
 ```bash
-plex-planner rip-guide "Oppenheimer" --year 2023
+plex-planner lookup "Oppenheimer" --year 2023
 ```
 
 For movies, the guide identifies which disc has the main film vs extras, and labels play-all bonus groups appropriately.
@@ -62,13 +62,13 @@ The play-all tip is key: instead of ripping 4 individual episode titles per disc
 ## JSON output
 
 ```bash
-plex-planner rip-guide "Frozen Planet II" --json
+plex-planner lookup "Frozen Planet II" --json
 ```
 
 When combined with `--drive`, the JSON includes a `disc_analysis` object with per-title recommendations:
 
 ```bash
-plex-planner rip-guide "Frozen Planet II" --drive 0 --json
+plex-planner lookup "Frozen Planet II" --drive 0 --json
 ```
 
 ## Live disc analysis
@@ -76,7 +76,7 @@ plex-planner rip-guide "Frozen Planet II" --drive 0 --json
 Add `--drive` to read the physical disc in real time via makemkvcon and cross-reference its titles against dvdcompare metadata.
 
 ```bash
-plex-planner rip-guide "Frozen Planet II" --drive 0
+plex-planner lookup "Frozen Planet II" --drive 0
 ```
 
 The `--drive` flag accepts:

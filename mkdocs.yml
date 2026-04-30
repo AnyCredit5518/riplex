@@ -51,10 +51,8 @@ nav:
   - User Guide:
       - Typical Workflow: guide/workflow.md
       - Orchestrate: guide/orchestrate.md
-      - Rip Guide: guide/rip-guide.md
+      - Lookup: guide/lookup.md
       - Organizing Files: guide/organize.md
-      - Planning: guide/plan.md
-      - Snapshots: guide/snapshot.md
   - CLI Reference: reference/cli.md
   - Architecture: architecture.md
   - Plex Naming Rules: naming-rules.md

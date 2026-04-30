@@ -6,14 +6,14 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 
 ## What it does
 
-plex-planner has four modes, each targeting a different stage of the disc ripping workflow:
+plex-planner has four commands, each targeting a different stage of the disc ripping workflow:
 
 | Command | Stage | What it does |
 |---|---|---|
-| [`rip-guide`](guide/rip-guide.md) | Before ripping | Shows disc contents from dvdcompare, recommends which titles to rip, creates folder structure |
-| [`plan`](guide/plan.md) | Before or after ripping | Looks up TMDb metadata, outputs the Plex folder/filename structure |
+| [`orchestrate`](guide/orchestrate.md) | Full pipeline | Multi-disc rip-then-organize in one session |
+| [`rip`](reference/cli.md#rip) | Ripping | Single-disc rip via makemkvcon with auto title selection |
 | [`organize`](guide/organize.md) | After ripping | Scans MKV files, deduplicates, matches by runtime, moves into Plex layout |
-| [`snapshot`](guide/snapshot.md) | Any time | Captures MKV metadata to JSON for offline replay and debugging |
+| [`lookup`](guide/lookup.md) | Before ripping | Shows disc contents from dvdcompare, recommends which titles to rip, creates folder structure |
 
 ## Quick start
 
@@ -22,7 +22,7 @@ plex-planner has four modes, each targeting a different stage of the disc rippin
 pip install -e ".[dev]"
 
 # See what's on a disc set before ripping
-plex-planner rip-guide "Frozen Planet II"
+plex-planner lookup "Frozen Planet II"
 
 # After ripping, organize into Plex structure (dry-run by default)
 plex-planner organize path/to/rips/Oppenheimer

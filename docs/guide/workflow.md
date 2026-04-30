@@ -30,10 +30,10 @@ If you prefer more control, you can use the individual commands separately.
 
 ## 1. Look up the disc set
 
-Before inserting any disc, run `rip-guide` to see what is on the release:
+Before inserting any disc, run `lookup` to see what is on the release:
 
 ```bash
-plex-planner rip-guide "Planet Earth II"
+plex-planner lookup "Planet Earth II"
 ```
 
 This shows every disc in the set, what episodes and extras are on each disc, and how long each item is. It also gives tips about play-all titles you can rip instead of individual episodes.
@@ -41,7 +41,7 @@ This shows every disc in the set, what episodes and extras are on each disc, and
 If a disc is already in the drive, add `--drive` to include live disc analysis:
 
 ```bash
-plex-planner rip-guide "Planet Earth II" --drive 0
+plex-planner lookup "Planet Earth II" --drive 0
 ```
 
 This reads the disc's title list and cross-references it against dvdcompare metadata, showing which titles to rip and which to skip (play-all compilations, lower-resolution duplicates, etc.).
@@ -51,7 +51,7 @@ This reads the disc's title list and cross-references it against dvdcompare meta
 Add `--create-folders` to pre-create the rip subfolders under your output root:
 
 ```bash
-plex-planner rip-guide "Planet Earth II" --create-folders
+plex-planner lookup "Planet Earth II" --create-folders
 ```
 
 This creates folders like:

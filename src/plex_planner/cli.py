@@ -11,6 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from plex_planner import __version__
 from plex_planner.config import get_api_key, get_archive_root, get_output_root, get_rip_output
 from plex_planner.dedup import find_all_redundant, find_duplicates, remove_duplicates
 from plex_planner.detect import detect_format, detect_incomplete, group_title_folders
@@ -25,7 +26,7 @@ from plex_planner.models import PlannedMovie, SearchRequest
 from plex_planner.organizer import build_organize_plan, execute_plan
 from plex_planner.planner import plan
 from plex_planner.scanner import scan_folder
-from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save as snapshot_save, save_from_scanned as snapshot_save_from_scanned
+from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save_from_scanned as snapshot_save_from_scanned
 from plex_planner.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text, set_auto_mode
 
 log = logging.getLogger(__name__)
@@ -158,9 +159,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plex-planner",
         description=(
-            "Look up Plex-canonical metadata for a movie or TV title and "
-            "output the expected folder structure, filenames, and runtimes."
+            "Rip physical discs and organize MKV files into "
+            "Plex-compatible folder structures."
         ),
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}",
     )
     subs = parser.add_subparsers(dest="command")
 
@@ -239,22 +243,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip interactive prompts, use best-guess defaults.",
     )
 
-    # --- snapshot ---
-    snap_parser = subs.add_parser(
-        "snapshot",
-        help="Capture a metadata snapshot of a MakeMKV rip folder.",
-    )
-    snap_parser.add_argument("folder", help="Path to a MakeMKV rip folder.")
-    snap_parser.add_argument(
-        "-o", "--output",
-        default=None,
-        help="Output file path (default: <folder>.snapshot.json in current directory).",
-    )
-
-    # --- rip-guide ---
+    # --- lookup ---
     guide_parser = subs.add_parser(
-        "rip-guide",
-        help="Show disc contents and recommended rip strategy before ripping.",
+        "lookup",
+        help="Look up disc contents and metadata for a title from TMDb and dvdcompare.",
     )
     guide_parser.add_argument("title", help="Movie or TV show title.")
     guide_parser.add_argument("--year", type=int, help="Release year.")
@@ -320,30 +312,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Omit recommended extras folder skeleton.",
     )
-
-    # --- plan (deprecated alias for rip-guide) ---
-    plan_parser = subs.add_parser(
-        "plan",
-        help="(Deprecated) Alias for rip-guide.",
-    )
-    # Mirror all rip-guide args so plan parses the same CLI.
-    plan_parser.add_argument("title", nargs="?", help="Movie or TV show title.")
-    plan_parser.add_argument("--year", type=int, help="Release year.")
-    plan_parser.add_argument(
-        "--type", dest="media_type", choices=["movie", "tv", "auto"],
-        default="auto",
-    )
-    plan_parser.add_argument("--format", dest="disc_format", default=None)
-    plan_parser.add_argument("--release", default="america")
-    plan_parser.add_argument("--output", default=None)
-    plan_parser.add_argument("--create-folders", action="store_true", default=False)
-    plan_parser.add_argument("--json", action="store_true", default=False)
-    plan_parser.add_argument("--api-key", default=None)
-    plan_parser.add_argument("--drive", default=None)
-    plan_parser.add_argument("--verbose", "-v", action="store_true", default=False)
-    plan_parser.add_argument("--no-cache", action="store_true", default=False)
-    plan_parser.add_argument("--no-specials", action="store_true", default=False)
-    plan_parser.add_argument("--no-extras", action="store_true", default=False)
 
     # --- rip ---
     rip_parser = subs.add_parser(
@@ -496,16 +464,8 @@ def _build_parser() -> argparse.ArgumentParser:
 async def _run(args: argparse.Namespace) -> int:
     if args.command == "organize":
         return await _run_organize(args)
-    if args.command == "snapshot":
-        return _run_snapshot(args)
-    if args.command == "plan":
-        print(
-            "Warning: 'plan' is deprecated, use 'rip-guide' instead.",
-            file=sys.stderr,
-        )
-        return await _run_rip_guide(args)
-    if args.command == "rip-guide":
-        return await _run_rip_guide(args)
+    if args.command == "lookup":
+        return await _run_lookup(args)
     if args.command == "rip":
         return await _run_rip(args)
     if args.command == "orchestrate":
@@ -514,27 +474,10 @@ async def _run(args: argparse.Namespace) -> int:
     return 1
 
 
-def _run_snapshot(args: argparse.Namespace) -> int:
-    """Capture a metadata snapshot of a rip folder."""
-    folder = Path(args.folder)
-    if not folder.is_dir():
-        print(f"Error: not a directory: {folder}", file=sys.stderr)
-        return 1
-
-    if args.output:
-        output = Path(args.output)
-    else:
-        output = Path(f"{folder.name}.snapshot.json")
-
-    snapshot_save(folder, output)
-    print(f"Snapshot saved to {output}")
-    return 0
-
-
-async def _run_rip_guide(args: argparse.Namespace) -> int:
-    """Show disc contents and recommended rip strategy (Tier 1: dvdcompare only)."""
+async def _run_lookup(args: argparse.Namespace) -> int:
+    """Look up disc contents and metadata for a title from TMDb and dvdcompare."""
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
-    log.info("plex-planner rip-guide: args=%s", vars(args))
+    log.info("plex-planner lookup: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
     if getattr(args, "no_cache", False):
@@ -2268,12 +2211,6 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
-    # Backward compatibility: if the first arg isn't a known subcommand,
-    # default to rip-guide (formerly plan).
-    _SUBCOMMANDS = {"plan", "organize", "snapshot", "rip-guide", "rip", "orchestrate"}
-    if len(sys.argv) > 1 and sys.argv[1] not in _SUBCOMMANDS and sys.argv[1] != "-h" and sys.argv[1] != "--help":
-        sys.argv.insert(1, "rip-guide")
-
     parser = _build_parser()
     args = parser.parse_args()
 

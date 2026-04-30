@@ -2,14 +2,12 @@
 
 ## Overview
 
-plex-planner is a Python CLI application with six modes, each targeting a different stage of the disc ripping workflow:
+plex-planner is a Python CLI application with four commands, each targeting a different stage of the disc ripping workflow:
 
 - **`orchestrate`**: The primary workflow. Multi-disc rip-then-organize in a single session. Combines disc detection, dvdcompare lookup, disc selection, ripping, and organizing.
 - **`rip`**: Single-disc rip via makemkvcon. Disc analysis, auto title selection, and optional post-rip organize.
 - **`organize`**: The file organization pipeline. Scans MKV files, deduplicates, looks up TMDb + dvdcompare, matches files by runtime, and moves everything into Plex folder layout.
-- **`rip-guide`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping. Helps users decide which MakeMKV titles to rip vs skip, and creates correct folder structure.
-- **`plan`** *(deprecated)*: Alias for `rip-guide`.
-- **`snapshot`**: Captures MKV metadata to JSON for offline replay and debugging.
+- **`lookup`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping. Helps users decide which MakeMKV titles to rip vs skip, and creates correct folder structure.
 
 ## Metadata provider
 
@@ -20,7 +18,7 @@ The metadata provider is abstracted behind a clean interface (`MetadataProvider`
 ```
 src/plex_planner/
     __init__.py
-    cli.py                  # CLI entry point (orchestrate, rip, organize, rip-guide, snapshot subcommands)
+    cli.py                  # CLI entry point (orchestrate, rip, organize, lookup subcommands)
     config.py               # Config file loading and setting resolution
     models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
     metadata_provider.py    # Abstract provider interface

@@ -9,18 +9,6 @@ Complete reference for all plex-planner subcommands and their options.
 - **Logging**: Every `organize` run writes debug logs to the OS temp directory. Add `--verbose` for stderr output.
 - **Caching**: dvdcompare responses are cached for 30 days, TMDb for 7 days. Use `--no-cache` to bypass.
 
-## `plan` (deprecated)
-
-> **Deprecated**: `plan` is now an alias for `rip-guide`. Use `rip-guide` instead.
-
-Look up a title on TMDb and output the Plex-canonical folder structure and filenames.
-
-```bash
-plex-planner plan <title> [options]
-```
-
-All options are identical to `rip-guide`. A deprecation warning is printed to stderr on each invocation.
-
 ## `orchestrate`
 
 Full multi-disc rip-then-organize pipeline. Insert a disc and orchestrate handles everything: detection, metadata lookup, disc selection, ripping, organizing, and optional archiving.
@@ -76,12 +64,12 @@ plex-planner organize <folder> [options]
 | `--snapshot` | Replay from a snapshot JSON file instead of scanning live files |
 | `--auto` | Skip interactive prompts, use best-guess defaults |
 
-## `rip-guide`
+## `lookup`
 
-Show disc contents and recommended rip strategy before ripping. Optionally reads the physical disc via makemkvcon.
+Look up disc contents and metadata for a title from TMDb and dvdcompare. Optionally reads the physical disc via makemkvcon.
 
 ```bash
-plex-planner rip-guide <title> [options]
+plex-planner lookup <title> [options]
 ```
 
 | Option | Description |

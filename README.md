@@ -51,7 +51,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Debug logging to the OS temp directory on every run; `--verbose` prints to stderr
 - Dry-run preview by default, `--execute` to actually move files
 
-**Rip guide mode (`rip-guide`)**
+**Lookup mode (`lookup`)**
 - Shows disc contents and recommended rip strategy *before* ripping in MakeMKV
 - Looks up TMDb for canonical title/year, then dvdcompare for full disc breakdown
 - Outputs recommended staging folder structure
@@ -61,20 +61,6 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 - Live disc analysis via `--drive` (reads physical disc with makemkvcon)
 - `--create-folders` pre-creates the directory structure for ripping
 - Human-readable text and JSON output modes
-
-**Planning mode (`plan`)** *(deprecated, alias for `rip-guide`)*
-- Identifies whether a title is a movie or TV show via TMDb
-- Outputs Plex-canonical folder structure and filenames
-- Includes episode titles and runtimes for TV shows
-- Includes specials (Season 00) when present
-- Generates optional extras folder skeletons (Featurettes, Interviews, etc.)
-- Human-readable text and JSON output modes
-
-**Snapshot mode (`snapshot`)**
-- Captures a metadata snapshot of a MakeMKV rip folder to a JSON file
-- Records every file's duration, size, streams, chapters, resolution, title tag, and perceptual hash
-- Allows offline replay of the organize workflow (via `organize --snapshot`)
-- Useful for debugging, testing, and sharing disc layouts without sharing actual video files
 
 **General**
 - Interactive mode by default: numbered-list prompts for ambiguous TMDb matches, dvdcompare release selection, and title confirmation when running in a terminal. Pass `--auto` to skip all prompts for scripted/scheduled use.
@@ -480,12 +466,12 @@ Add `--verbose` to also print debug output to stderr:
 plex-planner organize path/to/rips/Oppenheimer --year 2023 --verbose
 ```
 
-### Rip guide: plan before ripping
+### Lookup: plan before ripping
 
-Before inserting a disc, use `rip-guide` to see what's on it and how to rip efficiently:
+Before inserting a disc, use `lookup` to see what's on it and how to rip efficiently:
 
 ```bash
-plex-planner rip-guide "Frozen Planet II"
+plex-planner lookup "Frozen Planet II"
 ```
 
 Output:
@@ -518,38 +504,21 @@ Rip tips:
 
 The play-all tip is key: instead of ripping 4 titles per disc (~130 GB), rip one play-all title per disc (~65 GB). plex-planner's chapter-split logic handles the rest.
 
-### Rip guide: pre-create folder structure
+### Lookup: pre-create folder structure
 
 ```bash
-plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
+plex-planner lookup "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
 This creates the recommended rip folder structure (e.g. `<rip_output>/Blade Runner (1982)/Disc 1/` through `Disc 8/`) so you can point MakeMKV's output at the correct disc subfolder as you rip.
 
-### Rip guide: movie with extras
+### Lookup: movie with extras
 
 ```bash
-plex-planner rip-guide "Oppenheimer" --year 2023
+plex-planner lookup "Oppenheimer" --year 2023
 ```
 
 For movies, the guide identifies which disc has the main film vs extras, and labels play-all bonus groups appropriately.
-
-### Snapshot: capture disc metadata
-
-```bash
-plex-planner snapshot path/to/rips/Oppenheimer
-```
-
-Captures a JSON snapshot of all MKV file metadata (duration, streams, chapters, resolution, title tag, perceptual hash). Useful for:
-
-- Sharing disc layouts for debugging without sharing video files
-- Offline testing of the organize workflow
-- Documenting what was on a disc before organizing
-
-```bash
-# Replay organize against a snapshot (always dry-run)
-plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.json
-```
 
 ## CLI Reference
 
@@ -618,7 +587,7 @@ plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.j
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 
-### `rip-guide` subcommand
+### `lookup` subcommand
 
 | Option | Description |
 |---|---|
@@ -635,26 +604,6 @@ plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.j
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |
 
-### `plan` subcommand *(deprecated, alias for `rip-guide`)*
-
-| Option | Description |
-|---|---|
-| `title` | Movie or TV show title (required) |
-| `--year` | Release year (strongly recommended) |
-| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
-| `--json` | Output as JSON |
-| `--no-specials` | Exclude Season 00 specials |
-| `--no-extras` | Omit extras folder skeleton |
-| `--match` | Match ripped files by duration (format: `file:duration`) |
-| `--api-key` | TMDb API key |
-
-### `snapshot` subcommand
-
-| Option | Description |
-|---|---|
-| `folder` | Path to a MakeMKV rip folder (required) |
-| `-o`, `--output` | Output file path (default: `<folder>.snapshot.json` in current directory) |
-
 ## Running Tests
 
 ```bash
@@ -666,7 +615,7 @@ pytest
 ```
 src/plex_planner/
     __init__.py
-    cli.py                  # CLI entry point (orchestrate, rip, organize, rip-guide, snapshot subcommands)
+    cli.py                  # CLI entry point (orchestrate, rip, organize, lookup subcommands)
     config.py               # Config file loading and setting resolution
     models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
     metadata_provider.py    # Abstract provider interface

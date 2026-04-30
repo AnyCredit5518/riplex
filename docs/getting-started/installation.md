@@ -7,7 +7,7 @@
 - ffprobe (from ffmpeg, required for `organize` mode)
 - mkvmerge (from MKVToolNix, required for chapter splitting in `organize` mode)
 - mkvpropedit (from MKVToolNix, required for organized tagging in `organize` mode)
-- [dvdcompare-scraper](https://github.com/OWNER/dvdcompare-scraper) (sibling project, required for `organize` and `rip-guide` modes)
+- [dvdcompare-scraper](https://github.com/OWNER/dvdcompare-scraper) (sibling project, required for `organize` and `lookup` modes)
 
 ## Install from source
 
@@ -24,7 +24,7 @@ This installs the `plex-planner` CLI command and all dependencies including test
 plex-planner --help
 ```
 
-You should see the four subcommands: `plan`, `organize`, `rip-guide`, and `snapshot`.
+You should see the four subcommands: `orchestrate`, `rip`, `organize`, and `lookup`.
 
 ## External tools
 
