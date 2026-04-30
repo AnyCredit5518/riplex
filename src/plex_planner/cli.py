@@ -477,6 +477,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Skip interactive prompts, use best-guess defaults.",
     )
+    orch_parser.add_argument(
+        "--discs", default=None,
+        help="Comma-separated disc numbers to rip (e.g. '1,3'). Skips others.",
+    )
+    orch_parser.add_argument(
+        "--snapshot",
+        action="store_true",
+        default=False,
+        help="Scan disc and write manifest without ripping. Useful to regenerate manifests for already-ripped files.",
+    )
 
     return parser
 
@@ -1632,8 +1642,11 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     log.info("plex-planner orchestrate: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
-    dry_run = not getattr(args, "execute", False)
-    if dry_run:
+    snapshot_mode = getattr(args, "snapshot", False)
+    dry_run = not getattr(args, "execute", False) and not snapshot_mode
+    if snapshot_mode:
+        print("\n--- SNAPSHOT MODE (scan + write manifest, no rip) ---\n")
+    elif dry_run:
         print(f"\n{_dry_run_banner('rip and organize')}\n")
     else:
         print("\n--- EXECUTING ---\n")
@@ -1658,10 +1671,21 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         if not active:
             print("Error: no disc found in any drive.", file=sys.stderr)
             return 1
-        print(f"Found disc in drive {active[0].index}: {active[0].disc_label} ({active[0].device})", file=sys.stderr)
-        drive_idx = active[0].index
-        drive_device = active[0].device  # resolved at runtime from drive scan
-        volume_label = active[0].disc_label
+        if len(active) > 1 and is_interactive():
+            # Multiple drives have discs, let user choose
+            print(f"Found {len(active)} drives with discs:", file=sys.stderr)
+            chosen = prompt_choice(
+                "Which drive to use?",
+                [f"Drive {d.index}: {d.disc_label} ({d.device})" for d in active],
+                default=0,
+            )
+            selected = active[chosen]
+        else:
+            selected = active[0]
+        print(f"Found disc in drive {selected.index}: {selected.disc_label} ({selected.device})", file=sys.stderr)
+        drive_idx = selected.index
+        drive_device = selected.device  # resolved at runtime from drive scan
+        volume_label = selected.disc_label
     else:
         try:
             drive_idx = int(drive_arg)
@@ -1797,6 +1821,41 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     any_failed = False
     disc_order = sorted(discs, key=lambda d: d.number)
 
+    # Filter discs based on --discs flag or interactive prompt
+    discs_arg = getattr(args, "discs", None)
+    if discs_arg:
+        # Parse comma-separated disc numbers
+        try:
+            selected_nums = {int(x.strip()) for x in discs_arg.split(",")}
+        except ValueError:
+            print("Error: --discs must be comma-separated numbers (e.g. '1,3').", file=sys.stderr)
+            return 1
+        disc_order = [d for d in disc_order if d.number in selected_nums]
+        if not disc_order:
+            print("Error: none of the specified disc numbers match this release.", file=sys.stderr)
+            return 1
+    elif is_interactive() and not snapshot_mode and len(disc_order) > 1:
+        # Interactive disc selection when multiple discs exist
+        unripped = [d for d in disc_order if d.number not in ripped_discs]
+        if len(unripped) > 1:
+            from plex_planner.ui import prompt_multi_select
+            options = []
+            for d in unripped:
+                summary = _disc_content_summary(d)
+                fmt = d.disc_format if hasattr(d, "disc_format") and d.disc_format else ""
+                fmt_str = f" ({fmt})" if fmt else ""
+                options.append(f"Disc {d.number}{fmt_str}: {summary}")
+            selected_indices = prompt_multi_select(
+                "Which discs do you want to rip?",
+                options,
+                defaults=list(range(len(options))),  # all selected by default
+            )
+            if selected_indices is not None:
+                selected_discs = [unripped[i] for i in selected_indices]
+                # Keep already-ripped discs in order (they'll be skipped anyway)
+                # and replace unripped portion with selection
+                disc_order = [d for d in disc_order if d.number in ripped_discs] + selected_discs
+
     # Start from the inserted disc if possible, otherwise from first unripped
     if current_disc_num:
         # Reorder: inserted disc first, then remaining in order
@@ -1860,7 +1919,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
                     continue
 
         # Prompt: rip, skip, or finish
-        if not dry_run:
+        if not dry_run and not snapshot_mode:
             summary = _disc_content_summary(disc)
             fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
             fmt_str = f" ({fmt})" if fmt else ""
@@ -1916,6 +1975,45 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         rip_indices_str = ", ".join(str(t.index) for t in rip_titles)
         print(f"\nWill rip {len(rip_titles)} title(s) [{rip_indices_str}] ({total_size:.1f} GB)")
         print(f"Output: {output_dir}")
+
+        # --snapshot: write manifest from disc info without ripping
+        if snapshot_mode:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "title": canonical,
+                "year": year,
+                "type": "movie" if is_movie else "tv",
+                "disc_number": disc.number,
+                "disc_label": volume_label,
+                "format": disc_format,
+                "release": release_name,
+                "files": [],
+            }
+            for t in rip_titles:
+                classification = classify_title(
+                    t, disc_info.titles, dvd_entries,
+                    is_movie, movie_runtime,
+                    total_episode_runtime, episode_count,
+                )
+                if " - " in classification:
+                    classification = classification[:classification.rindex(" - ")]
+                manifest["files"].append({
+                    "filename": f"{canonical.replace(' ', '_')}_t{t.index:02d}.mkv",
+                    "title_index": t.index,
+                    "duration": t.duration_seconds,
+                    "resolution": t.resolution,
+                    "size_bytes": t.size_bytes,
+                    "classification": classification,
+                    "stream_count": t.stream_count,
+                    "stream_fingerprint": build_stream_fingerprint(t),
+                    "chapter_count": t.chapters,
+                    "chapter_durations": [],
+                })
+            manifest_path = output_dir / "_rip_manifest.json"
+            manifest_path.write_text(json_mod.dumps(manifest, indent=2), encoding="utf-8")
+            print(f"Snapshot manifest written: {manifest_path}", file=sys.stderr)
+            ripped_discs.add(disc.number)
+            continue
 
         if dry_run:
             ripped_discs.add(disc.number)
@@ -2052,6 +2150,10 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         print(f"Output: {rip_root}")
 
     # ---- Organize phase ----
+    if snapshot_mode:
+        print(f"\nSnapshot complete. Manifests written to: {rip_root}", file=sys.stderr)
+        return 0
+
     if not any_ripped and not ripped_discs:
         print("\nNo discs were ripped. Nothing to organize.", file=sys.stderr)
         return 0

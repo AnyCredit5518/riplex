@@ -154,3 +154,64 @@ def prompt_text(
         return default
 
     return raw if raw else default
+
+
+def prompt_multi_select(
+    header: str,
+    options: list[str],
+    *,
+    defaults: list[int] | None = None,
+) -> list[int] | None:
+    """Show a numbered list and let the user select multiple items.
+
+    Parameters
+    ----------
+    header:
+        A short label printed above the list.
+    options:
+        Display strings for each option.
+    defaults:
+        0-based indices selected by default (returned in non-interactive mode).
+
+    Returns
+    -------
+    list[int] | None
+        The 0-based indices of the selected options, or None if cancelled.
+    """
+    if not options:
+        return defaults
+
+    if defaults is None:
+        defaults = list(range(len(options)))
+
+    if not is_interactive():
+        return defaults
+
+    print(f"\n{header}")
+    for i, opt in enumerate(options):
+        print(f"  {i + 1}. {opt}")
+
+    print(f"\nEnter disc numbers separated by commas, 'all' for all, or 'none' to skip.")
+    while True:
+        try:
+            raw = input(f"Selection [default=all]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return defaults
+
+        if not raw or raw == "all":
+            return list(range(len(options)))
+
+        if raw == "none":
+            return []
+
+        try:
+            selected = [int(x.strip()) - 1 for x in raw.split(",")]
+        except ValueError:
+            print("  Enter numbers separated by commas (e.g. '1,3'), 'all', or 'none'.")
+            continue
+
+        if all(0 <= s < len(options) for s in selected):
+            return selected
+
+        print(f"  Numbers must be between 1 and {len(options)}.")
