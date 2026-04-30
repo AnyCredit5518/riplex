@@ -67,4 +67,6 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: false
       - uses: pypa/gh-action-pypi-publish@release/v1
