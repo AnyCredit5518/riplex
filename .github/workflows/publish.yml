@@ -1,11 +1,13 @@
-name: Auto-tag and publish
+name: Publish to PyPI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
 
 jobs:
   tag:
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -35,13 +37,14 @@ jobs:
           git push origin "${{ steps.bump.outputs.tag }}"
 
   build:
+    if: always() && !failure() && !cancelled()
     needs: tag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ needs.tag.outputs.tag }}
+          ref: ${{ needs.tag.outputs.tag || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -63,4 +66,5 @@ jobs:
         with:
           name: dist
           path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
       - uses: pypa/gh-action-pypi-publish@release/v1
