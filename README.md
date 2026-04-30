@@ -29,13 +29,13 @@ pip install -e ".[dev]"
 
 ### Configure
 
-Create a config file at `%APPDATA%\riplex\config.toml` (Windows) or `~/.config/riplex/config.toml`:
+Run the interactive setup wizard:
 
-```toml
-tmdb_api_key = "your_key_here"
-output_root = "E:/Media"
-rip_output = "E:/Media/Rips"
+```bash
+riplex setup
 ```
+
+This walks you through creating your config file (TMDb API key, output paths) and checks that required tools are on PATH. It also runs automatically the first time you use any command.
 
 Get a free TMDb API key at https://www.themoviedb.org/settings/api.
 

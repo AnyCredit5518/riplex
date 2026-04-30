@@ -117,15 +117,21 @@ riplex rip <title> --drive <drive> [options]
 
 When neither `--titles` nor `--all` is specified, the command auto-selects titles using disc analysis (skipping play-all compilations, lower-resolution duplicates, and very short titles).
 
-## `snapshot`
+## `setup`
 
-Capture MKV metadata to a JSON file for offline replay and debugging.
+Interactive setup wizard to create or update the config file.
 
 ```bash
-riplex snapshot <folder> [options]
+riplex setup
 ```
 
-| Option | Description |
-|---|---|
-| `folder` | Path to a MakeMKV rip folder (required) |
-| `-o`, `--output` | Output file path (default: `<folder>.snapshot.json` in current directory) |
+Prompts for:
+
+- TMDb API key
+- Plex library root (output_root)
+- MakeMKV rip output folder (rip_output)
+- Archive root (optional)
+
+Also checks that `makemkvcon`, `ffprobe`, `mkvmerge`, and `mkvpropedit` are available on PATH.
+
+Runs automatically on first use if no config file exists.
