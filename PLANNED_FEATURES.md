@@ -1,40 +1,16 @@
 # Planned Features
 
-## Orchestrate Mode (Rip + Organize Pipeline)
+## Recently Implemented
 
-A new `plex-planner orchestrate` command (or `rip --orchestrate`) that handles
-the full multi-disc rip-then-organize workflow in a single session.
+### Orchestrate Mode
 
-### How it would work
+The `plex-planner orchestrate` command is now fully implemented. It handles
+the complete multi-disc rip-then-organize workflow in a single session:
+insert a disc, auto-detect the title, look up dvdcompare for disc contents,
+select which discs to rip, rip each one with disc-swap prompts, then
+organize all files into Plex folder structure.
 
-1. User inserts Disc 1 and runs orchestrate.
-2. plex-planner identifies the title, looks up dvdcompare, and sees how many
-   discs the release has (e.g. "4 discs" for The Green Planet UK release).
-3. Rips the current disc.
-4. After each disc, prompts: "Rip next disc (Disc 2: Desert Worlds, Human
-   Worlds, On Location), or finish and organize now?"
-   - The prompt should describe what content is on the next disc so the user
-     knows which physical disc to insert, especially useful for boxsets where
-     disc numbering may not be printed clearly.
-   - Users often skip standard Blu-ray copies (Discs 3-4 in a 4K set) or
-     bonus discs, so ending early is a first-class option.
-5. When the user chooses to finish, runs organize on the complete rip folder.
-
-### Key details
-
-- dvdcompare already provides per-disc content listings, so we know what
-  episodes/features are on each disc.
-- The disc number in the volume label (e.g. "The Green Planet - Disc 2") can
-  be cross-referenced against the dvdcompare disc listing to confirm the right
-  disc is inserted.
-- If the user inserts the wrong disc, warn them and ask again.
-- Support resuming: if the rip folder already has Disc 1, detect that and
-  start from Disc 2.
-- Support skipping individual discs, not just stopping early. For example, a
-  UHD Blu-ray set might have Disc 1 (4K), Disc 2 (standard Blu-ray), and
-  Disc 3 (bonus features). A user might want to rip 1, skip 2, rip 3. Or
-  skip 1, rip 2, skip 3. The prompt after each disc should offer "rip next
-  disc," "skip next disc," or "finish and organize."
+See the orchestrate guide in the docs for full usage details.
 
 
 ## Multi-Resolution Support (4K + Standard Blu-ray)

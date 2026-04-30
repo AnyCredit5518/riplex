@@ -2,6 +2,32 @@
 
 This page walks through the recommended end-to-end workflow for ripping a disc set and organizing it into Plex.
 
+## Recommended: Use `orchestrate`
+
+The simplest approach is the `orchestrate` command, which handles everything in one session:
+
+```bash
+plex-planner orchestrate --execute
+```
+
+This will:
+1. Detect the inserted disc and auto-detect the title from the volume label
+2. Look up TMDb and dvdcompare for disc metadata
+3. Show which discs are in the release and let you select which to rip
+4. Rip each disc (with disc-swap prompts between them)
+5. Organize all files into Plex folder structure
+6. Optionally archive the rip folder
+
+For scripted or unattended use, add `--auto` to skip all prompts.
+
+See the [Orchestrate guide](orchestrate.md) for full details.
+
+---
+
+## Manual workflow (step by step)
+
+If you prefer more control, you can use the individual commands separately.
+
 ## 1. Look up the disc set
 
 Before inserting any disc, run `rip-guide` to see what is on the release:
@@ -31,9 +57,9 @@ plex-planner rip-guide "Planet Earth II" --create-folders
 This creates folders like:
 
 ```
-<output_root>/_MakeMKV/Planet Earth II (2016)/Disc 1/
-<output_root>/_MakeMKV/Planet Earth II (2016)/Disc 2/
-<output_root>/_MakeMKV/Planet Earth II (2016)/Disc 3/
+<rip_output>/Planet Earth II (2016)/Disc 1/
+<rip_output>/Planet Earth II (2016)/Disc 2/
+<rip_output>/Planet Earth II (2016)/Disc 3/
 ```
 
 This step is optional when using `plex-planner rip`, which creates output folders automatically.

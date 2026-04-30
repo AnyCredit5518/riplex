@@ -21,6 +21,34 @@ plex-planner plan <title> [options]
 
 All options are identical to `rip-guide`. A deprecation warning is printed to stderr on each invocation.
 
+## `orchestrate`
+
+Full multi-disc rip-then-organize pipeline. Insert a disc and orchestrate handles everything: detection, metadata lookup, disc selection, ripping, organizing, and optional archiving.
+
+```bash
+plex-planner orchestrate [options]
+```
+
+| Option | Description |
+|---|---|
+| `--title` | Movie or TV show title (auto-detected from volume label if omitted) |
+| `--drive` | Drive index (`0`), device (`D:`), or `auto` (default: `auto`) |
+| `--year` | Release year |
+| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--format` | Disc format filter for dvdcompare (auto-detected from disc resolution if omitted) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
+| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--execute` | Actually rip and organize (default: dry-run preview only) |
+| `--unmatched` | Policy for unmatched files during organize: `ignore`, `move`, `delete`, or `extras` (default: `extras`) |
+| `--discs` | Comma-separated disc numbers to rip (e.g. `1,3`). Skips others. |
+| `--snapshot` | Scan disc and write manifest without ripping |
+| `--yes`, `-y` | Skip confirmation prompts |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
+| `--json` | Output as JSON |
+| `--verbose`, `-v` | Print debug logging to stderr |
+| `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--api-key` | TMDb API key |
+
 ## `organize`
 
 Scan MakeMKV rip folders, deduplicate, match files to metadata, and move into Plex layout.

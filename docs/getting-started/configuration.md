@@ -21,6 +21,8 @@ Example:
 ```toml
 tmdb_api_key = "your_api_key_here"
 output_root = "/path/to/media"
+rip_output = "/path/to/media/Rips"
+archive_root = "/path/to/media/Rips/_archive"
 ```
 
 ## Settings
@@ -29,3 +31,5 @@ output_root = "/path/to/media"
 |---|---|---|---|---|
 | TMDb API key | `--api-key` | `TMDB_API_KEY` | `tmdb_api_key` | Required for all commands |
 | Output root | `--output` | `PLEX_ROOT` | `output_root` | Root directory for organized output. Plex subfolders like `Movies/` and `TV Shows/` are created under this. |
+| Rip output | `--output` | - | `rip_output` | Directory for MakeMKV rip output. Default: `{output_root}/Rips`. Used by `rip` and `orchestrate`. |
+| Archive root | - | - | `archive_root` | Directory to move rip folders after successful organize. Optional; if not set, rip folders are left in place. |

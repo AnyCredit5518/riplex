@@ -50,6 +50,7 @@ nav:
       - Configuration: getting-started/configuration.md
   - User Guide:
       - Typical Workflow: guide/workflow.md
+      - Orchestrate: guide/orchestrate.md
       - Rip Guide: guide/rip-guide.md
       - Organizing Files: guide/organize.md
       - Planning: guide/plan.md

@@ -6,14 +6,28 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 
 ## Features
 
-**Planning mode (`plan`)**
-- Identifies whether a title is a movie or TV show via TMDb
-- Outputs Plex-canonical folder structure and filenames
-- Includes episode titles and runtimes for TV shows
-- Includes specials (Season 00) when present
-- Generates optional extras folder skeletons (Featurettes, Interviews, etc.)
-- Optional runtime-based matching of ripped files to episodes
-- Human-readable text and JSON output modes
+**Orchestrate mode (`orchestrate`)**
+- Full multi-disc rip-then-organize pipeline in a single command
+- Auto-detects title from disc volume label (no arguments required)
+- Looks up dvdcompare for disc contents, shows what is on each disc
+- Select which discs to rip (skip standard Blu-ray copies, bonus discs, etc.)
+- Resumes from previously ripped discs (detects existing rip folders)
+- Disc-swap prompts with content descriptions between discs
+- Live disc analysis: title classification, rip/skip recommendations, size estimates
+- After ripping, automatically organizes all files into Plex folder structure
+- Archives the rip folder to a configurable location after organize (optional)
+- Dry-run preview by default, `--execute` to actually rip and organize
+- `--snapshot` mode: scan disc and write manifest without ripping (useful for already-ripped files)
+- `--auto` mode: skip all interactive prompts for scripted/scheduled use
+
+**Rip mode (`rip`)**
+- Rip selected titles from a physical disc using makemkvcon
+- Live disc analysis with title classification (main film, episodes, extras, duplicates, play-all)
+- Auto-selects titles to rip (skips play-all compilations, lower-resolution duplicates, very short titles)
+- Manual title selection via `--titles` or `--all`
+- Auto-detects title from disc volume label
+- Optional post-rip organize with `--organize`
+- Dry-run preview by default, `--execute` to actually rip
 
 **Organize mode (`organize`)**
 - Scans MakeMKV rip folders and extracts MKV metadata via ffprobe
@@ -40,11 +54,20 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 **Rip guide mode (`rip-guide`)**
 - Shows disc contents and recommended rip strategy *before* ripping in MakeMKV
 - Looks up TMDb for canonical title/year, then dvdcompare for full disc breakdown
-- Outputs recommended staging folder structure: `<output_root>/_MakeMKV/Title (Year)/Disc N/`
+- Outputs recommended staging folder structure
 - Per-disc content listings with runtimes, chapter counts, and feature types
 - Identifies film discs, extras discs, and play-all groups
 - Suggests which MakeMKV titles to rip vs skip (play-all detection, duplicate avoidance)
+- Live disc analysis via `--drive` (reads physical disc with makemkvcon)
 - `--create-folders` pre-creates the directory structure for ripping
+- Human-readable text and JSON output modes
+
+**Planning mode (`plan`)** *(deprecated, alias for `rip-guide`)*
+- Identifies whether a title is a movie or TV show via TMDb
+- Outputs Plex-canonical folder structure and filenames
+- Includes episode titles and runtimes for TV shows
+- Includes specials (Season 00) when present
+- Generates optional extras folder skeletons (Featurettes, Interviews, etc.)
 - Human-readable text and JSON output modes
 
 **Snapshot mode (`snapshot`)**
@@ -63,6 +86,7 @@ Given a movie or TV show title, plex-planner looks up canonical metadata (title,
 
 - Python 3.11+
 - A TMDb API key (free at https://www.themoviedb.org/settings/api)
+- MakeMKV with makemkvcon (required for `rip` and `orchestrate` modes)
 - ffprobe (from ffmpeg, required for `organize` mode)
 - mkvmerge (from MKVToolNix, required for chapter splitting in `organize` mode)
 - mkvpropedit (from MKVToolNix, required for organized tagging in `organize` mode)
@@ -82,12 +106,16 @@ Create a config file at `%APPDATA%\plex-planner\config.toml` (Windows) or `~/.co
 ```toml
 tmdb_api_key = "your_api_key_here"
 output_root = "/path/to/media"
+rip_output = "/path/to/media/Rips"
+archive_root = "/path/to/media/Rips/_archive"
 ```
 
 | Key | Description |
 |---|---|
 | `tmdb_api_key` | TMDb API key |
 | `output_root` | Root directory for organized output. Plex subfolders like `Movies\` and `TV Shows\` are created under this. |
+| `rip_output` | Directory for MakeMKV rip output. Default: `{output_root}/Rips`. Used by `rip` and `orchestrate`. |
+| `archive_root` | Directory to move rip folders after successful organize. Optional; if not set, rip folders are left in place. |
 
 Both settings can also be provided via environment variables or CLI flags:
 
@@ -95,10 +123,103 @@ Both settings can also be provided via environment variables or CLI flags:
 |---|---|---|---|
 | TMDb API key | `--api-key` | `TMDB_API_KEY` | `tmdb_api_key` |
 | Output root | `--output` | `PLEX_ROOT` | `output_root` |
+| Rip output | `--output` | - | `rip_output` |
+| Archive root | - | - | `archive_root` |
 
 Priority order: CLI flag > environment variable > config file.
 
 ## Usage
+
+### Orchestrate: full multi-disc rip and organize
+
+Insert a disc and run with no arguments (title auto-detected from volume label):
+
+```bash
+plex-planner orchestrate --execute
+```
+
+Output:
+```
+Scanning drives ...
+Found disc in drive 0: 300 (D:)
+Reading disc info ...
+Auto-detected title from volume label: 300
+TMDb: 300 (2007)
+Looking up disc metadata on dvdcompare.net ...
+
+Blu-ray ALL America - Warner Home Video [2 discs]
+  Disc 1 (Blu-ray 4K): Audio commentary, Main Film  [INSERTED]
+  Disc 2 (Blu-ray): Behind The Story, Webisodes, Deleted scenes
+
+Which discs do you want to rip?
+  1. Disc 1 (Blu-ray 4K): Audio commentary, Main Film
+  2. Disc 2 (Blu-ray): Behind The Story, Webisodes, Deleted scenes
+
+Selection [default=all]: all
+
+Live disc analysis: 300
+
+    #   Duration      Size        Res   Ch  Recommendation
+  ---  ---------  --------  ---------  ---  ----------------------------------------
+    0    1:56:38   58.3 GB  3840x2160   30  MAIN FILM (4K) - rip this
+    1       2:20    0.8 GB  3840x2160    3  Episode (4K) - rip this
+    2       5:40    0.2 GB  3840x2160   34  Episode (4K) - rip this
+    3    1:56:38   58.3 GB  3840x2160   30  Duplicate of #0 (4K) - skip
+
+Will rip 3 title(s) [0, 1, 2] (59.2 GB)
+Output: /path/to/rips/300 (2007)/Disc 1
+...
+```
+
+### Orchestrate: dry-run preview (default)
+
+```bash
+plex-planner orchestrate
+```
+
+Without `--execute`, shows what would be ripped and organized without making changes.
+
+### Orchestrate: skip interactive prompts
+
+```bash
+plex-planner orchestrate --execute --auto
+```
+
+Uses best-guess defaults for all selections (TMDb match, dvdcompare release, disc selection).
+
+### Orchestrate: select specific discs
+
+```bash
+plex-planner orchestrate --execute --discs 1,3
+```
+
+### Orchestrate: snapshot mode (scan without ripping)
+
+```bash
+plex-planner orchestrate --snapshot
+```
+
+Scans the inserted disc and writes a manifest file without ripping. Useful to regenerate manifests for files already ripped manually.
+
+### Rip: single disc with auto-selection
+
+```bash
+plex-planner rip --execute
+```
+
+Reads the disc, auto-detects the title from the volume label, shows a disc analysis table, and rips the recommended titles.
+
+### Rip: manual title selection
+
+```bash
+plex-planner rip "Oppenheimer" --titles 0,1,2 --execute
+```
+
+### Rip: with post-rip organize
+
+```bash
+plex-planner rip --execute --organize
+```
 
 ### Plan: basic lookup
 
@@ -208,10 +329,23 @@ Found 3 disc(s) on dvdcompare.
 
 --- DRY RUN (use --execute to move files) ---
 
-  WOULD MOVE: Special Features_t17.mkv
-          TO: Movies/Oppenheimer (2023)/Interviews/Meet the Press Q&A Panel Oppenheimer.mkv
-       MATCH: [high] Disc 3: Meet the Press Q&A Panel: Oppenheimer (interviews)
-  ...
+Would organize to: Movies/Oppenheimer (2023)
+
+Main Feature (1 file)
+  Oppenheimer (2023).mkv                        <- Oppenheimer_t00.mkv
+
+Featurettes (3 files)
+  The Story of Our Time.mkv                     <- Special Features_t03.mkv
+  To End All War.mkv                            <- Special Features_t04.mkv
+  An Event That Changed the World.mkv           <- Special Features_t05.mkv
+
+Interviews (2 files)
+  Meet the Press Q&A Panel Oppenheimer.mkv      <- Special Features_t17.mkv
+  Innovation in Film.mkv                        <- Special Features_t06.mkv
+
+Unmatched (2 files, would move to Other/)
+  Extra 1.mkv                                   <- Special Features_t01.mkv
+  Extra 2.mkv                                   <- Special Features_t08.mkv
 ```
 
 Add `--execute` to actually move the files:
@@ -240,45 +374,29 @@ Matched 7 files, 0 unmatched, 0 missing.
 
 --- DRY RUN (use --execute to move files) ---
 
-  WOULD MOVE: PLANET EARTH II - DISC 1_t01.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e01 - Islands.mkv
-       MATCH: [high] Disc 1: Islands
+Would organize to: TV Shows/Planet Earth II (2016)/Season 01
 
-  WOULD MOVE: PLANET EARTH II - DISC 1_t02.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e02 - Mountains.mkv
-       MATCH: [high] Disc 1: Mountains
+Season 01 (6 files)
+  Planet Earth II (2016) - s01e01 - Islands.mkv       <- PLANET EARTH II - DISC 1_t01.mkv
+  Planet Earth II (2016) - s01e02 - Mountains.mkv     <- PLANET EARTH II - DISC 1_t02.mkv
+  Planet Earth II (2016) - s01e03 - Jungles.mkv       <- PLANET EARTH II - DISC 1_t00.mkv
+  Planet Earth II (2016) - s01e04 - Deserts.mkv       <- PLANET EARTH II - DISC 2_t00.mkv
+  Planet Earth II (2016) - s01e05 - Grasslands.mkv    <- PLANET EARTH II - DISC 2_t02.mkv
+  Planet Earth II (2016) - s01e06 - Cities.mkv        <- PLANET EARTH II - DISC 2_t01.mkv
 
-  WOULD MOVE: PLANET EARTH II - DISC 1_t00.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e03 - Jungles.mkv
-       MATCH: [high] Disc 1: Jungles
-
-  WOULD MOVE: PLANET EARTH II - DISC 2_t00.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e04 - Deserts.mkv
-       MATCH: [low] Disc 2: Deserts
-
-  WOULD MOVE: PLANET EARTH II - DISC 2_t02.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e05 - Grasslands.mkv
-       MATCH: [high] Disc 2: Grasslands
-
-  WOULD MOVE: PLANET EARTH II - DISC 2_t01.mkv
-          TO: TV Shows/Planet Earth II (2016)/Season 01/Planet Earth II (2016) - s01e06 - Cities.mkv
-       MATCH: [low] Disc 2: Cities
-
-  WOULD MOVE: PLANET EARTH II DIARIES_t00.mkv
-          TO: TV Shows/Planet Earth II (2016)/Featurettes/Planet Earth Diaries.mkv
-       MATCH: [high] Disc 3: Planet Earth Diaries (featurettes)
+Featurettes (1 file)
+  Planet Earth Diaries.mkv                            <- PLANET EARTH II DIARIES_t00.mkv
 ```
 
 When the scanner detects that a file (like Planet Earth Diaries) has chapter markers matching the number of TMDb Season 00 episodes, the tool automatically plans a chapter split instead of a single move:
 
 ```
-  WOULD SPLIT: PLANET EARTH II DIARIES_t00.mkv
-     ORIGINAL: Disc 3: Planet Earth Diaries (featurettes)
-   CHAPTER -> TV Shows/Planet Earth II (2016)/Season 00/Planet Earth II (2016) - s00e01 - Diaries Islands.mkv
-      MATCH: [high] s00e01 - Diaries: Islands
-   CHAPTER -> TV Shows/Planet Earth II (2016)/Season 00/Planet Earth II (2016) - s00e02 - Diaries Mountains.mkv
-      MATCH: [high] s00e02 - Diaries: Mountains
-   ...
+Would organize to: TV Shows/Planet Earth II (2016)/Season 00
+
+Main (6 files)
+  Planet Earth II (2016) - s00e01 - Diaries Islands.mkv       <- PLANET EARTH II DIARIES_t00.mkv (split)
+  Planet Earth II (2016) - s00e02 - Diaries Mountains.mkv     <- PLANET EARTH II DIARIES_t00.mkv (split)
+  ...
 ```
 
 With `--execute`, this uses mkvmerge to split the file by chapters and moves each piece to the correct Season 00 location. This ensures each special appears as a separate episode in Plex.
@@ -376,10 +494,10 @@ Frozen Planet II (2022) [TV Show]
 ============================================================
 
 Recommended rip folder structure:
-  _MakeMKV/Frozen Planet II (2022)/Disc 1/ [Blu-ray 4K] (episodes)
-  _MakeMKV/Frozen Planet II (2022)/Disc 2/ [Blu-ray 4K] (episodes + extras)
-  _MakeMKV/Frozen Planet II (2022)/Disc 3/ [Blu-ray] (episodes)
-  _MakeMKV/Frozen Planet II (2022)/Disc 4/ [Blu-ray] (episodes)
+  Rips/Frozen Planet II (2022)/Disc 1/ [Blu-ray 4K] (episodes)
+  Rips/Frozen Planet II (2022)/Disc 2/ [Blu-ray 4K] (episodes + extras)
+  Rips/Frozen Planet II (2022)/Disc 3/ [Blu-ray] (episodes)
+  Rips/Frozen Planet II (2022)/Disc 4/ [Blu-ray] (episodes)
 
 Disc contents (4 disc(s)):
 ------------------------------------------------------------
@@ -406,7 +524,7 @@ The play-all tip is key: instead of ripping 4 titles per disc (~130 GB), rip one
 plex-planner rip-guide "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
-This creates the recommended `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` folders so you can point MakeMKV's output at the correct disc subfolder as you rip.
+This creates the recommended rip folder structure (e.g. `<rip_output>/Blade Runner (1982)/Disc 1/` through `Disc 8/`) so you can point MakeMKV's output at the correct disc subfolder as you rip.
 
 ### Rip guide: movie with extras
 
@@ -435,17 +553,48 @@ plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.j
 
 ## CLI Reference
 
-### `plan` subcommand
+### `orchestrate` subcommand
 
 | Option | Description |
 |---|---|
-| `title` | Movie or TV show title (required) |
-| `--year` | Release year (strongly recommended) |
+| `--title` | Movie or TV show title (auto-detected from volume label if omitted) |
+| `--drive` | Drive index (`0`), device (`D:`), or `auto` (default: `auto`) |
+| `--year` | Release year |
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--format` | Disc format filter for dvdcompare (auto-detected from disc resolution if omitted) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
+| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--execute` | Actually rip and organize (default: dry-run preview only) |
+| `--unmatched` | Policy for unmatched files during organize: `ignore`, `move`, `delete`, or `extras` (default: `extras`) |
+| `--discs` | Comma-separated disc numbers to rip (e.g. `1,3`). Skips others. |
+| `--snapshot` | Scan disc and write manifest without ripping |
+| `--yes`, `-y` | Skip confirmation prompts |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
 | `--json` | Output as JSON |
-| `--no-specials` | Exclude Season 00 specials |
-| `--no-extras` | Omit extras folder skeleton |
-| `--match` | Match ripped files by duration (format: `file:duration`) |
+| `--verbose`, `-v` | Print debug logging to stderr |
+| `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--api-key` | TMDb API key |
+
+### `rip` subcommand
+
+| Option | Description |
+|---|---|
+| `title` | Movie or TV show title (positional, auto-detected from volume label if omitted) |
+| `--drive` | Drive index (`0`), device (`D:`), or `auto` (default: `auto`) |
+| `--year` | Release year |
+| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--format` | Disc format filter for dvdcompare (auto-detected from disc resolution if omitted) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
+| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--titles` | Comma-separated title indices to rip (overrides auto-recommendation) |
+| `--all` | Rip all titles (skip recommendation filter) |
+| `--execute` | Actually rip (default: dry-run preview only) |
+| `--organize` | Automatically run organize after ripping |
+| `--yes`, `-y` | Skip confirmation prompt |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
+| `--json` | Output as JSON |
+| `--verbose`, `-v` | Print debug logging to stderr |
+| `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |
 
 ### `organize` subcommand
@@ -457,10 +606,12 @@ plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.j
 | `--year` | Release year |
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`). Auto-detected from resolution if omitted. |
-| `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
+| `--snapshot` | Replay from a snapshot JSON file instead of scanning live files |
+| `--auto` | Skip interactive prompts, use best-guess defaults |
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--force` | Re-organize files even if already tagged as organized |
@@ -476,11 +627,25 @@ plex-planner organize path/to/rips/Oppenheimer --snapshot Oppenheimer.snapshot.j
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
 | `--release` | Regional release: 1-based index or name keyword (default: `america`) |
+| `--drive` | Read live disc info: drive index (`0`), device (`D:`), or `auto` |
 | `--output` | Output root for `--create-folders` (or set `PLEX_ROOT` env var, or config) |
-| `--create-folders` | Pre-create the recommended MakeMKV rip folder structure |
-| `--json` | Output as JSON |
+| `--create-folders` | Pre-create the recommended rip folder structure |
+| `--json` | Output as JSON (includes `disc_analysis` when `--drive` is also set) |
 | `--verbose`, `-v` | Print debug logging to stderr |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
+| `--api-key` | TMDb API key |
+
+### `plan` subcommand *(deprecated, alias for `rip-guide`)*
+
+| Option | Description |
+|---|---|
+| `title` | Movie or TV show title (required) |
+| `--year` | Release year (strongly recommended) |
+| `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
+| `--json` | Output as JSON |
+| `--no-specials` | Exclude Season 00 specials |
+| `--no-extras` | Omit extras folder skeleton |
+| `--match` | Match ripped files by duration (format: `file:duration`) |
 | `--api-key` | TMDb API key |
 
 ### `snapshot` subcommand
@@ -501,7 +666,7 @@ pytest
 ```
 src/plex_planner/
     __init__.py
-    cli.py                  # CLI entry point (plan, organize, rip-guide, snapshot subcommands)
+    cli.py                  # CLI entry point (orchestrate, rip, organize, rip-guide, snapshot subcommands)
     config.py               # Config file loading and setting resolution
     models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
     metadata_provider.py    # Abstract provider interface
@@ -517,17 +682,22 @@ src/plex_planner/
     dedup.py                # Duplicate MKV detection (metadata fingerprint + perceptual hash)
     cache.py                # File-based JSON cache with TTL (dvdcompare, TMDb)
     disc_provider.py        # dvdcompare.net disc extras metadata bridge
+    disc_analysis.py        # Live disc analysis via makemkvcon (title classification, rip recommendations)
+    makemkv.py              # makemkvcon wrapper (disc reading, title ripping, progress parsing)
     organizer.py            # Plex destination path builder and file mover
     splitter.py             # Chapter-based MKV splitting via mkvmerge
     tagger.py               # MKV organized tagging via mkvpropedit
+    ui.py                   # Interactive prompts (multi-select, confirmations, text input)
 tests/
     test_cache.py
     test_cli_utils.py
     test_config.py
     test_dedup.py
     test_detect.py
+    test_disc_analysis.py
     test_disc_provider.py
     test_formatter.py
+    test_makemkv.py
     test_matcher.py
     test_normalize.py
     test_organizer.py
@@ -536,6 +706,7 @@ tests/
     test_scanner.py
     test_splitter.py
     test_tagger.py
+    test_ui.py
     snapshots/              # MKV metadata snapshots for offline test replay
 ```
 
@@ -543,11 +714,13 @@ tests/
 
 The metadata provider is abstracted behind a clean interface (`MetadataProvider`). The default implementation uses TMDb, which is the same source Plex uses for its metadata agents. The provider can be swapped out for TheTVDB or any other source by implementing the interface.
 
-The tool has four modes:
+The tool has six modes:
 
-- **`plan`**: TMDb lookup only. Outputs Plex-canonical folder structure and filenames.
-- **`rip-guide`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping. Helps users decide which MakeMKV titles to rip vs skip, and creates correct folder structure.
-- **`organize`**: The full pipeline. Scans MKV files, deduplicates, looks up TMDb + dvdcompare, matches files by runtime, and moves everything into Plex folder layout.
+- **`orchestrate`**: The primary workflow. Handles multi-disc rip-then-organize in a single session. Combines disc detection, dvdcompare lookup, disc selection, ripping (via makemkvcon), and organizing into one command.
+- **`rip`**: Single-disc rip via makemkvcon. Disc analysis, auto title selection, and optional post-rip organize.
+- **`organize`**: The file organization pipeline. Scans MKV files, deduplicates, looks up TMDb + dvdcompare, matches files by runtime, and moves everything into Plex folder layout.
+- **`rip-guide`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping.
+- **`plan`** *(deprecated)*: Alias for `rip-guide`.
 - **`snapshot`**: Captures MKV metadata to JSON for offline replay and debugging.
 
 The organize workflow chains several stages: scanning (ffprobe), dedup (metadata fingerprint with perceptual hash confirmation, plus compilation/play-all detection via chapter analysis), TMDb lookup, dvdcompare disc extras lookup, disc-constrained matching (mapping scanned folders to disc numbers via naming heuristics, then matching files to extras by runtime), chapter-to-missing split detection, and finally building Plex-canonical paths and moving files. Comprehensive debug logging captures every decision for post-run analysis.
