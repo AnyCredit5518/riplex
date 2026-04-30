@@ -4,7 +4,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from plex_planner.makemkv import (
+    DiscTitle,
     RipResult,
+    build_stream_fingerprint,
     parse_disc_info,
     parse_drive_list,
     _parse_progress,
@@ -35,6 +37,10 @@ class TestParseDiscInfo:
 
     def test_title_0_chapters(self):
         assert self.info.titles[0].chapters == 5
+
+    def test_title_0_stream_count(self):
+        # Stream count should be positive (at least video + audio)
+        assert self.info.titles[0].stream_count > 0
 
     def test_title_0_resolution(self):
         # Title 0 is the 1080p play-all
@@ -230,3 +236,51 @@ class TestRunRipMsgDetection:
         content = log_file.read_text(encoding="utf-8")
         assert "MakeMKV started" in content
         assert "Copy complete" in content
+
+
+class TestBuildStreamFingerprint:
+    def _make_title(self, **kwargs):
+        defaults = dict(
+            index=0, name="Test", duration_seconds=3600, chapters=10,
+            size_bytes=1000000, filename="title00.mkv", playlist="00001.mpls",
+            resolution="3840x2160", video_codec="MpegH",
+            audio_tracks=[], subtitle_tracks=[], stream_count=1,
+        )
+        defaults.update(kwargs)
+        return DiscTitle(**defaults)
+
+    def test_video_only(self):
+        t = self._make_title()
+        assert build_stream_fingerprint(t) == "hevc:3840x2160"
+
+    def test_with_audio_tracks(self):
+        t = self._make_title(
+            audio_tracks=["TrueHD English 7.1", "AC3 Spanish 5.1"],
+        )
+        fp = build_stream_fingerprint(t)
+        assert fp.startswith("hevc:3840x2160|")
+        assert "truehd:eng:8ch" in fp
+        assert "ac3:spa:6ch" in fp
+
+    def test_with_subtitles(self):
+        t = self._make_title(
+            subtitle_tracks=["English", "Spanish (Forced)"],
+        )
+        fp = build_stream_fingerprint(t)
+        assert "sub:eng" in fp
+        assert "sub:spa" in fp
+
+    def test_h264_codec_mapping(self):
+        t = self._make_title(video_codec="Mpeg4", resolution="1920x1080")
+        fp = build_stream_fingerprint(t)
+        assert fp.startswith("h264:1920x1080")
+
+    def test_full_fingerprint(self):
+        t = self._make_title(
+            audio_tracks=["DTS-HD MA English 7.1"],
+            subtitle_tracks=["English"],
+        )
+        fp = build_stream_fingerprint(t)
+        parts = fp.split("|")
+        assert parts[0] == "hevc:3840x2160"
+        assert len(parts) == 3  # video + audio + subtitle

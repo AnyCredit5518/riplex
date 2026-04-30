@@ -1,9 +1,12 @@
 """Tests for CLI utility functions."""
 
+import json
+
 import pytest
 
 from plex_planner.cli import (
     _build_execute_command,
+    _build_scanned_from_manifests,
     _detect_disc_format,
     _disc_content_summary,
     _dry_run_banner,
@@ -490,3 +493,84 @@ class TestFindRippedDiscs:
         other.mkdir()
         (other / "_rip_manifest.json").write_text("{}")
         assert _find_ripped_discs(tmp_path) == set()
+
+
+class TestBuildScannedFromManifests:
+    def _write_manifest(self, disc_dir, manifest_data):
+        disc_dir.mkdir(parents=True, exist_ok=True)
+        (disc_dir / "_rip_manifest.json").write_text(
+            json.dumps(manifest_data), encoding="utf-8"
+        )
+
+    def test_builds_scanned_files_from_manifest(self, tmp_path):
+        manifest = {
+            "title": "Dunkirk",
+            "year": 2017,
+            "type": "movie",
+            "disc_number": 1,
+            "files": [
+                {
+                    "filename": "title00.mkv",
+                    "title_index": 0,
+                    "duration": 6360,
+                    "resolution": "3840x2160",
+                    "size_bytes": 50000000000,
+                    "classification": "movie",
+                    "stream_count": 5,
+                    "stream_fingerprint": "hevc:3840x2160|truehd:eng:8ch|ac3:eng:6ch|sub:eng|sub:spa",
+                    "chapter_count": 12,
+                    "chapter_durations": [300, 400, 500, 600, 500, 400, 300, 500, 600, 400, 500, 360],
+                },
+            ],
+        }
+        disc1 = tmp_path / "Disc 1"
+        self._write_manifest(disc1, manifest)
+
+        result = _build_scanned_from_manifests(tmp_path)
+        assert len(result) == 1
+        assert result[0].folder_name == "Disc 1"
+        assert len(result[0].files) == 1
+
+        f = result[0].files[0]
+        assert f.name == "title00.mkv"
+        assert f.duration_seconds == 6360
+        assert f.size_bytes == 50000000000
+        assert f.stream_count == 5
+        assert "hevc:3840x2160" in f.stream_fingerprint
+        assert f.chapter_count == 12
+        assert len(f.chapter_durations) == 12
+        assert f.max_width == 3840
+        assert f.max_height == 2160
+
+    def test_multiple_discs(self, tmp_path):
+        for i in range(1, 4):
+            manifest = {
+                "title": "Planet Earth III",
+                "disc_number": i,
+                "files": [
+                    {"filename": f"title0{j}.mkv", "duration": 3000 + j * 100,
+                     "resolution": "1920x1080", "size_bytes": 1000000}
+                    for j in range(3)
+                ],
+            }
+            self._write_manifest(tmp_path / f"Disc {i}", manifest)
+
+        result = _build_scanned_from_manifests(tmp_path)
+        assert len(result) == 3
+        assert sum(len(d.files) for d in result) == 9
+
+    def test_empty_dir_returns_empty(self, tmp_path):
+        assert _build_scanned_from_manifests(tmp_path) == []
+
+    def test_skips_files_without_filename(self, tmp_path):
+        manifest = {
+            "title": "Test",
+            "files": [
+                {"filename": "", "duration": 100},
+                {"filename": "real.mkv", "duration": 200, "resolution": "1920x1080"},
+            ],
+        }
+        self._write_manifest(tmp_path / "Disc 1", manifest)
+        result = _build_scanned_from_manifests(tmp_path)
+        assert len(result[0].files) == 1
+        assert result[0].files[0].name == "real.mkv"

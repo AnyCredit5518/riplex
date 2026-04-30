@@ -46,6 +46,8 @@ class DiscTitle:
     resolution: str  # e.g. "3840x2160", "1920x1080"
     video_codec: str  # e.g. "MpegH", "Mpeg4"
     audio_tracks: list[str] = field(default_factory=list)
+    subtitle_tracks: list[str] = field(default_factory=list)  # e.g. ["English", "Spanish"]
+    stream_count: int = 0  # total streams (video + audio + subtitle)
     segment_count: int = 1
     segment_map: str = ""
 
@@ -140,13 +142,18 @@ def parse_disc_info(output: str) -> DiscInfo:
         resolution = streams.get((0, 19), "")  # SINFO attr 19 = resolution
         video_codec = streams.get((0, 6), "")  # SINFO attr 6 = codec short name
 
-        # Collect audio track descriptions
+        # Collect audio and subtitle track descriptions
         audio_tracks: list[str] = []
+        subtitle_tracks: list[str] = []
+        stream_ids: set[int] = set()
         for (sid, aid), val in sorted(streams.items()):
+            stream_ids.add(sid)
             if aid == 30 and sid > 0:  # attr 30 = display string
                 stype = streams.get((sid, 1), "")
                 if stype and "Audio" in stype:
                     audio_tracks.append(val)
+                elif stype and "Subtitle" in stype:
+                    subtitle_tracks.append(val)
 
         title = DiscTitle(
             index=tid,
@@ -159,6 +166,8 @@ def parse_disc_info(output: str) -> DiscInfo:
             resolution=resolution,
             video_codec=video_codec,
             audio_tracks=audio_tracks,
+            subtitle_tracks=subtitle_tracks,
+            stream_count=len(stream_ids),
             segment_count=int(t.get(25, "1")),
             segment_map=t.get(26, ""),
         )
@@ -392,3 +401,109 @@ def run_rip(
         output_file=output_file,
         error_message=error_msg,
     )
+
+
+# ---------------------------------------------------------------------------
+# Helpers for manifest enrichment
+# ---------------------------------------------------------------------------
+
+_CODEC_MAP = {
+    "mpegH": "hevc",
+    "MpegH": "hevc",
+    "mpeg4": "h264",
+    "Mpeg4": "h264",
+    "V_MPEGH": "hevc",
+    "V_MPEG4": "h264",
+}
+
+
+def build_stream_fingerprint(title: DiscTitle) -> str:
+    """Build a stream fingerprint string from DiscTitle metadata.
+
+    Approximates the scanner's ffprobe-based fingerprint using info
+    from makemkvcon SINFO output. Format:
+        hevc:3840x2160|truehd:eng:8ch|ac3:eng:2ch|sub:eng|sub:spa
+    """
+    parts: list[str] = []
+
+    # Video stream
+    codec = _CODEC_MAP.get(title.video_codec, title.video_codec.lower())
+    parts.append(f"{codec}:{title.resolution}")
+
+    # Audio tracks: parse display strings like "TrueHD English 7.1"
+    for track in title.audio_tracks:
+        tokens = track.split()
+        if not tokens:
+            continue
+        acodec = tokens[0].lower()
+        lang = ""
+        channels = ""
+        for tok in tokens[1:]:
+            # Channel layout like "7.1", "5.1", "2.0", "Stereo", "Mono"
+            if re.match(r"\d+\.\d+$", tok):
+                ch_num = int(tok.split(".")[0]) + int(tok.split(".")[1])
+                channels = f"{ch_num}ch"
+            elif tok.lower() in ("stereo",):
+                channels = "2ch"
+            elif tok.lower() in ("mono",):
+                channels = "1ch"
+            elif len(tok) >= 3 and tok[0].isupper() and tok[1:].islower():
+                # Language name like "English", "Spanish"
+                lang = tok[:3].lower()
+        parts.append(f"{acodec}:{lang}:{channels}" if lang else f"{acodec}::{channels}")
+
+    # Subtitle tracks: parse display strings
+    for track in title.subtitle_tracks:
+        tokens = track.split()
+        lang = ""
+        for tok in tokens:
+            if len(tok) >= 3 and tok[0].isupper() and tok[1:].islower():
+                lang = tok[:3].lower()
+                break
+        parts.append(f"sub:{lang}")
+
+    return "|".join(parts)
+
+
+def probe_chapter_durations(mkv_path: str | Path) -> list[int]:
+    """Extract per-chapter durations from a ripped MKV using ffprobe.
+
+    Returns a list of chapter durations in seconds. Returns empty list
+    if ffprobe is unavailable or the file has no chapters.
+    """
+    import shutil
+
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        log.debug("ffprobe not found, skipping chapter duration extraction")
+        return []
+
+    cmd = [
+        ffprobe, "-v", "quiet",
+        "-print_format", "json",
+        "-show_chapters",
+        str(mkv_path),
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30,
+        )
+        if proc.returncode != 0:
+            log.debug("ffprobe failed for %s: exit %d", mkv_path, proc.returncode)
+            return []
+
+        import json
+        data = json.loads(proc.stdout)
+        chapters = data.get("chapters", [])
+        durations: list[int] = []
+        for ch in chapters:
+            try:
+                dur = float(ch["end_time"]) - float(ch["start_time"])
+                durations.append(round(dur))
+            except (KeyError, ValueError):
+                durations.append(0)
+        return durations
+    except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
+        log.debug("ffprobe chapter extraction failed for %s: %s", mkv_path, exc)
+        return []

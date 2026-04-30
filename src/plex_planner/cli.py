@@ -1388,6 +1388,13 @@ async def _run_rip(args: argparse.Namespace) -> int:
                 "resolution": t.resolution if t else "",
                 "size_bytes": t.size_bytes if t else 0,
                 "classification": classification,
+                "stream_count": t.stream_count if t else 0,
+                "stream_fingerprint": build_stream_fingerprint(t) if t else "",
+                "chapter_count": t.chapters if t else 0,
+                "chapter_durations": (
+                    probe_chapter_durations(r.output_file)
+                    if r.output_file else []
+                ),
             })
 
         manifest_path = output_dir / "_rip_manifest.json"
@@ -1512,13 +1519,72 @@ def _print_disc_overview(
     print()
 
 
+def _build_scanned_from_manifests(rip_root: Path) -> list:
+    """Build ScannedDisc objects from rip manifest files (skip ffprobe).
+
+    Reads _rip_manifest.json from each Disc N subfolder and constructs
+    ScannedFile objects using metadata captured at rip time.
+    """
+    import json as json_mod
+
+    from plex_planner.models import ScannedDisc, ScannedFile
+
+    discs: list[ScannedDisc] = []
+    for child in sorted(rip_root.iterdir()):
+        manifest_path = child / "_rip_manifest.json"
+        if not child.is_dir() or not manifest_path.exists():
+            continue
+        try:
+            manifest = json_mod.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json_mod.JSONDecodeError) as exc:
+            log.warning("Failed to read manifest %s: %s", manifest_path, exc)
+            continue
+
+        files: list[ScannedFile] = []
+        for entry in manifest.get("files", []):
+            filename = entry.get("filename", "")
+            if not filename:
+                continue
+            file_path = child / filename
+            # Parse resolution into width/height
+            res = entry.get("resolution", "")
+            width, height = 0, 0
+            if "x" in res:
+                parts = res.split("x")
+                try:
+                    width, height = int(parts[0]), int(parts[1])
+                except ValueError:
+                    pass
+
+            sf = ScannedFile(
+                name=filename,
+                path=str(file_path),
+                duration_seconds=entry.get("duration", 0),
+                size_bytes=entry.get("size_bytes", 0),
+                stream_count=entry.get("stream_count", 0),
+                stream_fingerprint=entry.get("stream_fingerprint", ""),
+                chapter_count=entry.get("chapter_count", 0),
+                chapter_durations=entry.get("chapter_durations", []),
+                max_width=width,
+                max_height=height,
+            )
+            files.append(sf)
+
+        if files:
+            discs.append(ScannedDisc(folder_name=child.name, files=files))
+
+    return discs
+
+
 async def _run_orchestrate(args: argparse.Namespace) -> int:
     """Multi-disc rip and organize pipeline."""
     import json as json_mod
     import time
 
     from plex_planner.makemkv import (
+        build_stream_fingerprint,
         find_makemkvcon,
+        probe_chapter_durations,
         run_disc_info,
         run_drive_list,
         run_rip,
@@ -1873,6 +1939,13 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
                     "resolution": t.resolution if t else "",
                     "size_bytes": t.size_bytes if t else 0,
                     "classification": classification,
+                    "stream_count": t.stream_count if t else 0,
+                    "stream_fingerprint": build_stream_fingerprint(t) if t else "",
+                    "chapter_count": t.chapters if t else 0,
+                    "chapter_durations": (
+                        probe_chapter_durations(r.output_file)
+                        if r.output_file else []
+                    ),
                 })
 
             manifest_path = output_dir / "_rip_manifest.json"
@@ -1923,7 +1996,26 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         snapshot=None,
         auto=True,  # skip interactive prompts in organize since we resolved metadata above
     )
-    org_result = await _run_organize(organize_args)
+
+    # Optimization: build ScannedDisc objects from manifest data (avoids ffprobe)
+    scanned_from_manifest = _build_scanned_from_manifests(rip_root)
+    if scanned_from_manifest:
+        log.info(
+            "Using manifest data for organize (%d discs, skip ffprobe scan)",
+            len(scanned_from_manifest),
+        )
+        print("Using rip manifest data (skipping ffprobe scan).", file=sys.stderr)
+        api_key = get_api_key(getattr(args, "api_key", None))
+        provider = TmdbProvider(api_key=api_key)
+        try:
+            org_result = await _organize_with_scanned(
+                scanned_from_manifest, canonical, organize_args,
+                Path(output_val), provider,
+            )
+        finally:
+            await provider.close()
+    else:
+        org_result = await _run_organize(organize_args)
 
     if dry_run:
         # Replace the organize hint with an orchestrate hint
