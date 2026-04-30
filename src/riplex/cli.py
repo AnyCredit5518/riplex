@@ -5,14 +5,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import re
 import shutil
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 from riplex import __version__
-from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output
+from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output, load_config
 from riplex.dedup import find_all_redundant, find_duplicates, remove_duplicates
 from riplex.detect import detect_format, detect_incomplete, group_title_folders
 from riplex.disc_provider import _convert_film, lookup_discs
@@ -457,6 +459,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Scan disc and write manifest without ripping. Useful to regenerate manifests for already-ripped files.",
     )
 
+    # --- setup ---
+    subs.add_parser(
+        "setup",
+        help="Interactive setup wizard to create or update the config file.",
+    )
+
     return parser
 
 
@@ -470,8 +478,72 @@ async def _run(args: argparse.Namespace) -> int:
         return await _run_rip(args)
     if args.command == "orchestrate":
         return await _run_orchestrate(args)
+    if args.command == "setup":
+        return _run_setup()
     # Unknown or missing command
     return 1
+
+
+def _run_setup() -> int:
+    """Interactive setup wizard to create or update the riplex config file."""
+    import shutil
+
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        config_path = Path(appdata) / "riplex" / "config.toml"
+    else:
+        config_path = Path.home() / ".config" / "riplex" / "config.toml"
+
+    print("riplex setup")
+    print(f"Config file: {config_path}\n")
+
+    existing: dict[str, str] = {}
+    if config_path.is_file():
+        with open(config_path, "rb") as f:
+            existing = tomllib.load(f)
+        print("(Existing config found. Press Enter to keep current values.)\n")
+
+    def prompt(key: str, label: str, hint: str = "") -> str:
+        current = existing.get(key, "")
+        suffix = f" [{current}]" if current else ""
+        prompt_hint = f" ({hint})" if hint else ""
+        value = input(f"{label}{prompt_hint}{suffix}: ").strip()
+        return value if value else current
+
+    tmdb_key = prompt("tmdb_api_key", "TMDb API key", "free at themoviedb.org/settings/api")
+    output_root = prompt("output_root", "Plex library root", "e.g. E:/Media")
+    rip_output = prompt("rip_output", "MakeMKV rip output folder", "e.g. E:/Media/Rips")
+    archive_root = prompt("archive_root", "Archive root (optional)", "move raw rips here after organizing")
+
+    # Verify makemkvcon, ffprobe, mkvmerge are available
+    print()
+    tools = {"makemkvcon": None, "ffprobe": None, "mkvmerge": None, "mkvpropedit": None}
+    for tool in tools:
+        path = shutil.which(tool)
+        tools[tool] = path
+        status = f"found: {path}" if path else "NOT FOUND"
+        print(f"  {tool}: {status}")
+
+    missing = [t for t, p in tools.items() if p is None]
+    if missing:
+        print(f"\n  Warning: {', '.join(missing)} not on PATH. Some commands will not work.")
+
+    # Write config
+    print()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    if tmdb_key:
+        lines.append(f'tmdb_api_key = "{tmdb_key}"')
+    if output_root:
+        lines.append(f'output_root = "{output_root}"')
+    if rip_output:
+        lines.append(f'rip_output = "{rip_output}"')
+    if archive_root:
+        lines.append(f'archive_root = "{archive_root}"')
+
+    config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Config written to {config_path}")
+    return 0
 
 
 async def _run_lookup(args: argparse.Namespace) -> int:
@@ -2217,6 +2289,14 @@ def main() -> None:
     if args.command is None:
         parser.print_help()
         sys.exit(1)
+
+    # Auto-run setup if no config exists and user isn't already running setup
+    if args.command != "setup" and not load_config():
+        print("No config file found. Running first-time setup...\n")
+        result = _run_setup()
+        if result != 0:
+            sys.exit(result)
+        print()
 
     set_auto_mode(getattr(args, "auto", False))
     sys.exit(asyncio.run(_run(args)))
