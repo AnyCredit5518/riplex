@@ -1669,9 +1669,20 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     if drive_arg == "auto":
         active = [d for d in drives if d.has_disc]
         if not active:
-            print("Error: no disc found in any drive.", file=sys.stderr)
-            return 1
-        if len(active) > 1 and is_interactive():
+            if not is_interactive():
+                print("Error: no disc found in any drive.", file=sys.stderr)
+                return 1
+            # Interactive: pick first drive, proceed without disc
+            if drives:
+                drive_idx = drives[0].index
+                drive_device = drives[0].device
+            else:
+                print("Error: no optical drives found.", file=sys.stderr)
+                return 1
+            volume_label = ""
+            disc_info = None
+            print("No disc inserted. Will prompt when ready to rip.", file=sys.stderr)
+        elif len(active) > 1 and is_interactive():
             # Multiple drives have discs, let user choose
             print(f"Found {len(active)} drives with discs:", file=sys.stderr)
             chosen = prompt_choice(
@@ -1680,18 +1691,25 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
                 default=0,
             )
             selected = active[chosen]
+            print(f"Found disc in drive {selected.index}: {selected.disc_label} ({selected.device})", file=sys.stderr)
+            drive_idx = selected.index
+            drive_device = selected.device
+            volume_label = selected.disc_label
+            disc_info = None  # read below
         else:
             selected = active[0]
-        print(f"Found disc in drive {selected.index}: {selected.disc_label} ({selected.device})", file=sys.stderr)
-        drive_idx = selected.index
-        drive_device = selected.device  # resolved at runtime from drive scan
-        volume_label = selected.disc_label
+            print(f"Found disc in drive {selected.index}: {selected.disc_label} ({selected.device})", file=sys.stderr)
+            drive_idx = selected.index
+            drive_device = selected.device
+            volume_label = selected.disc_label
+            disc_info = None  # read below
     else:
         try:
             drive_idx = int(drive_arg)
         except ValueError:
             drive_idx = drive_arg
         volume_label = None
+        disc_info = None
         # Resolve device letter from drive list regardless of how drive was specified
         drive_device = ""
         for d in drives:
@@ -1699,42 +1717,49 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
                 drive_device = d.device
                 break
 
-    # Read initial disc info
-    print("Reading disc info ...", file=sys.stderr)
-    try:
-        disc_info = run_disc_info(drive_idx, exe)
-    except (RuntimeError, FileNotFoundError) as exc:
-        print(f"Error reading disc: {exc}", file=sys.stderr)
-        return 1
+    # Read initial disc info (only if a disc is present or drive explicitly given)
+    has_disc = volume_label is None or volume_label != ""
+    if disc_info is None and has_disc:
+        # A disc was detected but disc_info not yet read
+        print("Reading disc info ...", file=sys.stderr)
+        try:
+            disc_info = run_disc_info(drive_idx, exe)
+        except (RuntimeError, FileNotFoundError) as exc:
+            print(f"Error reading disc: {exc}", file=sys.stderr)
+            return 1
 
-    if not disc_info.titles:
-        print("Error: no titles found on disc.", file=sys.stderr)
-        return 1
+        if not disc_info.titles:
+            print("Error: no titles found on disc.", file=sys.stderr)
+            return 1
+    elif disc_info is None:
+        # No disc inserted (interactive, no-disc flow)
+        pass
 
-    if volume_label is None:
+    if disc_info and volume_label is None:
         volume_label = disc_info.disc_name or ""
 
     # Auto-detect title
     title_arg = getattr(args, "title", None)
     if not title_arg:
-        title_arg = _parse_volume_label(volume_label)
+        if volume_label:
+            title_arg = _parse_volume_label(volume_label)
         if title_arg:
             print(f"Auto-detected title from volume label: {title_arg}", file=sys.stderr)
             title_arg = prompt_text("Title", default=title_arg)
         else:
-            print("Error: could not detect title from volume label. Provide a title argument.", file=sys.stderr)
+            print("Error: could not detect title from volume label. Provide --title.", file=sys.stderr)
             return 1
 
     # Auto-detect disc format
     disc_format = getattr(args, "disc_format", None)
-    if not disc_format:
+    if not disc_format and disc_info:
         disc_format = _detect_disc_format(disc_info)
         if disc_format:
             log.info("Auto-detected disc format: %s", disc_format)
 
     # Infer media type
     media_type_arg = getattr(args, "media_type", "auto")
-    if media_type_arg == "auto":
+    if media_type_arg == "auto" and disc_info:
         media_type_arg = _infer_media_type(disc_info)
         if media_type_arg != "auto":
             log.info("Inferred media type from disc structure: %s", media_type_arg)
@@ -1804,7 +1829,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     rip_root = Path(output_val) / "_MakeMKV" / folder_base
 
     # Detect which disc is currently inserted
-    current_disc_num = _detect_disc_number(disc_info, discs)
+    current_disc_num = _detect_disc_number(disc_info, discs) if disc_info else None
 
     # Resume: detect already-ripped discs from manifest files
     ripped_discs = _find_ripped_discs(rip_root)
