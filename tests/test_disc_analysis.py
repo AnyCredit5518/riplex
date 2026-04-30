@@ -1,6 +1,6 @@
 """Tests for disc_analysis module."""
 
-from plex_planner.disc_analysis import (
+from riplex.disc_analysis import (
     build_dvd_entries,
     classify_title,
     detect_cross_res_play_all,
@@ -9,8 +9,8 @@ from plex_planner.disc_analysis import (
     format_seconds,
     is_skip_title,
 )
-from plex_planner.cli import _detect_disc_number
-from plex_planner.makemkv import DiscInfo, DiscTitle
+from riplex.cli import _detect_disc_number
+from riplex.makemkv import DiscInfo, DiscTitle
 
 
 def _make_title(index, duration, resolution="3840x2160", chapters=6, size=20_000_000_000, segments=1):

@@ -25,14 +25,14 @@ These durations match the ripped bonus files almost exactly.
 
 1. Run snapshot dry run:
    ```
-   plex-planner organize \"path/to/rips/Batman Begins\" ^
+   riplex organize \"path/to/rips/Batman Begins\" ^
      --snapshot "tests\snapshots\Batman Begins.snapshot.json" --year 2005
    ```
 2. Observe: auto-detects "Blu-ray 4K", fetches sparse 4K page, only 3 matches out of 13 files.
 3. Compare with DVD lookup:
    ```python
    import asyncio
-   from plex_planner.disc_provider import lookup_discs
+   from riplex.disc_provider import lookup_discs
    # 4K (sparse): 3 discs, Disc 3 has 2 extras with durations
    discs_4k = asyncio.run(lookup_discs("Batman Begins", disc_format="Blu-ray 4K", release="america"))
    # No filter (DVD, complete): 2 discs, Disc 2 has 8 featurettes with durations

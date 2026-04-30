@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from plex_planner.models import PlannedMovie, PlannedShow
+from riplex.models import PlannedMovie, PlannedShow
 
 
 def to_dict(planned: PlannedMovie | PlannedShow) -> dict[str, Any]:

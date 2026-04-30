@@ -1,6 +1,6 @@
 # Plex Naming Rules
 
-This page defines the naming and output rules plex-planner follows when generating Plex-compatible folder structures and filenames. It is a formatting reference, not the metadata source of truth.
+This page defines the naming and output rules riplex follows when generating Plex-compatible folder structures and filenames. It is a formatting reference, not the metadata source of truth.
 
 ## Top-level library separation
 

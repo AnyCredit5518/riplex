@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from plex_planner.models import (
+from riplex.models import (
     MatchCandidate,
     OrganizeResult,
     PlannedEpisode,
@@ -11,7 +11,7 @@ from plex_planner.models import (
     PlannedShow,
     ScannedFile,
 )
-from plex_planner.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder, _extras_folder
+from riplex.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder, _extras_folder
 
 
 class TestExtrasFolder:

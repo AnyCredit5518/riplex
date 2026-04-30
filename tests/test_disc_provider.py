@@ -4,7 +4,7 @@ import pytest
 
 from dvdcompare.models import Disc, Feature, FilmComparison, Release
 
-from plex_planner.disc_provider import _clean_feature_type, _convert_film
+from riplex.disc_provider import _clean_feature_type, _convert_film
 
 
 class TestCleanFeatureType:

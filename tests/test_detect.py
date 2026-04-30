@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from plex_planner.detect import (
+from riplex.detect import (
     TitleGroup,
     _normalize_title,
     detect_format,
     detect_incomplete,
     group_title_folders,
 )
-from plex_planner.models import ScannedDisc, ScannedFile
+from riplex.models import ScannedDisc, ScannedFile
 
 
 class TestDetectFormat:

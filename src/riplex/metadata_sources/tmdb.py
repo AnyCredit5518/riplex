@@ -14,8 +14,8 @@ from typing import Literal
 
 import httpx
 
-from plex_planner import cache
-from plex_planner.metadata_provider import (
+from riplex import cache
+from riplex.metadata_provider import (
     EpisodeMetadata,
     MetadataProvider,
     MetadataSearchResult,

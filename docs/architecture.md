@@ -2,7 +2,7 @@
 
 ## Overview
 
-plex-planner is a Python CLI application with four commands, each targeting a different stage of the disc ripping workflow:
+riplex is a Python CLI application with four commands, each targeting a different stage of the disc ripping workflow:
 
 - **`orchestrate`**: The primary workflow. Multi-disc rip-then-organize in a single session. Combines disc detection, dvdcompare lookup, disc selection, ripping, and organizing.
 - **`rip`**: Single-disc rip via makemkvcon. Disc analysis, auto title selection, and optional post-rip organize.
@@ -16,7 +16,7 @@ The metadata provider is abstracted behind a clean interface (`MetadataProvider`
 ## Project structure
 
 ```
-src/plex_planner/
+src/riplex/
     __init__.py
     cli.py                  # CLI entry point (orchestrate, rip, organize, lookup subcommands)
     config.py               # Config file loading and setting resolution

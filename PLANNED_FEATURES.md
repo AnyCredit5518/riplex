@@ -4,7 +4,7 @@
 
 ### Orchestrate Mode
 
-The `plex-planner orchestrate` command is now fully implemented. It handles
+The `riplex orchestrate` command is now fully implemented. It handles
 the complete multi-disc rip-then-organize workflow in a single session:
 insert a disc, auto-detect the title, look up dvdcompare for disc contents,
 select which discs to rip, rip each one with disc-swap prompts, then

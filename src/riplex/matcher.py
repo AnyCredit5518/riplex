@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import re
 
-from plex_planner.models import (
+from riplex.models import (
     MatchCandidate,
     OrganizeResult,
     PlannedDisc,
@@ -139,7 +139,7 @@ def format_match_report(candidates: list[MatchCandidate]) -> str:
     """Format match candidates as a human-readable report."""
     lines: list[str] = ["Match Report", "=" * 60]
     for c in candidates:
-        from plex_planner.normalize import format_runtime
+        from riplex.normalize import format_runtime
 
         file_rt = format_runtime(c.file_duration_seconds)
         match_rt = format_runtime(c.matched_runtime_seconds)

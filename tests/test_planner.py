@@ -2,7 +2,7 @@
 
 import pytest
 
-from plex_planner.metadata_provider import (
+from riplex.metadata_provider import (
     EpisodeMetadata,
     MetadataProvider,
     MetadataSearchResult,
@@ -10,8 +10,8 @@ from plex_planner.metadata_provider import (
     SeasonMetadata,
     ShowDetail,
 )
-from plex_planner.models import PlannedMovie, PlannedShow, SearchRequest
-from plex_planner.planner import plan
+from riplex.models import PlannedMovie, PlannedShow, SearchRequest
+from riplex.planner import plan
 
 
 class FakeProvider(MetadataProvider):

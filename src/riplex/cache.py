@@ -20,7 +20,7 @@ from platformdirs import user_cache_dir
 
 log = logging.getLogger(__name__)
 
-_APP_NAME = "plex-planner"
+_APP_NAME = "riplex"
 
 # Module-level flag: when True, all reads return None (misses).
 _disabled = False

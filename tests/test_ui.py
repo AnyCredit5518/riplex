@@ -1,4 +1,4 @@
-"""Tests for plex_planner.ui interactive prompt utilities."""
+"""Tests for riplex.ui interactive prompt utilities."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import io
 
 import pytest
 
-from plex_planner import ui
+from riplex import ui
 
 
 # ---------------------------------------------------------------------------
@@ -160,4 +160,4 @@ class TestPromptText:
 
 
 # Import prompt functions at module level for convenience
-from plex_planner.ui import prompt_choice, prompt_confirm, prompt_text
+from riplex.ui import prompt_choice, prompt_confirm, prompt_text

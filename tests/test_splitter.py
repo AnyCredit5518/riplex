@@ -2,21 +2,21 @@
 
 from unittest.mock import MagicMock, patch
 
-from plex_planner.splitter import Chapter, find_mkvmerge, get_chapters
+from riplex.splitter import Chapter, find_mkvmerge, get_chapters
 
 
 class TestFindMkvmerge:
     def test_found_on_path(self):
-        with patch("plex_planner.splitter.shutil.which", return_value="/usr/bin/mkvmerge"):
+        with patch("riplex.splitter.shutil.which", return_value="/usr/bin/mkvmerge"):
             assert find_mkvmerge() == "/usr/bin/mkvmerge"
 
     def test_found_in_program_files(self, tmp_path):
         candidate = str(tmp_path / "mkvmerge.exe")
         (tmp_path / "mkvmerge.exe").write_text("")
         with (
-            patch("plex_planner.splitter.shutil.which", return_value=None),
+            patch("riplex.splitter.shutil.which", return_value=None),
             patch(
-                "plex_planner.splitter.find_mkvmerge",
+                "riplex.splitter.find_mkvmerge",
                 wraps=find_mkvmerge,
             ),
         ):
@@ -29,8 +29,8 @@ class TestFindMkvmerge:
 
     def test_not_found(self):
         with (
-            patch("plex_planner.splitter.shutil.which", return_value=None),
-            patch("plex_planner.splitter.Path.is_file", return_value=False),
+            patch("riplex.splitter.shutil.which", return_value=None),
+            patch("riplex.splitter.Path.is_file", return_value=False),
         ):
             assert find_mkvmerge() is None
 
@@ -47,7 +47,7 @@ class TestGetChapters:
         mock_result.returncode = 0
         mock_result.stdout = ffprobe_json
 
-        with patch("plex_planner.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
             chapters = get_chapters("test.mkv")
 
         assert len(chapters) == 2
@@ -62,7 +62,7 @@ class TestGetChapters:
         mock_result = MagicMock()
         mock_result.returncode = 1
 
-        with patch("plex_planner.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
             chapters = get_chapters("test.mkv")
 
         assert chapters == []
@@ -77,7 +77,7 @@ class TestGetChapters:
         mock_result.returncode = 0
         mock_result.stdout = ffprobe_json
 
-        with patch("plex_planner.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
             chapters = get_chapters("test.mkv")
 
         assert len(chapters) == 1

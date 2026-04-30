@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "plex-planner"
+name = "riplex"
 version = "0.1.0"
-description = "Metadata planning tool for organizing MakeMKV rips into Plex-compatible folder structures"
+description = "Automates the tedious manual work around MakeMKV: figuring out what to rip, which MKV files are actually what, and organizing everything into Plex-compatible folder structures."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-plex-planner = "plex_planner.cli:main"
+riplex = "riplex.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

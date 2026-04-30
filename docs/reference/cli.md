@@ -1,6 +1,6 @@
 # CLI Reference
 
-Complete reference for all plex-planner subcommands and their options.
+Complete reference for all riplex subcommands and their options.
 
 ## Global behavior
 
@@ -14,7 +14,7 @@ Complete reference for all plex-planner subcommands and their options.
 Full multi-disc rip-then-organize pipeline. Insert a disc and orchestrate handles everything: detection, metadata lookup, disc selection, ripping, organizing, and optional archiving.
 
 ```bash
-plex-planner orchestrate [options]
+riplex orchestrate [options]
 ```
 
 | Option | Description |
@@ -42,7 +42,7 @@ plex-planner orchestrate [options]
 Scan MakeMKV rip folders, deduplicate, match files to metadata, and move into Plex layout.
 
 ```bash
-plex-planner organize <folder> [options]
+riplex organize <folder> [options]
 ```
 
 | Option | Description |
@@ -69,7 +69,7 @@ plex-planner organize <folder> [options]
 Look up disc contents and metadata for a title from TMDb and dvdcompare. Optionally reads the physical disc via makemkvcon.
 
 ```bash
-plex-planner lookup <title> [options]
+riplex lookup <title> [options]
 ```
 
 | Option | Description |
@@ -92,7 +92,7 @@ plex-planner lookup <title> [options]
 Rip selected titles from a physical disc using makemkvcon. Combines disc analysis, title selection, and optional post-rip organize into a single command.
 
 ```bash
-plex-planner rip <title> --drive <drive> [options]
+riplex rip <title> --drive <drive> [options]
 ```
 
 | Option | Description |
@@ -122,7 +122,7 @@ When neither `--titles` nor `--all` is specified, the command auto-selects title
 Capture MKV metadata to a JSON file for offline replay and debugging.
 
 ```bash
-plex-planner snapshot <folder> [options]
+riplex snapshot <folder> [options]
 ```
 
 | Option | Description |

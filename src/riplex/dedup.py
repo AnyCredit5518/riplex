@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
 
-from plex_planner.models import ScannedDisc, ScannedFile
+from riplex.models import ScannedDisc, ScannedFile
 
 log = logging.getLogger(__name__)
 

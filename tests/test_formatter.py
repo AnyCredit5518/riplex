@@ -2,8 +2,8 @@
 
 import json
 
-from plex_planner.formatter import to_dict, to_json, to_text
-from plex_planner.models import PlannedEpisode, PlannedMovie, PlannedSeason, PlannedShow
+from riplex.formatter import to_dict, to_json, to_text
+from riplex.models import PlannedEpisode, PlannedMovie, PlannedSeason, PlannedShow
 
 
 def _sample_movie() -> PlannedMovie:

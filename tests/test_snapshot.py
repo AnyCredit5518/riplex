@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from plex_planner.models import ScannedDisc, ScannedFile
-from plex_planner.snapshot import (
+from riplex.models import ScannedDisc, ScannedFile
+from riplex.snapshot import (
     SNAPSHOT_VERSION,
     _dict_to_file,
     _file_to_dict,
@@ -112,7 +112,7 @@ class TestFileRoundTrip:
 class TestSaveLoad:
     def test_save_creates_valid_json(self, tmp_path, monkeypatch):
         discs = _make_discs()
-        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+        monkeypatch.setattr("riplex.snapshot.scan_folder", lambda _: discs)
 
         out = tmp_path / "test.snapshot.json"
         save(Path("/fake/folder"), out)
@@ -127,7 +127,7 @@ class TestSaveLoad:
 
     def test_load_returns_scanned_discs(self, tmp_path, monkeypatch):
         discs = _make_discs()
-        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+        monkeypatch.setattr("riplex.snapshot.scan_folder", lambda _: discs)
 
         out = tmp_path / "test.snapshot.json"
         save(Path("/fake/folder"), out)
@@ -142,7 +142,7 @@ class TestSaveLoad:
 
     def test_load_preserves_metadata(self, tmp_path, monkeypatch):
         discs = _make_discs()
-        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+        monkeypatch.setattr("riplex.snapshot.scan_folder", lambda _: discs)
 
         out = tmp_path / "test.snapshot.json"
         save(Path("/fake/folder"), out)
@@ -177,7 +177,7 @@ class TestSaveLoad:
 class TestFromScanned:
     def test_capture_from_scanned_matches_capture(self, monkeypatch):
         discs = _make_discs()
-        monkeypatch.setattr("plex_planner.snapshot.scan_folder", lambda _: discs)
+        monkeypatch.setattr("riplex.snapshot.scan_folder", lambda _: discs)
 
         via_scan = capture(Path("/fake/folder"))
         via_pre = capture_from_scanned(Path("/fake/folder"), discs)
@@ -204,7 +204,7 @@ class TestFromScanned:
         """Confirm save_from_scanned never invokes scan_folder."""
         def boom(_):
             raise AssertionError("scan_folder should not be called")
-        monkeypatch.setattr("plex_planner.snapshot.scan_folder", boom)
+        monkeypatch.setattr("riplex.snapshot.scan_folder", boom)
 
         discs = _make_discs()
         out = tmp_path / "no_scan.snapshot.json"

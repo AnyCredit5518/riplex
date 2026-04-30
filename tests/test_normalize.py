@@ -1,6 +1,6 @@
 """Tests for the normalization layer."""
 
-from plex_planner.normalize import (
+from riplex.normalize import (
     build_movie_paths,
     build_show_paths,
     episode_file_name,

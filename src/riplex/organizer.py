@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Sequence
 
-from plex_planner.models import (
+from riplex.models import (
     MatchCandidate,
     OrganizeResult,
     PlannedEpisode,
@@ -17,14 +17,14 @@ from plex_planner.models import (
     PlannedShow,
     ScannedFile,
 )
-from plex_planner.normalize import (
+from riplex.normalize import (
     episode_file_name,
     movie_folder_name,
     sanitize_filename,
     season_folder_name,
     show_folder_name,
 )
-from plex_planner.splitter import split_by_chapters
+from riplex.splitter import split_by_chapters
 
 log = logging.getLogger(__name__)
 

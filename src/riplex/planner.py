@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from plex_planner.metadata_provider import MetadataProvider, MetadataSearchResult
-from plex_planner.models import (
+from riplex.metadata_provider import MetadataProvider, MetadataSearchResult
+from riplex.models import (
     PlannedEpisode,
     PlannedMovie,
     PlannedSeason,
     PlannedShow,
     SearchRequest,
 )
-from plex_planner.normalize import (
+from riplex.normalize import (
     build_movie_paths,
     build_show_paths,
     episode_file_name,
     format_runtime,
     movie_file_name,
 )
-from plex_planner.ui import is_interactive, prompt_choice
+from riplex.ui import is_interactive, prompt_choice
 
 
 _MAX_TMDB_CHOICES = 8

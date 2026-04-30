@@ -1,9 +1,9 @@
-"""Configuration file support for plex-planner.
+"""Configuration file support for riplex.
 
 Loads settings from a TOML config file. Checked locations (first match wins):
-  1. ./plex-planner.toml  (project-local)
-  2. %APPDATA%\\plex-planner\\config.toml  (Windows user)
-  3. ~/.config/plex-planner/config.toml    (Unix/fallback)
+  1. ./riplex.toml  (project-local)
+  2. %APPDATA%\\riplex\\config.toml  (Windows user)
+  3. ~/.config/riplex/config.toml    (Unix/fallback)
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 _FILE_NAME = "config.toml"
-_LOCAL_FILE_NAME = "plex-planner.toml"
+_LOCAL_FILE_NAME = "riplex.toml"
 
 
 def _candidate_paths() -> list[Path]:
@@ -23,15 +23,31 @@ def _candidate_paths() -> list[Path]:
     ]
     appdata = os.environ.get("APPDATA")
     if appdata:
+        paths.append(Path(appdata) / "riplex" / _FILE_NAME)
+    paths.append(Path.home() / ".config" / "riplex" / _FILE_NAME)
+    # Legacy fallback: check old plex-planner config paths
+    if appdata:
         paths.append(Path(appdata) / "plex-planner" / _FILE_NAME)
     paths.append(Path.home() / ".config" / "plex-planner" / _FILE_NAME)
     return paths
 
 
+_LEGACY_NOTICE_SHOWN = False
+
+
 def load_config() -> dict[str, Any]:
     """Load and return the first config file found, or an empty dict."""
+    global _LEGACY_NOTICE_SHOWN
     for path in _candidate_paths():
         if path.is_file():
+            if not _LEGACY_NOTICE_SHOWN and "plex-planner" in str(path):
+                import sys
+                print(
+                    f"Notice: loading config from legacy path: {path}\n"
+                    f"  Consider moving it to the new location under 'riplex'.",
+                    file=sys.stderr,
+                )
+                _LEGACY_NOTICE_SHOWN = True
             with open(path, "rb") as f:
                 return tomllib.load(f)
     return {}

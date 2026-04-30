@@ -1,6 +1,6 @@
 """MKV organized tagging via mkvpropedit.
 
-Stamps processed files with a PLEX_PLANNER global tag so re-runs can skip
+Stamps processed files with a riplex global tag so re-runs can skip
 them.  Reading the tag back is done via ffprobe (already called by the
 scanner) or mkvmerge -J as a fallback.
 """
@@ -37,7 +37,7 @@ def find_mkvpropedit() -> str | None:
 
 
 def tag_organized(file_path: str, label: str) -> bool:
-    """Write a PLEX_PLANNER global tag to an MKV file via mkvpropedit.
+    """Write a riplex global tag to an MKV file via mkvpropedit.
 
     The tag value is ``organized:<ISO date>|<label>``.
     Returns True on success, False on failure.
@@ -57,7 +57,7 @@ def tag_organized(file_path: str, label: str) -> bool:
         "  <Tag>\n"
         "    <Targets />\n"
         "    <Simple>\n"
-        "      <Name>PLEX_PLANNER</Name>\n"
+        "      <Name>RIPLEX</Name>\n"
         f"      <String>{_escape_xml(tag_value)}</String>\n"
         "    </Simple>\n"
         "  </Tag>\n"
@@ -95,7 +95,7 @@ def tag_organized(file_path: str, label: str) -> bool:
 
 
 def read_organized_tag(file_path: str) -> str | None:
-    """Read the PLEX_PLANNER tag from an MKV file via mkvmerge -J.
+    """Read the riplex tag from an MKV file via mkvmerge -J.
 
     Returns the tag value string, or None if not found or on error.
     This is a fallback for when ffprobe doesn't expose the tag (the scanner
@@ -126,7 +126,8 @@ def read_organized_tag(file_path: str) -> str | None:
         data = json.loads(result.stdout)
         for tag_group in data.get("global_tags", []):
             for tag in tag_group.get("tags", []):
-                if tag.get("name", "").upper() == "PLEX_PLANNER":
+                name = tag.get("name", "").upper()
+                if name in ("RIPLEX", "PLEX_PLANNER"):
                     return tag.get("value")
         return None
 

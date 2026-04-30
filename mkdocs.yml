@@ -1,4 +1,4 @@
-# MkDocs configuration for plex-planner documentation.
+# MkDocs configuration for riplex documentation.
 #
 # This file is ready for use once MkDocs Material is installed:
 #   pip install mkdocs-material
@@ -8,9 +8,9 @@
 #
 # See: https://squidfunk.github.io/mkdocs-material/
 
-site_name: plex-planner
+site_name: riplex
 site_description: Plan and organize MakeMKV disc rips into Plex-compatible folder structures.
-repo_url: https://github.com/OWNER/plex-planner  # TODO: update after publishing
+repo_url: https://github.com/OWNER/riplex  # TODO: update after publishing
 
 theme:
   name: material

@@ -7,8 +7,8 @@ import logging
 import subprocess
 from pathlib import Path
 
-from plex_planner.dedup import compute_dhash
-from plex_planner.models import ScannedDisc, ScannedFile
+from riplex.dedup import compute_dhash
+from riplex.models import ScannedDisc, ScannedFile
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def _probe_file(path: Path) -> ScannedFile:
                 "format=duration,nb_streams"
                 ":stream=codec_type,codec_name,width,height,channels"
                 ":stream_tags=language"
-                ":format_tags=title,PLEX_PLANNER",
+                ":format_tags=title,RIPLEX,PLEX_PLANNER",
                 "-show_chapters",
                 str(path),
             ],
@@ -68,7 +68,10 @@ def _probe_file(path: Path) -> ScannedFile:
     # Format tags (title, organized marker)
     format_tags = data.get("format", {}).get("tags", {})
     title_tag = format_tags.get("title") or format_tags.get("TITLE")
-    organized_tag = format_tags.get("PLEX_PLANNER") or format_tags.get("plex_planner")
+    organized_tag = (
+        format_tags.get("RIPLEX") or format_tags.get("riplex")
+        or format_tags.get("PLEX_PLANNER") or format_tags.get("plex_planner")
+    )
 
     # Stream fingerprint: compact string describing the stream layout
     fingerprint_parts: list[str] = []

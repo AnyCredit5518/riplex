@@ -1,4 +1,4 @@
-"""Interactive prompt utilities for plex-planner CLI.
+"""Interactive prompt utilities for riplex CLI.
 
 All user-facing prompts (numbered lists, confirmations, free-text input) live
 here.  Every function checks ``is_interactive()`` and returns the default

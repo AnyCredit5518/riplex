@@ -2,7 +2,7 @@
 
 import pytest
 
-from plex_planner.dedup import (
+from riplex.dedup import (
     CompilationGroup,
     DuplicateGroup,
     _dhash,
@@ -15,7 +15,7 @@ from plex_planner.dedup import (
     find_duplicates_tier1,
     remove_duplicates,
 )
-from plex_planner.models import ScannedDisc, ScannedFile
+from riplex.models import ScannedDisc, ScannedFile
 
 
 def _make_file(

@@ -1,12 +1,12 @@
-# plex-planner
+# riplex
 
 A tool for planning and organizing MakeMKV disc rips into Plex-compatible folder structures.
 
-Given a movie or TV show title, plex-planner looks up canonical metadata (title, year, type, episodes, runtimes) and outputs the exact folder structure, filenames, and runtimes that Plex expects. It can also scan MakeMKV rip folders, detect duplicates, look up disc extras metadata from dvdcompare.net, match ripped files to their correct identities by runtime, and move everything into the right Plex folder layout.
+Given a movie or TV show title, riplex looks up canonical metadata (title, year, type, episodes, runtimes) and outputs the exact folder structure, filenames, and runtimes that Plex expects. It can also scan MakeMKV rip folders, detect duplicates, look up disc extras metadata from dvdcompare.net, match ripped files to their correct identities by runtime, and move everything into the right Plex folder layout.
 
 ## What it does
 
-plex-planner has four commands, each targeting a different stage of the disc ripping workflow:
+riplex has four commands, each targeting a different stage of the disc ripping workflow:
 
 | Command | Stage | What it does |
 |---|---|---|
@@ -22,13 +22,13 @@ plex-planner has four commands, each targeting a different stage of the disc rip
 pip install -e ".[dev]"
 
 # See what's on a disc set before ripping
-plex-planner lookup "Frozen Planet II"
+riplex lookup "Frozen Planet II"
 
 # After ripping, organize into Plex structure (dry-run by default)
-plex-planner organize path/to/rips/Oppenheimer
+riplex organize path/to/rips/Oppenheimer
 
 # Actually move the files
-plex-planner organize path/to/rips/Oppenheimer --execute
+riplex organize path/to/rips/Oppenheimer --execute
 ```
 
 See [Installation](getting-started/installation.md) for full setup instructions.

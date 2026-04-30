@@ -1,4 +1,4 @@
-"""CLI entry point for plex-planner."""
+"""CLI entry point for riplex."""
 
 from __future__ import annotations
 
@@ -11,27 +11,27 @@ import sys
 import tempfile
 from pathlib import Path
 
-from plex_planner import __version__
-from plex_planner.config import get_api_key, get_archive_root, get_output_root, get_rip_output
-from plex_planner.dedup import find_all_redundant, find_duplicates, remove_duplicates
-from plex_planner.detect import detect_format, detect_incomplete, group_title_folders
-from plex_planner.disc_provider import _convert_film, lookup_discs
-from plex_planner.matcher import (
+from riplex import __version__
+from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output
+from riplex.dedup import find_all_redundant, find_duplicates, remove_duplicates
+from riplex.detect import detect_format, detect_incomplete, group_title_folders
+from riplex.disc_provider import _convert_film, lookup_discs
+from riplex.matcher import (
     collect_disc_targets,
     map_folders_to_discs,
     match_discs,
 )
-from plex_planner.metadata_sources.tmdb import TmdbProvider
-from plex_planner.models import PlannedMovie, SearchRequest
-from plex_planner.organizer import build_organize_plan, execute_plan
-from plex_planner.planner import plan
-from plex_planner.scanner import scan_folder
-from plex_planner.snapshot import capture as snapshot_capture, load as snapshot_load, save_from_scanned as snapshot_save_from_scanned
-from plex_planner.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text, set_auto_mode
+from riplex.metadata_sources.tmdb import TmdbProvider
+from riplex.models import PlannedMovie, SearchRequest
+from riplex.organizer import build_organize_plan, execute_plan
+from riplex.planner import plan
+from riplex.scanner import scan_folder
+from riplex.snapshot import capture as snapshot_capture, load as snapshot_load, save_from_scanned as snapshot_save_from_scanned
+from riplex.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text, set_auto_mode
 
 log = logging.getLogger(__name__)
 
-_LOG_DIR = Path(tempfile.gettempdir()) / "plex-planner"
+_LOG_DIR = Path(tempfile.gettempdir()) / "riplex"
 
 _BAR_STYLES = [
     {"fill": "=", "head": ">", "empty": " ", "left": "[", "right": "]"},
@@ -92,9 +92,9 @@ def _setup_logging(verbose: bool = False) -> Path:
     Returns the path to the log file.
     """
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_file = _LOG_DIR / "plex-planner.log"
+    log_file = _LOG_DIR / "riplex.log"
 
-    root = logging.getLogger("plex_planner")
+    root = logging.getLogger("riplex")
     root.setLevel(logging.DEBUG)
 
     # File handler: always DEBUG
@@ -157,7 +157,7 @@ def _strip_year_from_title(name: str) -> tuple[str, int | None]:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="plex-planner",
+        prog="riplex",
         description=(
             "Rip physical discs and organize MKV files into "
             "Plex-compatible folder structures."
@@ -477,11 +477,11 @@ async def _run(args: argparse.Namespace) -> int:
 async def _run_lookup(args: argparse.Namespace) -> int:
     """Look up disc contents and metadata for a title from TMDb and dvdcompare."""
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
-    log.info("plex-planner lookup: args=%s", vars(args))
+    log.info("riplex lookup: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
     if getattr(args, "no_cache", False):
-        from plex_planner import cache
+        from riplex import cache
         cache.disable()
 
     api_key = get_api_key(getattr(args, "api_key", None))
@@ -531,7 +531,7 @@ async def _run_lookup(args: argparse.Namespace) -> int:
     drive_arg = getattr(args, "drive", None)
     disc_info = None
     if drive_arg is not None:
-        from plex_planner.makemkv import (
+        from riplex.makemkv import (
             DiscInfo,
             find_makemkvcon,
             run_disc_info,
@@ -639,7 +639,7 @@ def _print_rip_guide(
         print("\nNo dvdcompare disc data available.")
         if movie_runtime:
             print(f"Main feature runtime: {_format_seconds(movie_runtime)}")
-        print("Tip: rip all titles and use 'plex-planner organize' to sort them.")
+        print("Tip: rip all titles and use 'riplex organize' to sort them.")
         return
 
     # Per-disc breakdown
@@ -680,7 +680,7 @@ def _print_rip_guide(
                 f"If MakeMKV shows a single title with {len(disc.episodes)} "
                 f"or more chapters totaling ~{_format_seconds(total_ep_runtime)}, "
                 f"that is the play-all. You can rip just that one title; "
-                f"plex-planner will split it by chapters."
+                f"riplex will split it by chapters."
             )
         elif episodes_are_extras:
             total_ep_runtime = sum(e.runtime_seconds for e in disc.episodes)
@@ -716,12 +716,12 @@ def _print_rip_guide(
     if extras_discs:
         nums = ", ".join(str(d.number) for d in extras_discs)
         print(f"  - Extras are on disc {nums}. Rip all titles from extras discs;")
-        print(f"    plex-planner will match each by runtime to its dvdcompare entry.")
+        print(f"    riplex will match each by runtime to its dvdcompare entry.")
 
     if total_features > 0:
         print(f"  - {total_features} total feature(s) across {len(discs)} disc(s).")
 
-    print(f"  - After ripping, run: plex-planner organize \"{folder_base}\"")
+    print(f"  - After ripping, run: riplex organize \"{folder_base}\"")
 
 
 def _rip_guide_json(
@@ -799,7 +799,7 @@ def _create_rip_folders(makemkv_root: Path, discs: list) -> list[Path]:
 
 
 # Disc analysis functions are in disc_analysis.py; import for use here.
-from plex_planner.disc_analysis import (  # noqa: E402
+from riplex.disc_analysis import (  # noqa: E402
     build_dvd_entries,
     classify_title,
     find_duration_match,
@@ -1075,7 +1075,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
     import json as json_mod
     import time
 
-    from plex_planner.makemkv import (
+    from riplex.makemkv import (
         find_makemkvcon,
         run_disc_info,
         run_drive_list,
@@ -1083,7 +1083,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
     )
 
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
-    log.info("plex-planner rip: args=%s", vars(args))
+    log.info("riplex rip: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
     dry_run = not getattr(args, "execute", False)
@@ -1093,7 +1093,7 @@ async def _run_rip(args: argparse.Namespace) -> int:
         print("\n--- EXECUTING ---\n")
 
     if getattr(args, "no_cache", False):
-        from plex_planner import cache
+        from riplex import cache
         cache.disable()
 
     # Find makemkvcon
@@ -1520,7 +1520,7 @@ def _build_scanned_from_manifests(rip_root: Path) -> list:
     """
     import json as json_mod
 
-    from plex_planner.models import ScannedDisc, ScannedFile
+    from riplex.models import ScannedDisc, ScannedFile
 
     discs: list[ScannedDisc] = []
     for child in sorted(rip_root.iterdir()):
@@ -1574,7 +1574,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     import json as json_mod
     import time
 
-    from plex_planner.makemkv import (
+    from riplex.makemkv import (
         build_stream_fingerprint,
         eject_disc,
         find_makemkvcon,
@@ -1586,7 +1586,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     )
 
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
-    log.info("plex-planner orchestrate: args=%s", vars(args))
+    log.info("riplex orchestrate: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
     snapshot_mode = getattr(args, "snapshot", False)
@@ -1599,7 +1599,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         print("\n--- EXECUTING ---\n")
 
     if getattr(args, "no_cache", False):
-        from plex_planner import cache
+        from riplex import cache
         cache.disable()
 
     # Find makemkvcon
@@ -1815,7 +1815,7 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         # Interactive disc selection when multiple discs exist
         unripped = [d for d in disc_order if d.number not in ripped_discs]
         if len(unripped) > 1:
-            from plex_planner.ui import prompt_multi_select
+            from riplex.ui import prompt_multi_select
             options = []
             for d in unripped:
                 summary = _disc_content_summary(d)
@@ -2225,7 +2225,7 @@ def main() -> None:
 async def _run_organize(args: argparse.Namespace) -> int:
     """Run the organize workflow: scan, look up metadata, match, organize."""
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
-    log.info("plex-planner organize: args=%s", vars(args))
+    log.info("riplex organize: args=%s", vars(args))
     print(f"Debug log: {log_file}", file=sys.stderr)
 
     dry_run = not getattr(args, "execute", False)
@@ -2235,7 +2235,7 @@ async def _run_organize(args: argparse.Namespace) -> int:
         print("\n--- EXECUTING ---\n")
 
     if getattr(args, "no_cache", False):
-        from plex_planner import cache
+        from riplex import cache
         cache.disable()
 
     # Snapshot mode: load metadata from JSON, force dry-run
@@ -2393,7 +2393,7 @@ async def _organize_multi_folder(
     provider: TmdbProvider,
 ) -> int:
     """Organize a title group spanning multiple folders."""
-    from plex_planner.models import ScannedDisc
+    from riplex.models import ScannedDisc
 
     all_scanned: list[ScannedDisc] = []
     for folder in folders:
@@ -2616,7 +2616,7 @@ async def _organize_with_scanned(
 
     # Tag organized files after successful execute
     if not dry_run:
-        from plex_planner.tagger import tag_organized
+        from riplex.tagger import tag_organized
         tagged = 0
         for move in org_plan.moves:
             if tag_organized(move.destination, move.label):

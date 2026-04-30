@@ -9,8 +9,8 @@ from dvdcompare.cli import select_releases
 from dvdcompare.models import FilmComparison
 from dvdcompare.scraper import find_film
 
-from plex_planner import cache
-from plex_planner.models import PlannedDisc, PlannedEpisode, PlannedExtra
+from riplex import cache
+from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
 
 log = logging.getLogger(__name__)
 

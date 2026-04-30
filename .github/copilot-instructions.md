@@ -1,4 +1,4 @@
-# Copilot Instructions for plex-planner
+# Copilot Instructions for riplex
 
 ## Documentation changelog
 
@@ -6,7 +6,7 @@ When any file under `docs/` is added, modified, or removed, update `docs/changel
 
 ## CLI executable
 
-Always use `py` to run Python on this project (not `python` or `python3`). The installed `plex-planner.exe` in PATH may point to the wrong Python version. Prefer `py -m plex_planner` to ensure the correct interpreter.
+Always use `py` to run Python on this project (not `python` or `python3`). The installed `riplex.exe` in PATH may point to the wrong Python version. Prefer `py -m riplex` to ensure the correct interpreter.
 
 ## Dry-run default
 

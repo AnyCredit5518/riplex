@@ -1,6 +1,6 @@
 """Tests for the matcher module."""
 
-from plex_planner.matcher import (
+from riplex.matcher import (
     collect_disc_targets,
     format_match_report,
     map_folders_to_discs,
@@ -8,7 +8,7 @@ from plex_planner.matcher import (
     match_files,
     parse_duration,
 )
-from plex_planner.models import (
+from riplex.models import (
     MatchCandidate,
     PlannedDisc,
     PlannedEpisode,

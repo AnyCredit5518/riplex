@@ -7,7 +7,7 @@ This page walks through the recommended end-to-end workflow for ripping a disc s
 The simplest approach is the `orchestrate` command, which handles everything in one session:
 
 ```bash
-plex-planner orchestrate --execute
+riplex orchestrate --execute
 ```
 
 This will:
@@ -33,7 +33,7 @@ If you prefer more control, you can use the individual commands separately.
 Before inserting any disc, run `lookup` to see what is on the release:
 
 ```bash
-plex-planner lookup "Planet Earth II"
+riplex lookup "Planet Earth II"
 ```
 
 This shows every disc in the set, what episodes and extras are on each disc, and how long each item is. It also gives tips about play-all titles you can rip instead of individual episodes.
@@ -41,7 +41,7 @@ This shows every disc in the set, what episodes and extras are on each disc, and
 If a disc is already in the drive, add `--drive` to include live disc analysis:
 
 ```bash
-plex-planner lookup "Planet Earth II" --drive 0
+riplex lookup "Planet Earth II" --drive 0
 ```
 
 This reads the disc's title list and cross-references it against dvdcompare metadata, showing which titles to rip and which to skip (play-all compilations, lower-resolution duplicates, etc.).
@@ -51,7 +51,7 @@ This reads the disc's title list and cross-references it against dvdcompare meta
 Add `--create-folders` to pre-create the rip subfolders under your output root:
 
 ```bash
-plex-planner lookup "Planet Earth II" --create-folders
+riplex lookup "Planet Earth II" --create-folders
 ```
 
 This creates folders like:
@@ -62,14 +62,14 @@ This creates folders like:
 <rip_output>/Planet Earth II (2016)/Disc 3/
 ```
 
-This step is optional when using `plex-planner rip`, which creates output folders automatically.
+This step is optional when using `riplex rip`, which creates output folders automatically.
 
 ## 3. Rip the disc
 
 Use the `rip` subcommand to read the disc, auto-select the right titles, and rip them:
 
 ```bash
-plex-planner rip "Planet Earth II" --drive 0
+riplex rip "Planet Earth II" --drive 0
 ```
 
 This will:
@@ -91,7 +91,7 @@ Repeat for each disc in the set, swapping discs between runs.
 Once all discs are ripped, run `organize` in dry-run mode (the default):
 
 ```bash
-plex-planner organize "path/to/rips/Planet Earth II"
+riplex organize "path/to/rips/Planet Earth II"
 ```
 
 This scans the MKV files, deduplicates, looks up metadata, matches files to episodes and extras, and prints a preview of where each file will be moved.
@@ -101,7 +101,7 @@ This scans the MKV files, deduplicates, looks up metadata, matches files to epis
 If the preview looks correct, add `--execute`:
 
 ```bash
-plex-planner organize "path/to/rips/Planet Earth II" --execute
+riplex organize "path/to/rips/Planet Earth II" --execute
 ```
 
 Files are moved (and split if needed) into Plex folder structure. Each file gets tagged so re-runs skip it automatically.
@@ -111,4 +111,4 @@ Files are moved (and split if needed) into Plex folder structure. Each file gets
 - **Unmatched files**: Use `--unmatched extras` to route remaining files to the `Other/` extras folder
 - **Wrong release region**: Use `--release uk` or `--release 2` to pick a different dvdcompare release
 - **Re-organize**: Use `--force` to re-process files that were already tagged
-- **Debug**: Check `%TEMP%\plex-planner\plex-planner.log` or add `--verbose` for stderr output
+- **Debug**: Check `%TEMP%\riplex\riplex.log` or add `--verbose` for stderr output

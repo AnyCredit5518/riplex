@@ -7,7 +7,7 @@ The `organize` command is the main pipeline. It scans MakeMKV rip folders, dedup
 ## Basic usage
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K"
+riplex organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K"
 ```
 
 This will:
@@ -23,13 +23,13 @@ This will:
 Add `--execute` to actually move the files:
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
+riplex organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
 ```
 
 ## TV shows (multi-disc)
 
 ```bash
-plex-planner organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
+riplex organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
 ```
 
 Multi-disc rips in separate folders (e.g. "Planet Earth III - Disc 1", "Planet Earth III - Disc 2") are automatically grouped into a single title.
@@ -55,8 +55,8 @@ Press Enter to accept the default (marked with `*`) or type a number.
 You can also specify a release directly:
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
-plex-planner organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
+riplex organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
+riplex organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
 ```
 
 Use `--auto` to skip the prompt and use the best-guess default (American release).
@@ -73,7 +73,7 @@ Files that cannot be confidently matched are handled by the `--unmatched` flag:
 | `extras` | Route files >= 60s to the Plex `Other/` extras folder, named `Extra 1.mkv`, `Extra 2.mkv`, etc. |
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --unmatched extras
+riplex organize path/to/rips/Oppenheimer --unmatched extras
 ```
 
 ## Batch mode
@@ -81,25 +81,25 @@ plex-planner organize path/to/rips/Oppenheimer --unmatched extras
 Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
 
 ```bash
-plex-planner organize path/to/rips
+riplex organize path/to/rips
 ```
 
 Multi-disc rips in separate folders are automatically grouped into a single title.
 
 ## Re-organize (--force)
 
-After a successful `--execute`, each organized file is tagged with a `PLEX_PLANNER` marker in the MKV container (via mkvpropedit). Subsequent runs automatically skip these files.
+After a successful `--execute`, each organized file is tagged with a `riplex` marker in the MKV container (via mkvpropedit). Subsequent runs automatically skip these files.
 
 ```bash
 # First run organizes everything
-plex-planner organize path/to/rips/Oppenheimer --execute
+riplex organize path/to/rips/Oppenheimer --execute
 
 # Second run skips already-organized files
-plex-planner organize path/to/rips/Oppenheimer
+riplex organize path/to/rips/Oppenheimer
 # "Skipping 17 already-organized file(s)."
 
 # Force re-organize
-plex-planner organize path/to/rips/Oppenheimer --force
+riplex organize path/to/rips/Oppenheimer --force
 ```
 
 ## Duplicate detection
@@ -122,7 +122,7 @@ Duplicate MKV files (same content ripped from different playlists) are automatic
 Every `organize` run writes detailed debug logs to the OS temp directory. Add `--verbose` to also print debug output to stderr:
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --year 2023 --verbose
+riplex organize path/to/rips/Oppenheimer --year 2023 --verbose
 ```
 
 ## Options
@@ -157,7 +157,7 @@ When running in a terminal (stdin is a TTY), `organize` presents interactive pro
 To skip all prompts and use automatic defaults, pass `--auto`:
 
 ```bash
-plex-planner organize path/to/rips/Oppenheimer --auto
+riplex organize path/to/rips/Oppenheimer --auto
 ```
 
 Non-TTY environments (piped input, cron jobs, CI) are automatically non-interactive.

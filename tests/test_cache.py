@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from plex_planner import cache
+from riplex import cache
 
 
 class TestCacheGetSet:

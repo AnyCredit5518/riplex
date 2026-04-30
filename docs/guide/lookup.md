@@ -5,7 +5,7 @@ The `lookup` command shows disc contents and recommended rip strategy *before* y
 ## Basic usage
 
 ```bash
-plex-planner lookup "Frozen Planet II"
+riplex lookup "Frozen Planet II"
 ```
 
 Output:
@@ -33,7 +33,7 @@ Disc contents (4 disc(s)):
 Rip tips:
   - Disc 1: has 3 episodes (total 2:36:33). If MakeMKV shows a single
     title with 3 or more chapters totaling ~2:36:33, that is the play-all.
-    You can rip just that one title; plex-planner will split it by chapters.
+    You can rip just that one title; riplex will split it by chapters.
   ...
 ```
 
@@ -42,7 +42,7 @@ Rip tips:
 Add `--create-folders` to create the recommended rip subfolders under your output root:
 
 ```bash
-plex-planner lookup "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
+riplex lookup "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
 ```
 
 This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
@@ -50,25 +50,25 @@ This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` t
 ## Movie with extras
 
 ```bash
-plex-planner lookup "Oppenheimer" --year 2023
+riplex lookup "Oppenheimer" --year 2023
 ```
 
 For movies, the guide identifies which disc has the main film vs extras, and labels play-all bonus groups appropriately.
 
 ## Play-all tips
 
-The play-all tip is key: instead of ripping 4 individual episode titles per disc (~130 GB), rip one play-all title per disc (~65 GB). plex-planner's chapter-split logic in `organize` handles the rest.
+The play-all tip is key: instead of ripping 4 individual episode titles per disc (~130 GB), rip one play-all title per disc (~65 GB). riplex's chapter-split logic in `organize` handles the rest.
 
 ## JSON output
 
 ```bash
-plex-planner lookup "Frozen Planet II" --json
+riplex lookup "Frozen Planet II" --json
 ```
 
 When combined with `--drive`, the JSON includes a `disc_analysis` object with per-title recommendations:
 
 ```bash
-plex-planner lookup "Frozen Planet II" --drive 0 --json
+riplex lookup "Frozen Planet II" --drive 0 --json
 ```
 
 ## Live disc analysis
@@ -76,7 +76,7 @@ plex-planner lookup "Frozen Planet II" --drive 0 --json
 Add `--drive` to read the physical disc in real time via makemkvcon and cross-reference its titles against dvdcompare metadata.
 
 ```bash
-plex-planner lookup "Frozen Planet II" --drive 0
+riplex lookup "Frozen Planet II" --drive 0
 ```
 
 The `--drive` flag accepts:

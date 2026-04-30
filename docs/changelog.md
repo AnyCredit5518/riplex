@@ -1,6 +1,6 @@
 # Documentation Changelog
 
-All notable changes to the plex-planner documentation are recorded here.
+All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 

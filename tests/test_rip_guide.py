@@ -4,14 +4,14 @@ import json
 
 import pytest
 
-from plex_planner.cli import (
+from riplex.cli import (
     _create_rip_folders,
     _disc_role,
     _format_seconds,
     _print_rip_guide,
     _rip_guide_json,
 )
-from plex_planner.models import PlannedDisc, PlannedEpisode, PlannedExtra
+from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ class TestPrintRipGuide:
 
         assert "No dvdcompare disc data available" in out
         assert "1:40:00" in out  # 6000 seconds
-        assert "plex-planner organize" in out
+        assert "riplex organize" in out
 
     def test_extras_disc_tip(self, capsys):
         discs = _make_movie_discs()
@@ -125,7 +125,7 @@ class TestPrintRipGuide:
         _print_rip_guide("Blade Runner", 1982, True, 7051, discs)
         out = capsys.readouterr().out
 
-        assert 'plex-planner organize "Blade Runner (1982)"' in out
+        assert 'riplex organize "Blade Runner (1982)"' in out
 
     def test_movie_play_all_extras_not_labeled_episodes(self, capsys):
         """For movies, play-all children on non-film disc show as extras, not episodes."""

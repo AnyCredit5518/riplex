@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from plex_planner.tagger import (
+from riplex.tagger import (
     find_mkvpropedit,
     tag_organized,
     read_organized_tag,
@@ -45,7 +45,7 @@ class TestTagOrganized:
         mock_result.returncode = 0
         mock_result.stderr = ""
 
-        with patch("plex_planner.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
+        with patch("riplex.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
              patch("subprocess.run", return_value=mock_result) as mock_run:
             result = tag_organized(str(fake_mkv), "Disc 3: Now I Am Become Death")
             assert result is True
@@ -56,7 +56,7 @@ class TestTagOrganized:
             assert "--tags" in call_args
 
     def test_no_mkvpropedit(self):
-        with patch("plex_planner.tagger.find_mkvpropedit", return_value=None):
+        with patch("riplex.tagger.find_mkvpropedit", return_value=None):
             assert tag_organized("/fake/file.mkv", "test") is False
 
     def test_mkvpropedit_failure(self, tmp_path):
@@ -67,7 +67,7 @@ class TestTagOrganized:
         mock_result.returncode = 2
         mock_result.stderr = "Error: something went wrong"
 
-        with patch("plex_planner.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
+        with patch("riplex.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
              patch("subprocess.run", return_value=mock_result):
             assert tag_organized(str(fake_mkv), "test") is False
 
@@ -91,12 +91,12 @@ class TestTagOrganized:
                 written_xml.append(Path(xml_path).read_text(encoding="utf-8"))
             return mock_result
 
-        with patch("plex_planner.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
+        with patch("riplex.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
              patch("subprocess.run", side_effect=capture_run):
             tag_organized(str(fake_mkv), "Disc 3: Test Feature")
 
         assert len(written_xml) == 1
-        assert "PLEX_PLANNER" in written_xml[0]
+        assert "RIPLEX" in written_xml[0]
         assert "Disc 3: Test Feature" in written_xml[0]
         assert "organized:" in written_xml[0]
 
@@ -105,7 +105,7 @@ class TestTagOrganized:
         fake_mkv = tmp_path / "test.mkv"
         fake_mkv.write_bytes(b"\x00")
 
-        with patch("plex_planner.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
+        with patch("riplex.tagger.find_mkvpropedit", return_value="/usr/bin/mkvpropedit"), \
              patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 30)):
             assert tag_organized(str(fake_mkv), "test") is False
 
@@ -115,7 +115,7 @@ class TestReadOrganizedTag:
         mkvmerge_output = json.dumps({
             "global_tags": [{
                 "tags": [
-                    {"name": "PLEX_PLANNER", "value": "organized:2026-04-17|Disc 3: Feature"}
+                    {"name": "riplex", "value": "organized:2026-04-17|Disc 3: Feature"}
                 ]
             }]
         })
@@ -157,7 +157,7 @@ class TestReadOrganizedTag:
         mkvmerge_output = json.dumps({
             "global_tags": [{
                 "tags": [
-                    {"name": "plex_planner", "value": "organized:2026-04-17|test"}
+                    {"name": "riplex", "value": "organized:2026-04-17|test"}
                 ]
             }]
         })
@@ -185,7 +185,7 @@ class TestScannerOrganizedTag:
     """Test that the scanner populates organized_tag from ffprobe."""
 
     def test_organized_tag_from_ffprobe(self):
-        from plex_planner.scanner import _probe_file
+        from riplex.scanner import _probe_file
 
         ffprobe_output = json.dumps({
             "format": {
@@ -193,7 +193,7 @@ class TestScannerOrganizedTag:
                 "nb_streams": 1,
                 "tags": {
                     "title": "Test Movie",
-                    "PLEX_PLANNER": "organized:2026-04-17|test",
+                    "riplex": "organized:2026-04-17|test",
                 },
             },
             "streams": [
@@ -216,7 +216,7 @@ class TestScannerOrganizedTag:
         assert sf.max_height == 1080
 
     def test_no_organized_tag(self):
-        from plex_planner.scanner import _probe_file
+        from riplex.scanner import _probe_file
 
         ffprobe_output = json.dumps({
             "format": {
@@ -248,7 +248,7 @@ class TestSkipOrganizedFiles:
     """Test the --force / skip logic from ScannedFile.organized_tag."""
 
     def test_tagged_files_filtered(self):
-        from plex_planner.models import ScannedDisc, ScannedFile
+        from riplex.models import ScannedDisc, ScannedFile
         disc = ScannedDisc(
             folder_name="Test",
             files=[
@@ -263,7 +263,7 @@ class TestSkipOrganizedFiles:
         assert disc.files[0].name == "b.mkv"
 
     def test_force_keeps_all(self):
-        from plex_planner.models import ScannedDisc, ScannedFile
+        from riplex.models import ScannedDisc, ScannedFile
         disc = ScannedDisc(
             folder_name="Test",
             files=[

@@ -15,14 +15,14 @@ import re
 import sys
 from pathlib import Path
 
-# Ensure plex-planner is importable
+# Ensure riplex is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from plex_planner.config import get_api_key
-from plex_planner.metadata_sources.tmdb import TmdbProvider
-from plex_planner.models import PlannedMovie, SearchRequest
-from plex_planner.planner import plan
-from plex_planner.scanner import scan_folder
+from riplex.config import get_api_key
+from riplex.metadata_sources.tmdb import TmdbProvider
+from riplex.models import PlannedMovie, SearchRequest
+from riplex.planner import plan
+from riplex.scanner import scan_folder
 
 
 def _parse_title_year(folder_name: str) -> tuple[str, int | None]:

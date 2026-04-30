@@ -12,16 +12,16 @@
 ## Install from source
 
 ```bash
-cd Projects/plex-planner
+cd Projects/riplex
 pip install -e ".[dev]"
 ```
 
-This installs the `plex-planner` CLI command and all dependencies including test tooling.
+This installs the `riplex` CLI command and all dependencies including test tooling.
 
 ## Verify installation
 
 ```bash
-plex-planner --help
+riplex --help
 ```
 
 You should see the four subcommands: `orchestrate`, `rip`, `organize`, and `lookup`.

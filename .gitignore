@@ -7,4 +7,5 @@ build/
 .pytest_cache/
 
 # Config file with API keys
+riplex.toml
 plex-planner.toml

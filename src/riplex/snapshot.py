@@ -14,8 +14,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plex_planner.models import ScannedDisc, ScannedFile
-from plex_planner.scanner import scan_folder
+from riplex.models import ScannedDisc, ScannedFile
+from riplex.scanner import scan_folder
 
 log = logging.getLogger(__name__)
 

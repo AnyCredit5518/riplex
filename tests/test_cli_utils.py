@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from plex_planner.cli import (
+from riplex.cli import (
     _build_execute_command,
     _build_scanned_from_manifests,
     _detect_disc_format,
@@ -17,7 +17,7 @@ from plex_planner.cli import (
     _parse_volume_label,
     _strip_year_from_title,
 )
-from plex_planner.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc, ScannedFile
+from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc, ScannedFile
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ class TestParseVolumeLabel:
 
 class TestDetectDiscFormat:
     def _make_disc_info(self, resolutions):
-        from plex_planner.makemkv import DiscInfo, DiscTitle
+        from riplex.makemkv import DiscInfo, DiscTitle
 
         titles = [
             DiscTitle(
@@ -201,7 +201,7 @@ class TestDetectDiscFormat:
 class TestInferMediaType:
     def _make_disc_info(self, title_specs):
         """Create a DiscInfo from a list of (duration_seconds, segment_count) tuples."""
-        from plex_planner.makemkv import DiscInfo, DiscTitle
+        from riplex.makemkv import DiscInfo, DiscTitle
 
         titles = [
             DiscTitle(
@@ -254,11 +254,11 @@ class TestInferMediaType:
 # _pick_best (interactive TMDb selection)
 # ---------------------------------------------------------------------------
 
-from plex_planner.metadata_provider import MetadataSearchResult
-from plex_planner.planner import _pick_best, _format_tmdb_option
-from plex_planner.models import SearchRequest
-from plex_planner import ui
-import plex_planner.planner as _planner_mod
+from riplex.metadata_provider import MetadataSearchResult
+from riplex.planner import _pick_best, _format_tmdb_option
+from riplex.models import SearchRequest
+from riplex import ui
+import riplex.planner as _planner_mod
 
 
 def _result(title, year, media_type="tv", popularity=1.0):
@@ -362,39 +362,39 @@ class TestFormatTmdbOption:
 
 class TestBuildExecuteCommand:
     def test_basic(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "folder"])
-        assert _build_execute_command() == "plex-planner organize folder --execute"
+        monkeypatch.setattr("sys.argv", ["riplex", "organize", "folder"])
+        assert _build_execute_command() == "riplex organize folder --execute"
 
     def test_quotes_spaces(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "E:\\My Folder\\rip"])
+        monkeypatch.setattr("sys.argv", ["riplex", "organize", "E:\\My Folder\\rip"])
         result = _build_execute_command()
         assert '"E:\\My Folder\\rip"' in result
         assert result.endswith("--execute")
 
     def test_strips_dry_run(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "--dry-run"])
+        monkeypatch.setattr("sys.argv", ["riplex", "rip", "--dry-run"])
         result = _build_execute_command()
         assert "--dry-run" not in result
         assert "--execute" in result
 
     def test_strips_n_flag(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "-n"])
+        monkeypatch.setattr("sys.argv", ["riplex", "rip", "-n"])
         result = _build_execute_command()
         assert "-n" not in result
         assert "--execute" in result
 
     def test_no_double_execute(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "rip", "--execute"])
+        monkeypatch.setattr("sys.argv", ["riplex", "rip", "--execute"])
         result = _build_execute_command()
         assert result.count("--execute") == 1
 
     def test_strips_exe_path(self, monkeypatch):
         monkeypatch.setattr("sys.argv", [
-            "C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\plex-planner.exe",
+            "C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\riplex.exe",
             "organize", "folder",
         ])
         result = _build_execute_command()
-        assert result.startswith("plex-planner ")
+        assert result.startswith("riplex ")
         assert "C:\\Users" not in result
 
 
@@ -408,16 +408,16 @@ class TestDryRunBanner:
 
 class TestExecuteHint:
     def test_organize(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "organize", "folder"])
+        monkeypatch.setattr("sys.argv", ["riplex", "organize", "folder"])
         hint = _execute_hint("organize")
         assert "Re-run with --execute to apply these changes:" in hint
-        assert "plex-planner organize folder --execute" in hint
+        assert "riplex organize folder --execute" in hint
 
     def test_rip(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["plex-planner", "rip"])
+        monkeypatch.setattr("sys.argv", ["riplex", "rip"])
         hint = _execute_hint("rip")
         assert "Re-run with --execute to rip:" in hint
-        assert "plex-planner rip --execute" in hint
+        assert "riplex rip --execute" in hint
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Configuration
 
-plex-planner reads settings from three sources, in priority order:
+riplex reads settings from three sources, in priority order:
 
 1. CLI flags (highest priority)
 2. Environment variables
@@ -12,9 +12,9 @@ Create a config file at one of these locations:
 
 | Platform | Path |
 |---|---|
-| Windows | `%APPDATA%\plex-planner\config.toml` |
-| Linux/macOS | `~/.config/plex-planner/config.toml` |
-| Any (local) | `plex-planner.toml` in the current working directory |
+| Windows | `%APPDATA%\riplex\config.toml` |
+| Linux/macOS | `~/.config/riplex/config.toml` |
+| Any (local) | `riplex.toml` in the current working directory |
 
 Example:
 

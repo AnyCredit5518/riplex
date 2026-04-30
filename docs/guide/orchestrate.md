@@ -7,7 +7,7 @@ The `orchestrate` command is the primary workflow for ripping and organizing dis
 Insert a disc and run:
 
 ```bash
-plex-planner orchestrate --execute
+riplex orchestrate --execute
 ```
 
 This will:
@@ -39,7 +39,7 @@ In interactive mode, orchestrate presents prompts at each decision point:
 Skip all prompts for scripted or scheduled use:
 
 ```bash
-plex-planner orchestrate --execute --auto
+riplex orchestrate --execute --auto
 ```
 
 Uses best-guess defaults: first TMDb match, first American dvdcompare release, all discs, auto title selection per disc.
@@ -49,7 +49,7 @@ Uses best-guess defaults: first TMDb match, first American dvdcompare release, a
 Select specific discs upfront instead of being prompted:
 
 ```bash
-plex-planner orchestrate --execute --discs 1,3
+riplex orchestrate --execute --discs 1,3
 ```
 
 This is useful for 4K sets where you want to skip the standard Blu-ray copies (e.g. rip Disc 1 (4K) and Disc 3 (bonus), skip Disc 2 (1080p duplicate)).
@@ -63,7 +63,7 @@ Orchestrate detects previously ripped discs. If the rip folder already has Disc 
 Scan a disc and write its manifest without ripping:
 
 ```bash
-plex-planner orchestrate --snapshot
+riplex orchestrate --snapshot
 ```
 
 Useful to regenerate manifests for files already ripped manually with MakeMKV. The manifest enables the organize phase to use disc metadata for matching without needing ffprobe.

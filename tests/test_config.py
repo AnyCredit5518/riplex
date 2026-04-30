@@ -3,7 +3,7 @@
 import os
 from unittest import mock
 
-from plex_planner.config import get_api_key, load_config
+from riplex.config import get_api_key, load_config
 
 
 class TestGetApiKey:
@@ -18,7 +18,7 @@ class TestGetApiKey:
     def test_falls_back_to_config(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             with mock.patch(
-                "plex_planner.config.load_config",
+                "riplex.config.load_config",
                 return_value={"tmdb_api_key": "cfg_key"},
             ):
                 # Clear TMDB_API_KEY if present
@@ -28,7 +28,7 @@ class TestGetApiKey:
     def test_returns_empty_when_nothing_set(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             with mock.patch(
-                "plex_planner.config.load_config", return_value={}
+                "riplex.config.load_config", return_value={}
             ):
                 os.environ.pop("TMDB_API_KEY", None)
                 assert get_api_key(None) == ""
