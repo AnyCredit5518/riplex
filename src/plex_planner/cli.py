@@ -6,11 +6,12 @@ import argparse
 import asyncio
 import logging
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-from plex_planner.config import get_api_key, get_output_root
+from plex_planner.config import get_api_key, get_archive_root, get_output_root, get_rip_output
 from plex_planner.dedup import find_all_redundant, find_duplicates, remove_duplicates
 from plex_planner.detect import detect_format, detect_incomplete, group_title_folders
 from plex_planner.disc_provider import _convert_film, lookup_discs
@@ -636,7 +637,8 @@ async def _run_rip_guide(args: argparse.Namespace) -> int:
         if not output_val:
             print("Error: --output or output_root config required for --create-folders.", file=sys.stderr)
             return 1
-        makemkv_root = Path(output_val) / "_MakeMKV" / f"{canonical} ({year})"
+        rip_output = get_rip_output()
+        makemkv_root = Path(rip_output) / f"{canonical} ({year})" if rip_output else Path(output_val) / "Rips" / f"{canonical} ({year})"
         created = _create_rip_folders(makemkv_root, discs)
         if created:
             print(f"\nCreated {len(created)} folder(s) under {makemkv_root}")
@@ -686,9 +688,9 @@ def _print_rip_guide(
             label = f"Disc {disc.number}"
             fmt_str = f" [{disc.disc_format}]" if disc.disc_format else ""
             role = _disc_role(disc, is_movie)
-            print(f"  _MakeMKV/{folder_base}/{label}/{fmt_str}{role}")
+            print(f"  Rips/{folder_base}/{label}/{fmt_str}{role}")
     else:
-        print(f"  _MakeMKV/{folder_base}/")
+        print(f"  Rips/{folder_base}/")
 
     if not discs:
         print("\nNo dvdcompare disc data available.")
@@ -776,7 +778,7 @@ def _print_rip_guide(
     if total_features > 0:
         print(f"  - {total_features} total feature(s) across {len(discs)} disc(s).")
 
-    print(f"  - After ripping, run: plex-planner organize \"_MakeMKV/{folder_base}\"")
+    print(f"  - After ripping, run: plex-planner organize \"{folder_base}\"")
 
 
 def _rip_guide_json(
@@ -1023,8 +1025,8 @@ def _select_dvdcompare_release(
         r for i, r in enumerate(film.releases) if i != rec_idx
     ]
 
-    # --- interactive selection ---
-    if is_interactive() and len(releases) > 1:
+    # --- interactive selection (skip if preferred already resolved) ---
+    if is_interactive() and len(releases) > 1 and not preferred:
         options = []
         for rel in releases:
             disc_count = len(rel.discs) if rel.discs else 0
@@ -1314,7 +1316,9 @@ async def _run_rip(args: argparse.Namespace) -> int:
             print(f"\nWarning: could not auto-detect disc number. Defaulting to '{disc_folder}'.", file=sys.stderr)
             print("  Use --titles and manually organize if this is wrong.", file=sys.stderr)
 
-    output_dir = Path(output_val) / "_MakeMKV" / folder_base / disc_folder
+    rip_output = get_rip_output()
+    rip_base = Path(rip_output) / folder_base if rip_output else Path(output_val) / "Rips" / folder_base
+    output_dir = rip_base / disc_folder
 
     # Confirmation
     total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
@@ -1830,7 +1834,8 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         return 1
 
     folder_base = f"{canonical} ({year})"
-    rip_root = Path(output_val) / "_MakeMKV" / folder_base
+    rip_output = get_rip_output()
+    rip_root = Path(rip_output) / folder_base if rip_output else Path(output_val) / "Rips" / folder_base
 
     # Detect which disc is currently inserted
     current_disc_num = _detect_disc_number(disc_info, discs)
@@ -2241,6 +2246,23 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
     if dry_run:
         # Replace the organize hint with an orchestrate hint
         print(f"\nRe-run with --execute to rip and organize:\n  {_build_execute_command()}")
+
+    # ---- Archive phase ----
+    if not dry_run and org_result == 0:
+        archive_root = get_archive_root()
+        if archive_root and rip_root.exists():
+            archive_dest = Path(archive_root) / folder_base
+            if is_interactive():
+                print(f"\nArchive rip folder to: {archive_dest}", file=sys.stderr)
+                if prompt_confirm("Move rip folder to archive?"):
+                    archive_dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(rip_root), archive_dest)
+                    print(f"Archived: {rip_root} -> {archive_dest}", file=sys.stderr)
+            else:
+                # Auto mode: archive automatically
+                archive_dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(rip_root), archive_dest)
+                print(f"Archived: {rip_root} -> {archive_dest}", file=sys.stderr)
 
     return org_result if not any_failed else 1
 

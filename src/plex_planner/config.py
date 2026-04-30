@@ -71,3 +71,35 @@ def get_output_root(cli_value: str | None = None) -> str:
 
     cfg = load_config()
     return cfg.get("output_root", "")
+
+
+def get_rip_output(cli_value: str | None = None) -> str:
+    """Resolve the rip output directory from (in priority order):
+    1. CLI argument
+    2. Config file (rip_output)
+    3. Default: {output_root}/Rips
+
+    Returns an empty string if neither rip_output nor output_root is set.
+    """
+    if cli_value:
+        return cli_value
+
+    cfg = load_config()
+    rip_out = cfg.get("rip_output", "")
+    if rip_out:
+        return rip_out
+
+    # Fall back to {output_root}/Rips
+    output_root = get_output_root()
+    if output_root:
+        return str(Path(output_root) / "Rips")
+    return ""
+
+
+def get_archive_root() -> str:
+    """Resolve the archive root directory from config file (archive_root).
+
+    Returns an empty string if not set (archiving disabled).
+    """
+    cfg = load_config()
+    return cfg.get("archive_root", "")

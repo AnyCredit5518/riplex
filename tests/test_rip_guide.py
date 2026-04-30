@@ -90,8 +90,8 @@ class TestPrintRipGuide:
         assert "Disc 2" in out
         assert "Making Of" in out
         assert "Trailer" in out
-        assert "_MakeMKV/Blade Runner (1982)/Disc 1/" in out
-        assert "_MakeMKV/Blade Runner (1982)/Disc 2/" in out
+        assert "Rips/Blade Runner (1982)/Disc 1/" in out
+        assert "Rips/Blade Runner (1982)/Disc 2/" in out
 
     def test_tv_with_episodes(self, capsys):
         discs = _make_tv_discs()
@@ -125,7 +125,7 @@ class TestPrintRipGuide:
         _print_rip_guide("Blade Runner", 1982, True, 7051, discs)
         out = capsys.readouterr().out
 
-        assert 'plex-planner organize "_MakeMKV/Blade Runner (1982)"' in out
+        assert 'plex-planner organize "Blade Runner (1982)"' in out
 
     def test_movie_play_all_extras_not_labeled_episodes(self, capsys):
         """For movies, play-all children on non-film disc show as extras, not episodes."""

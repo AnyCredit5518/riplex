@@ -351,11 +351,11 @@ class TestExecutePlan:
         )
         actions = execute_plan(op, dry_run=True)
         text = "\n".join(actions)
-        assert "WOULD MOVE" in text
-        assert "UNMATCHED" in text
-        assert "MISSING" in text
+        assert "Would organize to" in text
+        assert "Unmatched" in text
+        assert "Not Found" in text
         assert "Deleted Scene" in text
-        assert "[ignored]" in text
+        assert "left in place" in text
 
     def test_unmatched_ignore_policy(self):
         op = OrganizePlan(
@@ -363,8 +363,8 @@ class TestExecutePlan:
         )
         actions = execute_plan(op, dry_run=True, unmatched_policy="ignore")
         text = "\n".join(actions)
-        assert "[ignored]" in text
-        assert "WOULD MOVE" not in text
+        assert "left in place" in text
+        assert "extra.mkv" in text
 
     def test_unmatched_move_policy_dry_run(self):
         op = OrganizePlan(
@@ -376,7 +376,7 @@ class TestExecutePlan:
             unmatched_dir=Path("E:/Media/_Unmatched/Oppenheimer"),
         )
         text = "\n".join(actions)
-        assert "WOULD MOVE" in text
+        assert "would move to" in text
         assert "_Unmatched" in text
         assert "extra.mkv" in text
 
@@ -386,8 +386,8 @@ class TestExecutePlan:
         )
         actions = execute_plan(op, dry_run=True, unmatched_policy="delete")
         text = "\n".join(actions)
-        assert "WOULD DELETE" in text
-        assert "/rip/extra.mkv" in text
+        assert "would delete" in text
+        assert "extra.mkv" in text
 
 
 class TestSplitDetection:
@@ -628,9 +628,8 @@ class TestSplitDryRun:
         )
         actions = execute_plan(op, dry_run=True)
         text = "\n".join(actions)
-        assert "WOULD SPLIT" in text
-        assert "/rip/diaries.mkv" in text
-        assert "CHAPTER ->" in text
+        assert "split" in text.lower()
+        assert "diaries.mkv" in text
         assert "s00e01" in text
         assert "s00e02" in text
 

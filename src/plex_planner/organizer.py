@@ -525,30 +525,16 @@ def execute_plan(
     - ``"move"``: move to *unmatched_dir*
     - ``"delete"``: remove the file
     """
-    actions: list[str] = []
-
+    # --- Execute moves/splits first ---
     for move in organize_plan.moves:
-        desc = f"[{move.confidence}] {move.label}"
-        if dry_run:
-            actions.append(f"  WOULD MOVE: {move.source}")
-            actions.append(f"          TO: {move.destination}")
-            actions.append(f"       MATCH: {desc}")
-            actions.append("")
-        else:
+        if not dry_run:
             dest = Path(move.destination)
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(move.source, dest)
-            actions.append(f"  MOVED: {move.source} -> {move.destination} ({desc})")
+            log.info("Moved: %s -> %s ([%s] %s)", move.source, move.destination, move.confidence, move.label)
 
     for split in organize_plan.splits:
-        if dry_run:
-            actions.append(f"  WOULD SPLIT: {split.source}")
-            actions.append(f"     ORIGINAL: {split.original_label}")
-            for dest, label in zip(split.chapter_destinations, split.chapter_labels):
-                actions.append(f"   CHAPTER -> {dest}")
-                actions.append(f"      MATCH: [{split.confidence}] {label}")
-            actions.append("")
-        else:
+        if not dry_run:
             import tempfile
 
             output_names = [Path(d).name for d in split.chapter_destinations]
@@ -558,38 +544,131 @@ def execute_plan(
                     dest_path = Path(dest)
                     dest_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(sf, dest_path)
-            actions.append(f"  SPLIT: {split.source} -> {len(split.chapter_destinations)} files")
-            for dest, label in zip(split.chapter_destinations, split.chapter_labels):
-                actions.append(f"    -> {dest} ([{split.confidence}] {label})")
+            log.info("Split: %s -> %d files", split.source, len(split.chapter_destinations))
 
+    # Handle unmatched files
+    for f in organize_plan.unmatched:
+        if unmatched_policy == "move" and unmatched_dir is not None:
+            dest = unmatched_dir / f.name
+            if not dry_run:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(f.path, dest)
+                log.info("Moved unmatched: %s -> %s", f.path, dest)
+        elif unmatched_policy == "delete":
+            if not dry_run:
+                Path(f.path).unlink()
+                log.info("Deleted unmatched: %s", f.path)
+
+    # --- Build grouped output ---
+    return _format_plan_output(organize_plan, dry_run, unmatched_policy, unmatched_dir)
+
+
+def _format_plan_output(
+    organize_plan: OrganizePlan,
+    dry_run: bool,
+    unmatched_policy: str,
+    unmatched_dir: Path | None,
+) -> list[str]:
+    """Build grouped, human-readable output lines for an organize plan."""
+    actions: list[str] = []
+
+    # Determine output root from first move destination
+    output_base = ""
+    all_dests = [Path(m.destination) for m in organize_plan.moves]
+    for split in organize_plan.splits:
+        all_dests.extend(Path(d) for d in split.chapter_destinations)
+    if all_dests:
+        # Find common ancestor of all destinations
+        parts_list = [d.parts for d in all_dests]
+        common = []
+        for level in zip(*parts_list):
+            if len(set(level)) == 1:
+                common.append(level[0])
+            else:
+                break
+        if common:
+            output_base = str(Path(*common))
+
+    if output_base:
+        verb = "Would organize to" if dry_run else "Output"
+        actions.append(f"{verb}: {output_base}")
+        actions.append("")
+
+    # Group moves by subfolder relative to output_base
+    groups: dict[str, list[tuple[str, str]]] = {}  # folder -> [(dest_name, source_name)]
+    for move in organize_plan.moves:
+        dest_path = Path(move.destination)
+        source_name = Path(move.source).name
+        dest_name = dest_path.name
+        if output_base:
+            try:
+                rel = dest_path.relative_to(output_base)
+                folder = str(rel.parent) if rel.parent != Path(".") else ""
+            except ValueError:
+                folder = ""
+        else:
+            folder = str(dest_path.parent)
+        groups.setdefault(folder, []).append((dest_name, source_name))
+        log.debug("Plan: %s <- %s ([%s] %s)", move.destination, move.source, move.confidence, move.label)
+
+    for split in organize_plan.splits:
+        source_name = Path(split.source).name
+        for dest, label in zip(split.chapter_destinations, split.chapter_labels):
+            dest_path = Path(dest)
+            dest_name = dest_path.name
+            if output_base:
+                try:
+                    rel = dest_path.relative_to(output_base)
+                    folder = str(rel.parent) if rel.parent != Path(".") else ""
+                except ValueError:
+                    folder = ""
+            else:
+                folder = str(dest_path.parent)
+            groups.setdefault(folder, []).append((dest_name, f"{source_name} (split)"))
+
+    # Print groups in a logical order: root first, then alphabetical subfolders
+    root_items = groups.pop("", [])
+    if root_items:
+        header = "Main Feature" if len(root_items) == 1 else f"Main ({len(root_items)} files)"
+        actions.append(header)
+        for dest_name, source_name in root_items:
+            actions.append(f"  {dest_name:<45} <- {source_name}")
+        actions.append("")
+
+    for folder in sorted(groups.keys()):
+        items = groups[folder]
+        actions.append(f"{folder} ({len(items)} {'file' if len(items) == 1 else 'files'})")
+        for dest_name, source_name in items:
+            actions.append(f"  {dest_name:<45} <- {source_name}")
+        actions.append("")
+
+    # Unmatched
     if organize_plan.unmatched:
-        actions.append("UNMATCHED FILES (no confident match found):")
-        for f in organize_plan.unmatched:
-            if unmatched_policy == "ignore":
-                actions.append(f"  {f.name} ({f.duration_seconds}s) [ignored]")
-            elif unmatched_policy == "move":
-                if unmatched_dir is None:
-                    actions.append(f"  {f.name} ({f.duration_seconds}s) [ignored, no move dir]")
-                    continue
-                dest = unmatched_dir / f.name
-                if dry_run:
-                    actions.append(f"  WOULD MOVE: {f.path}")
-                    actions.append(f"          TO: {dest}")
-                    actions.append("")
-                else:
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(f.path, dest)
-                    actions.append(f"  MOVED TO UNMATCHED: {f.path} -> {dest}")
-            elif unmatched_policy == "delete":
-                if dry_run:
-                    actions.append(f"  WOULD DELETE: {f.path}")
-                else:
-                    Path(f.path).unlink()
-                    actions.append(f"  DELETED: {f.path}")
+        if unmatched_policy == "ignore":
+            actions.append(f"Unmatched ({len(organize_plan.unmatched)} files, left in place)")
+            for f in organize_plan.unmatched:
+                actions.append(f"  {f.name}")
+        elif unmatched_policy == "move" and unmatched_dir:
+            verb = "would move to" if dry_run else "moved to"
+            actions.append(f"Unmatched ({len(organize_plan.unmatched)} files, {verb} {unmatched_dir})")
+            for f in organize_plan.unmatched:
+                actions.append(f"  {f.name}")
+        elif unmatched_policy == "delete":
+            verb = "would delete" if dry_run else "deleted"
+            actions.append(f"Unmatched ({len(organize_plan.unmatched)} files, {verb})")
+            for f in organize_plan.unmatched:
+                actions.append(f"  {f.name}")
+        actions.append("")
 
+    # Missing
     if organize_plan.missing:
-        actions.append("MISSING CONTENT (expected but no file found):")
+        actions.append(f"Not Found ({len(organize_plan.missing)} expected items)")
         for label in organize_plan.missing:
-            actions.append(f"  {label}")
+            # Clean up dvdcompare labels: strip outer parens like "((with Play All))"
+            clean = label
+            if clean.startswith("(") and clean.endswith(")"):
+                clean = clean[1:-1]
+            actions.append(f"  {clean}")
+        actions.append("")
 
     return actions
