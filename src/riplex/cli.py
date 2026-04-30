@@ -497,20 +497,19 @@ def _run_setup() -> int:
     print("riplex setup")
     print(f"Config file: {config_path}\n")
 
-    existing: dict[str, str] = {}
-    if config_path.is_file():
-        with open(config_path, "rb") as f:
-            existing = tomllib.load(f)
+    existing: dict[str, str] = load_config()
+    if existing:
         print("(Existing config found. Press Enter to keep current values.)\n")
 
-    def prompt(key: str, label: str, hint: str = "") -> str:
+    def prompt(key: str, label: str, hint: str = "", mask: bool = False) -> str:
         current = existing.get(key, "")
-        suffix = f" [{current}]" if current else ""
+        display = (current[:4] + "...") if mask and current else current
+        suffix = f" [{display}]" if current else ""
         prompt_hint = f" ({hint})" if hint else ""
         value = input(f"{label}{prompt_hint}{suffix}: ").strip()
         return value if value else current
 
-    tmdb_key = prompt("tmdb_api_key", "TMDb API key", "free at themoviedb.org/settings/api")
+    tmdb_key = prompt("tmdb_api_key", "TMDb API key", "free at themoviedb.org/settings/api", mask=True)
     output_root = prompt("output_root", "Plex library root", "e.g. E:/Media")
     rip_output = prompt("rip_output", "MakeMKV rip output folder", "e.g. E:/Media/Rips")
     archive_root = prompt("archive_root", "Archive root (optional)", "move raw rips here after organizing")
