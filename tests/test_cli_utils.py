@@ -126,7 +126,7 @@ class TestParseVolumeLabel:
         assert _parse_volume_label("OPPENHEIMER_Disc_1") == "Oppenheimer"
 
     def test_returns_none_for_short(self):
-        assert _parse_volume_label("AB") is None
+        assert _parse_volume_label("A") is None
 
     def test_returns_none_for_empty(self):
         assert _parse_volume_label("") is None

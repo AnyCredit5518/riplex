@@ -875,7 +875,7 @@ def _parse_volume_label(label: str) -> str | None:
         "BLADE_RUNNER_2049" -> "Blade Runner 2049"
         "TGUN2" -> None (too short/ambiguous)
     """
-    if not label or len(label) < 4:
+    if not label or len(label) < 2:
         return None
 
     # Strip disc number suffix including its leading separator.
@@ -886,7 +886,7 @@ def _parse_volume_label(label: str) -> str | None:
     # Replace underscores with spaces
     cleaned = cleaned.replace("_", " ").strip()
 
-    if len(cleaned) < 3:
+    if len(cleaned) < 2:
         return None
 
     # Title-case, preserving roman numerals
