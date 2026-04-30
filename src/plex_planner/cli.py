@@ -403,7 +403,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Multi-disc rip and organize pipeline.",
     )
     orch_parser.add_argument(
-        "title", nargs="?", default=None,
+        "--title", default=None,
         help="Movie or TV show title (auto-detected from volume label if omitted).",
     )
     orch_parser.add_argument(

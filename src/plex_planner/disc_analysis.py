@@ -57,6 +57,17 @@ def classify_title(
     is_4k = "3840" in (title.resolution or "")
     res_label = "4K" if is_4k else "1080p"
 
+    # Check for same-resolution duplicate (earlier title with identical duration/size)
+    for t in all_titles:
+        if t is title:
+            break  # only look at titles before this one
+        if (
+            t.resolution == title.resolution
+            and abs(t.duration_seconds - dur) < 5
+            and t.size_bytes == title.size_bytes
+        ):
+            return f"Duplicate of #{t.index} ({res_label}) - skip"
+
     # Check if this is the main movie
     if is_movie and movie_runtime:
         if abs(dur - movie_runtime) < 60:
@@ -146,6 +157,17 @@ def is_skip_title(
     # Always skip very short titles
     if dur < 120:
         return True
+
+    # Skip same-resolution duplicates (earlier title with identical duration/size)
+    for t in all_titles:
+        if t is title:
+            break
+        if (
+            t.resolution == title.resolution
+            and abs(t.duration_seconds - dur) < 5
+            and t.size_bytes == title.size_bytes
+        ):
+            return True
 
     # Skip lower-resolution duplicates when a 4K version exists
     if not is_4k:
