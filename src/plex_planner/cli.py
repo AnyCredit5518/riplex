@@ -31,6 +31,25 @@ log = logging.getLogger(__name__)
 
 _LOG_DIR = Path(tempfile.gettempdir()) / "plex-planner"
 
+_BAR_STYLES = [
+    {"fill": "=", "head": ">", "empty": " ", "left": "[", "right": "]"},
+    {"fill": "\u2588", "head": "\u2589", "empty": "\u2591", "left": "\u2595", "right": "\u258f"},
+    {"fill": "#", "head": ">", "empty": "-", "left": "[", "right": "]"},
+    {"fill": "\u2593", "head": "\u2592", "empty": "\u2591", "left": "|", "right": "|"},
+    {"fill": "*", "head": "o", "empty": ".", "left": "<", "right": ">"},
+    {"fill": "\u25a0", "head": "\u25a1", "empty": "\u00b7", "left": "\u2595", "right": "\u258f"},
+    {"fill": "/", "head": "|", "empty": " ", "left": "[", "right": "]"},
+    {"fill": "\u2501", "head": "\u254b", "empty": "\u2500", "left": "\u2523", "right": "\u252b"},
+    {"fill": "~", "head": "\u2248", "empty": " ", "left": "{", "right": "}"},
+    {"fill": "\u2580", "head": "\u2584", "empty": "_", "left": "|", "right": "|"},
+]
+
+
+def _random_bar_style() -> dict[str, str]:
+    """Pick a random progress bar style for visual variety."""
+    import random
+    return random.choice(_BAR_STYLES)
+
 
 def _build_execute_command() -> str:
     """Reconstruct the current CLI invocation with ``--execute`` appended.
@@ -1313,18 +1332,35 @@ async def _run_rip(args: argparse.Namespace) -> int:
 
         title_start = time.monotonic()
         last_pct = [-1]
+        title_bytes = t.size_bytes
+        bar_style = _random_bar_style()
 
-        def _progress_cb(progress, _last=last_pct):
+        def _progress_cb(progress, _last=last_pct, _style=bar_style,
+                         _start=title_start, _total=title_bytes):
             if progress.max_val > 0:
                 pct = progress.current * 100 // progress.max_val
                 if pct != _last[0]:
                     _last[0] = pct
                     bar_width = 30
                     filled = bar_width * pct // 100
-                    bar = "=" * filled + ">" * (1 if filled < bar_width else 0) + " " * (bar_width - filled - 1)
-                    elapsed = time.monotonic() - title_start
-                    elapsed_str = _format_seconds(int(elapsed))
-                    print(f"\r  [{bar}] {pct:3d}%  {elapsed_str}", end="", flush=True)
+                    bar = _style["fill"] * filled + _style["head"] * (1 if filled < bar_width else 0) + _style["empty"] * (bar_width - filled - (1 if filled < bar_width else 0))
+                    elapsed = time.monotonic() - _start
+                    done_bytes = _total * pct // 100
+                    done_gb = done_bytes / (1024 ** 3)
+                    total_gb = _total / (1024 ** 3)
+                    speed_mbs = (done_bytes / (1024 ** 2)) / elapsed if elapsed > 1 else 0
+                    if pct > 0 and speed_mbs > 0:
+                        remaining_bytes = _total - done_bytes
+                        eta_secs = int(remaining_bytes / (speed_mbs * 1024 * 1024))
+                        eta_str = _format_seconds(eta_secs)
+                    else:
+                        eta_str = "..."
+                    print(
+                        f"\r  {_style['left']}{bar}{_style['right']} {pct:3d}%  "
+                        f"{done_gb:.1f}/{total_gb:.1f} GB  "
+                        f"{speed_mbs:.0f} MB/s  ETA {eta_str}   ",
+                        end="", flush=True,
+                    )
 
         rip_result = run_rip(
             drive_idx, t.index, output_dir,
@@ -1583,11 +1619,13 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
 
     from plex_planner.makemkv import (
         build_stream_fingerprint,
+        eject_disc,
         find_makemkvcon,
         probe_chapter_durations,
         run_disc_info,
         run_drive_list,
         run_rip,
+        wait_for_disc,
     )
 
     log_file = _setup_logging(verbose=getattr(args, "verbose", False))
@@ -1612,15 +1650,17 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
 
     # Resolve drive
     drive_arg = getattr(args, "drive", "auto") or "auto"
+    print("Scanning drives ...", file=sys.stderr)
+    drives = run_drive_list(exe)
+
     if drive_arg == "auto":
-        print("Scanning drives ...", file=sys.stderr)
-        drives = run_drive_list(exe)
         active = [d for d in drives if d.has_disc]
         if not active:
             print("Error: no disc found in any drive.", file=sys.stderr)
             return 1
         print(f"Found disc in drive {active[0].index}: {active[0].disc_label} ({active[0].device})", file=sys.stderr)
         drive_idx = active[0].index
+        drive_device = active[0].device  # resolved at runtime from drive scan
         volume_label = active[0].disc_label
     else:
         try:
@@ -1628,6 +1668,12 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
         except ValueError:
             drive_idx = drive_arg
         volume_label = None
+        # Resolve device letter from drive list regardless of how drive was specified
+        drive_device = ""
+        for d in drives:
+            if d.index == drive_idx or d.device == drive_arg:
+                drive_device = d.device
+                break
 
     # Read initial disc info
     print("Reading disc info ...", file=sys.stderr)
@@ -1769,17 +1815,33 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
             summary = _disc_content_summary(disc)
             fmt = disc.disc_format if hasattr(disc, "disc_format") and disc.disc_format else ""
             fmt_str = f" ({fmt})" if fmt else ""
-            print(f"\nInsert Disc {disc.number}{fmt_str}: {summary}")
-            if not prompt_confirm("Disc inserted and ready?"):
-                # User said no, offer skip or finish
-                action = prompt_choice(
-                    "What would you like to do?",
-                    ["Skip this disc", "Finish and organize"],
-                    default=0,
+            print(f"\n{'=' * 60}")
+            print(f"Insert Disc {disc.number}{fmt_str}: {summary}")
+            print(f"{'=' * 60}")
+
+            if is_interactive():
+                # Interactive: wait for user to confirm
+                if not prompt_confirm("Disc inserted and ready?"):
+                    action = prompt_choice(
+                        "What would you like to do?",
+                        ["Skip this disc", "Finish and organize"],
+                        default=0,
+                    )
+                    if action == 1:
+                        break
+                    continue
+            else:
+                # Non-interactive (--auto): wait for a new disc to appear
+                print("Waiting for new disc ...", file=sys.stderr)
+                new_drive = wait_for_disc(
+                    drive_idx, makemkvcon=exe,
+                    previous_label=volume_label or "",
                 )
-                if action == 1:
+                if not new_drive:
+                    print("Timed out waiting for disc. Stopping.", file=sys.stderr)
                     break
-                continue
+                print(f"Detected: {new_drive.disc_label} ({new_drive.device})", file=sys.stderr)
+                volume_label = new_drive.disc_label
 
             # Re-read disc info after insertion
             print("Reading disc info ...", file=sys.stderr)
@@ -1831,8 +1893,11 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
             continue
 
         # Show disc analysis for the currently-inserted disc
-        dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(discs)
-        _print_disc_analysis(disc_info, discs, is_movie, movie_runtime)
+        # Only use current disc's entries for classification to avoid
+        # matching extras from other discs to titles on this one
+        current_disc_entries = [d for d in discs if d.number == disc.number]
+        dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(current_disc_entries)
+        _print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
 
         # Filter titles to rip (smart filtering)
         rip_titles = [
@@ -1869,19 +1934,39 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
                   f"{t.size_bytes / (1024**3):.1f} GB ...")
 
             title_start = time.monotonic()
+            title_bytes = t.size_bytes
             last_pct = [-1]
+            bar_style = _random_bar_style()
 
-            def _progress_cb(progress, _last=last_pct):
+            def _progress_cb(progress, _last=last_pct, _style=bar_style,
+                             _start=title_start, _total=title_bytes):
                 if progress.max_val > 0:
                     pct = progress.current * 100 // progress.max_val
                     if pct != _last[0]:
                         _last[0] = pct
                         bar_width = 30
                         filled = bar_width * pct // 100
-                        bar = "=" * filled + ">" * (1 if filled < bar_width else 0) + " " * (bar_width - filled - 1)
-                        elapsed = time.monotonic() - title_start
-                        elapsed_str = _format_seconds(int(elapsed))
-                        print(f"\r  [{bar}] {pct:3d}%  {elapsed_str}", end="", flush=True)
+                        bar = _style["fill"] * filled + _style["head"] * (1 if filled < bar_width else 0) + _style["empty"] * (bar_width - filled - (1 if filled < bar_width else 0))
+                        elapsed = time.monotonic() - _start
+                        # Size progress
+                        done_bytes = _total * pct // 100
+                        done_gb = done_bytes / (1024 ** 3)
+                        total_gb = _total / (1024 ** 3)
+                        # Speed
+                        speed_mbs = (done_bytes / (1024 ** 2)) / elapsed if elapsed > 1 else 0
+                        # ETA
+                        if pct > 0 and speed_mbs > 0:
+                            remaining_bytes = _total - done_bytes
+                            eta_secs = int(remaining_bytes / (speed_mbs * 1024 * 1024))
+                            eta_str = _format_seconds(eta_secs)
+                        else:
+                            eta_str = "..."
+                        print(
+                            f"\r  {_style['left']}{bar}{_style['right']} {pct:3d}%  "
+                            f"{done_gb:.1f}/{total_gb:.1f} GB  "
+                            f"{speed_mbs:.0f} MB/s  ETA {eta_str}   ",
+                            end="", flush=True,
+                        )
 
             rip_result = run_rip(
                 drive_idx, t.index, output_dir,
@@ -1953,6 +2038,11 @@ async def _run_orchestrate(args: argparse.Namespace) -> int:
             log.info("Wrote rip manifest: %s", manifest_path)
             ripped_discs.add(disc.number)
             any_ripped = True
+
+            # Eject disc after successful rip
+            if drive_device:
+                print(f"\nEjecting disc ...", file=sys.stderr)
+                eject_disc(drive_device)
 
     # ---- Summary ----
     if ripped_discs:

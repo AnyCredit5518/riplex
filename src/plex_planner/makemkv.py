@@ -273,6 +273,70 @@ def run_drive_list(makemkvcon: Path | None = None) -> list[DriveInfo]:
     return parse_drive_list(output)
 
 
+def eject_disc(drive_letter: str) -> bool:
+    """Eject the disc from the given drive (e.g. "D:").
+
+    Uses PowerShell's Shell.Application COM object on Windows.
+    Returns True if the eject command was issued successfully.
+    """
+    import platform
+
+    drive = drive_letter.rstrip("\\")
+    if platform.system() != "Windows":
+        # On Linux/Mac, try 'eject' command
+        try:
+            subprocess.run(["eject", drive], timeout=10, capture_output=True)
+            return True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    # Windows: use PowerShell COM object
+    ps_cmd = (
+        f'(New-Object -comObject Shell.Application)'
+        f'.NameSpace(17).ParseName("{drive}").InvokeVerb("Eject")'
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=15,
+        )
+        log.info("Eject %s: exit %d", drive, result.returncode)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        log.warning("Eject failed for %s: %s", drive, exc)
+        return False
+
+
+def wait_for_disc(
+    drive_index: int,
+    makemkvcon: Path | None = None,
+    poll_interval: float = 5.0,
+    timeout: float = 600.0,
+    previous_label: str = "",
+) -> DriveInfo | None:
+    """Poll until a disc is detected in the drive (different from previous_label).
+
+    Returns the DriveInfo when a new disc is found, or None on timeout.
+    """
+    import time as _time
+
+    exe = makemkvcon or find_makemkvcon()
+    deadline = _time.monotonic() + timeout
+    while _time.monotonic() < deadline:
+        try:
+            drives = run_drive_list(exe)
+        except (RuntimeError, FileNotFoundError):
+            pass
+        else:
+            for d in drives:
+                if d.index == drive_index and d.disc_label:
+                    # New disc detected (label differs from what we just ejected)
+                    if d.disc_label != previous_label:
+                        return d
+        _time.sleep(poll_interval)
+    return None
+
+
 # ---- ripping ----
 
 @dataclass
