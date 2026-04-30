@@ -534,11 +534,11 @@ def _run_setup() -> int:
     if tmdb_key:
         lines.append(f'tmdb_api_key = "{tmdb_key}"')
     if output_root:
-        lines.append(f'output_root = "{output_root}"')
+        lines.append(f'output_root = "{output_root.replace(chr(92), "/")}"')
     if rip_output:
-        lines.append(f'rip_output = "{rip_output}"')
+        lines.append(f'rip_output = "{rip_output.replace(chr(92), "/")}"')
     if archive_root:
-        lines.append(f'archive_root = "{archive_root}"')
+        lines.append(f'archive_root = "{archive_root.replace(chr(92), "/")}"')
 
     config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Config written to {config_path}")
