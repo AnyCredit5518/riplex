@@ -73,6 +73,12 @@ riplex organize path/to/rips/Oppenheimer --execute
 - [ffmpeg](https://ffmpeg.org/) (`ffprobe`) for metadata extraction
 - [MKVToolNix](https://mkvtoolnix.download/) (`mkvmerge`, `mkvpropedit`) for chapter splitting and tagging
 
+`riplex setup` detects missing tools and offers to install them automatically via winget (Windows), Homebrew (macOS), or apt (Linux).
+
+## Platform Support
+
+riplex works on Windows, macOS, and Linux. All path handling, caching, and config locations follow OS conventions automatically.
+
 ## Related Projects
 
 - **[dvdcompare-scraper](https://github.com/AnyCredit5518/dvdcompare-scraper)**: Scrapes per-disc content metadata from dvdcompare.net (featurettes, interviews, deleted scenes, runtimes). Required dependency that powers riplex's disc content lookup. Contributions welcome.

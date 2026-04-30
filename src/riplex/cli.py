@@ -484,6 +484,55 @@ async def _run(args: argparse.Namespace) -> int:
     return 1
 
 
+def _offer_install(missing: list[str]) -> None:
+    """Offer to install missing tools via the system package manager."""
+    import platform
+    import subprocess
+
+    system = platform.system()
+    # Map tools to packages per platform
+    packages: dict[str, dict[str, str]] = {
+        "Windows": {"makemkvcon": "MakeMKV.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MKVToolNix.MKVToolNix", "mkvpropedit": "MKVToolNix.MKVToolNix"},
+        "Darwin": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix", "mkvpropedit": "mkvtoolnix"},
+        "Linux": {"makemkvcon": "", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix", "mkvpropedit": "mkvtoolnix"},
+    }
+
+    if system not in packages:
+        return
+
+    pkg_map = packages[system]
+    to_install = sorted(set(pkg_map[t] for t in missing if pkg_map.get(t)))
+    if not to_install:
+        return
+
+    if system == "Windows":
+        cmd_name = "winget"
+        cmds = [["winget", "install", "--accept-source-agreements", "--accept-package-agreements", pkg] for pkg in to_install]
+    elif system == "Darwin":
+        cmd_name = "brew"
+        cmds = [["brew", "install"] + to_install]
+    else:
+        cmd_name = "apt"
+        cmds = [["sudo", "apt", "install", "-y"] + to_install]
+
+    print(f"\n  Install via {cmd_name}?")
+    for cmd in cmds:
+        print(f"    {' '.join(cmd)}")
+    answer = input("\n  Proceed? [Y/n]: ").strip().lower()
+    if answer and answer != "y":
+        return
+
+    for cmd in cmds:
+        print(f"\n  Running: {' '.join(cmd)}")
+        try:
+            subprocess.run(cmd, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            print(f"  Failed: {exc}")
+            return
+
+    print("\n  Installation complete. You may need to restart your terminal for PATH changes to take effect.")
+
+
 def _run_setup() -> int:
     """Interactive setup wizard to create or update the riplex config file."""
     import shutil
@@ -526,6 +575,7 @@ def _run_setup() -> int:
     missing = [t for t, p in tools.items() if p is None]
     if missing:
         print(f"\n  Warning: {', '.join(missing)} not on PATH. Some commands will not work.")
+        _offer_install(missing)
 
     # Write config
     print()
