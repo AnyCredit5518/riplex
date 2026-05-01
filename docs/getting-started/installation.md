@@ -1,45 +1,81 @@
 # Installation
 
-## Requirements
+## 1. Install Python
 
-- Python 3.11+
-- A TMDb API key (free at <https://www.themoviedb.org/settings/api>)
-- ffprobe (from ffmpeg, required for `organize` mode)
-- mkvmerge (from MKVToolNix, required for chapter splitting in `organize` mode)
-- mkvpropedit (from MKVToolNix, required for organized tagging in `organize` mode)
-- [dvdcompare-scraper](https://github.com/OWNER/dvdcompare-scraper) (sibling project, required for `organize` and `lookup` modes)
+riplex requires Python 3.11 or newer. If you don't have it:
 
-## Install from source
+- **Windows**: Download from https://www.python.org/downloads/ and run the installer. **Check "Add Python to PATH"** during installation.
+- **macOS**: `brew install python` or download from https://www.python.org/downloads/
+- **Linux**: Most distros include Python. If not: `sudo apt install python3 python3-pip`
+
+To verify, open a terminal (Command Prompt, PowerShell, or Terminal) and run:
 
 ```bash
-cd Projects/riplex
-pip install -e ".[dev]"
+python --version
 ```
 
-This installs the `riplex` CLI command and all dependencies including test tooling.
+You should see `Python 3.11` or higher.
 
-## Verify installation
+## 2. Install riplex
+
+```bash
+pip install riplex
+```
+
+This installs the `riplex` command and all Python dependencies automatically.
+
+## 3. Run setup
+
+```bash
+riplex setup
+```
+
+The setup wizard will:
+
+1. Ask for your TMDb API key (free at https://www.themoviedb.org/settings/api)
+2. Ask where your Plex library and MakeMKV rip folders are
+3. Check for required tools (MakeMKV, ffprobe, mkvmerge, mkvpropedit)
+4. Offer to install any missing tools for you (via winget on Windows, Homebrew on macOS, or apt on Linux)
+
+If you skip setup, it runs automatically the first time you use any command.
+
+## 4. Verify
 
 ```bash
 riplex --help
 ```
 
-You should see the four subcommands: `orchestrate`, `rip`, `organize`, and `lookup`.
+You should see the subcommands: `orchestrate`, `rip`, `organize`, `lookup`, and `setup`.
+
+## Installing from source (for developers)
+
+If you want to contribute or run the latest unreleased code:
+
+```bash
+git clone https://github.com/AnyCredit5518/riplex.git
+cd riplex
+pip install -e ".[dev]"
+```
 
 ## External tools
 
-### ffprobe / ffmpeg
+riplex uses these tools under the hood. The setup wizard handles installation, but if you prefer to install manually:
 
-Download from <https://ffmpeg.org/download.html> and ensure `ffprobe` is on your PATH.
+### MakeMKV
 
-On Windows, you can verify with:
+Download from https://www.makemkv.com/. Ensure `makemkvcon` is on your PATH.
 
-```powershell
-ffprobe -version
-```
+- Windows default location: `C:\Program Files (x86)\MakeMKV\`
+- macOS: The app bundle includes makemkvcon
 
-### MKVToolNix
+### ffprobe (from ffmpeg)
 
-Download from <https://mkvtoolnix.download/downloads.html>. The installer adds `mkvmerge` and `mkvpropedit` to your PATH automatically.
+- **Windows**: `winget install Gyan.FFmpeg`
+- **macOS**: `brew install ffmpeg`
+- **Linux**: `sudo apt install ffmpeg`
 
-On Windows, the default install location is `C:\Program Files\MKVToolNix\`.
+### MKVToolNix (mkvmerge, mkvpropedit)
+
+- **Windows**: `winget install MKVToolNix.MKVToolNix` (or download from https://mkvtoolnix.download/)
+- **macOS**: `brew install mkvtoolnix`
+- **Linux**: `sudo apt install mkvtoolnix`

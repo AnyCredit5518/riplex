@@ -24,20 +24,18 @@ We identified the best sources of disc metadata (TMDb for canonical titles and e
 ### Install
 
 ```bash
-pip install -e ".[dev]"
+pip install riplex
 ```
 
-### Configure
-
-Run the interactive setup wizard:
+Then run the setup wizard:
 
 ```bash
 riplex setup
 ```
 
-This walks you through creating your config file (TMDb API key, output paths) and checks that required tools are on PATH. It also runs automatically the first time you use any command.
+This walks you through creating your config file (TMDb API key, output paths) and checks that required tools are on PATH. If anything is missing, it offers to install it for you. It also runs automatically the first time you use any command.
 
-Get a free TMDb API key at https://www.themoviedb.org/settings/api.
+For detailed installation instructions (including how to install Python if you don't have it), see the [Getting Started guide](docs/getting-started/installation.md).
 
 ### Rip a disc (interactive)
 
