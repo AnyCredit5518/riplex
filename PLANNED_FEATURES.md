@@ -1,17 +1,5 @@
 # Planned Features
 
-## Recently Implemented
-
-### Orchestrate Mode
-
-The `riplex orchestrate` command is now fully implemented. It handles
-the complete multi-disc rip-then-organize workflow in a single session:
-insert a disc, auto-detect the title, look up dvdcompare for disc contents,
-select which discs to rip, rip each one with disc-swap prompts, then
-organize all files into Plex folder structure.
-
-See the orchestrate guide in the docs for full usage details.
-
 
 ## Multi-Resolution Support (4K + Standard Blu-ray)
 
