@@ -68,6 +68,8 @@ Download from https://www.makemkv.com/. Ensure `makemkvcon` is on your PATH.
 - Windows default location: `C:\Program Files (x86)\MakeMKV\`
 - macOS: The app bundle includes makemkvcon
 
+MakeMKV requires a registration key. A free beta key is available at https://forum.makemkv.com/forum/viewtopic.php?f=5&t=1053 and must be entered in MakeMKV (Help > Register) before `makemkvcon` will work. The beta key is updated periodically.
+
 ### ffprobe (from ffmpeg)
 
 - **Windows**: `winget install Gyan.FFmpeg`
