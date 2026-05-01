@@ -16,7 +16,18 @@ python --version
 
 You should see `Python 3.11` or higher.
 
-## 2. Install riplex
+## 2. Install and register MakeMKV
+
+Download MakeMKV from https://www.makemkv.com/ and install it.
+
+Then register it with the free beta key:
+
+1. Get the current beta key from https://forum.makemkv.com/forum/viewtopic.php?f=5&t=1053
+2. Open MakeMKV, go to Help > Register, and paste the key
+
+The beta key is updated periodically. Without it, `makemkvcon` (the command-line tool riplex uses) won't function.
+
+## 3. Install riplex
 
 ```bash
 pip install riplex
@@ -24,7 +35,7 @@ pip install riplex
 
 This installs the `riplex` command and all Python dependencies automatically.
 
-## 3. Run setup
+## 4. Run setup
 
 ```bash
 riplex setup
@@ -39,7 +50,7 @@ The setup wizard will:
 
 If you skip setup, it runs automatically the first time you use any command.
 
-## 4. Verify
+## 5. Verify
 
 ```bash
 riplex --help
