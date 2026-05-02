@@ -142,13 +142,13 @@ class TestInstallToolsLogic:
     def test_windows_package_mapping(self):
         """Verify correct winget package IDs for missing tools."""
         packages = {
-            "makemkvcon": "MakeMKV.MakeMKV",
+            "makemkvcon": "GuinpinSoft.MakeMKV",
             "ffprobe": "Gyan.FFmpeg",
-            "mkvmerge": "MKVToolNix.MKVToolNix",
+            "mkvmerge": "MoritzBunkus.MKVToolNix",
         }
         missing = ["ffprobe", "mkvmerge"]
         to_install = sorted(set(packages[t] for t in missing if packages.get(t)))
-        assert to_install == ["Gyan.FFmpeg", "MKVToolNix.MKVToolNix"]
+        assert to_install == ["Gyan.FFmpeg", "MoritzBunkus.MKVToolNix"]
 
     def test_macos_package_mapping(self):
         """Verify correct brew package names for missing tools."""
@@ -164,9 +164,9 @@ class TestInstallToolsLogic:
     def test_deduplicates_packages(self):
         """mkvmerge and mkvpropedit map to same package."""
         packages = {
-            "mkvmerge": "MKVToolNix.MKVToolNix",
-            "mkvpropedit": "MKVToolNix.MKVToolNix",
+            "mkvmerge": "MoritzBunkus.MKVToolNix",
+            "mkvpropedit": "MoritzBunkus.MKVToolNix",
         }
         missing = ["mkvmerge", "mkvpropedit"]
         to_install = sorted(set(packages[t] for t in missing if packages.get(t)))
-        assert to_install == ["MKVToolNix.MKVToolNix"]
+        assert to_install == ["MoritzBunkus.MKVToolNix"]

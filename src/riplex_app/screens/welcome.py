@@ -38,6 +38,7 @@ class WelcomeScreen:
             missing_tools.append("ffprobe")
         if not has_mkvmerge:
             missing_tools.append("mkvmerge")
+        self._missing_tools = missing_tools
 
         status_rows = []
         for label, ok in checks:
@@ -61,7 +62,7 @@ class WelcomeScreen:
                     ft.ElevatedButton(
                         "Install Missing Tools",
                         icon=ft.Icons.DOWNLOAD,
-                        on_click=lambda _: self._install_tools(missing_tools),
+                        on_click=self._on_install_click,
                     ),
                     ft.TextButton(
                         "MakeMKV ↗",
@@ -286,15 +287,20 @@ class WelcomeScreen:
             url = get_download_url(self._update_info)
             webbrowser.open(url)
 
+    def _on_install_click(self, e):
+        """Handle Install Missing Tools button click."""
+        self._install_status.value = "Starting installation..."
+        self.app.page.update()
+        self._install_tools(self._missing_tools)
+
     def _install_tools(self, missing: list[str]):
         """Install missing tools via system package manager in background."""
         import platform
         import subprocess
-        import sys
 
         system = platform.system()
         packages = {
-            "Windows": {"makemkvcon": "MakeMKV.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MKVToolNix.MKVToolNix"},
+            "Windows": {"makemkvcon": "GuinpinSoft.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MoritzBunkus.MKVToolNix"},
             "Darwin": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix"},
         }
 
@@ -306,34 +312,28 @@ class WelcomeScreen:
             return
 
         def _do_install():
-            async def _update_status(msg):
-                self._install_status.value = msg
-                self.app.page.update()
-
             try:
                 if system == "Windows":
-                    # Build a single winget command string to run elevated
                     cmds = " && ".join(
                         f'winget install --accept-source-agreements --accept-package-agreements {pkg}'
                         for pkg in to_install
                     )
-                    self.app.page.run_task(
-                        lambda: _update_status(f"Installing {', '.join(to_install)}... (accept the admin prompt)")
-                    )
-                    # Run elevated via powershell Start-Process
+                    self._install_status.value = f"Installing {', '.join(to_install)}... (accept the admin prompt)"
+                    self.app.page.update()
                     result = subprocess.run(
                         ["powershell", "-Command",
-                         f'Start-Process cmd -ArgumentList \'/c {cmds} & pause\' -Verb RunAs -Wait'],
-                        creationflags=subprocess.CREATE_NO_WINDOW,
+                         f"Start-Process cmd -ArgumentList '/c {cmds} & pause' -Verb RunAs -Wait"],
+                        capture_output=True,
+                        text=True,
                     )
                     if result.returncode != 0:
-                        raise subprocess.CalledProcessError(result.returncode, "winget")
+                        raise subprocess.CalledProcessError(result.returncode, "winget", output=result.stdout, stderr=result.stderr)
                 elif system == "Darwin":
                     if shutil.which("brew"):
-                        self.app.page.run_task(lambda: _update_status("Installing via brew..."))
+                        self._install_status.value = "Installing via brew..."
+                        self.app.page.update()
                         subprocess.run(["brew", "install"] + to_install, check=True)
                     else:
-                        # No Homebrew — open download pages in browser
                         download_urls = {
                             "makemkv": "https://www.makemkv.com/download/",
                             "ffmpeg": "https://ffmpeg.org/download.html",
@@ -342,18 +342,15 @@ class WelcomeScreen:
                         for pkg in to_install:
                             if pkg in download_urls:
                                 webbrowser.open(download_urls[pkg])
-                        self.app.page.run_task(
-                            lambda: _update_status("Opened download pages in your browser. Install the tools, then restart the app.")
-                        )
+                        self._install_status.value = "Opened download pages in your browser. Install the tools, then restart the app."
+                        self.app.page.update()
                         return
 
-                self.app.page.run_task(
-                    lambda: _update_status("Done! Restart the app for changes to take effect.")
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
-                self.app.page.run_task(
-                    lambda: _update_status(f"Install failed: {exc}. Try the manual links above.")
-                )
+                self._install_status.value = "Done! Restart the app for changes to take effect."
+                self.app.page.update()
+            except Exception as exc:
+                self._install_status.value = f"Install failed: {exc}. Try the manual links above."
+                self.app.page.update()
 
         threading.Thread(target=_do_install, daemon=True).start()
 

@@ -132,6 +132,6 @@ MakeMKV requires a registration key. A free beta key is available at https://for
 
 ### MKVToolNix (mkvmerge, mkvpropedit)
 
-- **Windows**: `winget install MKVToolNix.MKVToolNix` (or download from https://mkvtoolnix.download/)
+- **Windows**: `winget install MoritzBunkus.MKVToolNix` (or download from https://mkvtoolnix.download/)
 - **macOS**: `brew install mkvtoolnix`
 - **Linux**: `sudo apt install mkvtoolnix`

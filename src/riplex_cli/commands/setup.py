@@ -12,7 +12,7 @@ def _offer_install(missing: list[str]) -> None:
 
     system = platform.system()
     packages: dict[str, dict[str, str]] = {
-        "Windows": {"makemkvcon": "MakeMKV.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MKVToolNix.MKVToolNix", "mkvpropedit": "MKVToolNix.MKVToolNix"},
+        "Windows": {"makemkvcon": "GuinpinSoft.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MoritzBunkus.MKVToolNix", "mkvpropedit": "MoritzBunkus.MKVToolNix"},
         "Darwin": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix", "mkvpropedit": "mkvtoolnix"},
         "Linux": {"makemkvcon": "", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix", "mkvpropedit": "mkvtoolnix"},
     }
