@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install pyinstaller
+          pip install flet-desktop pyinstaller
 
       - name: Build CLI executable
         run: |
@@ -82,7 +82,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install pyinstaller
+          pip install flet-desktop pyinstaller
 
       - name: Build CLI executable
         run: |
