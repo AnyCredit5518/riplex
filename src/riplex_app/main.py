@@ -76,6 +76,10 @@ class RiplexApp:
         self.page.controls.append(screen.build())
         self.page.update()
 
+        # Kick off background update check on welcome screen
+        if screen_name == "welcome":
+            screen.check_for_updates()
+
 
 def main():
     logging.basicConfig(

@@ -2,11 +2,13 @@
 
 import shutil
 import threading
+import webbrowser
 
 import flet as ft
 
 from riplex.config import load_config, get_api_key
 from riplex.disc.makemkv import find_makemkvcon
+from riplex_app.updater import check_for_update, get_current_version, get_download_url
 
 
 class WelcomeScreen:
@@ -148,9 +150,32 @@ class WelcomeScreen:
             tooltip="Organize existing MKV rips into Plex-compatible folder structure.",
         )
 
+        # Update banner (hidden until check completes)
+        self.update_banner = ft.Container(
+            ft.Row(
+                [
+                    ft.Icon(ft.Icons.SYSTEM_UPDATE, color=ft.Colors.BLUE),
+                    ft.Text("", size=13, ref=None),
+                    ft.TextButton("Download", on_click=self._open_update),
+                ],
+                spacing=8,
+            ),
+            bgcolor=ft.Colors.BLUE_50,
+            border_radius=8,
+            padding=ft.padding.symmetric(horizontal=12, vertical=8),
+            visible=False,
+        )
+        self._update_info = None
+
         return ft.Column(
             [
                 ft.Text("riplex", size=32, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    f"v{get_current_version()}",
+                    size=12,
+                    color=ft.Colors.GREY_500,
+                ),
+                self.update_banner,
                 ft.Text(
                     "Rip physical discs and organize into Plex-compatible libraries.",
                     size=14,
@@ -197,6 +222,33 @@ class WelcomeScreen:
                 self.app.page.update()
 
         threading.Thread(target=_pick, daemon=True).start()
+
+    def check_for_updates(self):
+        """Run update check in background thread (call after page is available)."""
+        def _check():
+            info = check_for_update()
+            if info:
+                self._update_info = info
+                # Update UI from main thread
+                import asyncio
+
+                async def _show():
+                    banner_row = self.update_banner.content
+                    banner_row.controls[1] = ft.Text(
+                        f"Update available: {info['tag']}", size=13
+                    )
+                    self.update_banner.visible = True
+                    self.app.page.update()
+
+                self.app.page.run_task(_show)
+
+        threading.Thread(target=_check, daemon=True).start()
+
+    def _open_update(self, e):
+        """Open the download URL in the user's browser."""
+        if self._update_info:
+            url = get_download_url(self._update_info)
+            webbrowser.open(url)
 
     def _save_config(self, e):
         """Write config from the setup fields."""
