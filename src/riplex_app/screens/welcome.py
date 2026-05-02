@@ -312,14 +312,22 @@ class WelcomeScreen:
 
             try:
                 if system == "Windows":
-                    for pkg in to_install:
-                        self.app.page.run_task(lambda p=pkg: _update_status(f"Installing {p}..."))
-                        subprocess.run(
-                            ["winget", "install", "--accept-source-agreements",
-                             "--accept-package-agreements", pkg],
-                            check=True,
-                            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-                        )
+                    # Build a single winget command string to run elevated
+                    cmds = " && ".join(
+                        f'winget install --accept-source-agreements --accept-package-agreements {pkg}'
+                        for pkg in to_install
+                    )
+                    self.app.page.run_task(
+                        lambda: _update_status(f"Installing {', '.join(to_install)}... (accept the admin prompt)")
+                    )
+                    # Run elevated via powershell Start-Process
+                    result = subprocess.run(
+                        ["powershell", "-Command",
+                         f'Start-Process cmd -ArgumentList \'/c {cmds} & pause\' -Verb RunAs -Wait'],
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
+                    if result.returncode != 0:
+                        raise subprocess.CalledProcessError(result.returncode, "winget")
                 elif system == "Darwin":
                     self.app.page.run_task(lambda: _update_status("Installing via brew..."))
                     subprocess.run(["brew", "install"] + to_install, check=True)
@@ -327,7 +335,7 @@ class WelcomeScreen:
                 self.app.page.run_task(
                     lambda: _update_status("Done! Restart the app for changes to take effect.")
                 )
-            except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
                 self.app.page.run_task(
                     lambda: _update_status(f"Install failed: {exc}. Try the manual links above.")
                 )
