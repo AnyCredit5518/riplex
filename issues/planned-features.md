@@ -58,3 +58,20 @@ locations when filing bug reports.
 `riplex lookup` currently auto-picks the first TMDb match and default
 dvdcompare release without confirmation. Add interactive selection (reuse
 existing `_pick_best` prompt from planner). Keep `--auto` flag for scripting.
+
+
+## Multi-Language Track Selection
+
+Users in multilingual households want to keep multiple audio and subtitle
+tracks when ripping, not just the default/English track.
+
+### Plan
+
+- Add config options for preferred audio and subtitle languages (e.g.
+  `audio_languages = ["en", "es"]`, `subtitle_languages = ["en", "es", "fr"]`)
+- During rip, pass language preferences to MakeMKV/mkvmerge so all selected
+  tracks are retained
+- During organize, preserve all selected tracks when remuxing
+- GUI: add language selection to setup/config screen
+- Default behavior: keep all tracks (current MakeMKV default) — only filter
+  if the user explicitly configures preferred languages
