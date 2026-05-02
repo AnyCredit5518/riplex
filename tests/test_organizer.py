@@ -110,6 +110,68 @@ class TestBuildOrganizePlanMovie:
         assert "Oppenheimer (2023).mkv" in op.moves[0].destination
         assert "Movies" in op.moves[0].destination
 
+    def test_movie_with_edition_from_classification(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="KK_t00.mkv",
+                    file_duration_seconds=11236,
+                    matched_label="King Kong (movie)",
+                    matched_runtime_seconds=11280,
+                    delta_seconds=44,
+                    confidence="high",
+                    classification="Theatrical Cut (4K)",
+                ),
+                MatchCandidate(
+                    file_name="KK_t02.mkv",
+                    file_duration_seconds=12008,
+                    matched_label="King Kong (movie)",
+                    matched_runtime_seconds=11280,
+                    delta_seconds=728,
+                    confidence="low",
+                    classification="Extended Cut (4K)",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 8m",
+            runtime_seconds=11280,
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 2
+        assert "{edition-Theatrical Cut}" in op.moves[0].destination
+        assert "{edition-Extended Cut}" in op.moves[1].destination
+        assert "King Kong (2005)" in op.moves[0].destination
+        assert "King Kong (2005)" in op.moves[1].destination
+
+    def test_movie_no_edition_without_classification(self):
+        """No edition tag when classification is empty or has no edition."""
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Movie_t01.mkv",
+                    file_duration_seconds=7200,
+                    matched_label="Test Movie (movie)",
+                    matched_runtime_seconds=7200,
+                    delta_seconds=0,
+                    confidence="high",
+                    classification="MAIN FILM (4K)",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Test Movie",
+            year=2023,
+            runtime="2h",
+            runtime_seconds=7200,
+        )
+        op = build_organize_plan(result, plan, Path("E:/Media"))
+        assert len(op.moves) == 1
+        assert "{edition-" not in op.moves[0].destination
+
     def test_movie_extras(self):
         result = OrganizeResult(
             matched=[

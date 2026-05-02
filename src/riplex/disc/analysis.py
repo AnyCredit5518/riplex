@@ -6,6 +6,57 @@ rip/skip recommendations.  Used by both ``rip-guide`` and ``rip``.
 
 from __future__ import annotations
 
+import re
+
+
+# Edition patterns in dvdcompare feature titles
+_EDITION_RE = re.compile(
+    r"(?:The Film\s*-\s*)?"
+    r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
+    re.IGNORECASE,
+)
+
+
+def _detect_edition_name(
+    duration: int,
+    dvd_entries: list[tuple[str, int, str]],
+    *,
+    edition_hint: str | None = None,
+) -> str | None:
+    """Try to identify an edition name from dvdcompare entries.
+
+    Looks for entries whose title contains an edition keyword (Extended Cut,
+    Director's Cut, etc.) and whose runtime is either zero (unknown) or
+    close to the given duration.
+
+    *edition_hint* can be ``"theatrical"`` or ``"extended"`` to prefer
+    a specific type when multiple editions exist.
+    """
+    candidates: list[str] = []
+    for name, runtime, _ in dvd_entries:
+        m = _EDITION_RE.search(name)
+        if not m:
+            continue
+        # If the entry has a runtime, it must be close
+        if runtime > 0 and abs(duration - runtime) > 120:
+            continue
+        candidates.append(m.group(1))
+
+    if not candidates:
+        return None
+
+    if edition_hint == "theatrical":
+        for c in candidates:
+            if "theatrical" in c.lower():
+                return c
+    elif edition_hint == "extended":
+        for c in candidates:
+            cl = c.lower()
+            if "extended" in cl or "director" in cl or "unrated" in cl:
+                return c
+
+    return candidates[0]
+
 
 def format_seconds(seconds: int) -> str:
     """Format seconds as MM:SS or H:MM:SS."""
@@ -71,7 +122,22 @@ def classify_title(
     # Check if this is the main movie
     if is_movie and movie_runtime:
         if abs(dur - movie_runtime) < 60:
+            # Check if dvdcompare has a specific edition name (e.g. "Theatrical Cut")
+            edition = _detect_edition_name(dur, dvd_entries, edition_hint="theatrical")
+            if edition:
+                return f"{edition} ({res_label}) - rip this"
             return f"MAIN FILM ({res_label}) - rip this"
+
+    # Check for extended/director's cut: significantly longer than theatrical
+    # but within a plausible range (5-60 min longer)
+    if is_movie and movie_runtime:
+        extra_duration = dur - movie_runtime
+        if 300 <= extra_duration <= 3600:
+            # Try to get a specific name from dvdcompare entries
+            edition_name = _detect_edition_name(dur, dvd_entries, edition_hint="extended")
+            if edition_name:
+                return f"{edition_name} ({res_label}) - rip this"
+            return f"Extended Cut ({res_label}) - rip this"
 
     # Check if this is a play-all (dvdcompare total)
     if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
@@ -196,6 +262,27 @@ def is_skip_title(
         return True
 
     return False
+
+
+def select_rippable_titles(
+    disc_info,
+    dvd_entries: list[tuple[str, int, str]],
+    is_movie: bool,
+    movie_runtime: int | None,
+    total_episode_runtime: int,
+    episode_count: int,
+) -> list:
+    """Return the subset of disc titles recommended for ripping.
+
+    Filters out titles that `is_skip_title` marks as skip-worthy.
+    """
+    return [
+        t for t in disc_info.titles
+        if not is_skip_title(
+            t, disc_info.titles, is_movie, movie_runtime,
+            total_episode_runtime, episode_count,
+        )
+    ]
 
 
 # ---- play-all detection ----

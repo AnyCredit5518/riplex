@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import json
+import platform
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+# On Windows, prevent subprocess calls from spawning a visible console window.
+_SUBPROCESS_FLAGS: dict = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if platform.system() == "Windows"
+    else {}
+)
 
 
 @dataclass
@@ -52,6 +60,7 @@ def get_chapters(file_path: str) -> list[Chapter]:
         ],
         capture_output=True,
         text=True,
+        **_SUBPROCESS_FLAGS,
     )
     if result.returncode != 0:
         return []
@@ -100,6 +109,7 @@ def split_by_chapters(
         [mkvmerge, "--split", "chapters:all", "-o", str(temp_base), source],
         capture_output=True,
         text=True,
+        **_SUBPROCESS_FLAGS,
     )
     if result.returncode != 0:
         raise RuntimeError(f"mkvmerge split failed: {result.stderr}")

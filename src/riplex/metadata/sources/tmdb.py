@@ -15,7 +15,7 @@ from typing import Literal
 import httpx
 
 from riplex import cache
-from riplex.metadata_provider import (
+from riplex.metadata.provider import (
     EpisodeMetadata,
     MetadataProvider,
     MetadataSearchResult,

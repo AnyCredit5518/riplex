@@ -19,6 +19,7 @@ from riplex.models import (
 )
 from riplex.normalize import (
     episode_file_name,
+    movie_file_name,
     movie_folder_name,
     sanitize_filename,
     season_folder_name,
@@ -27,6 +28,13 @@ from riplex.normalize import (
 from riplex.splitter import split_by_chapters
 
 log = logging.getLogger(__name__)
+
+# Regex to extract edition name from rip-time classification strings
+# e.g. "Theatrical Cut (4K)" -> "Theatrical Cut"
+_EDITION_RE = re.compile(
+    r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
+    re.IGNORECASE,
+)
 
 # Map dvdcompare feature_type strings to Plex extras folder names
 _EXTRAS_FOLDER_MAP: dict[str, str] = {
@@ -447,9 +455,13 @@ def _compute_destination(
 
     # Movie main file
     if "(movie)" in label:
-        safe_title = sanitize_filename(plan.canonical_title)
-        dest = base / f"{safe_title} ({plan.year}).mkv"
-        log.debug("  -> movie main file: %s", dest)
+        edition = None
+        if candidate.classification:
+            m = _EDITION_RE.search(candidate.classification)
+            if m:
+                edition = m.group(1)
+        dest = base / movie_file_name(plan.canonical_title, plan.year, edition=edition)
+        log.debug("  -> movie main file (edition=%s): %s", edition, dest)
         return dest
 
     # Episode: label like "Disc 1: Coasts" or "s01e01 - Title"
@@ -672,3 +684,25 @@ def _format_plan_output(
         actions.append("")
 
     return actions
+
+
+def archive_source_folder(
+    source_folder: Path,
+    archive_root: str,
+) -> Path | None:
+    """Move *source_folder* into *archive_root*, preserving the folder name.
+
+    Returns the destination path on success, or ``None`` if archiving is
+    skipped (empty *archive_root*) or fails.
+    """
+    if not archive_root:
+        return None
+    dest = Path(archive_root) / source_folder.name
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source_folder), dest)
+        log.info("Archived: %s -> %s", source_folder, dest)
+        return dest
+    except OSError as exc:
+        log.warning("Failed to archive %s: %s", source_folder, exc)
+        return None

@@ -4,6 +4,39 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-02
+
+### Changed
+
+- Architecture doc: complete rewrite of project structure to reflect current module layout (`disc/`, `metadata/`, `riplex_cli/commands/`, all GUI screens)
+- Architecture doc: replaced outdated "Plan mode" and "Rip guide mode" with single "Lookup mode" data flow
+- Architecture doc: added archive step to organize mode data flow
+- Installation guide: fixed GUI entry point from `riplex-gui` to `riplex-ui`
+- Installation guide: added pre-built executable download instructions (Option A) for Windows and macOS
+- Copilot instructions: fixed GUI entry point from `riplex-gui` to `riplex-ui`
+- Changelog entry for 2026-05-01: corrected `riplex-gui` reference
+
+### Added
+
+- New modules documented in project structure: `title.py`, `lookup.py`, `manifest.py`, `formatting.py`, `folder_picker.py`, `organize_preview.py`, `organize_done.py`
+- CLI commands directory (`riplex_cli/commands/`) documented with all five command modules
+- GitHub Actions workflow for building standalone executables (`release.yml`): Windows `.exe` and macOS `.app` via PyInstaller, auto-published on tagged releases
+
+## 2026-05-01
+
+### Changed
+
+- Architecture doc updated to reflect monorepo structure with three source packages (riplex, riplex_cli, riplex_app)
+- Project structure listing now includes orchestrate.py, riplex_cli/, and riplex_app/ with all GUI screens
+- Installation guide updated with GUI install instructions (`pip install -e ".[dev,gui]"`) and `riplex-ui` entry point
+
+### Added
+
+- New module `orchestrate.py` documented in project structure (shared pipeline logic)
+- `riplex_cli` package documented as the CLI thin wrapper
+- `riplex_app` package documented as the optional GUI thin wrapper with screen descriptions
+- Installation methods table (pip install riplex vs riplex[gui])
+
 ## 2026-04-30
 
 ### Added

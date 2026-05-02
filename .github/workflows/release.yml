@@ -1,0 +1,150 @@
+name: Build Executables
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[gui]"
+          pip install pyinstaller
+
+      - name: Build CLI executable
+        run: |
+          pyinstaller --name riplex --onefile --console ^
+            --hidden-import riplex_cli.commands.orchestrate ^
+            --hidden-import riplex_cli.commands.rip ^
+            --hidden-import riplex_cli.commands.organize ^
+            --hidden-import riplex_cli.commands.lookup ^
+            --hidden-import riplex_cli.commands.setup ^
+            --collect-data dvdcompare_scraper ^
+            src/riplex_cli/main.py
+        shell: cmd
+
+      - name: Build GUI executable
+        run: |
+          pyinstaller --name riplex-ui --onefile --windowed ^
+            --hidden-import riplex_app.screens.welcome ^
+            --hidden-import riplex_app.screens.disc_detection ^
+            --hidden-import riplex_app.screens.metadata ^
+            --hidden-import riplex_app.screens.release ^
+            --hidden-import riplex_app.screens.selection ^
+            --hidden-import riplex_app.screens.progress ^
+            --hidden-import riplex_app.screens.done ^
+            --hidden-import riplex_app.screens.folder_picker ^
+            --hidden-import riplex_app.screens.organize_preview ^
+            --hidden-import riplex_app.screens.organize_done ^
+            --collect-all flet ^
+            --collect-data dvdcompare_scraper ^
+            src/riplex_app/main.py
+        shell: cmd
+
+      - name: Package Windows artifacts
+        run: |
+          mkdir release
+          copy dist\riplex.exe release\
+          copy dist\riplex-ui.exe release\
+        shell: cmd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riplex-windows
+          path: release/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[gui]"
+          pip install pyinstaller
+
+      - name: Build CLI executable
+        run: |
+          pyinstaller --name riplex --onefile --console \
+            --hidden-import riplex_cli.commands.orchestrate \
+            --hidden-import riplex_cli.commands.rip \
+            --hidden-import riplex_cli.commands.organize \
+            --hidden-import riplex_cli.commands.lookup \
+            --hidden-import riplex_cli.commands.setup \
+            --collect-data dvdcompare_scraper \
+            src/riplex_cli/main.py
+
+      - name: Build GUI app bundle
+        run: |
+          pyinstaller --name riplex-ui --onedir --windowed \
+            --hidden-import riplex_app.screens.welcome \
+            --hidden-import riplex_app.screens.disc_detection \
+            --hidden-import riplex_app.screens.metadata \
+            --hidden-import riplex_app.screens.release \
+            --hidden-import riplex_app.screens.selection \
+            --hidden-import riplex_app.screens.progress \
+            --hidden-import riplex_app.screens.done \
+            --hidden-import riplex_app.screens.folder_picker \
+            --hidden-import riplex_app.screens.organize_preview \
+            --hidden-import riplex_app.screens.organize_done \
+            --collect-all flet \
+            --collect-data dvdcompare_scraper \
+            src/riplex_app/main.py
+
+      - name: Package macOS artifacts
+        run: |
+          mkdir -p release
+          cp dist/riplex release/
+          cd dist && zip -r ../release/riplex-ui-macos.zip riplex-ui.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riplex-macos
+          path: release/
+
+  release:
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Prepare release files
+        run: |
+          mkdir release
+          cp artifacts/riplex-windows/riplex.exe release/riplex-windows.exe
+          cp artifacts/riplex-windows/riplex-ui.exe release/riplex-ui-windows.exe
+          cp artifacts/riplex-macos/riplex release/riplex-macos
+          cp artifacts/riplex-macos/riplex-ui-macos.zip release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/riplex-windows.exe
+            release/riplex-ui-windows.exe
+            release/riplex-macos
+            release/riplex-ui-macos.zip

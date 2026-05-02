@@ -11,10 +11,18 @@ hamming distance to confirm visual duplicates.
 from __future__ import annotations
 
 import logging
+import platform
 import subprocess
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
+
+# On Windows, prevent subprocess calls from spawning a visible console window.
+_SUBPROCESS_FLAGS: dict = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if platform.system() == "Windows"
+    else {}
+)
 
 from riplex.models import ScannedDisc, ScannedFile
 
@@ -342,6 +350,7 @@ def _extract_frame_bytes(path: str, timestamp: int) -> bytes | None:
             ],
             capture_output=True,
             timeout=30,
+            **_SUBPROCESS_FLAGS,
         )
         if result.returncode != 0 or not result.stdout:
             return None
@@ -414,7 +423,64 @@ def confirm_duplicates_tier2(group: DuplicateGroup) -> DuplicateGroup | None:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# DuplicateDetector class
+# ---------------------------------------------------------------------------
+
+class DuplicateDetector:
+    """Detects duplicate and compilation MKV files.
+
+    Tier 1 uses metadata fingerprinting (duration, size, streams, chapters).
+    Tier 2 confirms via perceptual hashing (dhash of a video frame).
+    Compilation detection finds 'play all' files by chapter-duration matching.
+    """
+
+    def __init__(
+        self,
+        duration_tolerance: int = _DURATION_TOLERANCE_S,
+        size_ratio: float = _SIZE_RATIO_THRESHOLD,
+        hamming_threshold: int = _DHASH_HAMMING_THRESHOLD,
+    ) -> None:
+        self.duration_tolerance = duration_tolerance
+        self.size_ratio = size_ratio
+        self.hamming_threshold = hamming_threshold
+
+    def find_duplicates(
+        self,
+        scanned: list[ScannedDisc],
+    ) -> list[DuplicateGroup]:
+        """Find duplicates across all scanned discs (tier 1 + tier 2)."""
+        all_files = [f for d in scanned for f in d.files]
+        groups = find_duplicates_tier1(all_files)
+
+        confirmed: list[DuplicateGroup] = []
+        for g in groups:
+            result = confirm_duplicates_tier2(g)
+            if result is not None:
+                confirmed.append(result)
+        return confirmed
+
+    def find_all_redundant(
+        self,
+        scanned: list[ScannedDisc],
+    ) -> tuple[list[DuplicateGroup], list[CompilationGroup]]:
+        """Find both exact duplicates and compilation ('play all') files."""
+        duplicates = self.find_duplicates(scanned)
+        log.debug("DuplicateDetector: %d duplicate group(s)", len(duplicates))
+
+        deduped = remove_duplicates(scanned, duplicates)
+
+        compilations: list[CompilationGroup] = []
+        for disc in deduped:
+            log.debug("Compilation detection on disc '%s' (%d files)",
+                      disc.folder_name, len(disc.files))
+            compilations.extend(find_compilations(disc.files))
+
+        log.debug("DuplicateDetector: %d compilation(s)", len(compilations))
+        return duplicates, compilations
+
+
+# ---------------------------------------------------------------------------
+# Public API (free functions — delegate to DuplicateDetector)
 # ---------------------------------------------------------------------------
 
 
@@ -423,25 +489,9 @@ def find_duplicates(
 ) -> list[DuplicateGroup]:
     """Find duplicate files across all scanned discs.
 
-    Tier 1 narrows candidates via metadata (duration, size, streams,
-    chapters).  Tier 2 always confirms via perceptual hashing so that
-    different content with similar metadata is never misidentified.
-
-    Returns:
-        List of :class:`DuplicateGroup` objects. Each group has a
-        recommended *keep* file and one or more *duplicates* to discard.
+    .. deprecated:: Use :pyclass:`DuplicateDetector` instead.
     """
-    all_files = [f for d in scanned for f in d.files]
-    groups = find_duplicates_tier1(all_files)
-
-    confirmed: list[DuplicateGroup] = []
-    for g in groups:
-        result = confirm_duplicates_tier2(g)
-        if result is not None:
-            confirmed.append(result)
-    groups = confirmed
-
-    return groups
+    return DuplicateDetector().find_duplicates(scanned)
 
 
 def find_all_redundant(
@@ -449,31 +499,9 @@ def find_all_redundant(
 ) -> tuple[list[DuplicateGroup], list[CompilationGroup]]:
     """Find both exact duplicates and compilation ('play all') files.
 
-    Duplicate detection always uses perceptual hash confirmation.
-    Compilation detection does not (it uses chapter-duration matching).
-
-    Runs compilation detection per disc group so compilations are only
-    matched against files from the same disc/folder.
-
-    Returns:
-        A tuple of (duplicate_groups, compilation_groups).
+    .. deprecated:: Use :pyclass:`DuplicateDetector` instead.
     """
-    duplicates = find_duplicates(scanned)
-    log.debug("find_all_redundant: %d duplicate group(s) found", len(duplicates))
-
-    # Remove exact duplicates first so they don't confuse compilation detection
-    deduped = remove_duplicates(scanned, duplicates)
-
-    # Run compilation detection per disc group
-    compilations: list[CompilationGroup] = []
-    for disc in deduped:
-        log.debug("Running compilation detection on disc '%s' (%d files)",
-                  disc.folder_name, len(disc.files))
-        compilations.extend(find_compilations(disc.files))
-
-    log.debug("find_all_redundant: %d compilation(s) found", len(compilations))
-
-    return duplicates, compilations
+    return DuplicateDetector().find_all_redundant(scanned)
 
 
 def remove_duplicates(

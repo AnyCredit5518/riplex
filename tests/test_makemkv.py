@@ -1,9 +1,9 @@
-"""Tests for makemkv module (makemkvcon output parser)."""
+﻿"""Tests for makemkv module (makemkvcon output parser)."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from riplex.makemkv import (
+from riplex.disc.makemkv import (
     DiscTitle,
     RipResult,
     build_stream_fingerprint,
@@ -154,7 +154,7 @@ class TestRunRipMsgDetection:
         proc.kill = MagicMock()
         return proc
 
-    @patch("riplex.makemkv.subprocess.Popen")
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_msg5_not_treated_as_error(self, mock_popen, tmp_path):
         """MSG:5xxx (info messages) should not cause failure."""
         lines = [
@@ -176,7 +176,7 @@ class TestRunRipMsgDetection:
         assert result.error_message == ""
         assert result.output_file == str(fake_mkv)
 
-    @patch("riplex.makemkv.subprocess.Popen")
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_msg3_info_with_zero_exit_is_success(self, mock_popen, tmp_path):
         """MSG:3xxx informational messages with exit code 0 should succeed."""
         lines = [
@@ -195,7 +195,7 @@ class TestRunRipMsgDetection:
         assert result.success is True
         assert result.error_message == ""
 
-    @patch("riplex.makemkv.subprocess.Popen")
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_nonzero_exit_is_failure(self, mock_popen, tmp_path):
         """Non-zero exit code should report failure regardless of MSG codes."""
         lines = [
@@ -207,7 +207,7 @@ class TestRunRipMsgDetection:
         assert result.success is False
         assert "exited with code 1" in result.error_message
 
-    @patch("riplex.makemkv.subprocess.Popen")
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_nonzero_exit_no_msg(self, mock_popen, tmp_path):
         """Non-zero exit with no MSG errors should still report failure."""
         lines = ['MSG:1005,0,1,"MakeMKV started","",""']
@@ -217,7 +217,7 @@ class TestRunRipMsgDetection:
         assert result.success is False
         assert "exited with code 1" in result.error_message
 
-    @patch("riplex.makemkv.subprocess.Popen")
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_rip_log_written(self, mock_popen, tmp_path):
         """Per-title makemkvcon log should be written to output dir."""
         lines = [

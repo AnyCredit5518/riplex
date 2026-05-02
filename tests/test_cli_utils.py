@@ -4,19 +4,15 @@ import json
 
 import pytest
 
-from riplex.cli import (
-    _build_execute_command,
-    _build_scanned_from_manifests,
-    _detect_disc_format,
-    _disc_content_summary,
-    _dry_run_banner,
-    _execute_hint,
-    _find_ripped_discs,
-    _infer_media_type,
-    _infer_title_from_scanned,
-    _parse_volume_label,
-    _strip_year_from_title,
+from riplex_cli.formatting import (
+    build_execute_command as _build_execute_command,
+    dry_run_banner as _dry_run_banner,
+    execute_hint as _execute_hint,
 )
+from riplex.detect import infer_media_type
+from riplex.disc.provider import detect_disc_format, disc_content_summary
+from riplex.manifest import build_scanned_from_manifests, find_ripped_discs
+from riplex.title import infer_title_from_scanned, parse_volume_label, strip_year_from_title
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc, ScannedFile
 
 
@@ -27,18 +23,18 @@ from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc
 
 class TestStripYearFromTitle:
     def test_trailing_year(self):
-        assert _strip_year_from_title("Waterworld (1995)") == ("Waterworld", 1995)
+        assert strip_year_from_title("Waterworld (1995)") == ("Waterworld", 1995)
 
     def test_no_year(self):
-        assert _strip_year_from_title("Waterworld") == ("Waterworld", None)
+        assert strip_year_from_title("Waterworld") == ("Waterworld", None)
 
     def test_year_in_middle_ignored(self):
-        title, year = _strip_year_from_title("2001 A Space Odyssey")
+        title, year = strip_year_from_title("2001 A Space Odyssey")
         assert title == "2001 A Space Odyssey"
         assert year is None
 
     def test_trailing_year_with_extra_spaces(self):
-        assert _strip_year_from_title("Blade Runner  (1982) ") == ("Blade Runner", 1982)
+        assert strip_year_from_title("Blade Runner  (1982) ") == ("Blade Runner", 1982)
 
 
 # ---------------------------------------------------------------------------
@@ -61,47 +57,47 @@ class TestInferTitleFromScanned:
             _make_file("long.mkv", 8000, "Waterworld"),
             _make_file("extra.mkv", 500, "Waterworld"),
         ])]
-        assert _infer_title_from_scanned(scanned) == "Waterworld"
+        assert infer_title_from_scanned(scanned) == "Waterworld"
 
     def test_returns_none_when_no_title_tag(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, None),
         ])]
-        assert _infer_title_from_scanned(scanned) is None
+        assert infer_title_from_scanned(scanned) is None
 
     def test_returns_none_for_empty_title_tag(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, "  "),
         ])]
-        assert _infer_title_from_scanned(scanned) is None
+        assert infer_title_from_scanned(scanned) is None
 
     def test_returns_none_for_empty_scanned(self):
-        assert _infer_title_from_scanned([]) is None
-        assert _infer_title_from_scanned([_make_disc([])]) is None
+        assert infer_title_from_scanned([]) is None
+        assert infer_title_from_scanned([_make_disc([])]) is None
 
     def test_strips_trailing_year(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, "Blade Runner (1982)"),
         ])]
-        assert _infer_title_from_scanned(scanned) == "Blade Runner"
+        assert infer_title_from_scanned(scanned) == "Blade Runner"
 
     def test_colon_preserved(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, "Blade Runner: The Final Cut"),
         ])]
-        assert _infer_title_from_scanned(scanned) == "Blade Runner: The Final Cut"
+        assert infer_title_from_scanned(scanned) == "Blade Runner: The Final Cut"
 
     def test_strips_trailing_disc_label(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, "SEVEN WORLDS ONE PLANET D1"),
         ])]
-        assert _infer_title_from_scanned(scanned) == "SEVEN WORLDS ONE PLANET"
+        assert infer_title_from_scanned(scanned) == "SEVEN WORLDS ONE PLANET"
 
     def test_strips_disc_with_word(self):
         scanned = [_make_disc([
             _make_file("a.mkv", 8000, "Planet Earth III Disc 2"),
         ])]
-        assert _infer_title_from_scanned(scanned) == "Planet Earth III"
+        assert infer_title_from_scanned(scanned) == "Planet Earth III"
 
 
 # ---------------------------------------------------------------------------
@@ -111,49 +107,49 @@ class TestInferTitleFromScanned:
 
 class TestParseVolumeLabel:
     def test_frozen_planet_ii_d2(self):
-        assert _parse_volume_label("FROZEN_PLANET_II_D2") == "Frozen Planet II"
+        assert parse_volume_label("FROZEN_PLANET_II_D2") == "Frozen Planet II"
 
     def test_planet_earth_iii_disc3(self):
-        assert _parse_volume_label("PLANET_EARTH_III-Disc3") == "Planet Earth III"
+        assert parse_volume_label("PLANET_EARTH_III-Disc3") == "Planet Earth III"
 
     def test_blade_runner_2049(self):
-        assert _parse_volume_label("BLADE_RUNNER_2049") == "Blade Runner 2049"
+        assert parse_volume_label("BLADE_RUNNER_2049") == "Blade Runner 2049"
 
     def test_top_gun(self):
-        assert _parse_volume_label("TOP_GUN") == "Top Gun"
+        assert parse_volume_label("TOP_GUN") == "Top Gun"
 
     def test_disc_suffix_word_form(self):
-        assert _parse_volume_label("OPPENHEIMER_Disc_1") == "Oppenheimer"
+        assert parse_volume_label("OPPENHEIMER_Disc_1") == "Oppenheimer"
 
     def test_returns_none_for_short(self):
-        assert _parse_volume_label("A") is None
+        assert parse_volume_label("A") is None
 
     def test_returns_none_for_empty(self):
-        assert _parse_volume_label("") is None
+        assert parse_volume_label("") is None
 
     def test_returns_none_for_none(self):
-        assert _parse_volume_label(None) is None
+        assert parse_volume_label(None) is None
 
     def test_preserves_roman_numerals(self):
-        assert _parse_volume_label("ROCKY_IV") == "Rocky IV"
+        assert parse_volume_label("ROCKY_IV") == "Rocky IV"
 
     def test_preserves_mixed_roman(self):
-        assert _parse_volume_label("STAR_WARS_III") == "Star Wars III"
+        assert parse_volume_label("STAR_WARS_III") == "Star Wars III"
 
     def test_spaced_dash_disc_suffix(self):
-        assert _parse_volume_label("The Green Planet - Disc 1") == "The Green Planet"
+        assert parse_volume_label("The Green Planet - Disc 1") == "The Green Planet"
 
     def test_spaced_dash_disc_suffix_d2(self):
-        assert _parse_volume_label("A Perfect Planet - D2") == "A Perfect Planet"
+        assert parse_volume_label("A Perfect Planet - D2") == "A Perfect Planet"
 
     def test_preserves_hyphenated_title(self):
-        assert _parse_volume_label("SPIDER-MAN") == "Spider-man"
+        assert parse_volume_label("SPIDER-MAN") == "Spider-man"
 
     def test_preserves_hyphen_with_disc_suffix(self):
-        assert _parse_volume_label("X-MEN_D1") == "X-men"
+        assert parse_volume_label("X-MEN_D1") == "X-men"
 
     def test_preserves_mid_title_dash(self):
-        assert _parse_volume_label("ANT-MAN_AND_THE_WASP_Disc_1") == "Ant-man And The Wasp"
+        assert parse_volume_label("ANT-MAN_AND_THE_WASP_Disc_1") == "Ant-man And The Wasp"
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +159,7 @@ class TestParseVolumeLabel:
 
 class TestDetectDiscFormat:
     def _make_disc_info(self, resolutions):
-        from riplex.makemkv import DiscInfo, DiscTitle
+        from riplex.disc.makemkv import DiscInfo, DiscTitle
 
         titles = [
             DiscTitle(
@@ -178,19 +174,19 @@ class TestDetectDiscFormat:
 
     def test_4k_detected(self):
         info = self._make_disc_info(["3840x2160", "1920x1080"])
-        assert _detect_disc_format(info) == "Blu-ray 4K"
+        assert detect_disc_format(info) == "Blu-ray 4K"
 
     def test_bluray_hd(self):
         info = self._make_disc_info(["1920x1080", "1920x1080"])
-        assert _detect_disc_format(info) == "Blu-ray"
+        assert detect_disc_format(info) == "Blu-ray"
 
     def test_no_titles(self):
         info = self._make_disc_info([])
-        assert _detect_disc_format(info) is None
+        assert detect_disc_format(info) is None
 
     def test_single_4k_title(self):
         info = self._make_disc_info(["3840x2160"])
-        assert _detect_disc_format(info) == "Blu-ray 4K"
+        assert detect_disc_format(info) == "Blu-ray 4K"
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +197,7 @@ class TestDetectDiscFormat:
 class TestInferMediaType:
     def _make_disc_info(self, title_specs):
         """Create a DiscInfo from a list of (duration_seconds, segment_count) tuples."""
-        from riplex.makemkv import DiscInfo, DiscTitle
+        from riplex.disc.makemkv import DiscInfo, DiscTitle
 
         titles = [
             DiscTitle(
@@ -219,46 +215,46 @@ class TestInferMediaType:
         info = self._make_disc_info([
             (3022, 1), (3126, 1), (3076, 1), (9226, 3),
         ])
-        assert _infer_media_type(info) == "tv"
+        assert infer_media_type(info) == "tv"
 
     def test_movie_single_feature(self):
         # Single 2-hour movie
         info = self._make_disc_info([(7200, 1)])
-        assert _infer_media_type(info) == "movie"
+        assert infer_media_type(info) == "movie"
 
     def test_movie_with_short_extras(self):
         # Movie + short featurettes under 15 min
         info = self._make_disc_info([
             (7200, 1), (600, 1), (480, 1), (300, 1),
         ])
-        assert _infer_media_type(info) == "movie"
+        assert infer_media_type(info) == "movie"
 
     def test_auto_for_ambiguous(self):
         # Movie-length title + episode-length titles
         info = self._make_disc_info([
             (5400, 1), (3000, 1), (3000, 1),
         ])
-        assert _infer_media_type(info) == "auto"
+        assert infer_media_type(info) == "auto"
 
     def test_auto_for_no_titles(self):
         info = self._make_disc_info([])
-        assert _infer_media_type(info) == "auto"
+        assert infer_media_type(info) == "auto"
 
     def test_tv_two_episodes(self):
         # 2 x ~45 min episodes
         info = self._make_disc_info([(2700, 1), (2700, 1)])
-        assert _infer_media_type(info) == "tv"
+        assert infer_media_type(info) == "tv"
 
 
 # ---------------------------------------------------------------------------
 # _pick_best (interactive TMDb selection)
 # ---------------------------------------------------------------------------
 
-from riplex.metadata_provider import MetadataSearchResult
-from riplex.planner import _pick_best, _format_tmdb_option
+from riplex.metadata.provider import MetadataSearchResult
+from riplex.metadata.planner import _pick_best, _format_tmdb_option
 from riplex.models import SearchRequest
 from riplex import ui
-import riplex.planner as _planner_mod
+import riplex.metadata.planner as _planner_mod
 
 
 def _result(title, year, media_type="tv", popularity=1.0):
@@ -444,14 +440,14 @@ def _ep(title, season=1, episode=1):
 class TestDiscContentSummary:
     def test_episodes_only(self):
         disc = _make_planned_disc(1, episodes=[_ep("Ep 1"), _ep("Ep 2", episode=2)])
-        assert _disc_content_summary(disc) == "Ep 1, Ep 2"
+        assert disc_content_summary(disc) == "Ep 1, Ep 2"
 
     def test_episodes_and_extras(self):
         disc = _make_planned_disc(1,
             episodes=[_ep("Ep 1")],
             extras=[PlannedExtra(title="Behind the Scenes")],
         )
-        result = _disc_content_summary(disc)
+        result = disc_content_summary(disc)
         assert "Ep 1" in result
         assert "Behind the Scenes" in result
 
@@ -460,21 +456,21 @@ class TestDiscContentSummary:
             _ep(f"Episode {i}", episode=i)
             for i in range(1, 7)
         ])
-        summary = _disc_content_summary(disc)
+        summary = disc_content_summary(disc)
         assert "..." in summary
         assert "6 items" in summary
 
     def test_empty_disc(self):
         disc = _make_planned_disc(1)
-        assert _disc_content_summary(disc) == "(no content listed)"
+        assert disc_content_summary(disc) == "(no content listed)"
 
 
 class TestFindRippedDiscs:
     def test_empty_dir(self, tmp_path):
-        assert _find_ripped_discs(tmp_path) == set()
+        assert find_ripped_discs(tmp_path) == set()
 
     def test_nonexistent_dir(self, tmp_path):
-        assert _find_ripped_discs(tmp_path / "nope") == set()
+        assert find_ripped_discs(tmp_path / "nope") == set()
 
     def test_finds_manifests(self, tmp_path):
         d1 = tmp_path / "Disc 1"
@@ -486,13 +482,13 @@ class TestFindRippedDiscs:
         # Disc 2 exists but no manifest
         d2 = tmp_path / "Disc 2"
         d2.mkdir()
-        assert _find_ripped_discs(tmp_path) == {1, 3}
+        assert find_ripped_discs(tmp_path) == {1, 3}
 
     def test_ignores_non_disc_folders(self, tmp_path):
         other = tmp_path / "Extras"
         other.mkdir()
         (other / "_rip_manifest.json").write_text("{}")
-        assert _find_ripped_discs(tmp_path) == set()
+        assert find_ripped_discs(tmp_path) == set()
 
 
 class TestBuildScannedFromManifests:
@@ -526,7 +522,7 @@ class TestBuildScannedFromManifests:
         disc1 = tmp_path / "Disc 1"
         self._write_manifest(disc1, manifest)
 
-        result = _build_scanned_from_manifests(tmp_path)
+        result = build_scanned_from_manifests(tmp_path)
         assert len(result) == 1
         assert result[0].folder_name == "Disc 1"
         assert len(result[0].files) == 1
@@ -555,12 +551,12 @@ class TestBuildScannedFromManifests:
             }
             self._write_manifest(tmp_path / f"Disc {i}", manifest)
 
-        result = _build_scanned_from_manifests(tmp_path)
+        result = build_scanned_from_manifests(tmp_path)
         assert len(result) == 3
         assert sum(len(d.files) for d in result) == 9
 
     def test_empty_dir_returns_empty(self, tmp_path):
-        assert _build_scanned_from_manifests(tmp_path) == []
+        assert build_scanned_from_manifests(tmp_path) == []
 
     def test_skips_files_without_filename(self, tmp_path):
         manifest = {
@@ -571,6 +567,6 @@ class TestBuildScannedFromManifests:
             ],
         }
         self._write_manifest(tmp_path / "Disc 1", manifest)
-        result = _build_scanned_from_manifests(tmp_path)
+        result = build_scanned_from_manifests(tmp_path)
         assert len(result[0].files) == 1
         assert result[0].files[0].name == "real.mkv"

@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 from riplex.dedup import compute_dhash
 from riplex.models import ScannedDisc, ScannedFile
 
 log = logging.getLogger(__name__)
+
+# On Windows, prevent subprocess calls from spawning a visible console window.
+_SUBPROCESS_FLAGS: dict = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if platform.system() == "Windows"
+    else {}
+)
 
 
 def _probe_file(path: Path) -> ScannedFile:
@@ -45,6 +54,7 @@ def _probe_file(path: Path) -> ScannedFile:
             capture_output=True,
             text=True,
             timeout=120,
+            **_SUBPROCESS_FLAGS,
         )
         if result.returncode != 0:
             return ScannedFile(name=name, path=abs_path, size_bytes=size_bytes)
@@ -132,11 +142,18 @@ def _probe_file(path: Path) -> ScannedFile:
     return sf
 
 
-def scan_folder(folder: Path) -> list[ScannedDisc]:
+def scan_folder(
+    folder: Path,
+    *,
+    on_progress: Callable[[int, int, str], None] | None = None,
+) -> list[ScannedDisc]:
     """Scan a MakeMKV rip folder and return disc groupings with durations.
 
     Handles both flat layouts (all MKVs in one folder) and multi-disc
     layouts (subfolders per disc like "Special Features/", "Disc 1/").
+
+    *on_progress*, if provided, is called as ``on_progress(current, total, filename)``
+    after each file is probed.
 
     Returns a list of :class:`ScannedDisc` objects, one per subfolder
     (or one for the root if files are at the top level).
@@ -151,6 +168,7 @@ def scan_folder(folder: Path) -> list[ScannedDisc]:
             ["ffprobe", "-version"],
             capture_output=True,
             timeout=5,
+            **_SUBPROCESS_FLAGS,
         )
     except FileNotFoundError:
         raise RuntimeError(
@@ -172,15 +190,32 @@ def scan_folder(folder: Path) -> list[ScannedDisc]:
 
     discs: list[ScannedDisc] = []
 
+    # Count total files for progress reporting
+    all_files = list(root_mkvs)
+    for mkvs in subfolders.values():
+        all_files.extend(mkvs)
+    total = len(all_files)
+    scanned_count = 0
+
     # Root-level files become disc group with folder name
     if root_mkvs:
-        files = [_probe_file(p) for p in root_mkvs]
+        files = []
+        for p in root_mkvs:
+            files.append(_probe_file(p))
+            scanned_count += 1
+            if on_progress:
+                on_progress(scanned_count, total, p.name)
         discs.append(ScannedDisc(folder_name=folder.name, files=files))
         log.debug("Root disc group '%s': %d files", folder.name, len(files))
 
     # Each subfolder becomes its own disc group
     for sub_name, mkvs in subfolders.items():
-        files = [_probe_file(p) for p in mkvs]
+        files = []
+        for p in mkvs:
+            files.append(_probe_file(p))
+            scanned_count += 1
+            if on_progress:
+                on_progress(scanned_count, total, p.name)
         discs.append(ScannedDisc(folder_name=sub_name, files=files))
         log.debug("Subfolder disc group '%s': %d files", sub_name, len(files))
 

@@ -75,16 +75,22 @@ def format_runtime(total_seconds: int) -> str:
     return f"{minutes}m"
 
 
-def movie_folder_name(title: str, year: int) -> str:
+def movie_folder_name(title: str, year: int, edition: str | None = None) -> str:
     """Build the canonical Plex movie folder name."""
     safe = sanitize_filename(title)
-    return f"{safe} ({year})"
+    name = f"{safe} ({year})"
+    if edition:
+        name += f" {{edition-{edition}}}"
+    return name
 
 
-def movie_file_name(title: str, year: int, ext: str = ".mkv") -> str:
+def movie_file_name(title: str, year: int, ext: str = ".mkv", edition: str | None = None) -> str:
     """Build the canonical Plex movie filename."""
     safe = sanitize_filename(title)
-    return f"{safe} ({year}){ext}"
+    name = f"{safe} ({year})"
+    if edition:
+        name += f" {{edition-{edition}}}"
+    return f"{name}{ext}"
 
 
 def show_folder_name(title: str, year: int) -> str:

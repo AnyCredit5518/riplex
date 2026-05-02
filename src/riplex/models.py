@@ -73,6 +73,7 @@ class MatchCandidate:
     matched_runtime_seconds: int
     delta_seconds: int
     confidence: str  # "high", "medium", "low"
+    classification: str = ""  # rip-time classification from manifest
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +119,7 @@ class ScannedFile:
     max_height: int = 0  # max video stream height (e.g. 2160)
     organized_tag: str | None = None  # riplex organized marker
     perceptual_hash: int | None = None  # 64-bit dhash for duplicate detection
+    classification: str = ""  # rip-time classification from manifest
 
 
 @dataclass

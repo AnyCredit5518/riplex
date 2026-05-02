@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from riplex.metadata_provider import MetadataProvider, MetadataSearchResult
+from riplex.metadata.provider import MetadataProvider, MetadataSearchResult
 from riplex.models import (
     PlannedEpisode,
     PlannedMovie,
@@ -176,3 +176,6 @@ async def _plan_show(
         relative_paths=paths,
         seasons=seasons,
     )
+
+
+

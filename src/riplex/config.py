@@ -103,3 +103,40 @@ def get_archive_root() -> str:
     """
     cfg = load_config()
     return cfg.get("archive_root", "")
+
+
+def _config_write_path() -> Path:
+    """Determine the writable config path (user-scoped)."""
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return Path(appdata) / "riplex" / _FILE_NAME
+    return Path.home() / ".config" / "riplex" / _FILE_NAME
+
+
+def save_config(
+    *,
+    tmdb_api_key: str = "",
+    output_root: str = "",
+    rip_output: str = "",
+    archive_root: str = "",
+) -> Path:
+    """Write a TOML config file with the given values.
+
+    Only non-empty values are written. Backslashes in paths are
+    normalized to forward slashes.  Returns the path written.
+    """
+    config_path = _config_write_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines: list[str] = []
+    if tmdb_api_key:
+        lines.append(f'tmdb_api_key = "{tmdb_api_key}"')
+    if output_root:
+        lines.append(f'output_root = "{output_root.replace(chr(92), "/")}"')
+    if rip_output:
+        lines.append(f'rip_output = "{rip_output.replace(chr(92), "/")}"')
+    if archive_root:
+        lines.append(f'archive_root = "{archive_root.replace(chr(92), "/")}"')
+
+    config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return config_path

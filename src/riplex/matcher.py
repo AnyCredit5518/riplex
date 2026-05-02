@@ -421,6 +421,7 @@ def match_discs(
                 matched_runtime_seconds=runtime_s,
                 delta_seconds=delta,
                 confidence=conf,
+                classification=sf.classification,
             )
         )
         claimed_files.add(fi)

@@ -2,12 +2,18 @@
 
 ## Overview
 
-riplex is a Python CLI application with four commands, each targeting a different stage of the disc ripping workflow:
+riplex is a Python tool with a CLI and optional GUI, organized as a monorepo with three source packages:
 
-- **`orchestrate`**: The primary workflow. Multi-disc rip-then-organize in a single session. Combines disc detection, dvdcompare lookup, disc selection, ripping, and organizing.
+- **`riplex`** (library): All business logic — metadata lookup, disc analysis, matching, organizing, ripping orchestration
+- **`riplex_cli`** (CLI): Thin wrapper — argument parsing, terminal formatting, progress bars, interactive prompts
+- **`riplex_app`** (GUI): Thin wrapper — Flet-based wizard screens, no business logic
+
+Four commands target different stages of the disc ripping workflow:
+
+- **`orchestrate`**: The primary workflow. Multi-disc rip-then-organize in a single session.
 - **`rip`**: Single-disc rip via makemkvcon. Disc analysis, auto title selection, and optional post-rip organize.
-- **`organize`**: The file organization pipeline. Scans MKV files, deduplicates, looks up TMDb + dvdcompare, matches files by runtime, and moves everything into Plex folder layout.
-- **`lookup`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy before ripping. Helps users decide which MakeMKV titles to rip vs skip, and creates correct folder structure.
+- **`organize`**: The file organization pipeline. Scans MKV files, deduplicates, matches by runtime, and moves into Plex folder layout.
+- **`lookup`**: TMDb + dvdcompare lookup. Shows disc contents and recommended rip strategy.
 
 ## Metadata provider
 
@@ -16,49 +22,62 @@ The metadata provider is abstracted behind a clean interface (`MetadataProvider`
 ## Project structure
 
 ```
-src/riplex/
-    __init__.py
-    cli.py                  # CLI entry point (orchestrate, rip, organize, lookup subcommands)
-    config.py               # Config file loading and setting resolution
-    models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
-    metadata_provider.py    # Abstract provider interface
-    metadata_sources/
-        tmdb.py             # TMDb API implementation
-    normalize.py            # Filename/path normalization
-    formatter.py            # Text and JSON output formatters
-    planner.py              # Core planning orchestrator
-    matcher.py              # Runtime-based file matching with disc constraints
-    scanner.py              # MakeMKV folder scanner (ffprobe-based metadata extraction)
-    snapshot.py             # Snapshot capture and loading (JSON serialization of scan results)
-    detect.py               # Format auto-detection, title grouping, incomplete file detection
-    dedup.py                # Duplicate MKV detection (metadata fingerprint + perceptual hash)
-    cache.py                # File-based JSON cache with TTL (dvdcompare, TMDb)
-    disc_provider.py        # dvdcompare.net disc extras metadata bridge
-    disc_analysis.py        # Live disc analysis via makemkvcon (title classification, rip recommendations)
-    makemkv.py              # makemkvcon wrapper (disc reading, title ripping, progress parsing)
-    organizer.py            # Plex destination path builder and file mover
-    splitter.py             # Chapter-based MKV splitting via mkvmerge
-    tagger.py               # MKV organized tagging via mkvpropedit
-    ui.py                   # Interactive prompts (multi-select, confirmations, text input)
+src/
+    riplex/                     # Shared library (all business logic)
+        __init__.py
+        config.py               # Config file loading and setting resolution
+        models.py               # Data models (ScannedFile, PlannedDisc, MatchCandidate, etc.)
+        disc/                   # Physical disc interaction
+            analysis.py         # Live disc analysis via makemkvcon (title classification, rip recs)
+            makemkv.py          # makemkvcon wrapper (disc reading, title ripping, progress parsing)
+            provider.py         # dvdcompare.net disc extras metadata bridge
+        metadata/               # Metadata lookup
+            provider.py         # Abstract provider interface
+            planner.py          # TMDb planning orchestrator (builds PlannedMovie / PlannedShow)
+            sources/
+                tmdb.py         # TMDb API implementation
+        lookup.py               # Shared entry point for TMDb + dvdcompare fetch and selection
+        manifest.py             # Rip manifest reading (title index → filename mapping)
+        title.py                # Title parsing (volume labels, year extraction, normalization)
+        normalize.py            # Filename/path normalization and Plex naming
+        formatter.py            # Text and JSON output formatters
+        matcher.py              # Runtime-based file matching with disc constraints
+        scanner.py              # MKV folder scanner (ffprobe-based metadata extraction)
+        snapshot.py             # Snapshot capture/load, organized markers, debug directory
+        detect.py               # Format auto-detection, title grouping, incomplete file detection
+        dedup.py                # Duplicate MKV detection (metadata fingerprint + perceptual hash)
+        cache.py                # File-based JSON cache with TTL (dvdcompare, TMDb)
+        organizer.py            # Plex destination path builder, file mover, archive helper
+        splitter.py             # Chapter-based MKV splitting via mkvmerge
+        tagger.py               # MKV organized tagging via mkvpropedit
+        ui.py                   # Interactive prompts (multi-select, confirmations, text input)
+    riplex_cli/                 # CLI thin wrapper
+        __init__.py
+        main.py                 # Argparse and command dispatch
+        formatting.py           # Terminal formatting, progress bars, logging setup
+        commands/
+            orchestrate.py      # Multi-disc rip and organize pipeline
+            rip.py              # Single-disc rip with smart title selection
+            organize.py         # Scan, match, and organize existing MKV rips
+            lookup.py           # TMDb + dvdcompare lookup and disc content preview
+            setup.py            # Interactive config wizard
+    riplex_app/                 # GUI thin wrapper (optional, requires flet)
+        __init__.py
+        main.py                 # App entry point, screen navigation controller
+        screens/
+            welcome.py          # Config setup, tool verification, workflow picker
+            disc_detection.py   # Drive scanning, disc reading
+            metadata.py         # TMDb search and selection
+            release.py          # dvdcompare release picker
+            selection.py        # Title selection with classify_title
+            progress.py         # Rip progress with makemkvcon
+            done.py             # Rip results summary
+            folder_picker.py    # Folder selection and MKV scan for organize workflow
+            organize_preview.py # Organize dry-run plan preview
+            organize_done.py    # Organize results summary
 tests/
-    test_cache.py
-    test_cli_utils.py
-    test_config.py
-    test_dedup.py
-    test_detect.py
-    test_disc_analysis.py
-    test_disc_provider.py
-    test_formatter.py
-    test_makemkv.py
-    test_matcher.py
-    test_normalize.py
-    test_organizer.py
-    test_planner.py
-    test_rip_guide.py
-    test_scanner.py
-    test_splitter.py
-    test_tagger.py
-    test_ui.py
+    test_*.py               # One test file per source module
+    fixtures/               # makemkvcon output samples for parsing tests
     snapshots/              # MKV metadata snapshots for offline test replay
 ```
 
@@ -95,13 +114,13 @@ Physical disc
   -> Optional: Organize pipeline
 ```
 
-### Plan mode
+### Lookup mode
 
 ```
 User input (title, year)
-  -> TMDb API (via MetadataProvider)
-  -> Planner (builds PlannedMovie or PlannedShow)
-  -> Formatter (text or JSON output)
+  -> TMDb API (canonical title lookup)
+  -> dvdcompare (disc breakdown, content listings)
+  -> CLI (formatted disc guide output with rip recommendations)
 ```
 
 ### Organize mode
@@ -117,13 +136,5 @@ MakeMKV rip folder
   -> Organizer (destination path builder)
   -> Splitter (chapter-based MKV splitting, if needed)
   -> Tagger (mark files as organized)
-```
-
-### Rip guide mode
-
-```
-User input (title, year)
-  -> TMDb API (canonical title lookup)
-  -> dvdcompare (disc breakdown)
-  -> CLI (formatted disc guide output)
+  -> Archive (move rip folder to archive_root, optional)
 ```

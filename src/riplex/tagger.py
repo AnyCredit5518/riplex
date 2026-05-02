@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger(__name__)
+
+# On Windows, prevent subprocess calls from spawning a visible console window.
+_SUBPROCESS_FLAGS: dict = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if platform.system() == "Windows"
+    else {}
+)
 
 
 def find_mkvpropedit() -> str | None:
@@ -76,6 +84,7 @@ def tag_organized(file_path: str, label: str) -> bool:
             capture_output=True,
             text=True,
             timeout=30,
+            **_SUBPROCESS_FLAGS,
         )
         if result.returncode != 0:
             log.warning("mkvpropedit failed for %s: %s", file_path, result.stderr.strip())
@@ -119,6 +128,7 @@ def read_organized_tag(file_path: str) -> str | None:
             capture_output=True,
             text=True,
             timeout=30,
+            **_SUBPROCESS_FLAGS,
         )
         if result.returncode != 0:
             return None

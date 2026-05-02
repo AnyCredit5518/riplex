@@ -1,6 +1,37 @@
 # Installation
 
-## 1. Install Python
+There are two ways to install riplex:
+
+- **Download a pre-built executable** (easiest, no Python needed)
+- **Install via pip** (for Python users who want automatic updates)
+
+Both methods require the same external tools (MakeMKV, ffprobe, mkvmerge).
+
+## Option A: Pre-built executables
+
+Download the latest release for your platform from the [GitHub Releases page](https://github.com/AnyCredit5518/riplex/releases):
+
+| Platform | CLI | GUI |
+|---|---|---|
+| Windows | `riplex-windows.exe` | `riplex-ui-windows.exe` |
+| macOS | `riplex-macos` | `riplex-ui-macos.zip` |
+
+### Windows
+
+1. Download `riplex-windows.exe` (and optionally `riplex-ui-windows.exe`)
+2. Place them in a folder on your PATH (e.g. `C:\Tools\`)
+3. Open a terminal and run `riplex setup`
+
+### macOS
+
+1. Download `riplex-macos` and/or `riplex-ui-macos.zip`
+2. Make the CLI executable: `chmod +x riplex-macos`
+3. For the GUI, unzip `riplex-ui-macos.zip` and move `riplex-ui.app` to `/Applications/`
+4. Run `./riplex-macos setup` to configure
+
+## Option B: Install via pip
+
+### 1. Install Python
 
 riplex requires Python 3.11 or newer. If you don't have it:
 
@@ -16,7 +47,7 @@ python --version
 
 You should see `Python 3.11` or higher.
 
-## 2. Install and register MakeMKV
+### 2. Install and register MakeMKV
 
 Download MakeMKV from https://www.makemkv.com/ and install it.
 
@@ -27,7 +58,7 @@ Then register it with the free beta key:
 
 The beta key is updated periodically. Without it, `makemkvcon` (the command-line tool riplex uses) won't function.
 
-## 3. Install riplex
+### 3. Install riplex
 
 ```bash
 pip install riplex
@@ -35,7 +66,7 @@ pip install riplex
 
 This installs the `riplex` command and all Python dependencies automatically.
 
-## 4. Run setup
+### 4. Run setup
 
 ```bash
 riplex setup
@@ -50,7 +81,7 @@ The setup wizard will:
 
 If you skip setup, it runs automatically the first time you use any command.
 
-## 5. Verify
+### 5. Verify
 
 ```bash
 riplex --help
@@ -66,6 +97,18 @@ If you want to contribute or run the latest unreleased code:
 git clone https://github.com/AnyCredit5518/riplex.git
 cd riplex
 pip install -e ".[dev]"
+```
+
+To also install the Flet-based GUI:
+
+```bash
+pip install -e ".[dev,gui]"
+```
+
+Then launch it with:
+
+```bash
+riplex-ui
 ```
 
 ## External tools

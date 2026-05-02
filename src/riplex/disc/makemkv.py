@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import logging
+import platform
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# On Windows, prevent subprocess calls from spawning a visible console window.
+_SUBPROCESS_FLAGS: dict = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if platform.system() == "Windows"
+    else {}
+)
 
 log = logging.getLogger(__name__)
 
@@ -220,91 +228,26 @@ def run_disc_info(drive: int | str, makemkvcon: Path | None = None) -> DiscInfo:
     """Run makemkvcon -r info disc:N and return parsed DiscInfo.
 
     *drive* can be an integer (disc index) or a string like "disc:0" or "D:".
+
+    .. deprecated:: Use :pyclass:`MakeMKV` instead.
     """
-    exe = makemkvcon or find_makemkvcon()
-    if not exe:
-        raise FileNotFoundError(
-            "makemkvcon not found. Install MakeMKV or pass --makemkvcon path."
-        )
-
-    if isinstance(drive, int):
-        source = f"disc:{drive}"
-    elif drive.startswith("disc:") or drive.startswith("dev:"):
-        source = drive
-    else:
-        source = f"dev:{drive}"
-
-    cmd = [str(exe), "-r", "info", source]
-    log.info("Running: %s", " ".join(cmd))
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-
-    # makemkvcon often exits with code 1 even on success
-    output = result.stdout + result.stderr
-    if "TCOUNT:" not in output:
-        raise RuntimeError(
-            f"makemkvcon did not produce title info. Output:\n{output[:500]}"
-        )
-
-    return parse_disc_info(output)
+    return MakeMKV(makemkvcon).disc_info(drive)
 
 
 def run_drive_list(makemkvcon: Path | None = None) -> list[DriveInfo]:
-    """Run makemkvcon -r info list and return available drives."""
-    exe = makemkvcon or find_makemkvcon()
-    if not exe:
-        raise FileNotFoundError("makemkvcon not found.")
+    """Run makemkvcon -r info list and return available drives.
 
-    cmd = [str(exe), "-r", "info", "list"]
-    log.info("Running: %s", " ".join(cmd))
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    output = result.stdout + result.stderr
-    return parse_drive_list(output)
+    .. deprecated:: Use :pyclass:`MakeMKV` instead.
+    """
+    return MakeMKV(makemkvcon).drive_list()
 
 
 def eject_disc(drive_letter: str) -> bool:
     """Eject the disc from the given drive (e.g. "D:").
 
-    Uses PowerShell's Shell.Application COM object on Windows.
-    Returns True if the eject command was issued successfully.
+    .. deprecated:: Use :pyclass:`MakeMKV` instead.
     """
-    import platform
-
-    drive = drive_letter.rstrip("\\")
-    if platform.system() != "Windows":
-        # On Linux/Mac, try 'eject' command
-        try:
-            subprocess.run(["eject", drive], timeout=10, capture_output=True)
-            return True
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            return False
-
-    # Windows: use PowerShell COM object
-    ps_cmd = (
-        f'(New-Object -comObject Shell.Application)'
-        f'.NameSpace(17).ParseName("{drive}").InvokeVerb("Eject")'
-    )
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", ps_cmd],
-            capture_output=True, text=True, timeout=15,
-        )
-        log.info("Eject %s: exit %d", drive, result.returncode)
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        log.warning("Eject failed for %s: %s", drive, exc)
-        return False
+    return MakeMKV().eject(drive_letter)
 
 
 def wait_for_disc(
@@ -316,25 +259,11 @@ def wait_for_disc(
 ) -> DriveInfo | None:
     """Poll until a disc is detected in the drive (different from previous_label).
 
-    Returns the DriveInfo when a new disc is found, or None on timeout.
+    .. deprecated:: Use :pyclass:`MakeMKV` instead.
     """
-    import time as _time
-
-    exe = makemkvcon or find_makemkvcon()
-    deadline = _time.monotonic() + timeout
-    while _time.monotonic() < deadline:
-        try:
-            drives = run_drive_list(exe)
-        except (RuntimeError, FileNotFoundError):
-            pass
-        else:
-            for d in drives:
-                if d.index == drive_index and d.disc_label:
-                    # New disc detected (label differs from what we just ejected)
-                    if d.disc_label != previous_label:
-                        return d
-        _time.sleep(poll_interval)
-    return None
+    return MakeMKV(makemkvcon).wait_for_disc(
+        drive_index, poll_interval, timeout, previous_label,
+    )
 
 
 # ---- ripping ----
@@ -357,6 +286,250 @@ class RipResult:
     success: bool
     output_file: str  # path to the output MKV
     error_message: str = ""
+
+
+# ---------------------------------------------------------------------------
+# MakeMKV class — wraps makemkvcon subprocess calls
+# ---------------------------------------------------------------------------
+
+class MakeMKV:
+    """High-level interface to the makemkvcon command-line tool.
+
+    Instantiate once with the path to the executable (auto-detected if
+    omitted), then call methods for disc scanning, ripping, and drive
+    management.
+    """
+
+    def __init__(self, exe: Path | None = None) -> None:
+        self.exe: Path | None = exe or find_makemkvcon()
+
+    # -- helpers ----------------------------------------------------------
+
+    def _require_exe(self) -> Path:
+        if not self.exe:
+            raise FileNotFoundError(
+                "makemkvcon not found. Install MakeMKV or pass the path."
+            )
+        return self.exe
+
+    @staticmethod
+    def _resolve_source(drive: int | str) -> str:
+        if isinstance(drive, int):
+            return f"disc:{drive}"
+        if drive.startswith("disc:") or drive.startswith("dev:"):
+            return drive
+        return f"dev:{drive}"
+
+    # -- public API -------------------------------------------------------
+
+    def disc_info(self, drive: int | str) -> DiscInfo:
+        """Read disc info from *drive* (index or device name)."""
+        exe = self._require_exe()
+        source = self._resolve_source(drive)
+
+        cmd = [str(exe), "-r", "info", source]
+        log.info("Running: %s", " ".join(cmd))
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            **_SUBPROCESS_FLAGS,
+        )
+
+        output = result.stdout + result.stderr
+        if "TCOUNT:" not in output:
+            raise RuntimeError(
+                f"makemkvcon did not produce title info. Output:\n{output[:500]}"
+            )
+        return parse_disc_info(output)
+
+    def drive_list(self) -> list[DriveInfo]:
+        """List available optical drives."""
+        exe = self._require_exe()
+
+        cmd = [str(exe), "-r", "info", "list"]
+        log.info("Running: %s", " ".join(cmd))
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            **_SUBPROCESS_FLAGS,
+        )
+        output = result.stdout + result.stderr
+        return parse_drive_list(output)
+
+    def resolve_drive(self, drive_arg: str = "auto") -> DriveInfo:
+        """Resolve a drive argument to a :class:`DriveInfo`.
+
+        When *drive_arg* is ``"auto"``, scans drives and returns the first
+        one with a disc inserted.  Otherwise interprets *drive_arg* as a
+        drive index (int string) or device name and looks it up.
+
+        Raises :class:`RuntimeError` if no matching drive is found.
+        """
+        drives = self.drive_list()
+        if drive_arg == "auto":
+            active = [d for d in drives if d.has_disc]
+            if not active:
+                raise RuntimeError("No disc found in any drive.")
+            return active[0]
+
+        # Explicit drive — by index or device name
+        try:
+            idx = int(drive_arg)
+            for d in drives:
+                if d.index == idx:
+                    return d
+        except ValueError:
+            for d in drives:
+                if d.device == drive_arg:
+                    return d
+        raise RuntimeError(f"Drive '{drive_arg}' not found.")
+
+    def eject(self, drive_letter: str) -> bool:
+        """Eject the disc from *drive_letter* (e.g. ``"D:"``)."""
+        import platform as _plat
+
+        drive = drive_letter.rstrip("\\")
+        if _plat.system() != "Windows":
+            try:
+                subprocess.run(["eject", drive], timeout=10, capture_output=True)
+                return True
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                return False
+
+        ps_cmd = (
+            f'(New-Object -comObject Shell.Application)'
+            f'.NameSpace(17).ParseName("{drive}").InvokeVerb("Eject")'
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_cmd],
+                capture_output=True, text=True, timeout=15,
+                **_SUBPROCESS_FLAGS,
+            )
+            log.info("Eject %s: exit %d", drive, result.returncode)
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            log.warning("Eject failed for %s: %s", drive, exc)
+            return False
+
+    def wait_for_disc(
+        self,
+        drive_index: int,
+        poll_interval: float = 5.0,
+        timeout: float = 600.0,
+        previous_label: str = "",
+    ) -> DriveInfo | None:
+        """Poll until a new disc is detected (label differs from *previous_label*)."""
+        import time as _time
+
+        deadline = _time.monotonic() + timeout
+        while _time.monotonic() < deadline:
+            try:
+                drives = self.drive_list()
+            except (RuntimeError, FileNotFoundError):
+                pass
+            else:
+                for d in drives:
+                    if d.index == drive_index and d.disc_label:
+                        if d.disc_label != previous_label:
+                            return d
+            _time.sleep(poll_interval)
+        return None
+
+    def resolve_drive(self, drive_arg: str = "auto") -> DriveInfo:
+        """Resolve a drive argument to a DriveInfo with a disc present.
+
+        When *drive_arg* is ``"auto"``, scans all drives and picks the
+        first one with a disc inserted.  Otherwise interprets *drive_arg*
+        as a drive index.
+
+        Raises RuntimeError if no drive with a disc is found.
+        """
+        if drive_arg == "auto":
+            drives = self.drive_list()
+            active = [d for d in drives if d.has_disc]
+            if not active:
+                raise RuntimeError("No disc found in any drive.")
+            return active[0]
+
+        idx = int(drive_arg)
+        drives = self.drive_list()
+        for d in drives:
+            if d.index == idx:
+                return d
+        raise RuntimeError(f"Drive {idx} not found.")
+
+    def rip(
+        self,
+        drive: int | str,
+        title_index: int,
+        output_dir: Path,
+        progress_callback=None,
+    ) -> RipResult:
+        """Rip a single title from disc via ``makemkvcon mkv``."""
+        exe = self._require_exe()
+        source = self._resolve_source(drive)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        cmd = [str(exe), "-r", "--progress=-same", "mkv", source,
+               str(title_index), str(output_dir)]
+        log.info("Running: %s", " ".join(cmd))
+
+        output_file = ""
+        raw_lines: list[str] = []
+
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            **_SUBPROCESS_FLAGS,
+        )
+
+        try:
+            for line in proc.stdout:
+                line = line.rstrip("\n\r")
+                log.debug("makemkvcon: %s", line)
+                raw_lines.append(line)
+
+                progress = _parse_progress(line)
+                if progress and progress_callback:
+                    progress.title_index = title_index
+                    progress_callback(progress)
+
+            proc.wait()
+        except Exception:
+            proc.kill()
+            proc.wait()
+            raise
+
+        rip_log_path = output_dir / f"_makemkvcon_t{title_index:02d}.log"
+        try:
+            rip_log_path.write_text("\n".join(raw_lines) + "\n", encoding="utf-8")
+        except OSError as exc:
+            log.warning("Failed to write rip log %s: %s", rip_log_path, exc)
+
+        mkv_files = sorted(output_dir.glob("*.mkv"), key=lambda p: p.stat().st_mtime)
+        if mkv_files:
+            output_file = str(mkv_files[-1])
+
+        success = proc.returncode == 0
+        error_msg = ""
+        if not success:
+            error_msg = f"makemkvcon exited with code {proc.returncode}"
+
+        return RipResult(
+            title_index=title_index,
+            success=success,
+            output_file=output_file,
+            error_message=error_msg,
+        )
 
 
 def _parse_progress(line: str) -> RipProgress | None:
@@ -389,82 +562,9 @@ def run_rip(
 ) -> RipResult:
     """Rip a single title from a disc via makemkvcon mkv.
 
-    Args:
-        drive: Drive index (int) or device name (str).
-        title_index: The title index to rip.
-        output_dir: Directory to write the output MKV into.
-        makemkvcon: Path to makemkvcon executable. Auto-detected if None.
-        progress_callback: Optional callable(RipProgress) for progress updates.
-
-    Returns:
-        RipResult with success status and output file path.
+    .. deprecated:: Use :pyclass:`MakeMKV` instead.
     """
-    exe = makemkvcon or find_makemkvcon()
-    if not exe:
-        raise FileNotFoundError("makemkvcon not found.")
-
-    if isinstance(drive, int):
-        source = f"disc:{drive}"
-    elif drive.startswith("disc:") or drive.startswith("dev:"):
-        source = drive
-    else:
-        source = f"dev:{drive}"
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [str(exe), "-r", "--progress=-same", "mkv", source, str(title_index), str(output_dir)]
-    log.info("Running: %s", " ".join(cmd))
-
-    output_file = ""
-    raw_lines: list[str] = []
-
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-
-    try:
-        for line in proc.stdout:
-            line = line.rstrip("\n\r")
-            log.debug("makemkvcon: %s", line)
-            raw_lines.append(line)
-
-            # Progress updates
-            progress = _parse_progress(line)
-            if progress and progress_callback:
-                progress.title_index = title_index
-                progress_callback(progress)
-
-        proc.wait()
-    except Exception:
-        proc.kill()
-        proc.wait()
-        raise
-
-    # Write per-title makemkvcon log to output directory
-    rip_log_path = output_dir / f"_makemkvcon_t{title_index:02d}.log"
-    try:
-        rip_log_path.write_text("\n".join(raw_lines) + "\n", encoding="utf-8")
-    except OSError as exc:
-        log.warning("Failed to write rip log %s: %s", rip_log_path, exc)
-
-    # Find the output MKV file
-    mkv_files = sorted(output_dir.glob("*.mkv"), key=lambda p: p.stat().st_mtime)
-    if mkv_files:
-        output_file = str(mkv_files[-1])
-
-    success = proc.returncode == 0
-    error_msg = ""
-    if not success:
-        error_msg = f"makemkvcon exited with code {proc.returncode}"
-
-    return RipResult(
-        title_index=title_index,
-        success=success,
-        output_file=output_file,
-        error_message=error_msg,
-    )
+    return MakeMKV(makemkvcon).rip(drive, title_index, output_dir, progress_callback)
 
 
 # ---------------------------------------------------------------------------
@@ -552,6 +652,7 @@ def probe_chapter_durations(mkv_path: str | Path) -> list[int]:
     try:
         proc = subprocess.run(
             cmd, capture_output=True, text=True, timeout=30,
+            **_SUBPROCESS_FLAGS,
         )
         if proc.returncode != 0:
             log.debug("ffprobe failed for %s: exit %d", mkv_path, proc.returncode)

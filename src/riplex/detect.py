@@ -148,3 +148,62 @@ def group_title_folders(root: Path) -> list[TitleGroup]:
     for title in sorted(groups):
         result.append(TitleGroup(title=title, folders=groups[title]))
     return result
+
+
+def infer_media_type(disc_info) -> str:
+    """Infer 'movie' or 'tv' from disc title structure.
+
+    Heuristic: if a disc has 2+ non-play-all titles with durations
+    between 15 and 75 minutes, it's likely a TV disc. A single long
+    title (75+ minutes) suggests a movie disc.
+
+    Returns "movie", "tv", or "auto" if ambiguous.
+    """
+    if not disc_info.titles:
+        return "auto"
+
+    # Identify candidate episode titles: substantial duration, low segment count
+    candidates = [
+        t for t in disc_info.titles
+        if t.duration_seconds >= 900  # 15+ minutes
+        and t.segment_count <= 1      # not a play-all
+    ]
+
+    if not candidates:
+        return "auto"
+
+    episode_length = [t for t in candidates if t.duration_seconds < 4500]  # < 75 min
+    movie_length = [t for t in candidates if t.duration_seconds >= 4500]   # >= 75 min
+
+    if len(episode_length) >= 2 and len(movie_length) == 0:
+        return "tv"
+    if len(movie_length) == 1 and len(episode_length) == 0:
+        return "movie"
+
+    return "auto"
+
+
+def infer_media_type_from_files(scanned: list[ScannedDisc]) -> str:
+    """Infer 'movie' or 'tv' from scanned file durations.
+
+    Heuristic:
+        TV:    2+ files in the 15-75 min range and none above 75 min.
+        Movie: a single feature-length file (> 90 min).
+
+    Returns "movie", "tv", or "auto" if ambiguous.
+    """
+    all_files = [f for d in scanned for f in d.files]
+    if not all_files:
+        return "auto"
+
+    episode_range = [f for f in all_files if 900 <= f.duration_seconds <= 4500]
+    above_episode = [f for f in all_files if f.duration_seconds > 4500]
+
+    if len(episode_range) >= 2 and not above_episode:
+        return "tv"
+
+    longest = max(f.duration_seconds for f in all_files)
+    if longest > 5400:  # > 90 minutes
+        return "movie"
+
+    return "auto"

@@ -4,13 +4,13 @@ import json
 
 import pytest
 
-from riplex.cli import (
-    _create_rip_folders,
+from riplex_cli.commands.lookup import (
     _disc_role,
-    _format_seconds,
     _print_rip_guide,
     _rip_guide_json,
 )
+from riplex.disc.analysis import format_seconds as _format_seconds
+from riplex.manifest import create_rip_folders as _create_rip_folders
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
 
 

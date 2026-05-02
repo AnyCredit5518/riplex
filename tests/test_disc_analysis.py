@@ -1,6 +1,7 @@
 """Tests for disc_analysis module."""
 
-from riplex.disc_analysis import (
+from riplex.disc.analysis import (
+    _detect_edition_name,
     build_dvd_entries,
     classify_title,
     detect_cross_res_play_all,
@@ -9,8 +10,8 @@ from riplex.disc_analysis import (
     format_seconds,
     is_skip_title,
 )
-from riplex.cli import _detect_disc_number
-from riplex.makemkv import DiscInfo, DiscTitle
+from riplex.disc.provider import detect_disc_number as _detect_disc_number
+from riplex.disc.makemkv import DiscInfo, DiscTitle
 
 
 def _make_title(index, duration, resolution="3840x2160", chapters=6, size=20_000_000_000, segments=1):
@@ -122,6 +123,69 @@ class TestClassifyTitle:
         result = classify_title(play_all, [t1, t2, play_all], [], False, None, 0, 0)
         assert "Play-all" in result
         assert "skip" in result.lower()
+
+
+class TestDetectEditionName:
+    def test_theatrical_cut_from_dvdcompare(self):
+        entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
+        result = _detect_edition_name(7200, entries, edition_hint="theatrical")
+        assert result == "Theatrical Cut"
+
+    def test_extended_cut_from_dvdcompare(self):
+        entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
+        result = _detect_edition_name(8000, entries, edition_hint="extended")
+        assert result == "Extended Cut"
+
+    def test_directors_cut(self):
+        entries = [("The Film - Director's Cut", 0, "film")]
+        result = _detect_edition_name(7200, entries)
+        assert result == "Director's Cut"
+
+    def test_no_edition_entries(self):
+        entries = [("Behind the Scenes", 1200, "featurette")]
+        result = _detect_edition_name(7200, entries)
+        assert result is None
+
+    def test_runtime_mismatch_skipped(self):
+        entries = [("The Film - Extended Cut (2160p)", 5000, "film")]
+        result = _detect_edition_name(7200, entries)
+        assert result is None
+
+    def test_zero_runtime_matches(self):
+        entries = [("The Film - Extended Cut (2160p)", 0, "film")]
+        result = _detect_edition_name(7200, entries)
+        assert result == "Extended Cut"
+
+
+class TestClassifyTitleEditions:
+    def test_main_film_theatrical_edition(self):
+        t = _make_title(0, 7200)
+        entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
+        result = classify_title(t, [t], entries, True, 7200, 0, 0)
+        assert "Theatrical Cut" in result
+        assert "rip this" in result
+
+    def test_extended_cut_detected(self):
+        theatrical = _make_title(0, 7200)
+        extended = _make_title(1, 7900)
+        entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
+        result = classify_title(extended, [theatrical, extended], entries, True, 7200, 0, 0)
+        assert "Extended Cut" in result
+        assert "rip this" in result
+
+    def test_extended_cut_fallback_no_dvdcompare(self):
+        theatrical = _make_title(0, 7200)
+        extended = _make_title(1, 7900)
+        result = classify_title(extended, [theatrical, extended], [], True, 7200, 0, 0)
+        assert "Extended Cut" in result
+        assert "rip this" in result
+
+    def test_not_extended_if_too_long(self):
+        """A title >60min longer than theatrical should not be labeled extended."""
+        theatrical = _make_title(0, 7200)
+        too_long = _make_title(1, 11000)  # 3800s longer, > 3600 limit
+        result = classify_title(too_long, [theatrical, too_long], [], True, 7200, 0, 0)
+        assert "Extended Cut" not in result
 
 
 class TestIsSkipTitle:

@@ -10,13 +10,21 @@ import pytest
 from riplex.models import ScannedDisc, ScannedFile
 from riplex.snapshot import (
     SNAPSHOT_VERSION,
+    SNAPSHOT_VERSION_V2,
     _dict_to_file,
     _file_to_dict,
     capture,
     capture_from_scanned,
+    copy_debug_log,
+    get_debug_dir,
     load,
+    load_organized_marker,
     save,
     save_from_scanned,
+    save_organized_marker,
+    save_rip_manifest,
+    save_rip_snapshot,
+    save_scan_snapshot,
 )
 
 
@@ -213,3 +221,221 @@ class TestFromScanned:
         assert out.exists()
         loaded = load(out)
         assert len(loaded) == 2
+
+
+# ---------------------------------------------------------------------------
+# Debug directory
+# ---------------------------------------------------------------------------
+
+class TestGetDebugDir:
+    def test_creates_directory(self, tmp_path):
+        debug_dir = get_debug_dir(tmp_path / "Movie (2024)")
+        assert debug_dir.exists()
+        assert debug_dir.name == "_riplex"
+
+    def test_creates_readme(self, tmp_path):
+        debug_dir = get_debug_dir(tmp_path / "Movie (2024)")
+        readme = debug_dir / "README.txt"
+        assert readme.exists()
+        text = readme.read_text(encoding="utf-8")
+        assert "bug report" in text.lower()
+        assert "github.com" in text
+
+    def test_idempotent(self, tmp_path):
+        base = tmp_path / "Movie (2024)"
+        d1 = get_debug_dir(base)
+        d2 = get_debug_dir(base)
+        assert d1 == d2
+
+    def test_does_not_overwrite_readme(self, tmp_path):
+        debug_dir = get_debug_dir(tmp_path / "Movie (2024)")
+        readme = debug_dir / "README.txt"
+        readme.write_text("custom", encoding="utf-8")
+        get_debug_dir(tmp_path / "Movie (2024)")
+        assert readme.read_text(encoding="utf-8") == "custom"
+
+
+class TestCopyDebugLog:
+    def test_copies_existing_log(self, tmp_path, monkeypatch):
+        # Create a fake log file
+        fake_tmp = tmp_path / "tmp"
+        fake_tmp.mkdir()
+        log_dir = fake_tmp / "riplex"
+        log_dir.mkdir()
+        log_file = log_dir / "riplex.log"
+        log_file.write_text("test log content", encoding="utf-8")
+
+        monkeypatch.setattr("tempfile.gettempdir", lambda: str(fake_tmp))
+
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        result = copy_debug_log(debug_dir)
+
+        assert result is not None
+        assert result.exists()
+        assert result.read_text(encoding="utf-8") == "test log content"
+
+    def test_returns_none_when_no_log(self, tmp_path, monkeypatch):
+        fake_tmp = tmp_path / "empty_tmp"
+        fake_tmp.mkdir()
+        monkeypatch.setattr("tempfile.gettempdir", lambda: str(fake_tmp))
+
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        result = copy_debug_log(debug_dir)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# V2 rip snapshot
+# ---------------------------------------------------------------------------
+
+def _make_disc_info():
+    """Create a minimal disc_info-like object for testing."""
+    from dataclasses import dataclass, field
+
+    @dataclass
+    class FakeTitle:
+        index: int = 0
+        duration_seconds: int = 7200
+        resolution: str = "3840x2160"
+        size_bytes: int = 50_000_000_000
+        chapters: int = 28
+
+    @dataclass
+    class FakeDiscInfo:
+        disc_name: str = "TEST_DISC"
+        titles: list = field(default_factory=lambda: [
+            FakeTitle(index=0, duration_seconds=7200),
+            FakeTitle(index=1, duration_seconds=300, resolution="1920x1080", size_bytes=500_000_000, chapters=0),
+        ])
+
+    return FakeDiscInfo()
+
+
+class TestSaveRipSnapshot:
+    def test_writes_valid_v2_json(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        disc_info = _make_disc_info()
+
+        result = save_rip_snapshot(
+            debug_dir, disc_info,
+            canonical="Test Movie", year=2024, is_movie=True,
+            movie_runtime=7200, release_name="Test Release",
+            ripped_titles=[0, 1],
+        )
+
+        assert result is not None
+        data = json.loads(result.read_text(encoding="utf-8"))
+        assert data["snapshot_version"] == SNAPSHOT_VERSION_V2
+        assert data["type"] == "rip"
+        assert "created" in data
+        assert "riplex_version" in data
+        assert "platform" in data
+        assert data["data"]["disc_name"] == "TEST_DISC"
+        assert data["data"]["title_count"] == 2
+        assert data["data"]["tmdb"]["canonical_title"] == "Test Movie"
+        assert data["data"]["ripped_titles"] == [0, 1]
+
+    def test_filename(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        result = save_rip_snapshot(debug_dir, _make_disc_info())
+        assert result.name == "riplex-rip.snapshot.json"
+
+
+class TestSaveRipManifest:
+    def test_writes_valid_json(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        manifest = {"title": "Test", "year": 2024, "files": []}
+
+        result = save_rip_manifest(debug_dir, manifest)
+
+        assert result is not None
+        data = json.loads(result.read_text(encoding="utf-8"))
+        assert data["title"] == "Test"
+        assert result.name == "riplex-rip.manifest.json"
+
+
+class TestSaveScanSnapshot:
+    def test_writes_valid_v2_json(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        discs = _make_discs()
+
+        result = save_scan_snapshot(debug_dir, Path("/fake/folder"), discs)
+
+        assert result is not None
+        data = json.loads(result.read_text(encoding="utf-8"))
+        assert data["snapshot_version"] == SNAPSHOT_VERSION_V2
+        assert data["type"] == "scan"
+        assert data["data"]["source_folder"] == str(Path("/fake/folder"))
+        assert len(data["data"]["groups"]) == 2
+
+    def test_loadable_as_scanned_discs(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        discs = _make_discs()
+
+        result = save_scan_snapshot(debug_dir, Path("/fake/folder"), discs)
+        loaded = load(result)
+
+        assert len(loaded) == 2
+        assert loaded[0].folder_name == "Movie Title"
+        assert len(loaded[0].files) == 2
+
+    def test_filename(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        result = save_scan_snapshot(debug_dir, Path("/fake"), _make_discs())
+        assert result.name == "riplex-scan.snapshot.json"
+
+
+class TestLoadV2:
+    def test_load_rejects_rip_type(self, tmp_path):
+        """Rip snapshots can't be loaded as ScannedDisc lists."""
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        save_rip_snapshot(debug_dir, _make_disc_info())
+        rip_snap = debug_dir / "riplex-rip.snapshot.json"
+
+        with pytest.raises(ValueError, match="Cannot load snapshot type"):
+            load(rip_snap)
+
+    def test_load_v2_scan_round_trip(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        discs = _make_discs()
+        save_scan_snapshot(debug_dir, Path("/fake"), discs)
+
+        loaded = load(debug_dir / "riplex-scan.snapshot.json")
+        assert len(loaded) == 2
+        assert loaded[0].files[0].duration_seconds == 7200
+
+
+class TestOrganizedMarker:
+    def test_save_and_load(self, tmp_path):
+        save_organized_marker(
+            tmp_path, title="Test Movie", file_count=3, output_root="/out"
+        )
+        marker = load_organized_marker(tmp_path)
+        assert marker is not None
+        assert marker.title == "Test Movie"
+        assert marker.file_count == 3
+        assert marker.output_root == "/out"
+        assert marker.organized_at  # non-empty timestamp
+
+    def test_load_returns_none_when_missing(self, tmp_path):
+        assert load_organized_marker(tmp_path) is None
+
+    def test_load_returns_none_for_corrupt_json(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        (debug_dir / "organized.json").write_text("not json", encoding="utf-8")
+        assert load_organized_marker(tmp_path) is None
+
+    def test_save_creates_debug_dir(self, tmp_path):
+        save_organized_marker(tmp_path, title="X")
+        assert (tmp_path / "_riplex" / "organized.json").is_file()

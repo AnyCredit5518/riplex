@@ -81,6 +81,18 @@ class TestMovieNaming:
     def test_file_name_custom_ext(self):
         assert movie_file_name("Oppenheimer", 2023, ".mp4") == "Oppenheimer (2023).mp4"
 
+    def test_folder_name_with_edition(self):
+        assert movie_folder_name("King Kong", 2005, edition="Extended Cut") == "King Kong (2005) {edition-Extended Cut}"
+
+    def test_file_name_with_edition(self):
+        assert movie_file_name("King Kong", 2005, edition="Theatrical Cut") == "King Kong (2005) {edition-Theatrical Cut}.mkv"
+
+    def test_folder_name_no_edition(self):
+        assert movie_folder_name("King Kong", 2005) == "King Kong (2005)"
+
+    def test_file_name_no_edition(self):
+        assert movie_file_name("King Kong", 2005) == "King Kong (2005).mkv"
+
 
 class TestShowNaming:
     def test_show_folder_name(self):
