@@ -188,8 +188,8 @@ class WelcomeScreen:
         self.update_banner = ft.Container(
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SYSTEM_UPDATE, color=ft.Colors.BLUE),
-                    ft.Text("", size=13, ref=None),
+                    ft.Icon(ft.Icons.SYSTEM_UPDATE, color=ft.Colors.BLUE_700),
+                    ft.Text("", size=13, color=ft.Colors.BLUE_900),
                     ft.TextButton("Download", on_click=self._open_update),
                 ],
                 spacing=8,
@@ -269,7 +269,9 @@ class WelcomeScreen:
                 async def _show():
                     banner_row = self.update_banner.content
                     banner_row.controls[1] = ft.Text(
-                        f"Update available: {info['tag']}", size=13
+                        f"Update available: {info['tag']}",
+                        size=13,
+                        color=ft.Colors.BLUE_900,
                     )
                     self.update_banner.visible = True
                     self.app.page.update()
