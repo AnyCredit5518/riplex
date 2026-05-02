@@ -76,11 +76,11 @@ The setup wizard will:
 
 1. Ask for your TMDb API key (free at https://www.themoviedb.org/settings/api)
 
-    !!! tip "Getting a TMDb API key"
-        TMDb asks for an app name and URL when you request a key. You can just
-        enter "riplex" as the app name and `https://github.com/AnyCredit5518/riplex`
-        as the URL. The rest of the form can be filled with basic info — it doesn't
-        need to be a real business. The key is approved instantly.
+    > [!TIP]
+    > TMDb asks for an app name and URL when you request a key. You can just
+    > enter "riplex" as the app name and `https://github.com/AnyCredit5518/riplex`
+    > as the URL. The rest of the form can be filled with basic info — it doesn't
+    > need to be a real business. The key is approved instantly.
 
 2. Ask where your Plex library and MakeMKV rip folders are
 3. Check for required tools (MakeMKV, ffprobe, mkvmerge, mkvpropedit)
