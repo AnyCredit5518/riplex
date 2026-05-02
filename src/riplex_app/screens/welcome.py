@@ -329,8 +329,23 @@ class WelcomeScreen:
                     if result.returncode != 0:
                         raise subprocess.CalledProcessError(result.returncode, "winget")
                 elif system == "Darwin":
-                    self.app.page.run_task(lambda: _update_status("Installing via brew..."))
-                    subprocess.run(["brew", "install"] + to_install, check=True)
+                    if shutil.which("brew"):
+                        self.app.page.run_task(lambda: _update_status("Installing via brew..."))
+                        subprocess.run(["brew", "install"] + to_install, check=True)
+                    else:
+                        # No Homebrew — open download pages in browser
+                        download_urls = {
+                            "makemkv": "https://www.makemkv.com/download/",
+                            "ffmpeg": "https://ffmpeg.org/download.html",
+                            "mkvtoolnix": "https://mkvtoolnix.download/downloads.html",
+                        }
+                        for pkg in to_install:
+                            if pkg in download_urls:
+                                webbrowser.open(download_urls[pkg])
+                        self.app.page.run_task(
+                            lambda: _update_status("Opened download pages in your browser. Install the tools, then restart the app.")
+                        )
+                        return
 
                 self.app.page.run_task(
                     lambda: _update_status("Done! Restart the app for changes to take effect.")
