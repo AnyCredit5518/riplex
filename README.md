@@ -2,7 +2,7 @@
 
 Automates the tedious manual work around MakeMKV: figuring out what to rip, which MKV files are actually what, and organizing everything into Plex-compatible folder structures.
 
-## Desktop App (recommended for most users)
+## Desktop App
 
 If you'd rather use a simple graphical interface instead of the command line, download the pre-built app from the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest):
 

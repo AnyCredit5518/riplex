@@ -31,12 +31,55 @@ class WelcomeScreen:
             ("mkvmerge", has_mkvmerge),
         ]
 
+        missing_tools = []
+        if not has_makemkv:
+            missing_tools.append("makemkvcon")
+        if not has_ffprobe:
+            missing_tools.append("ffprobe")
+        if not has_mkvmerge:
+            missing_tools.append("mkvmerge")
+
         status_rows = []
         for label, ok in checks:
             icon = ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN) if ok else ft.Icon(ft.Icons.ERROR, color=ft.Colors.RED)
             status_rows.append(
                 ft.Row([icon, ft.Text(label, size=14)], spacing=8)
             )
+
+        # Install tools section (shown when tools are missing)
+        self._install_status = ft.Text("", size=12, color=ft.Colors.GREY_400)
+        install_section = ft.Container(
+            ft.Column([
+                ft.Text(
+                    "Some tools are missing. Click below to install them automatically, "
+                    "or use the links to download manually.",
+                    size=13,
+                    color=ft.Colors.ORANGE,
+                ),
+                ft.Container(height=4),
+                ft.Row([
+                    ft.ElevatedButton(
+                        "Install Missing Tools",
+                        icon=ft.Icons.DOWNLOAD,
+                        on_click=lambda _: self._install_tools(missing_tools),
+                    ),
+                    ft.TextButton(
+                        "MakeMKV ↗",
+                        url="https://www.makemkv.com/download/",
+                    ),
+                    ft.TextButton(
+                        "FFmpeg ↗",
+                        url="https://ffmpeg.org/download.html",
+                    ),
+                    ft.TextButton(
+                        "MKVToolNix ↗",
+                        url="https://mkvtoolnix.download/downloads.html",
+                    ),
+                ], spacing=8, wrap=True),
+                self._install_status,
+            ], spacing=4),
+            visible=bool(missing_tools),
+        )
 
         # Rip requires all tools; organize only needs ffprobe + config
         can_rip = all(ok for _, ok in checks)
@@ -123,15 +166,6 @@ class WelcomeScreen:
             visible=not has_config,
         )
 
-        # Tool warning
-        tool_warning = ft.Container(
-            ft.Text(
-                "Some required tools are missing. Install them and restart the app.",
-                color=ft.Colors.ORANGE,
-            ),
-            visible=not can_rip and has_config,
-        )
-
         # Workflow buttons
         rip_button = ft.ElevatedButton(
             "Rip Disc",
@@ -191,9 +225,9 @@ class WelcomeScreen:
                 ft.Container(height=5),
                 ft.Text("Status", size=18, weight=ft.FontWeight.BOLD),
                 ft.Column(status_rows, spacing=4),
+                install_section,
                 ft.Container(height=10),
                 setup_section,
-                tool_warning,
                 ft.Container(expand=True),
                 ft.Text("What would you like to do?", size=16, weight=ft.FontWeight.BOLD),
                 ft.Row([rip_button, organize_button], spacing=20),
@@ -249,6 +283,54 @@ class WelcomeScreen:
         if self._update_info:
             url = get_download_url(self._update_info)
             webbrowser.open(url)
+
+    def _install_tools(self, missing: list[str]):
+        """Install missing tools via system package manager in background."""
+        import platform
+        import subprocess
+        import sys
+
+        system = platform.system()
+        packages = {
+            "Windows": {"makemkvcon": "MakeMKV.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MKVToolNix.MKVToolNix"},
+            "Darwin": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix"},
+        }
+
+        pkg_map = packages.get(system, {})
+        to_install = sorted(set(pkg_map[t] for t in missing if pkg_map.get(t)))
+        if not to_install:
+            self._install_status.value = "Auto-install not supported on this platform. Use the links above."
+            self.app.page.update()
+            return
+
+        def _do_install():
+            async def _update_status(msg):
+                self._install_status.value = msg
+                self.app.page.update()
+
+            try:
+                if system == "Windows":
+                    for pkg in to_install:
+                        self.app.page.run_task(lambda p=pkg: _update_status(f"Installing {p}..."))
+                        subprocess.run(
+                            ["winget", "install", "--accept-source-agreements",
+                             "--accept-package-agreements", pkg],
+                            check=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                        )
+                elif system == "Darwin":
+                    self.app.page.run_task(lambda: _update_status("Installing via brew..."))
+                    subprocess.run(["brew", "install"] + to_install, check=True)
+
+                self.app.page.run_task(
+                    lambda: _update_status("Done! Restart the app for changes to take effect.")
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+                self.app.page.run_task(
+                    lambda: _update_status(f"Install failed: {exc}. Try the manual links above.")
+                )
+
+        threading.Thread(target=_do_install, daemon=True).start()
 
     def _save_config(self, e):
         """Write config from the setup fields."""
