@@ -2,6 +2,17 @@
 
 Automates the tedious manual work around MakeMKV: figuring out what to rip, which MKV files are actually what, and organizing everything into Plex-compatible folder structures.
 
+## Desktop App (recommended for most users)
+
+If you'd rather use a simple graphical interface instead of the command line, download the pre-built app from the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest):
+
+- **Windows**: Download `riplex-ui-windows.exe` and double-click to run
+- **macOS**: Download `riplex-ui-macos.zip`, unzip, and open `riplex-ui.app`
+
+No Python install required. The app walks you through setup and provides buttons for all workflows.
+
+---
+
 ## Why?
 
 MakeMKV is great at one thing: reading a disc and dumping raw MKV files. But that's where its job ends and yours begins.
