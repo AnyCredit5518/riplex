@@ -325,9 +325,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # --- setup ---
-    subs.add_parser(
+    setup_parser = subs.add_parser(
         "setup",
         help="Interactive setup wizard to create or update the config file.",
+    )
+    setup_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Delete existing config and start fresh.",
     )
 
     return parser
@@ -343,7 +349,7 @@ async def _run(args: argparse.Namespace) -> int:
     if args.command == "orchestrate":
         return await run_orchestrate(args)
     if args.command == "setup":
-        return run_setup()
+        return run_setup(force=getattr(args, "force", False))
     return 1
 
 

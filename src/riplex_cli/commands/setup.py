@@ -53,7 +53,7 @@ def _offer_install(missing: list[str]) -> None:
     print("\n  Installation complete. You may need to restart your terminal for PATH changes to take effect.")
 
 
-def run_setup() -> int:
+def run_setup(force: bool = False) -> int:
     """Interactive setup wizard to create or update the riplex config file."""
     import shutil
 
@@ -62,9 +62,14 @@ def run_setup() -> int:
     print("riplex setup")
     print(f"Config file: {config_path}\n")
 
-    existing: dict[str, str] = load_config()
-    if existing:
-        print("(Existing config found. Press Enter to keep current values.)\n")
+    if force and config_path.is_file():
+        config_path.unlink()
+        print("(Existing config deleted. Starting fresh.)\n")
+        existing: dict[str, str] = {}
+    else:
+        existing = load_config()
+        if existing:
+            print("(Existing config found. Press Enter to keep current values.)\n")
 
     def prompt(key: str, label: str, hint: str = "", mask: bool = False) -> str:
         current = existing.get(key, "")

@@ -33,7 +33,13 @@ def load_config() -> dict[str, Any]:
     for path in _candidate_paths():
         if path.is_file():
             with open(path, "rb") as f:
-                return tomllib.load(f)
+                try:
+                    return tomllib.load(f)
+                except tomllib.TOMLDecodeError as exc:
+                    raise SystemExit(
+                        f"Error: invalid config file {path}\n  {exc}\n"
+                        f"Run 'riplex setup --force' to delete it and start fresh."
+                    ) from None
     return {}
 
 
