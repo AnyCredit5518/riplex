@@ -6,6 +6,7 @@ import logging
 import platform
 import re
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -471,6 +472,7 @@ class MakeMKV:
         title_index: int,
         output_dir: Path,
         progress_callback=None,
+        cancel_event: threading.Event | None = None,
     ) -> RipResult:
         """Rip a single title from disc via ``makemkvcon mkv``."""
         exe = self._require_exe()
@@ -494,6 +496,15 @@ class MakeMKV:
 
         try:
             for line in proc.stdout:
+                if cancel_event and cancel_event.is_set():
+                    proc.terminate()
+                    proc.wait(timeout=5)
+                    return RipResult(
+                        title_index=title_index,
+                        success=False,
+                        output_file="",
+                        error_message="Cancelled by user",
+                    )
                 line = line.rstrip("\n\r")
                 log.debug("makemkvcon: %s", line)
                 raw_lines.append(line)
@@ -559,12 +570,15 @@ def run_rip(
     output_dir: Path,
     makemkvcon: Path | None = None,
     progress_callback=None,
+    cancel_event: threading.Event | None = None,
 ) -> RipResult:
     """Rip a single title from a disc via makemkvcon mkv.
 
     .. deprecated:: Use :pyclass:`MakeMKV` instead.
     """
-    return MakeMKV(makemkvcon).rip(drive, title_index, output_dir, progress_callback)
+    return MakeMKV(makemkvcon).rip(
+        drive, title_index, output_dir, progress_callback, cancel_event
+    )
 
 
 # ---------------------------------------------------------------------------

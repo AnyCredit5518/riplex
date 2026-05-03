@@ -13,13 +13,25 @@ from riplex.snapshot import copy_debug_log, get_debug_dir, save_rip_snapshot
 log = logging.getLogger(__name__)
 
 
+def _format_eta(seconds: int) -> str:
+    """Format seconds into HH:MM:SS or MM:SS."""
+    if seconds < 0:
+        return "..."
+    if seconds >= 3600:
+        h, rem = divmod(seconds, 3600)
+        m, s = divmod(rem, 60)
+        return f"{h}:{m:02d}:{s:02d}"
+    m, s = divmod(seconds, 60)
+    return f"{m}:{s:02d}"
+
+
 class ProgressScreen:
     def __init__(self, app):
         self.app = app
-        self.cancelled = False
+        self._cancel_event = threading.Event()
 
     def build(self) -> ft.Control:
-        self.cancelled = False
+        self._cancel_event.clear()
         selected = self.app.state["selected_titles"]
         disc_info = self.app.state["disc_info"]
         titles = disc_info.titles if disc_info else []
@@ -29,6 +41,10 @@ class ProgressScreen:
         self.total_count = len(selected)
         self.completed_count = 0
 
+        self._rip_start_time = 0.0
+        self._last_pct = -1
+        self._current_title_bytes = 0
+
         self.overall_text = ft.Text(
             f"Ripping 0/{self.total_count} titles...",
             size=16,
@@ -36,11 +52,14 @@ class ProgressScreen:
         )
         self.current_title_text = ft.Text("Preparing...", size=14, color=ft.Colors.GREY_400)
         self.progress_bar = ft.ProgressBar(width=700, value=0)
-        self.progress_detail = ft.Text("0%", size=12, color=ft.Colors.GREY_500)
-        self.log = ft.ListView(spacing=4, height=250, auto_scroll=True)
+        self.progress_pct = ft.Text("0%", size=12, weight=ft.FontWeight.BOLD)
+        self.progress_size = ft.Text("", size=12, color=ft.Colors.GREY_400)
+        self.progress_speed = ft.Text("", size=12, color=ft.Colors.GREY_400)
+        self.progress_eta = ft.Text("", size=12, color=ft.Colors.GREY_400)
+        self.log = ft.ListView(spacing=4, height=200, auto_scroll=True)
         self.cancel_btn = ft.ElevatedButton(
-            "Cancel",
-            icon=ft.Icons.CANCEL,
+            "Stop Ripping",
+            icon=ft.Icons.STOP,
             on_click=self._cancel,
             style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700),
         )
@@ -59,7 +78,15 @@ class ProgressScreen:
                 self.current_title_text,
                 ft.Container(height=10),
                 self.progress_bar,
-                self.progress_detail,
+                ft.Row(
+                    [
+                        self.progress_pct,
+                        self.progress_size,
+                        self.progress_speed,
+                        self.progress_eta,
+                    ],
+                    spacing=20,
+                ),
                 ft.Container(height=20),
                 ft.Text("Log", size=14, weight=ft.FontWeight.BOLD),
                 self.log,
@@ -84,8 +111,8 @@ class ProgressScreen:
         results: list[RipResult] = []
 
         for i, title_idx in enumerate(selected):
-            if self.cancelled:
-                self._log_message("Cancelled by user.", ft.Colors.ORANGE)
+            if self._cancel_event.is_set():
+                self._log_message("Stopped by user.", ft.Colors.ORANGE)
                 break
 
             title = self.title_map.get(title_idx)
@@ -96,7 +123,13 @@ class ProgressScreen:
             self.overall_text.value = f"Ripping {i + 1}/{self.total_count} titles..."
             self.current_title_text.value = f"Title #{title_idx}: {title_name} ({size_gb:.1f} GB)"
             self.progress_bar.value = 0
-            self.progress_detail.value = "Starting..."
+            self.progress_pct.value = "0%"
+            self.progress_size.value = f"0.0/{size_gb:.1f} GB"
+            self.progress_speed.value = ""
+            self.progress_eta.value = ""
+            self._rip_start_time = time.monotonic()
+            self._last_pct = -1
+            self._current_title_bytes = title.size_bytes if title else 0
             self._log_message(f"Starting title #{title_idx}: {title_name}")
             self._update()
 
@@ -108,6 +141,7 @@ class ProgressScreen:
                     output_dir,
                     makemkvcon=makemkvcon,
                     progress_callback=self._on_progress,
+                    cancel_event=self._cancel_event,
                 )
                 results.append(result)
                 elapsed = time.time() - start_time
@@ -137,7 +171,10 @@ class ProgressScreen:
         self.overall_text.value = f"Complete: {sum(1 for r in results if r.success)}/{len(results)} successful"
         self.current_title_text.value = ""
         self.progress_bar.value = 1.0
-        self.progress_detail.value = "100%"
+        self.progress_pct.value = "100%"
+        self.progress_size.value = ""
+        self.progress_speed.value = ""
+        self.progress_eta.value = ""
         self.cancel_btn.visible = False
         self._update()
 
@@ -180,11 +217,38 @@ class ProgressScreen:
 
     def _on_progress(self, progress: RipProgress):
         """Callback from run_rip for progress updates."""
-        if progress.total > 0:
-            pct = progress.current / progress.total
-            self.progress_bar.value = pct
-            self.progress_detail.value = f"{pct * 100:.0f}%"
-            self._update()
+        if progress.max_val <= 0:
+            return
+        pct = progress.current * 100 // progress.max_val
+        if pct == self._last_pct:
+            return  # avoid excessive UI updates
+        self._last_pct = pct
+
+        self.progress_bar.value = pct / 100
+        self.progress_pct.value = f"{pct}%"
+
+        total_bytes = self._current_title_bytes
+        if total_bytes > 0:
+            done_bytes = total_bytes * pct // 100
+            done_gb = done_bytes / (1024 ** 3)
+            total_gb = total_bytes / (1024 ** 3)
+            self.progress_size.value = f"{done_gb:.1f}/{total_gb:.1f} GB"
+
+            elapsed = time.monotonic() - self._rip_start_time
+            if elapsed > 1:
+                speed_mbs = (done_bytes / (1024 ** 2)) / elapsed
+                self.progress_speed.value = f"{speed_mbs:.0f} MB/s"
+                if pct > 0 and speed_mbs > 0:
+                    remaining_bytes = total_bytes - done_bytes
+                    eta_secs = int(remaining_bytes / (speed_mbs * 1024 * 1024))
+                    self.progress_eta.value = f"ETA {_format_eta(eta_secs)}"
+                else:
+                    self.progress_eta.value = "ETA ..."
+            else:
+                self.progress_speed.value = ""
+                self.progress_eta.value = "ETA ..."
+
+        self._update()
 
     def _log_message(self, message: str, color=None):
         """Append a message to the log."""
@@ -193,10 +257,10 @@ class ProgressScreen:
         )
 
     def _cancel(self, e):
-        """Set cancel flag (rip in progress will finish current title)."""
-        self.cancelled = True
+        """Signal cancellation — terminates the active makemkvcon process."""
+        self._cancel_event.set()
         self.cancel_btn.disabled = True
-        self.cancel_btn.text = "Cancelling..."
+        self.cancel_btn.text = "Stopping..."
         self._update()
 
     def _update(self):
