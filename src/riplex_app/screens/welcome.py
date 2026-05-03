@@ -346,8 +346,11 @@ class WelcomeScreen:
                         self.app.page.update()
                         return
 
-                self._install_status.value = "Done! Restart the app for changes to take effect."
+                self._install_status.value = "Done! Reloading..."
                 self.app.page.update()
+                import time
+                time.sleep(1.5)
+                self.app.navigate("welcome")
             except Exception as exc:
                 self._install_status.value = f"Install failed: {exc}. Try the manual links above."
                 self.app.page.update()
