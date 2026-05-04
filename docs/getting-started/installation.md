@@ -17,9 +17,11 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 | macOS (Apple Silicon) | `riplex-macos` | `riplex-ui-macos.zip` |
 | macOS (Intel) | — | — |
 
-> **Intel Mac users:** Pre-built binaries are Apple Silicon only. Please
+> **Intel Mac users:** GitHub [deprecated their Intel macOS (macos-13) build
+> runners](https://github.blog/changelog/2024-09-16-github-actions-macos-13-larger-runner-image-brownout-dates/),
+> which were the only way to produce Intel-compatible binaries. Please
 > [install from source](#option-b-install-via-pip) instead — it's straightforward
-> and works on any architecture.
+> and works on any Mac.
 
 ### Windows
 
@@ -31,7 +33,8 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 
 1. Download `riplex-macos` and `riplex-ui-macos.zip` (Apple Silicon only).
 
-    **Intel Mac?** Pre-built binaries won't work on your machine.
+    **Intel Mac?** GitHub deprecated the build runners needed to produce Intel
+    binaries, so these won't work on your machine.
     Skip to [Option B: Install via pip](#option-b-install-via-pip) instead.
 
 2. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
