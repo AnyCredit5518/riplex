@@ -75,3 +75,19 @@ tracks when ripping, not just the default/English track.
 - GUI: add language selection to setup/config screen
 - Default behavior: keep all tracks (current MakeMKV default) — only filter
   if the user explicitly configures preferred languages
+
+
+## Drop Pre-built Intel macOS Binary
+
+The `macos-13` (Intel) CI runner is slow to queue and GitHub is phasing out
+Intel Mac hardware. Intel Macs are a shrinking minority of users.
+
+### Plan
+
+- Remove the `macos-13` / `x86_64` matrix entry from `release.yml`
+- Remove `riplex-macos-x86_64` and `riplex-ui-macos-x86_64.zip` from the
+  release step
+- Update `updater.py` to stop looking for arch-specific assets (only arm64)
+- Update installation docs: macOS section offers only the ARM build; Intel
+  Mac users are directed to install from source (venv + `pip install -e`)
+- Update README download table accordingly

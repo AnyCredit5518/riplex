@@ -29,14 +29,33 @@ Download the latest release for your platform from the [GitHub Releases page](ht
     - Apple Silicon (M1/M2/M3/...): `riplex-macos-arm64` and `riplex-ui-macos-arm64.zip`
     - Intel: `riplex-macos-x86_64` and `riplex-ui-macos-x86_64.zip`
 
-    Not sure which you have? Run `sysctl -n machdep.cpu.brand_string` in Terminal.
+    Not sure which you have? Open Terminal and run:
+    ```
+    sysctl -n machdep.cpu.brand_string
+    ```
     "Apple ..." means Apple Silicon; "Intel ..." means Intel.
-2. Make the CLI executable: `chmod +x riplex-macos-*`
-3. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
-   The first time you launch it, macOS may block the unsigned app — remove the
-   quarantine flag with `xattr -dr com.apple.quarantine /Applications/riplex-ui.app`
-   and try again.
-4. Run `./riplex-macos-arm64 setup` (or the `x86_64` variant) to configure.
+
+2. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
+
+3. **Allow the app to open.** macOS blocks apps from unidentified developers by
+   default. The first time you try to open it, you'll see a warning — do **not**
+   click "Move to Trash." Instead:
+
+    - **Right-click** (or Control-click) on `riplex-ui.app` → choose **Open** →
+      click **Open** in the dialog. macOS remembers this and won't ask again.
+
+    - If that doesn't work, open Terminal and run:
+      ```
+      xattr -dr com.apple.quarantine /Applications/riplex-ui.app
+      ```
+      Then open the app normally.
+
+4. For the CLI, make it executable and remove the quarantine flag:
+    ```
+    chmod +x riplex-macos-*
+    xattr -dr com.apple.quarantine riplex-macos-*
+    ```
+    Then run `./riplex-macos-arm64 setup` (or the `x86_64` variant) to configure.
 
 ## Option B: Install via pip
 
