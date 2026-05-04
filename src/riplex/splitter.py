@@ -41,6 +41,7 @@ def find_mkvmerge() -> str | None:
     if path:
         return path
     for candidate in [
+        "/Applications/MKVToolNix.app/Contents/MacOS/mkvmerge",
         r"C:\Program Files\MKVToolNix\mkvmerge.exe",
         r"C:\Program Files (x86)\MKVToolNix\mkvmerge.exe",
     ]:
@@ -51,9 +52,15 @@ def find_mkvmerge() -> str | None:
 
 def get_chapters(file_path: str) -> list[Chapter]:
     """Extract chapter information from an MKV file using ffprobe."""
+    from riplex.scanner import find_ffprobe
+
+    ffprobe = find_ffprobe()
+    if not ffprobe:
+        return []
+
     result = subprocess.run(
         [
-            "ffprobe", "-v", "quiet",
+            ffprobe, "-v", "quiet",
             "-print_format", "json",
             "-show_chapters",
             file_path,

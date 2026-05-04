@@ -7,7 +7,7 @@ Automates the tedious manual work around MakeMKV: figuring out what to rip, whic
 If you'd rather use a simple graphical interface instead of the command line, download the pre-built app from the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest):
 
 - **Windows**: Download `riplex-ui-windows.exe` and double-click to run
-- **macOS**: Download `riplex-ui-macos.zip`, unzip, and open `riplex-ui.app`
+- **macOS**: Download `riplex-ui-macos-arm64.zip` (Apple Silicon) or `riplex-ui-macos-x86_64.zip` (Intel), unzip, and open `riplex-ui.app`
 
 No Python install required. The app walks you through setup and provides buttons for all workflows.
 

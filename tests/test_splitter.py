@@ -47,7 +47,8 @@ class TestGetChapters:
         mock_result.returncode = 0
         mock_result.stdout = ffprobe_json
 
-        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             chapters = get_chapters("test.mkv")
 
         assert len(chapters) == 2
@@ -62,7 +63,8 @@ class TestGetChapters:
         mock_result = MagicMock()
         mock_result.returncode = 1
 
-        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             chapters = get_chapters("test.mkv")
 
         assert chapters == []
@@ -77,7 +79,8 @@ class TestGetChapters:
         mock_result.returncode = 0
         mock_result.stdout = ffprobe_json
 
-        with patch("riplex.splitter.subprocess.run", return_value=mock_result):
+        with patch("riplex.splitter.subprocess.run", return_value=mock_result), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             chapters = get_chapters("test.mkv")
 
         assert len(chapters) == 1

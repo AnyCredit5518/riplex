@@ -19,8 +19,11 @@ _SUBPROCESS_FLAGS: dict = (
 
 log = logging.getLogger(__name__)
 
-# Default search paths for makemkvcon on Windows
+# Common install paths where makemkvcon lives outside of PATH
 _MAKEMKVCON_SEARCH_PATHS = [
+    # macOS .app bundle
+    Path("/Applications/MakeMKV.app/Contents/MacOS/makemkvcon"),
+    # Windows
     Path(r"C:\Program Files\MakeMKV\makemkvcon64.exe"),
     Path(r"C:\Program Files (x86)\MakeMKV\makemkvcon64.exe"),
     Path(r"C:\Program Files\MakeMKV\makemkvcon.exe"),
@@ -649,9 +652,9 @@ def probe_chapter_durations(mkv_path: str | Path) -> list[int]:
     Returns a list of chapter durations in seconds. Returns empty list
     if ffprobe is unavailable or the file has no chapters.
     """
-    import shutil
+    from riplex.scanner import find_ffprobe
 
-    ffprobe = shutil.which("ffprobe")
+    ffprobe = find_ffprobe()
     if not ffprobe:
         log.debug("ffprobe not found, skipping chapter duration extraction")
         return []

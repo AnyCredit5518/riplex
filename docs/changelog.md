@@ -6,9 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## 2026-05-03
 
+### Changed
+
+- Installation guide: macOS pre-built executables now ship as separate `arm64` (Apple Silicon) and `x86_64` (Intel) builds; added instructions to pick the right one and remove the Gatekeeper quarantine flag.
+- Installation guide: "Installing from source" section now includes venv setup steps and a macOS SSL fix for Homebrew Python users (`SSL_CERT_FILE` via certifi).
+- Installation guide: added macOS tkinter section for folder picker support.
+
 ### Added
 
 - New troubleshooting guide (`docs/troubleshooting.md`) covering: makemkvcon not on PATH (Flatpak issue), drive not detected, invalid config file, TMDb API key signup, and dvdcompare lookup failures
+- `find_ffprobe()` helper: all ffprobe consumers now check `~/.riplex/bin/`, `/usr/local/bin/`, and `/opt/homebrew/bin/` in addition to PATH.
+- macOS auto-download: "Install Missing Tools" on macOS < 14 auto-downloads ffprobe from evermeet.cx to `~/.riplex/bin/`; opens download pages for MakeMKV and MKVToolNix.
+- macOS .app bundle detection: `find_makemkvcon()` checks `/Applications/MakeMKV.app/`; `find_mkvmerge()` and `find_mkvpropedit()` check `/Applications/MKVToolNix.app/`.
+- Dual-arch macOS CI builds (`macos-13`/x86_64 and `macos-14`/arm64) in release workflow.
+- Arch-aware macOS update checker in GUI updater.
+- Install progress bar and streaming output for Homebrew installs on macOS 14+.
+- Graceful tkinter fallback in folder picker and welcome screen browse buttons.
+- Linux apt support in GUI tool installer.
 
 ## 2026-05-02
 

@@ -36,6 +36,7 @@ def find_mkvpropedit() -> str | None:
     if path:
         return path
     for candidate in [
+        "/Applications/MKVToolNix.app/Contents/MacOS/mkvpropedit",
         r"C:\Program Files\MKVToolNix\mkvpropedit.exe",
         r"C:\Program Files (x86)\MKVToolNix\mkvpropedit.exe",
     ]:
@@ -113,6 +114,7 @@ def read_organized_tag(file_path: str) -> str | None:
     mkvmerge = shutil.which("mkvmerge")
     if mkvmerge is None:
         for candidate in [
+            "/Applications/MKVToolNix.app/Contents/MacOS/mkvmerge",
             r"C:\Program Files\MKVToolNix\mkvmerge.exe",
             r"C:\Program Files (x86)\MKVToolNix\mkvmerge.exe",
         ]:

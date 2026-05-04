@@ -206,7 +206,8 @@ class TestScannerOrganizedTag:
         mock_result.stdout = ffprobe_output
 
         with patch("subprocess.run", return_value=mock_result), \
-             patch("pathlib.Path.stat") as mock_stat:
+             patch("pathlib.Path.stat") as mock_stat, \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             mock_stat.return_value = MagicMock(st_size=1000)
             sf = _probe_file(Path("/fake/test.mkv"))
 
@@ -234,7 +235,8 @@ class TestScannerOrganizedTag:
         mock_result.stdout = ffprobe_output
 
         with patch("subprocess.run", return_value=mock_result), \
-             patch("pathlib.Path.stat") as mock_stat:
+             patch("pathlib.Path.stat") as mock_stat, \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             mock_stat.return_value = MagicMock(st_size=1000)
             sf = _probe_file(Path("/fake/test.mkv"))
 

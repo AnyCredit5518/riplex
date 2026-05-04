@@ -52,7 +52,8 @@ def _mock_probe(path):
 
 class TestScanFolder:
     def test_structure(self, rip_folder):
-        with patch("riplex.scanner._probe_file", side_effect=_mock_probe):
+        with patch("riplex.scanner._probe_file", side_effect=_mock_probe), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             discs = scan_folder(rip_folder)
 
         assert len(discs) == 2
@@ -74,7 +75,8 @@ class TestScanFolder:
         assert sf.files[1].duration_seconds == 501
 
     def test_ignores_underscore_folders(self, rip_folder):
-        with patch("riplex.scanner._probe_file", side_effect=_mock_probe):
+        with patch("riplex.scanner._probe_file", side_effect=_mock_probe), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             discs = scan_folder(rip_folder)
 
         folder_names = [d.folder_name for d in discs]
@@ -88,12 +90,14 @@ class TestScanFolder:
     def test_empty_folder(self, tmp_path):
         empty = tmp_path / "empty"
         empty.mkdir()
-        with patch("riplex.scanner._probe_file", side_effect=_mock_probe):
+        with patch("riplex.scanner._probe_file", side_effect=_mock_probe), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             discs = scan_folder(empty)
         assert discs == []
 
     def test_files_have_absolute_paths(self, rip_folder):
-        with patch("riplex.scanner._probe_file", side_effect=_mock_probe):
+        with patch("riplex.scanner._probe_file", side_effect=_mock_probe), \
+             patch("riplex.scanner.find_ffprobe", return_value="/usr/bin/ffprobe"):
             discs = scan_folder(rip_folder)
 
         for disc in discs:

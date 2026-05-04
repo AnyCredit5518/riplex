@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import platform
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Callable
@@ -20,6 +21,28 @@ _SUBPROCESS_FLAGS: dict = (
     if platform.system() == "Windows"
     else {}
 )
+
+# Common install locations for ffprobe outside of PATH
+_FFPROBE_SEARCH_PATHS = [
+    Path.home() / ".riplex" / "bin" / "ffprobe",
+    Path("/usr/local/bin/ffprobe"),
+    Path("/opt/homebrew/bin/ffprobe"),
+]
+
+
+def find_ffprobe() -> str | None:
+    """Locate the ffprobe executable.
+
+    Checks PATH first, then ``~/.riplex/bin/``, ``/usr/local/bin/``,
+    and ``/opt/homebrew/bin/``.  Returns the path string or *None*.
+    """
+    path = shutil.which("ffprobe")
+    if path:
+        return path
+    for candidate in _FFPROBE_SEARCH_PATHS:
+        if candidate.is_file():
+            return str(candidate)
+    return None
 
 
 def _probe_file(path: Path) -> ScannedFile:
@@ -37,10 +60,14 @@ def _probe_file(path: Path) -> ScannedFile:
     except OSError:
         size_bytes = 0
 
+    ffprobe = find_ffprobe()
+    if not ffprobe:
+        return ScannedFile(name=name, path=abs_path, size_bytes=size_bytes)
+
     try:
         result = subprocess.run(
             [
-                "ffprobe",
+                ffprobe,
                 "-v", "quiet",
                 "-print_format", "json",
                 "-show_entries",
@@ -163,14 +190,8 @@ def scan_folder(
         raise FileNotFoundError(f"Not a directory: {folder}")
 
     # Check for ffprobe availability
-    try:
-        subprocess.run(
-            ["ffprobe", "-version"],
-            capture_output=True,
-            timeout=5,
-            **_SUBPROCESS_FLAGS,
-        )
-    except FileNotFoundError:
+    ffprobe = find_ffprobe()
+    if not ffprobe:
         raise RuntimeError(
             "ffprobe not found. Install FFmpeg to enable MKV duration scanning."
         )

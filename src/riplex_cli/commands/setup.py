@@ -55,8 +55,6 @@ def _offer_install(missing: list[str]) -> None:
 
 def run_setup(force: bool = False) -> int:
     """Interactive setup wizard to create or update the riplex config file."""
-    import shutil
-
     config_path = _config_write_path()
 
     print("riplex setup")
@@ -85,11 +83,19 @@ def run_setup(force: bool = False) -> int:
     archive_root = prompt("archive_root", "Archive root (optional)", "move raw rips here after organizing")
 
     # Verify makemkvcon, ffprobe, mkvmerge are available
+    from riplex.disc.makemkv import find_makemkvcon
+    from riplex.scanner import find_ffprobe
+    from riplex.splitter import find_mkvmerge
+    from riplex.tagger import find_mkvpropedit
+
     print()
-    tools = {"makemkvcon": None, "ffprobe": None, "mkvmerge": None, "mkvpropedit": None}
-    for tool in tools:
-        path = shutil.which(tool)
-        tools[tool] = path
+    tools = {
+        "makemkvcon": find_makemkvcon(),
+        "ffprobe": find_ffprobe(),
+        "mkvmerge": find_mkvmerge(),
+        "mkvpropedit": find_mkvpropedit(),
+    }
+    for tool, path in tools.items():
         status = f"found: {path}" if path else "NOT FOUND"
         print(f"  {tool}: {status}")
 

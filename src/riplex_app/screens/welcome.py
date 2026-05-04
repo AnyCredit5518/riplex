@@ -1,14 +1,19 @@
 """Welcome screen - checks config, tool availability, and offers workflow choice."""
 
+import logging
 import shutil
 import threading
 import webbrowser
+from pathlib import Path
 
 import flet as ft
 
 from riplex.config import load_config, get_api_key
 from riplex.disc.makemkv import find_makemkvcon
+from riplex.scanner import find_ffprobe
 from riplex_app.updater import check_for_update, get_current_version, get_download_url
+
+log = logging.getLogger(__name__)
 
 
 class WelcomeScreen:
@@ -19,8 +24,9 @@ class WelcomeScreen:
         config = load_config()
         has_config = bool(config and config.get("tmdb_api_key"))
         has_makemkv = find_makemkvcon() is not None
-        has_ffprobe = shutil.which("ffprobe") is not None
-        has_mkvmerge = shutil.which("mkvmerge") is not None
+        has_ffprobe = find_ffprobe() is not None
+        from riplex.splitter import find_mkvmerge
+        has_mkvmerge = find_mkvmerge() is not None
 
         # Status indicators
         checks = [
@@ -49,6 +55,7 @@ class WelcomeScreen:
 
         # Install tools section (shown when tools are missing)
         self._install_status = ft.Text("", size=12, color=ft.Colors.GREY_400)
+        self._install_progress = ft.ProgressBar(visible=False, width=400)
         install_section = ft.Container(
             ft.Column([
                 ft.Text(
@@ -77,6 +84,7 @@ class WelcomeScreen:
                         url="https://mkvtoolnix.download/downloads.html",
                     ),
                 ], spacing=8, wrap=True),
+                self._install_progress,
                 self._install_status,
             ], spacing=4),
             visible=bool(missing_tools),
@@ -241,8 +249,13 @@ class WelcomeScreen:
     def _browse_for(self, field: ft.TextField):
         """Open a native folder picker and populate *field* with the result."""
         def _pick():
-            import tkinter as tk
-            from tkinter import filedialog
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+            except ModuleNotFoundError:
+                field.hint_text = "Folder picker unavailable — type the path manually (brew install python-tk@3.12 to enable it)"
+                self.app.page.update()
+                return
 
             root = tk.Tk()
             root.withdraw()
@@ -289,6 +302,7 @@ class WelcomeScreen:
 
     def _on_install_click(self, e):
         """Handle Install Missing Tools button click."""
+        self._install_progress.visible = True
         self._install_status.value = "Starting installation..."
         self.app.page.update()
         self._install_tools(self._missing_tools)
@@ -302,12 +316,14 @@ class WelcomeScreen:
         packages = {
             "Windows": {"makemkvcon": "GuinpinSoft.MakeMKV", "ffprobe": "Gyan.FFmpeg", "mkvmerge": "MoritzBunkus.MKVToolNix"},
             "Darwin": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix"},
+            "Linux": {"makemkvcon": "makemkv", "ffprobe": "ffmpeg", "mkvmerge": "mkvtoolnix"},
         }
 
         pkg_map = packages.get(system, {})
         to_install = sorted(set(pkg_map[t] for t in missing if pkg_map.get(t)))
         if not to_install:
             self._install_status.value = "Auto-install not supported on this platform. Use the links above."
+            self._install_progress.visible = False
             self.app.page.update()
             return
 
@@ -329,10 +345,126 @@ class WelcomeScreen:
                     if result.returncode != 0:
                         raise subprocess.CalledProcessError(result.returncode, "winget", output=result.stdout, stderr=result.stderr)
                 elif system == "Darwin":
-                    if shutil.which("brew"):
-                        self._install_status.value = "Installing via brew..."
+                    # Check if macOS is too old for Homebrew bottles (pre-built
+                    # packages).  On older versions brew compiles everything from
+                    # source which can take over an hour — not a great UX.
+                    mac_ver = platform.mac_ver()[0]  # e.g. "13.7.7"
+                    mac_major = int(mac_ver.split(".")[0]) if mac_ver else 0
+                    brew_path = shutil.which("brew")
+
+                    if brew_path and mac_major >= 14:
+                        self._install_status.value = (
+                            f"Installing {', '.join(to_install)} via Homebrew — "
+                            "this may take several minutes..."
+                        )
                         self.app.page.update()
-                        subprocess.run(["brew", "install"] + to_install, check=True)
+                        proc = subprocess.Popen(
+                            ["brew", "install"] + to_install,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        import time as _time
+                        last_update = _time.monotonic()
+                        for line in proc.stdout:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            # Skip noisy Homebrew warnings about Xcode / macOS version
+                            if any(s in line for s in (
+                                "Tier 2", "Tier 3",
+                                "Please update to Xcode",
+                                "before opening any issues",
+                                "Read the above",
+                                "Command Line Tools",
+                                "sudo rm -rf",
+                                "sudo xcode-select",
+                                "developer.apple.com",
+                                "You are using macOS",
+                                "MacPorts",
+                                "docs.brew.sh/Support-Tiers",
+                            )):
+                                # Show a heartbeat if no useful output for a while
+                                now = _time.monotonic()
+                                if now - last_update > 15:
+                                    self._install_status.value = "Still installing... (compiling from source, please wait)"
+                                    self.app.page.update()
+                                    last_update = now
+                                continue
+                            self._install_status.value = line
+                            self.app.page.update()
+                            last_update = _time.monotonic()
+                        proc.wait()
+                        if proc.returncode != 0:
+                            raise subprocess.CalledProcessError(proc.returncode, "brew")
+                    else:
+                        # Old macOS or no Homebrew — auto-download ffprobe and
+                        # open download pages for the other tools.
+                        download_urls = {
+                            "makemkv": "https://www.makemkv.com/download/",
+                            "mkvtoolnix": "https://mkvtoolnix.download/downloads.html#macosx",
+                        }
+                        opened_pages = []
+                        for pkg in to_install:
+                            if pkg in download_urls:
+                                webbrowser.open(download_urls[pkg])
+                                opened_pages.append(pkg)
+
+                        # Auto-download ffprobe from evermeet.cx
+                        if "ffmpeg" in to_install:
+                            self._install_status.value = "Downloading ffprobe..."
+                            self.app.page.update()
+                            try:
+                                self._download_ffprobe_macos()
+                            except Exception as exc:
+                                webbrowser.open("https://evermeet.cx/ffmpeg/")
+                                opened_pages.append("ffprobe")
+                                log.warning("ffprobe auto-download failed: %s", exc)
+
+                        if opened_pages:
+                            reason = (
+                                f"Your macOS version ({mac_ver}) is too old for fast Homebrew installs."
+                                if mac_major < 14
+                                else "Homebrew is not installed."
+                            )
+                            self._install_status.value = (
+                                f"{reason} Download pages opened — "
+                                "install the tools, then restart the app."
+                            )
+                        else:
+                            self._install_status.value = "Done! Reloading..."
+                            self._install_progress.visible = False
+                            self.app.page.update()
+                            import time
+                            time.sleep(1.5)
+                            self.app.navigate("welcome")
+                            return
+
+                        self._install_progress.visible = False
+                        self.app.page.update()
+                        return
+                elif system == "Linux":
+                    apt = shutil.which("apt-get") or shutil.which("apt")
+                    if apt:
+                        self._install_status.value = (
+                            f"Installing {', '.join(to_install)} via apt — "
+                            "this may take a minute..."
+                        )
+                        self.app.page.update()
+                        proc = subprocess.Popen(
+                            ["sudo", apt, "install", "-y"] + to_install,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        for line in proc.stdout:
+                            line = line.strip()
+                            if line:
+                                self._install_status.value = line
+                                self.app.page.update()
+                        proc.wait()
+                        if proc.returncode != 0:
+                            raise subprocess.CalledProcessError(proc.returncode, apt)
                     else:
                         download_urls = {
                             "makemkv": "https://www.makemkv.com/download/",
@@ -343,19 +475,91 @@ class WelcomeScreen:
                             if pkg in download_urls:
                                 webbrowser.open(download_urls[pkg])
                         self._install_status.value = "Opened download pages in your browser. Install the tools, then restart the app."
+                        self._install_progress.visible = False
                         self.app.page.update()
                         return
+                else:
+                    download_urls = {
+                        "makemkv": "https://www.makemkv.com/download/",
+                        "ffmpeg": "https://ffmpeg.org/download.html",
+                        "mkvtoolnix": "https://mkvtoolnix.download/downloads.html",
+                    }
+                    for pkg in to_install:
+                        if pkg in download_urls:
+                            webbrowser.open(download_urls[pkg])
+                    self._install_status.value = "Opened download pages in your browser. Install the tools, then restart the app."
+                    self._install_progress.visible = False
+                    self.app.page.update()
+                    return
 
                 self._install_status.value = "Done! Reloading..."
+                self._install_progress.visible = False
                 self.app.page.update()
                 import time
                 time.sleep(1.5)
                 self.app.navigate("welcome")
             except Exception as exc:
+                self._install_progress.visible = False
                 self._install_status.value = f"Install failed: {exc}. Try the manual links above."
-                self.app.page.update()
+                try:
+                    self.app.page.update()
+                except Exception:
+                    pass  # Window may have been closed during install
 
         threading.Thread(target=_do_install, daemon=True).start()
+
+    def _download_ffprobe_macos(self):
+        """Download a pre-built ffprobe binary to ~/.riplex/bin/.
+
+        Uses the evermeet.cx download API which provides static Intel
+        macOS binaries as .zip files (no extra dependencies needed).
+        """
+        import os
+        import stat
+        import subprocess
+        import tempfile
+        import urllib.request
+        import zipfile
+
+        url = "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
+        dest_dir = Path.home() / ".riplex" / "bin"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / "ffprobe"
+
+        self._install_status.value = "Downloading ffprobe from evermeet.cx..."
+        self.app.page.update()
+
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            urllib.request.urlretrieve(url, tmp_path)
+
+            self._install_status.value = "Extracting ffprobe..."
+            self.app.page.update()
+
+            with zipfile.ZipFile(tmp_path) as zf:
+                # The zip contains a single 'ffprobe' binary
+                names = zf.namelist()
+                ffprobe_name = next(
+                    (n for n in names if n.rstrip("/") == "ffprobe"), names[0]
+                )
+                with zf.open(ffprobe_name) as src, open(dest, "wb") as dst:
+                    dst.write(src.read())
+
+            # Make executable
+            dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+            # Remove macOS quarantine flag so Gatekeeper doesn't block it
+            subprocess.run(
+                ["xattr", "-dr", "com.apple.quarantine", str(dest)],
+                capture_output=True,
+            )
+
+            self._install_status.value = f"ffprobe installed to {dest}"
+            self.app.page.update()
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
 
     def _save_config(self, e):
         """Write config from the setup fields."""

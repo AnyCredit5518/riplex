@@ -85,8 +85,14 @@ class FolderPickerScreen:
         log.debug("_browse clicked")
 
         def _pick():
-            import tkinter as tk
-            from tkinter import filedialog
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+            except ModuleNotFoundError:
+                log.warning("tkinter not available; user must type path manually")
+                self.folder_field.hint_text = "Type the path manually (brew install python-tk@3.12 to enable folder picker)"
+                self.app.page.update()
+                return
 
             try:
                 root = tk.Tk()

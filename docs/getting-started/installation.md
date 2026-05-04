@@ -14,7 +14,8 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 | Platform | CLI | GUI |
 |---|---|---|
 | Windows | `riplex-windows.exe` | `riplex-ui-windows.exe` |
-| macOS | `riplex-macos` | `riplex-ui-macos.zip` |
+| macOS (Apple Silicon) | `riplex-macos-arm64` | `riplex-ui-macos-arm64.zip` |
+| macOS (Intel) | `riplex-macos-x86_64` | `riplex-ui-macos-x86_64.zip` |
 
 ### Windows
 
@@ -24,10 +25,18 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 
 ### macOS
 
-1. Download `riplex-macos` and/or `riplex-ui-macos.zip`
-2. Make the CLI executable: `chmod +x riplex-macos`
-3. For the GUI, unzip `riplex-ui-macos.zip` and move `riplex-ui.app` to `/Applications/`
-4. Run `./riplex-macos setup` to configure
+1. Pick the build matching your Mac:
+    - Apple Silicon (M1/M2/M3/...): `riplex-macos-arm64` and `riplex-ui-macos-arm64.zip`
+    - Intel: `riplex-macos-x86_64` and `riplex-ui-macos-x86_64.zip`
+
+    Not sure which you have? Run `sysctl -n machdep.cpu.brand_string` in Terminal.
+    "Apple ..." means Apple Silicon; "Intel ..." means Intel.
+2. Make the CLI executable: `chmod +x riplex-macos-*`
+3. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
+   The first time you launch it, macOS may block the unsigned app — remove the
+   quarantine flag with `xattr -dr com.apple.quarantine /Applications/riplex-ui.app`
+   and try again.
+4. Run `./riplex-macos-arm64 setup` (or the `x86_64` variant) to configure.
 
 ## Option B: Install via pip
 
@@ -103,20 +112,42 @@ If you want to contribute or run the latest unreleased code:
 ```bash
 git clone https://github.com/AnyCredit5518/riplex.git
 cd riplex
-pip install -e ".[dev]"
-```
-
-To also install the Flet-based GUI:
-
-```bash
+python3.12 -m venv .venv
+source .venv/bin/activate   # macOS/Linux
 pip install -e ".[dev,gui]"
 ```
 
-Then launch it with:
+The repo's `.vscode/settings.json` points VS Code at `.venv` automatically, so
+the integrated terminal activates it on open. In any external terminal, run
+`source .venv/bin/activate` first.
+
+Then launch the GUI with:
 
 ```bash
 riplex-ui
 ```
+
+### macOS SSL fix (Homebrew Python only)
+
+If you installed Python via Homebrew and `riplex-ui` crashes on first launch with
+an SSL certificate error, run this one-time fix:
+
+```bash
+CERT=$(python3.12 -c "import certifi; print(certifi.where())")
+echo "export SSL_CERT_FILE=\"$CERT\"" >> .venv/bin/activate
+echo "export REQUESTS_CA_BUNDLE=\"$CERT\"" >> .venv/bin/activate
+source .venv/bin/activate
+```
+
+### macOS folder picker (Homebrew Python only)
+
+The browse buttons in the GUI use tkinter, which Homebrew ships separately:
+
+```bash
+brew install python-tk@3.12
+```
+
+Without this, clicking a browse button shows a hint to type the path manually instead.
 
 ## External tools
 

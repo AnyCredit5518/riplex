@@ -23,6 +23,12 @@ dev = [
 ]
 gui = [
     "flet>=0.84",
+    # tkinter is also required for the folder picker buttons but cannot be
+    # installed via pip — it is part of Python's standard library and must be
+    # installed at the OS level:
+    #   macOS (Homebrew Python): brew install python-tk@3.12
+    #   Linux (Debian/Ubuntu):   sudo apt install python3-tk
+    #   Windows:                 included in the standard python.org installer
 ]
 
 [project.scripts]
