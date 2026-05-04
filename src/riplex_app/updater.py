@@ -1,6 +1,5 @@
 """Check for newer releases on GitHub."""
 
-import platform
 import urllib.request
 import json
 import sys
@@ -77,11 +76,6 @@ def get_download_url(update_info: dict) -> str:
             if "ui" in name and "windows" in name:
                 return url
     elif sys.platform == "darwin":
-        arch = platform.machine().lower()
-        # Prefer arch-specific build, fall back to any macOS GUI asset.
-        for name, url in update_info["assets"].items():
-            if "ui" in name and "macos" in name and arch in name:
-                return url
         for name, url in update_info["assets"].items():
             if "ui" in name and "macos" in name:
                 return url

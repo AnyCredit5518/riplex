@@ -69,15 +69,7 @@ jobs:
           path: release/
 
   build-macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-14
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,12 +116,12 @@ jobs:
       - name: Package macOS artifacts
         run: |
           mkdir -p release
-          cp dist/riplex release/riplex-${{ matrix.arch }}
-          cd dist && zip -r ../release/riplex-ui-macos-${{ matrix.arch }}.zip riplex-ui.app
+          cp dist/riplex release/riplex-macos
+          cd dist && zip -r ../release/riplex-ui-macos.zip riplex-ui.app
 
       - uses: actions/upload-artifact@v4
         with:
-          name: riplex-macos-${{ matrix.arch }}
+          name: riplex-macos
           path: release/
 
   release:
@@ -146,10 +138,8 @@ jobs:
           mkdir release
           cp artifacts/riplex-windows/riplex.exe release/riplex-windows.exe
           cp artifacts/riplex-windows/riplex-ui.exe release/riplex-ui-windows.exe
-          cp artifacts/riplex-macos-x86_64/riplex-x86_64 release/riplex-macos-x86_64
-          cp artifacts/riplex-macos-x86_64/riplex-ui-macos-x86_64.zip release/
-          cp artifacts/riplex-macos-arm64/riplex-arm64 release/riplex-macos-arm64
-          cp artifacts/riplex-macos-arm64/riplex-ui-macos-arm64.zip release/
+          cp artifacts/riplex-macos/riplex-macos release/
+          cp artifacts/riplex-macos/riplex-ui-macos.zip release/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -158,7 +148,5 @@ jobs:
           files: |
             release/riplex-windows.exe
             release/riplex-ui-windows.exe
-            release/riplex-macos-x86_64
-            release/riplex-ui-macos-x86_64.zip
-            release/riplex-macos-arm64
-            release/riplex-ui-macos-arm64.zip
+            release/riplex-macos
+            release/riplex-ui-macos.zip

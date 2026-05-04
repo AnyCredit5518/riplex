@@ -72,8 +72,7 @@ class TestCheckForUpdate:
             "html_url": "https://github.com/AnyCredit5518/riplex/releases/tag/v0.3.0",
             "assets": [
                 {"name": "riplex-ui-windows.exe", "browser_download_url": "https://example.com/win.exe"},
-                {"name": "riplex-ui-macos-arm64.zip", "browser_download_url": "https://example.com/mac-arm64.zip"},
-                {"name": "riplex-ui-macos-x86_64.zip", "browser_download_url": "https://example.com/mac-x86_64.zip"},
+                {"name": "riplex-ui-macos.zip", "browser_download_url": "https://example.com/mac.zip"},
             ],
         }).encode()
 
@@ -89,8 +88,7 @@ class TestCheckForUpdate:
         assert result is not None
         assert result["tag"] == "v0.3.0"
         assert "riplex-ui-windows.exe" in result["assets"]
-        assert "riplex-ui-macos-arm64.zip" in result["assets"]
-        assert "riplex-ui-macos-x86_64.zip" in result["assets"]
+        assert "riplex-ui-macos.zip" in result["assets"]
 
 
 # ---------------------------------------------------------------------------
@@ -117,27 +115,11 @@ class TestGetDownloadUrl:
             "url": "https://github.com/releases/v0.3.0",
             "assets": {
                 "riplex-ui-windows.exe": "https://example.com/win.exe",
-                "riplex-ui-macos-arm64.zip": "https://example.com/mac-arm64.zip",
-                "riplex-ui-macos-x86_64.zip": "https://example.com/mac-x86_64.zip",
-            },
-        }
-        with patch("sys.platform", "darwin"):
-            with patch("riplex_app.updater.platform.machine", return_value="arm64"):
-                assert get_download_url(info) == "https://example.com/mac-arm64.zip"
-            with patch("riplex_app.updater.platform.machine", return_value="x86_64"):
-                assert get_download_url(info) == "https://example.com/mac-x86_64.zip"
-
-    def test_macos_falls_back_to_any_arch(self):
-        info = {
-            "tag": "v0.3.0",
-            "url": "https://github.com/releases/v0.3.0",
-            "assets": {
                 "riplex-ui-macos.zip": "https://example.com/mac.zip",
             },
         }
         with patch("sys.platform", "darwin"):
-            with patch("riplex_app.updater.platform.machine", return_value="arm64"):
-                assert get_download_url(info) == "https://example.com/mac.zip"
+            assert get_download_url(info) == "https://example.com/mac.zip"
 
     def test_fallback_to_release_page(self):
         info = {

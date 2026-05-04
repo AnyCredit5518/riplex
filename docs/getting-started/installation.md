@@ -14,8 +14,12 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 | Platform | CLI | GUI |
 |---|---|---|
 | Windows | `riplex-windows.exe` | `riplex-ui-windows.exe` |
-| macOS (Apple Silicon) | `riplex-macos-arm64` | `riplex-ui-macos-arm64.zip` |
-| macOS (Intel) | `riplex-macos-x86_64` | `riplex-ui-macos-x86_64.zip` |
+| macOS (Apple Silicon) | `riplex-macos` | `riplex-ui-macos.zip` |
+| macOS (Intel) | — | — |
+
+> **Intel Mac users:** Pre-built binaries are Apple Silicon only. Please
+> [install from source](#option-b-install-via-pip) instead — it's straightforward
+> and works on any architecture.
 
 ### Windows
 
@@ -25,15 +29,10 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 
 ### macOS
 
-1. Pick the build matching your Mac:
-    - Apple Silicon (M1/M2/M3/...): `riplex-macos-arm64` and `riplex-ui-macos-arm64.zip`
-    - Intel: `riplex-macos-x86_64` and `riplex-ui-macos-x86_64.zip`
+1. Download `riplex-macos` and `riplex-ui-macos.zip` (Apple Silicon only).
 
-    Not sure which you have? Open Terminal and run:
-    ```
-    sysctl -n machdep.cpu.brand_string
-    ```
-    "Apple ..." means Apple Silicon; "Intel ..." means Intel.
+    **Intel Mac?** Pre-built binaries won't work on your machine.
+    Skip to [Option B: Install via pip](#option-b-install-via-pip) instead.
 
 2. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
 
@@ -52,10 +51,10 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 
 4. For the CLI, make it executable and remove the quarantine flag:
     ```
-    chmod +x riplex-macos-*
-    xattr -dr com.apple.quarantine riplex-macos-*
+    chmod +x riplex-macos
+    xattr -dr com.apple.quarantine riplex-macos
     ```
-    Then run `./riplex-macos-arm64 setup` (or the `x86_64` variant) to configure.
+    Then run `./riplex-macos setup` to configure.
 
 ## Option B: Install via pip
 

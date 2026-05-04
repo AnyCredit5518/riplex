@@ -4,11 +4,19 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-04
+
+### Changed
+
+- Installation guide: dropped pre-built Intel macOS binary; macOS downloads are now Apple Silicon only. Intel Mac users directed to install from source.
+- Installation guide: clearer Gatekeeper instructions as a dedicated step with right-click method.
+- Installation guide: added tip for macOS users recommending install from source.
+
 ## 2026-05-03
 
 ### Changed
 
-- Installation guide: macOS pre-built executables now ship as separate `arm64` (Apple Silicon) and `x86_64` (Intel) builds; added instructions to pick the right one and remove the Gatekeeper quarantine flag.
+- Installation guide: macOS pre-built executables now ship as `arm64` (Apple Silicon) only; added instructions to remove the Gatekeeper quarantine flag.
 - Installation guide: "Installing from source" section now includes venv setup steps and a macOS SSL fix for Homebrew Python users (`SSL_CERT_FILE` via certifi).
 - Installation guide: added macOS tkinter section for folder picker support.
 
