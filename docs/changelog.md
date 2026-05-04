@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - Troubleshooting guide: macOS-specific sections for tkinter/browse button, SSL certificate errors, Gatekeeper blocking, and tools not found despite being installed.
+- Installation guide: new "Install with pipx" section as the recommended install method for end users — provides globally available `riplex` and `riplex-ui` commands without venv activation.
 
 ### Changed
 
-- Installation guide: dropped pre-built Intel macOS binary; macOS downloads are now Apple Silicon only. Intel Mac users directed to install from source.
+- Installation guide: dropped pre-built Intel macOS binary; macOS downloads are now Apple Silicon only. Intel Mac users directed to install with pipx.
+- Installation guide: "Installing from source" section now clearly scoped to developers, with a note pointing users to pipx for global installs.
 - Installation guide: clearer Gatekeeper instructions as a dedicated step with right-click method.
 - Installation guide: added tip for macOS users recommending install from source.
 

@@ -20,8 +20,8 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 > **Intel Mac users:** GitHub [deprecated their Intel macOS (macos-13) build
 > runners](https://github.blog/changelog/2024-09-16-github-actions-macos-13-larger-runner-image-brownout-dates/),
 > which were the only way to produce Intel-compatible binaries. Please
-> [install from source](#option-b-install-via-pip) instead — it's straightforward
-> and works on any Mac.
+> [install with pipx](#option-b-install-with-pipx-recommended) instead — it's
+> straightforward and works on any Mac.
 
 ### Windows
 
@@ -35,7 +35,7 @@ Download the latest release for your platform from the [GitHub Releases page](ht
 
     **Intel Mac?** GitHub deprecated the build runners needed to produce Intel
     binaries, so these won't work on your machine.
-    Skip to [Option B: Install via pip](#option-b-install-via-pip) instead.
+    Skip to [Option B: Install with pipx](#option-b-install-with-pipx-recommended) instead.
 
 2. For the GUI, unzip the `.zip` and move `riplex-ui.app` to `/Applications/`.
 
@@ -59,23 +59,29 @@ Download the latest release for your platform from the [GitHub Releases page](ht
     ```
     Then run `./riplex-macos setup` to configure.
 
-## Option B: Install via pip
+## Option B: Install with pipx (recommended)
 
-### 1. Install Python
+[pipx](https://pipx.pypa.io/) installs Python apps in isolated environments but makes their commands available globally — no venv activation needed. `riplex` and `riplex-ui` just work from any terminal.
 
-riplex requires Python 3.11 or newer. If you don't have it:
+### 1. Install Python and pipx
 
-- **Windows**: Download from https://www.python.org/downloads/ and run the installer. **Check "Add Python to PATH"** during installation.
-- **macOS**: `brew install python` or download from https://www.python.org/downloads/
-- **Linux**: Most distros include Python. If not: `sudo apt install python3 python3-pip`
+- **Windows**: Download Python from https://www.python.org/downloads/ (**check "Add Python to PATH"**), then:
+    ```
+    pip install pipx
+    pipx ensurepath
+    ```
+- **macOS**:
+    ```
+    brew install python pipx
+    pipx ensurepath
+    ```
+- **Linux**:
+    ```
+    sudo apt install python3 pipx
+    pipx ensurepath
+    ```
 
-To verify, open a terminal (Command Prompt, PowerShell, or Terminal) and run:
-
-```bash
-python --version
-```
-
-You should see `Python 3.11` or higher.
+Restart your terminal after `ensurepath` so the new PATH takes effect.
 
 ### 2. Install and register MakeMKV
 
@@ -91,10 +97,13 @@ The beta key is updated periodically. Without it, `makemkvcon` (the command-line
 ### 3. Install riplex
 
 ```bash
-pip install riplex
+pipx install "riplex[gui]"
 ```
 
-This installs the `riplex` command and all Python dependencies automatically.
+This installs both `riplex` (CLI) and `riplex-ui` (GUI) as globally available commands.
+
+> [!TIP]
+> To install the CLI only (no GUI), run `pipx install riplex` instead.
 
 ### 4. Run setup
 
@@ -122,13 +131,20 @@ If you skip setup, it runs automatically the first time you use any command.
 
 ```bash
 riplex --help
+riplex-ui
 ```
 
-You should see the subcommands: `orchestrate`, `rip`, `organize`, `lookup`, and `setup`.
+Both commands should work from any terminal without activating anything.
+
+### Updating
+
+```bash
+pipx upgrade riplex
+```
 
 ## Installing from source (for developers)
 
-If you want to contribute or run the latest unreleased code:
+If you want to contribute or run the latest unreleased code, use a venv:
 
 ```bash
 git clone https://github.com/AnyCredit5518/riplex.git
@@ -137,6 +153,11 @@ python3.12 -m venv .venv
 source .venv/bin/activate   # macOS/Linux
 pip install -e ".[dev,gui]"
 ```
+
+> [!NOTE]
+> With a venv, `riplex` and `riplex-ui` only work while the venv is activated.
+> For a global install that works from any terminal, use
+> [pipx](#option-b-install-with-pipx-recommended) instead.
 
 The repo's `.vscode/settings.json` points VS Code at `.venv` automatically, so
 the integrated terminal activates it on open. In any external terminal, run

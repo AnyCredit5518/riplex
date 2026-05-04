@@ -8,7 +8,7 @@ If you'd rather use a simple graphical interface instead of the command line, do
 
 - **Windows**: Download `riplex-ui-windows.exe` and double-click to run
 - **macOS** (Apple Silicon): Download `riplex-ui-macos.zip`, unzip, and open `riplex-ui.app`
-- **macOS** (Intel): [Install from source](docs/getting-started/installation.md#option-b-install-via-pip) — GitHub [deprecated their Intel macOS build runners](https://github.blog/changelog/2024-09-16-github-actions-macos-13-larger-runner-image-brownout-dates/), so pre-built Intel binaries are no longer possible
+- **macOS** (Intel): [Install with pipx](docs/getting-started/installation.md#option-b-install-with-pipx-recommended) — GitHub [deprecated their Intel macOS build runners](https://github.blog/changelog/2024-09-16-github-actions-macos-13-larger-runner-image-brownout-dates/), so pre-built Intel binaries are no longer possible
 
 No Python install required. The app walks you through setup and provides buttons for all workflows.
 
