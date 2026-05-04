@@ -76,3 +76,79 @@ You'll still get duplicate filtering, 4K preference, play-all detection, and TMD
 
 > [!NOTE]
 > A fix to make `orchestrate` and `organize` handle missing dvdcompare data gracefully is planned.
+
+---
+
+## macOS: "Browse" button does nothing (tkinter not installed)
+
+**Symptom:** In the GUI, clicking the folder browse button does nothing or shows a hint to type the path manually.
+
+**Cause:** The browse dialog requires `tkinter`, which Homebrew Python does not include by default.
+
+**Solution:** Install the tkinter package for your Python version:
+
+```
+brew install python-tk@3.12
+```
+
+Then relaunch `riplex-ui`.
+
+---
+
+## macOS: SSL error when launching the GUI for the first time
+
+**Symptom:** The app crashes or shows an SSL certificate error on first launch. This typically happens with Homebrew-installed Python.
+
+**Cause:** Flet downloads its desktop runtime on first launch. Homebrew Python doesn't include system SSL certificates, so the download fails.
+
+**Solution:** Set the SSL certificate path in your venv activate script (one-time fix):
+
+```
+CERT=$(python3.12 -c "import certifi; print(certifi.where())")
+echo "export SSL_CERT_FILE=\"$CERT\"" >> .venv/bin/activate
+echo "export REQUESTS_CA_BUNDLE=\"$CERT\"" >> .venv/bin/activate
+source .venv/bin/activate
+```
+
+Then relaunch `riplex-ui`.
+
+---
+
+## macOS: "app is damaged" / Gatekeeper blocks the app
+
+**Symptom:** macOS says the app "is damaged and can't be opened" or "cannot be opened because the developer cannot be verified."
+
+**Cause:** macOS quarantines apps downloaded from the internet that aren't signed with an Apple Developer certificate.
+
+**Solution:** Right-click (or Control-click) on `riplex-ui.app`, choose **Open**, then click **Open** in the dialog. macOS remembers this choice and won't ask again.
+
+If that doesn't work, remove the quarantine flag manually:
+
+```
+xattr -dr com.apple.quarantine /Applications/riplex-ui.app
+```
+
+---
+
+## macOS: tools not found despite being installed
+
+**Symptom:** `riplex setup` reports that `ffprobe`, `mkvmerge`, or `makemkvcon` are missing, even though MakeMKV or MKVToolNix is installed.
+
+**Cause:** macOS `.app` bundles install their binaries inside the app package, not on your PATH. Homebrew installs to `/opt/homebrew/bin/` (Apple Silicon) or `/usr/local/bin/` (Intel), which may not be on your PATH in all contexts.
+
+**Solution:** riplex automatically checks these locations, so this should resolve itself as of v0.4.0. If tools are still not found, verify they exist:
+
+```
+# MakeMKV
+ls /Applications/MakeMKV.app/Contents/MacOS/makemkvcon
+
+# MKVToolNix
+ls /Applications/MKVToolNix.app/Contents/MacOS/mkvmerge
+
+# ffprobe (Homebrew)
+ls /opt/homebrew/bin/ffprobe    # Apple Silicon
+ls /usr/local/bin/ffprobe       # Intel
+ls ~/.riplex/bin/ffprobe        # auto-downloaded
+```
+
+If the tool exists but riplex can't find it, you can add it to your PATH manually in your shell profile (`~/.zshrc`).
