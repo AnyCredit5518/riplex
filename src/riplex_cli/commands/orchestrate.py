@@ -11,11 +11,9 @@ from pathlib import Path
 from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
-    build_dvd_entries,
+    analyze_disc,
     format_seconds,
-    is_skip_title,
     print_disc_analysis,
-    select_rippable_titles,
 )
 from riplex.disc.provider import (
     detect_disc_format,
@@ -404,16 +402,20 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             ripped_discs.add(disc.number)
             continue
 
-        # Show disc analysis for the currently-inserted disc
-        current_disc_entries = [d for d in discs if d.number == disc.number]
-        dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(current_disc_entries)
-        print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
-
-        # Filter titles to rip
-        rip_titles = select_rippable_titles(
-            disc_info, dvd_entries, is_movie, movie_runtime,
-            total_episode_runtime, episode_count,
+        # Analyze disc titles using the known disc number
+        analysis = analyze_disc(
+            disc_info, discs,
+            disc_number=disc.number,
+            is_movie=is_movie,
+            movie_runtime=movie_runtime,
         )
+        dvd_entries = analysis.dvd_entries
+        total_episode_runtime = analysis.total_episode_runtime
+        episode_count = analysis.episode_count
+        rip_titles = analysis.rippable_titles
+
+        current_disc_entries = [d for d in discs if d.number == disc.number]
+        print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
 
         if not rip_titles:
             print(f"\nNo titles to rip on Disc {disc.number}.", file=sys.stderr)

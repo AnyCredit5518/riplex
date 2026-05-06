@@ -1,10 +1,14 @@
 """Selection screen - choose which titles to rip from the disc."""
 
+import logging
+
 import flet as ft
 
 from riplex.config import get_rip_output
-from riplex.disc.analysis import build_dvd_entries, classify_title, format_seconds, select_rippable_titles
+from riplex.disc.analysis import analyze_disc, format_seconds
 from riplex.disc.makemkv import DiscTitle
+
+log = logging.getLogger(__name__)
 
 
 def _format_size(size_bytes: int) -> str:
@@ -28,24 +32,30 @@ class SelectionScreen:
         is_movie = tmdb_match.media_type == "movie" if tmdb_match else True
         movie_runtime = self.app.state.get("movie_runtime")
 
-        dvd_entries: list[tuple[str, int, str]] = []
-        total_episode_runtime = 0
-        episode_count = 0
-        if dvdcompare_discs:
-            dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(dvdcompare_discs)
-
-        # Classify each title using dvdcompare data
-        classifications: dict[int, str] = {}
-        rippable = select_rippable_titles(
-            disc_info, dvd_entries, is_movie, movie_runtime,
-            total_episode_runtime, episode_count,
+        # Use shared analyze_disc — same logic as CLI rip and orchestrate
+        analysis = analyze_disc(
+            disc_info, dvdcompare_discs,
+            is_movie=is_movie,
+            movie_runtime=movie_runtime,
         )
-        rippable_indices = {t.index for t in rippable}
+        self._analysis = analysis  # store for _start_rip
+        rippable_indices = {t.index for t in analysis.rippable_titles}
+        classifications = analysis.classifications
+
+        log.info("Detected disc number: %s", analysis.disc_number)
+        log.info("dvd_entries: %d, total_episode_runtime: %s, episode_count: %d",
+                 len(analysis.dvd_entries), format_seconds(analysis.total_episode_runtime),
+                 analysis.episode_count)
+        for name, runtime, etype in analysis.dvd_entries:
+            log.info("  %s: %s (%s)", etype, name, format_seconds(runtime))
+
+        log.info("is_movie=%s, movie_runtime=%s", is_movie, format_seconds(movie_runtime) if movie_runtime else None)
+        log.info("%d/%d titles recommended for rip:", len(rippable_indices), len(titles))
         for t in titles:
-            classifications[t.index] = classify_title(
-                t, titles, dvd_entries, is_movie, movie_runtime,
-                total_episode_runtime, episode_count,
-            )
+            marker = "RIP " if t.index in rippable_indices else "SKIP"
+            log.info("  [%s] #%2d  %8s  %.1f GB  %s  %s",
+                     marker, t.index, format_seconds(t.duration_seconds),
+                     t.size_bytes/(1024**3), t.resolution, classifications[t.index])
 
         self.checkboxes = []
         title_rows = []
@@ -189,7 +199,9 @@ class SelectionScreen:
         tmdb_match = self.app.state["tmdb_match"]
         if tmdb_match:
             from riplex.manifest import build_rip_path
-            output_dir = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+
+            disc_num = self._analysis.disc_number if hasattr(self, "_analysis") else None
+            output_dir = build_rip_path(tmdb_match.title, tmdb_match.year or 0, disc_number=disc_num)
         else:
             from pathlib import Path
             rip_output = get_rip_output()

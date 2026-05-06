@@ -2,6 +2,7 @@
 
 from riplex.disc.analysis import (
     _detect_edition_name,
+    analyze_disc,
     build_dvd_entries,
     classify_title,
     detect_cross_res_play_all,
@@ -294,3 +295,99 @@ class TestDetectDiscNumber:
         titles = [_make_title(0, 500)]  # Very different durations
         info = DiscInfo(disc_name="MYSTERY_DISC", disc_type="Blu-ray disc", titles=titles)
         assert _detect_disc_number(info, [disc1]) is None
+
+
+class TestAnalyzeDisc:
+    """Tests for the analyze_disc() shared entry point."""
+
+    def _make_fake_disc(self, number, ep_runtimes, extra_runtimes=None):
+        class FakeEp:
+            def __init__(self, title, runtime):
+                self.title = title
+                self.runtime_seconds = runtime
+
+        class FakeExtra:
+            def __init__(self, title, runtime, feature_type="extra"):
+                self.title = title
+                self.runtime_seconds = runtime
+                self.feature_type = feature_type
+
+        class FakeDisc:
+            def __init__(self, num, eps, extras):
+                self.number = num
+                self.episodes = eps
+                self.extras = extras
+                self.disc_format = "Blu-ray"
+
+        eps = [FakeEp(f"Ep {i+1}", rt) for i, rt in enumerate(ep_runtimes)]
+        extras = [FakeExtra(f"Extra {i+1}", rt) for i, rt in enumerate(extra_runtimes or [])]
+        return FakeDisc(number, eps, extras)
+
+    def test_filters_to_detected_disc(self):
+        """When disc detection succeeds, only that disc's entries are used."""
+        disc1 = self._make_fake_disc(1, [3600, 3700])
+        disc2 = self._make_fake_disc(2, [2400, 2500])
+        titles = [_make_title(0, 3600), _make_title(1, 3700)]
+        info = DiscInfo(disc_name="SHOW_D1", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(info, [disc1, disc2], is_movie=False)
+
+        # Should detect disc 1 from label "SHOW_D1"
+        assert analysis.disc_number == 1
+        # Should only have entries from disc 1 (2 episodes)
+        assert analysis.episode_count == 2
+        assert analysis.total_episode_runtime == 3600 + 3700
+
+    def test_explicit_disc_number_skips_detection(self):
+        """When disc_number is provided, detection is skipped."""
+        disc1 = self._make_fake_disc(1, [3600])
+        disc2 = self._make_fake_disc(2, [2400, 2500])
+        titles = [_make_title(0, 2400), _make_title(1, 2500)]
+        info = DiscInfo(disc_name="MYSTERY", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(info, [disc1, disc2], disc_number=2, is_movie=False)
+
+        assert analysis.disc_number == 2
+        assert analysis.episode_count == 2
+        assert analysis.total_episode_runtime == 2400 + 2500
+
+    def test_multi_disc_detection_fails_uses_empty(self):
+        """When detection fails on multi-disc, empty entries are used (not all discs)."""
+        disc1 = self._make_fake_disc(1, [3600])
+        disc2 = self._make_fake_disc(2, [2400])
+        disc3 = self._make_fake_disc(3, [], extra_runtimes=[300, 400])
+        # Titles don't match any disc's episodes, label doesn't help
+        titles = [_make_title(0, 900), _make_title(1, 1100)]
+        info = DiscInfo(disc_name="BONUS_DISC", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(info, [disc1, disc2, disc3], is_movie=True, movie_runtime=7200)
+
+        # Detection should fail
+        assert analysis.disc_number is None
+        # Should use empty entries (not 3 discs worth of data)
+        assert analysis.dvd_entries == []
+        assert analysis.episode_count == 0
+
+    def test_single_disc_detection_fails_uses_all(self):
+        """When detection fails on single-disc release, all entries are used."""
+        disc1 = self._make_fake_disc(1, [3600, 3700])
+        titles = [_make_title(0, 7200)]  # Doesn't match episodes
+        info = DiscInfo(disc_name="MYSTERY", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(info, [disc1], is_movie=True, movie_runtime=7200)
+
+        # Detection may fail but single disc => use its entries
+        assert analysis.episode_count == 2
+
+    def test_no_dvdcompare_data(self):
+        """Works with empty dvdcompare_discs."""
+        titles = [_make_title(0, 7200), _make_title(1, 300)]
+        info = DiscInfo(disc_name="MOVIE", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(info, [], is_movie=True, movie_runtime=7200)
+
+        assert analysis.disc_number is None
+        assert analysis.dvd_entries == []
+        # Should still classify titles (main film detected by runtime)
+        assert len(analysis.rippable_titles) >= 1
+        assert len(analysis.classifications) == 2

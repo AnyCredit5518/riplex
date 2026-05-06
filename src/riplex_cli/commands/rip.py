@@ -11,11 +11,9 @@ from pathlib import Path
 from riplex.config import get_api_key, get_output_root, get_rip_output
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
-    build_dvd_entries,
+    analyze_disc,
     format_seconds,
-    is_skip_title,
     print_disc_analysis,
-    select_rippable_titles,
 )
 from riplex.disc.makemkv import (
     MakeMKV,
@@ -25,7 +23,6 @@ from riplex.disc.makemkv import (
 )
 from riplex.disc.provider import (
     detect_disc_format,
-    detect_disc_number,
 )
 from riplex.lookup import lookup_metadata
 from riplex.manifest import build_rip_manifest, build_rip_path, write_manifest
@@ -172,12 +169,24 @@ async def run_rip(args: argparse.Namespace) -> int:
     elif release_name:
         print(f"  Selected release: {release_name}", file=sys.stderr)
 
-    # Show disc analysis
-    print_disc_analysis(disc_info, discs, is_movie, movie_runtime)
+    # Analyze disc and determine which titles to rip
+    analysis = analyze_disc(
+        disc_info, discs,
+        is_movie=is_movie,
+        movie_runtime=movie_runtime,
+    )
+    dvd_entries = analysis.dvd_entries
+    total_episode_runtime = analysis.total_episode_runtime
+    episode_count = analysis.episode_count
+    disc_number = analysis.disc_number
+
+    # Show disc analysis (uses filtered entries via disc_number)
+    current_disc_entries = (
+        [d for d in discs if d.number == disc_number] if disc_number else discs
+    )
+    print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
 
     # Determine which titles to rip
-    dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(discs)
-
     if getattr(args, "titles", None):
         try:
             rip_indices = [int(x.strip()) for x in args.titles.split(",")]
@@ -191,10 +200,7 @@ async def run_rip(args: argparse.Namespace) -> int:
     elif getattr(args, "rip_all", False):
         rip_titles = list(disc_info.titles)
     else:
-        rip_titles = select_rippable_titles(
-            disc_info, dvd_entries, is_movie, movie_runtime,
-            total_episode_runtime, episode_count,
-        )
+        rip_titles = analysis.rippable_titles
 
     if not rip_titles:
         print("\nNo titles to rip.", file=sys.stderr)
@@ -206,7 +212,6 @@ async def run_rip(args: argparse.Namespace) -> int:
         print("Error: --output or output_root config required.", file=sys.stderr)
         return 1
 
-    disc_number = detect_disc_number(disc_info, discs)
     if not disc_number:
         disc_number = 1
         if discs and len(discs) > 1:

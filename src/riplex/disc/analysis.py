@@ -7,6 +7,7 @@ rip/skip recommendations.  Used by both ``rip-guide`` and ``rip``.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 
 
 # Edition patterns in dvdcompare feature titles
@@ -416,3 +417,94 @@ def print_disc_analysis(
     if skip_titles:
         skip_indices = ", ".join(str(t.index) for t in skip_titles)
         print(f"  Skip titles: {skip_indices}")
+
+
+# ---- shared analysis entry point ----
+
+
+@dataclass
+class DiscAnalysis:
+    """Result of analyzing a disc's titles against metadata."""
+
+    disc_number: int | None
+    dvd_entries: list[tuple[str, int, str]]
+    total_episode_runtime: int
+    episode_count: int
+    rippable_titles: list
+    classifications: dict[int, str] = field(default_factory=dict)
+
+
+def analyze_disc(
+    disc_info,
+    dvdcompare_discs: list,
+    *,
+    disc_number: int | None = None,
+    is_movie: bool,
+    movie_runtime: int | None = None,
+) -> DiscAnalysis:
+    """Analyze disc titles and determine rip recommendations.
+
+    This is the single entry point for the "filter entries → build entries →
+    classify → select" chain, shared by CLI rip, CLI orchestrate, and the GUI.
+
+    Parameters
+    ----------
+    disc_info:
+        Live disc info from makemkvcon (has .titles, .disc_name).
+    dvdcompare_discs:
+        All PlannedDisc objects from the dvdcompare release.
+    disc_number:
+        Which disc this is (1-based).  If provided, entries are filtered to
+        that disc only.  If ``None``, auto-detection is attempted via
+        ``detect_disc_number()``.  When auto-detection fails and there are
+        multiple discs, an **empty** entry list is used (no dvdcompare data),
+        falling back to duration heuristics only.
+    is_movie:
+        Whether this is a movie (vs TV show).
+    movie_runtime:
+        Movie runtime in seconds (used for main-feature classification).
+    """
+    from riplex.disc.provider import detect_disc_number
+
+    # Resolve disc number
+    if disc_number is None and dvdcompare_discs:
+        disc_number = detect_disc_number(disc_info, dvdcompare_discs)
+
+    # Filter to the current disc's entries
+    if disc_number is not None:
+        current_disc_entries = [d for d in dvdcompare_discs if d.number == disc_number]
+    elif len(dvdcompare_discs) <= 1:
+        # Single disc release: safe to use all entries
+        current_disc_entries = dvdcompare_discs
+    else:
+        # Multiple discs, detection failed: use NO entries rather than all
+        # (using all discs pollutes classification with entries from other discs)
+        current_disc_entries = []
+
+    dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(
+        current_disc_entries
+    )
+
+    # Select rippable titles
+    titles = disc_info.titles if disc_info else []
+    rippable = select_rippable_titles(
+        disc_info, dvd_entries, is_movie, movie_runtime,
+        total_episode_runtime, episode_count,
+    )
+
+    # Classify each title
+    classifications = {}
+    for t in titles:
+        classifications[t.index] = classify_title(
+            t, titles, dvd_entries, is_movie, movie_runtime,
+            total_episode_runtime, episode_count,
+        )
+
+    return DiscAnalysis(
+        disc_number=disc_number,
+        dvd_entries=dvd_entries,
+        total_episode_runtime=total_episode_runtime,
+        episode_count=episode_count,
+        rippable_titles=rippable,
+        classifications=classifications,
+    )
