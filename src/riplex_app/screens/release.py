@@ -72,8 +72,21 @@ class ReleaseScreen:
         """Build view showing release options."""
         rec_idx = self._score_releases(releases)
 
+        # Filter out releases with no discs (no useful data)
+        indexed_releases = [(i, rel) for i, rel in enumerate(releases) if rel.discs]
+        if not indexed_releases:
+            return self._build_no_releases_view()
+
+        # Sort: recommended first, then by disc count descending
+        def sort_key(item):
+            i, rel = item
+            is_rec = (i == rec_idx)
+            return (not is_rec, -len(rel.discs))
+
+        indexed_releases.sort(key=sort_key)
+
         release_rows = []
-        for i, rel in enumerate(releases):
+        for i, rel in indexed_releases:
             disc_count = len(rel.discs)
             disc_word = "disc" if disc_count == 1 else "discs"
             label = f"{rel.name} [{disc_count} {disc_word}]"
@@ -81,9 +94,12 @@ class ReleaseScreen:
                 label += "  (* recommended)"
             release_rows.append(ft.Radio(value=str(i), label=label))
 
+        # Default selection: recommended release
+        default_value = str(rec_idx) if any(i == rec_idx for i, _ in indexed_releases) else str(indexed_releases[0][0])
+
         self.release_radio_group = ft.RadioGroup(
             content=ft.Column(release_rows, spacing=2),
-            value=str(rec_idx),
+            value=default_value,
         )
 
         return ft.Column(
