@@ -64,9 +64,22 @@ class ProgressScreen:
             style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700),
         )
 
+        # Disc indicator for orchestrate mode
+        disc_indicator = ft.Container()
+        if self.app.state.get("workflow") == "orchestrate":
+            disc_num = self.app.state.get("_orchestrate_disc_number")
+            disc_queue = self.app.state.get("disc_queue", [])
+            if disc_num and disc_queue:
+                queue_pos = disc_queue.index(disc_num) + 1 if disc_num in disc_queue else 0
+                disc_indicator = ft.Text(
+                    f"Disc {disc_num} ({queue_pos}/{len(disc_queue)})",
+                    size=13, color=ft.Colors.BLUE_400, weight=ft.FontWeight.BOLD,
+                )
+
         self.content = ft.Column(
             [
                 ft.Text("Ripping", size=24, weight=ft.FontWeight.BOLD),
+                disc_indicator,
                 ft.Text(
                     "MakeMKV is ripping the selected titles. This can take a while "
                     "depending on disc size and drive speed. Do not eject the disc.",
@@ -181,9 +194,16 @@ class ProgressScreen:
         # Write debug snapshots
         self._write_snapshots(results)
 
-        # Brief pause then navigate to done
+        # Write rip manifest (for orchestrate resume support)
+        self._write_manifest(results)
+
+        # Brief pause then navigate
         time.sleep(1)
-        self.app.navigate("done")
+
+        if self.app.state.get("workflow") == "orchestrate":
+            self._advance_orchestrate(results)
+        else:
+            self.app.navigate("done")
 
     def _write_snapshots(self, results: list[RipResult]):
         """Write debug snapshots to _riplex/ folder after rip."""
@@ -214,6 +234,99 @@ class ProgressScreen:
             log.info("Wrote debug snapshots to %s", debug_dir)
         except Exception as exc:
             log.warning("Failed to write debug snapshots: %s", exc)
+
+    def _write_manifest(self, results: list[RipResult]):
+        """Write a rip manifest for resume support."""
+        from riplex.manifest import build_rip_manifest, write_manifest
+
+        output_dir = self.app.state.get("output_dir")
+        disc_info = self.app.state.get("disc_info")
+        tmdb_match = self.app.state.get("tmdb_match")
+        if not output_dir or not disc_info or not tmdb_match:
+            return
+
+        succeeded = [r for r in results if r.success]
+        if not succeeded:
+            return
+
+        try:
+            canonical = tmdb_match.title
+            year = tmdb_match.year or 0
+            is_movie = getattr(tmdb_match, "media_type", "movie") != "tv"
+            movie_runtime = self.app.state.get("movie_runtime")
+            disc_number = self.app.state.get("_orchestrate_disc_number")
+            drive = self.app.state.get("drive")
+            volume_label = drive.disc_label if drive else ""
+            release = self.app.state.get("release")
+            release_name = release.name if release else ""
+
+            # Get analysis data for classification
+            from riplex.disc.provider import detect_disc_format
+            disc_format = detect_disc_format(disc_info) if disc_info else None
+
+            # Get dvd_entries info from the analysis stored during selection
+            dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
+            from riplex.disc.analysis import analyze_disc
+            analysis = analyze_disc(
+                disc_info, dvdcompare_discs,
+                disc_number=disc_number,
+                is_movie=is_movie,
+                movie_runtime=movie_runtime,
+            )
+
+            manifest = build_rip_manifest(
+                canonical=canonical,
+                year=year,
+                is_movie=is_movie,
+                disc_number=disc_number,
+                volume_label=volume_label,
+                disc_format=disc_format,
+                release_name=release_name,
+                disc_info=disc_info,
+                rip_results=results,
+                dvd_entries=analysis.dvd_entries,
+                movie_runtime=movie_runtime,
+                total_episode_runtime=analysis.total_episode_runtime,
+                episode_count=analysis.episode_count,
+            )
+            manifest_path = write_manifest(Path(output_dir), manifest)
+            log.info("Wrote rip manifest: %s", manifest_path)
+        except Exception as exc:
+            log.warning("Failed to write rip manifest: %s", exc)
+
+    def _advance_orchestrate(self, results: list[RipResult]):
+        """In orchestrate mode, store results and advance to next disc or finish."""
+        disc_number = self.app.state.get("_orchestrate_disc_number")
+        disc_queue = self.app.state.get("disc_queue", [])
+        current_idx = self.app.state.get("current_disc_idx", 0)
+
+        # Store results for this disc
+        all_results = self.app.state.get("all_rip_results", {})
+        all_results[disc_number] = results
+        self.app.state["all_rip_results"] = all_results
+
+        # Track as ripped
+        ripped = self.app.state.get("ripped_discs", set())
+        if any(r.success for r in results):
+            ripped.add(disc_number)
+        self.app.state["ripped_discs"] = ripped
+
+        # Advance to next disc
+        next_idx = current_idx + 1
+        if next_idx < len(disc_queue):
+            self.app.state["current_disc_idx"] = next_idx
+            next_disc = disc_queue[next_idx]
+            self.app.state["_orchestrate_disc_number"] = next_disc
+
+            # Check if this disc is already inserted
+            inserted = self.app.state.get("_inserted_disc")
+            if next_disc == inserted:
+                self.app.navigate("selection")
+            else:
+                self.app.navigate("disc_swap")
+        else:
+            # All discs done
+            self.app.navigate("orchestrate_done")
 
     def _on_progress(self, progress: RipProgress):
         """Callback from run_rip for progress updates."""

@@ -16,6 +16,9 @@ from riplex_app.screens.done import DoneScreen
 from riplex_app.screens.folder_picker import FolderPickerScreen
 from riplex_app.screens.organize_preview import OrganizePreviewScreen
 from riplex_app.screens.organize_done import OrganizeDoneScreen
+from riplex_app.screens.disc_overview import DiscOverviewScreen
+from riplex_app.screens.disc_swap import DiscSwapScreen
+from riplex_app.screens.orchestrate_done import OrchestrateDoneScreen
 
 
 class RiplexApp:
@@ -32,7 +35,7 @@ class RiplexApp:
         # Shared state passed between screens
         self.state = {
             # Workflow
-            "workflow": "rip",    # "rip" | "organize"
+            "workflow": "rip",    # "rip" | "organize" | "orchestrate"
             # Rip workflow
             "drive": None,        # DriveInfo
             "disc_info": None,    # DiscInfo
@@ -45,6 +48,11 @@ class RiplexApp:
             "output_dir": None,   # Path for rip output
             "rip_results": [],    # list of RipResult
             "makemkvcon": None,   # Path to exe
+            # Orchestrate workflow
+            "disc_queue": [],           # ordered list of disc numbers to rip
+            "current_disc_idx": 0,      # index into disc_queue
+            "ripped_discs": set(),      # disc numbers already ripped (from manifests)
+            "all_rip_results": {},      # dict: disc_number -> list[RipResult]
             # Organize workflow
             "source_folder": None,  # Path — folder to organize
             "scanned": None,        # list[ScannedDisc] from scanner
@@ -64,6 +72,9 @@ class RiplexApp:
             "folder_picker": FolderPickerScreen(self),
             "organize_preview": OrganizePreviewScreen(self),
             "organize_done": OrganizeDoneScreen(self),
+            "disc_overview": DiscOverviewScreen(self),
+            "disc_swap": DiscSwapScreen(self),
+            "orchestrate_done": OrchestrateDoneScreen(self),
         }
 
         self.navigate("welcome")

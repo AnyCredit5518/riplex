@@ -43,9 +43,13 @@ class SelectionScreen:
         is_movie = tmdb_match.media_type == "movie" if tmdb_match else True
         movie_runtime = self.app.state.get("movie_runtime")
 
+        # In orchestrate mode, use the explicit disc number from the queue
+        orchestrate_disc_num = self.app.state.get("_orchestrate_disc_number")
+
         # Use shared analyze_disc — same logic as CLI rip and orchestrate
         analysis = analyze_disc(
             disc_info, dvdcompare_discs,
+            disc_number=orchestrate_disc_num,
             is_movie=is_movie,
             movie_runtime=movie_runtime,
         )
@@ -151,7 +155,8 @@ class SelectionScreen:
             year_str = f" ({tmdb_match.year})" if tmdb_match.year else ""
             match_label = f"{tmdb_match.title}{year_str}"
 
-        back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata"))
+        back_target = "disc_overview" if self.app.state.get("workflow") == "orchestrate" else "metadata"
+        back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate(back_target))
         start_btn = ft.ElevatedButton(
             "Start Rip",
             icon=ft.Icons.PLAY_ARROW,
@@ -162,10 +167,19 @@ class SelectionScreen:
             ),
         )
 
+        # Disc number indicator for orchestrate mode
+        disc_label = ""
+        if self.app.state.get("workflow") == "orchestrate" and orchestrate_disc_num:
+            disc_queue = self.app.state.get("disc_queue", [])
+            queue_pos = disc_queue.index(orchestrate_disc_num) + 1 if orchestrate_disc_num in disc_queue else 0
+            disc_label = f"Disc {orchestrate_disc_num} ({queue_pos}/{len(disc_queue)})"
+
         return ft.Column(
             [
                 ft.Text("Select Titles to Rip", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(match_label, size=14, color=ft.Colors.GREY_400) if match_label else ft.Container(),
+                ft.Text(disc_label, size=13, color=ft.Colors.BLUE_400,
+                        weight=ft.FontWeight.BOLD) if disc_label else ft.Container(),
                 ft.Text(
                     "Titles marked RIP are recommended based on dvdcompare data and "
                     "duration matching. Uncheck any you don't want. Titles marked SKIP "

@@ -17,8 +17,12 @@ class ReleaseScreen:
 
     @property
     def _next_screen(self) -> str:
-        return "organize_preview" if self.app.state.get("workflow") == "organize" else "selection"
-        self.release_radio_group = None
+        workflow = self.app.state.get("workflow")
+        if workflow == "organize":
+            return "organize_preview"
+        if workflow == "orchestrate":
+            return "disc_overview"
+        return "selection"
 
     def build(self) -> ft.Control:
         tmdb_match = self.app.state["tmdb_match"]
@@ -192,6 +196,7 @@ class ReleaseScreen:
 
     def _use_release(self, release):
         """Convert a dvdcompare release to PlannedDiscs and navigate."""
+        self.app.state["release"] = release
         try:
             discs = _convert_release(release)
             self.app.state["dvdcompare_discs"] = discs
