@@ -28,6 +28,17 @@ class SelectionScreen:
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
         titles = disc_info.titles if disc_info else []
 
+        # Debug: log release context
+        log.info("=== Selection Screen ===")
+        log.info("Volume label: %s", disc_info.disc_name if disc_info else None)
+        log.info("dvdcompare_discs: %d discs in release", len(dvdcompare_discs))
+        for d in dvdcompare_discs:
+            ep_count = len(d.episodes) if hasattr(d, 'episodes') else 0
+            ex_count = len(d.extras) if hasattr(d, 'extras') else 0
+            log.info("  Disc %d: %d episodes, %d extras, format=%s",
+                     d.number, ep_count, ex_count, getattr(d, 'disc_format', None))
+        log.info("Live disc: %d titles", len(titles))
+
         # Build classification data from dvdcompare
         is_movie = tmdb_match.media_type == "movie" if tmdb_match else True
         movie_runtime = self.app.state.get("movie_runtime")

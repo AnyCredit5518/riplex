@@ -189,7 +189,7 @@ def _rip_guide_json(
             )
             skip = is_skip_title(
                 t, disc_info.titles, is_movie, movie_runtime,
-                total_episode_runtime, episode_count,
+                total_episode_runtime, episode_count, dvd_entries,
             )
             titles_json.append({
                 "index": t.index,

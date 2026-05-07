@@ -129,6 +129,12 @@ def classify_title(
                 return f"{edition} ({res_label}) - rip this"
             return f"MAIN FILM ({res_label}) - rip this"
 
+    # Check if this matches a dvdcompare "Play All" entry (before extended cut check)
+    if dvd_entries:
+        play_all_match = find_duration_match(dur, dvd_entries)
+        if play_all_match and "play all" in play_all_match[0].lower():
+            return f"Play All ({res_label}) - skip (rip individual titles instead)"
+
     # Check for extended/director's cut: significantly longer than theatrical
     # but within a plausible range (5-60 min longer)
     if is_movie and movie_runtime:
@@ -176,8 +182,9 @@ def classify_title(
     # Check if this matches a single dvdcompare episode
     best_match = find_duration_match(dur, dvd_entries)
     if best_match:
-        name, _, entry_type = best_match
-        # Check for a duplicate at different resolution
+        name, _, entry_type = best_match        # Skip if it matches a "Play All" entry from dvdcompare
+        if "play all" in name.lower():
+            return f"Play All ({res_label}) - skip (rip individual titles instead)"        # Check for a duplicate at different resolution
         dups = [
             t for t in all_titles
             if t is not title
@@ -216,6 +223,7 @@ def is_skip_title(
     movie_runtime: int | None,
     total_episode_runtime: int,
     episode_count: int,
+    dvd_entries: list[tuple[str, int, str]] | None = None,
 ) -> bool:
     """Return True if this title should be skipped."""
     dur = title.duration_seconds
@@ -241,6 +249,12 @@ def is_skip_title(
         for t in all_titles:
             if t is not title and "3840" in (t.resolution or "") and abs(t.duration_seconds - dur) < 30:
                 return True
+
+    # Skip titles matching a dvdcompare "Play All" entry
+    if dvd_entries:
+        match = find_duration_match(dur, dvd_entries)
+        if match and "play all" in match[0].lower():
+            return True
 
     # Skip dvdcompare-based play-all if individual episodes exist at same resolution
     if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
@@ -282,6 +296,7 @@ def select_rippable_titles(
         if not is_skip_title(
             t, disc_info.titles, is_movie, movie_runtime,
             total_episode_runtime, episode_count,
+            dvd_entries,
         )
     ]
 
@@ -406,7 +421,7 @@ def print_disc_analysis(
     rip_titles = [
         t for t in titles
         if not is_skip_title(t, titles, is_movie, movie_runtime,
-                             total_episode_runtime, episode_count)
+                             total_episode_runtime, episode_count, dvd_entries)
     ]
     skip_titles = [t for t in titles if t not in rip_titles]
 
@@ -485,10 +500,17 @@ def analyze_disc(
         current_disc_entries
     )
 
+    # If this disc has no film/episode entries, it's a bonus disc —
+    # disable movie_runtime heuristics (main film / extended cut detection)
+    effective_movie_runtime = movie_runtime
+    if is_movie and episode_count == 0 and dvd_entries:
+        # Disc has dvdcompare data but no main film — it's extras-only
+        effective_movie_runtime = None
+
     # Select rippable titles
     titles = disc_info.titles if disc_info else []
     rippable = select_rippable_titles(
-        disc_info, dvd_entries, is_movie, movie_runtime,
+        disc_info, dvd_entries, is_movie, effective_movie_runtime,
         total_episode_runtime, episode_count,
     )
 
@@ -496,7 +518,7 @@ def analyze_disc(
     classifications = {}
     for t in titles:
         classifications[t.index] = classify_title(
-            t, titles, dvd_entries, is_movie, movie_runtime,
+            t, titles, dvd_entries, is_movie, effective_movie_runtime,
             total_episode_runtime, episode_count,
         )
 

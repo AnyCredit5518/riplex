@@ -215,6 +215,32 @@ class TestIsSkipTitle:
         play_all = _make_title(3, 6100, chapters=12, segments=2)
         assert is_skip_title(t1, [t1, t2, play_all], False, None, 0, 0) is False
 
+    def test_skip_dvdcompare_play_all(self):
+        """Titles matching a dvdcompare 'Play All' entry should be skipped."""
+        play_all_title = _make_title(0, 3050)  # 3050s on disc
+        individual = _make_title(1, 1500)
+        dvd_entries = [
+            ("Section A: Play All", 3050, "extra"),
+            ("Feature 1", 1500, "extra"),
+            ("Feature 2", 1550, "extra"),
+        ]
+        assert is_skip_title(
+            play_all_title, [play_all_title, individual],
+            False, None, 0, 0, dvd_entries,
+        ) is True
+
+    def test_keep_non_play_all_dvdcompare_match(self):
+        """Titles matching a normal dvdcompare entry should NOT be skipped."""
+        feature = _make_title(0, 1500)
+        dvd_entries = [
+            ("Making Of Documentary", 1500, "extra"),
+            ("Play All", 3050, "extra"),
+        ]
+        assert is_skip_title(
+            feature, [feature],
+            False, None, 0, 0, dvd_entries,
+        ) is False
+
 
 class TestBuildDvdEntries:
     def test_builds_entries(self):
