@@ -1,12 +1,16 @@
 """Done screen - shows results and offers next actions."""
 
+import logging
 import os
 import platform
 import subprocess
+import threading
 import urllib.parse
 import webbrowser
 
 import flet as ft
+
+log = logging.getLogger(__name__)
 
 
 class DoneScreen:
@@ -61,6 +65,13 @@ class DoneScreen:
             on_click=self._open_folder,
             visible=output_dir is not None,
         )
+        organize_btn = ft.ElevatedButton(
+            "Organize",
+            icon=ft.Icons.DRIVE_FILE_MOVE,
+            on_click=self._organize,
+            visible=output_dir is not None and len(successful) > 0,
+            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+        )
         rip_another_btn = ft.ElevatedButton(
             "Rip Another Disc",
             icon=ft.Icons.ALBUM,
@@ -91,7 +102,7 @@ class DoneScreen:
                 ft.Text("Files", size=14, weight=ft.FontWeight.BOLD),
                 ft.Column(file_rows, spacing=4, scroll=ft.ScrollMode.AUTO, expand=True),
                 ft.Container(height=10),
-                ft.Row([open_folder_btn, rip_another_btn, quit_btn], spacing=12),
+                ft.Row([open_folder_btn, organize_btn, rip_another_btn, quit_btn], spacing=12),
                 ft.Row([report_bug_btn], spacing=12),
             ],
             spacing=10,
@@ -176,6 +187,44 @@ class DoneScreen:
         self.app.state["output_dir"] = None
         self.app.state["rip_results"] = []
         self.app.navigate("disc_detection")
+
+    def _organize(self, e):
+        """Scan rip root folder and navigate to organize preview."""
+        from pathlib import Path
+        from riplex.manifest import build_rip_path
+        from riplex.scanner import scan_folder
+
+        output_dir = self.app.state.get("output_dir")
+        tmdb_match = self.app.state.get("tmdb_match")
+        if not output_dir:
+            return
+
+        # Resolve the rip root (parent of Disc N subfolders).
+        # If the GUI ripped into a disc subfolder, go up to the root.
+        # Otherwise use output_dir directly.
+        if tmdb_match:
+            scan_path = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+        else:
+            scan_path = Path(output_dir)
+
+        e.control.disabled = True
+        e.control.text = "Scanning..."
+        self.app.page.update()
+
+        def _do_scan():
+            try:
+                scanned = scan_folder(scan_path)
+                self.app.state["scanned"] = scanned
+                self.app.state["source_folder"] = str(scan_path)
+                self.app.state["workflow"] = "organize"
+                self.app.navigate("organize_preview")
+            except Exception as exc:
+                log.warning("Organize scan failed: %s", exc)
+                e.control.disabled = False
+                e.control.text = "Organize"
+                self.app.page.update()
+
+        threading.Thread(target=_do_scan, daemon=True).start()
 
     def _quit(self, e):
         """Close the application."""

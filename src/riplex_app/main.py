@@ -87,6 +87,12 @@ def main():
         format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
         datefmt="%H:%M:%S",
     )
+    # Write riplex_app logs to a file (Flet debug noise drowns the console)
+    app_logger = logging.getLogger("riplex_app")
+    fh = logging.FileHandler("riplex_app.log", mode="w", encoding="utf-8")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s [%(name)s] %(message)s", datefmt="%H:%M:%S"))
+    app_logger.addHandler(fh)
     ft.app(target=RiplexApp)
 
 
