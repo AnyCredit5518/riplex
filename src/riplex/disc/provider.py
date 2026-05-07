@@ -454,7 +454,7 @@ def detect_disc_number(
 
     Tries three strategies:
     1. Parse the volume label for a disc number (e.g. "FROZEN_PLANET_II_D2" -> 2)
-    2. Match live title durations against each dvdcompare disc's episodes.
+    2. Match live title durations against each dvdcompare disc's episodes and extras.
     3. For movies, match by disc format/resolution.
 
     Returns the disc number (1-based) or None if detection fails.
@@ -481,30 +481,38 @@ def detect_disc_number(
     best_score = -1
 
     for disc in dvdcompare_discs:
+        # Gather all content durations: episodes first, then extras
         ep_durations = sorted(
             [ep.runtime_seconds for ep in disc.episodes if ep.runtime_seconds > 0],
             reverse=True,
         )
-        if not ep_durations:
+        extra_durations = sorted(
+            [ex.runtime_seconds for ex in disc.extras if ex.runtime_seconds > 120],
+            reverse=True,
+        )
+
+        # Try episodes first (stronger signal), fall back to extras
+        candidates = ep_durations if ep_durations else extra_durations
+        if not candidates:
             continue
 
-        # Count how many live titles match an episode within 60 seconds
+        # Count how many live titles match a candidate within 60 seconds
         matched = 0
         used = set()
         for live_dur in live_durations:
-            for i, ep_dur in enumerate(ep_durations):
-                if i not in used and abs(live_dur - ep_dur) < 60:
+            for i, cand_dur in enumerate(candidates):
+                if i not in used and abs(live_dur - cand_dur) < 60:
                     matched += 1
                     used.add(i)
                     break
 
-        # Score: fraction of episodes matched
-        score = matched / len(ep_durations) if ep_durations else 0
+        # Score: fraction of candidates matched
+        score = matched / len(candidates) if candidates else 0
         if score > best_score:
             best_score = score
             best_disc = disc.number
 
-    # Require at least 50% of episodes to match
+    # Require at least 50% of entries to match
     if best_score >= 0.5:
         return best_disc
 

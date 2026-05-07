@@ -296,6 +296,63 @@ class TestDetectDiscNumber:
         info = DiscInfo(disc_name="MYSTERY_DISC", disc_type="Blu-ray disc", titles=titles)
         assert _detect_disc_number(info, [disc1]) is None
 
+    def test_extras_only_disc_matching(self):
+        """Extras-only disc (like bonus features) should match via extras durations."""
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "Ep"
+                self.runtime_seconds = runtime
+
+        class FakeExtra:
+            def __init__(self, runtime):
+                self.title = "Extra"
+                self.runtime_seconds = runtime
+                self.feature_type = "extra"
+
+        class FakeDisc:
+            def __init__(self, number, ep_runtimes, extra_runtimes=None):
+                self.number = number
+                self.episodes = [FakeEp(rt) for rt in ep_runtimes]
+                self.extras = [FakeExtra(rt) for rt in (extra_runtimes or [])]
+                self.disc_format = "Blu-ray"
+
+        # Disc 1: main film (episodes)
+        disc1 = FakeDisc(1, [7200])
+        # Disc 3: bonus features only (no episodes, just extras)
+        disc3 = FakeDisc(3, [], extra_runtimes=[250, 300, 280, 260, 310])
+
+        # Live disc has titles matching disc 3's extras
+        titles = [
+            _make_title(0, 255),
+            _make_title(1, 305),
+            _make_title(2, 275),
+            _make_title(3, 265),
+            _make_title(4, 315),
+        ]
+        info = DiscInfo(disc_name="BONUS_DISC", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc3]) == 3
+
+    def test_extras_only_disc_no_match_short_extras(self):
+        """Extras under 120s are excluded from matching (too short to be reliable)."""
+        class FakeExtra:
+            def __init__(self, runtime):
+                self.title = "Extra"
+                self.runtime_seconds = runtime
+                self.feature_type = "extra"
+
+        class FakeDisc:
+            def __init__(self, number, extra_runtimes):
+                self.number = number
+                self.episodes = []
+                self.extras = [FakeExtra(rt) for rt in extra_runtimes]
+                self.disc_format = "Blu-ray"
+
+        # All extras are very short — shouldn't be used for matching
+        disc1 = FakeDisc(1, [60, 90, 100])
+        titles = [_make_title(0, 65), _make_title(1, 95)]
+        info = DiscInfo(disc_name="DISC", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1]) is None
+
 
 class TestAnalyzeDisc:
     """Tests for the analyze_disc() shared entry point."""
