@@ -35,7 +35,7 @@ class RiplexApp:
         # Shared state passed between screens
         self.state = {
             # Workflow
-            "workflow": "rip",    # "rip" | "organize" | "orchestrate"
+            "workflow": None,      # "orchestrate" | "organize"
             # Rip workflow
             "drive": None,        # DriveInfo
             "disc_info": None,    # DiscInfo

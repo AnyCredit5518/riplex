@@ -182,15 +182,7 @@ class WelcomeScreen:
             on_click=self._start_rip,
             disabled=not can_rip,
             style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
-            tooltip="Detect a disc, look up metadata, and rip selected titles.",
-        )
-        orchestrate_button = ft.ElevatedButton(
-            "Orchestrate",
-            icon=ft.Icons.QUEUE_MUSIC,
-            on_click=self._start_orchestrate,
-            disabled=not can_rip,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
-            tooltip="Multi-disc pipeline: rip all discs in a release with disc swap prompts, then organize.",
+            tooltip="Detect a disc, look up metadata, rip selected titles, and organize into Plex.",
         )
         organize_button = ft.ElevatedButton(
             "Organize Rips",
@@ -247,7 +239,7 @@ class WelcomeScreen:
                 setup_section,
                 ft.Container(expand=True),
                 ft.Text("What would you like to do?", size=16, weight=ft.FontWeight.BOLD),
-                ft.Row([rip_button, orchestrate_button, organize_button], spacing=20),
+                ft.Row([rip_button, organize_button], spacing=20),
             ],
             spacing=10,
             scroll=ft.ScrollMode.AUTO,
@@ -584,13 +576,7 @@ class WelcomeScreen:
         self.app.navigate("welcome")
 
     def _start_rip(self, e):
-        """Start the rip workflow."""
-        self.app.state["workflow"] = "rip"
-        self.app.state["makemkvcon"] = find_makemkvcon()
-        self.app.navigate("disc_detection")
-
-    def _start_orchestrate(self, e):
-        """Start the orchestrate (multi-disc) workflow."""
+        """Start the rip (orchestrate) workflow."""
         self.app.state["workflow"] = "orchestrate"
         self.app.state["makemkvcon"] = find_makemkvcon()
         self.app.state["disc_queue"] = []
