@@ -229,6 +229,11 @@ def classify_title(
         if dur < avg_episode * 0.3:
             return f"Unmatched content ({res_label}, {format_seconds(dur)})"
 
+    # Movie disc: any title that isn't the main film or extended cut
+    # and doesn't match a dvdcompare entry is unmatched content
+    if is_movie and movie_runtime and dur < movie_runtime * 0.5:
+        return f"Unmatched content ({res_label}, {format_seconds(dur)})"
+
     # Fall back: individual episode on a multi-title disc
     other_substantial = [
         t for t in all_titles
@@ -330,6 +335,13 @@ def is_skip_title(
             avg_episode = total_episode_runtime / episode_count
             if dur < avg_episode * 0.3:
                 return True
+
+    # Movie disc: skip titles that aren't the main film or extended cut
+    # and don't match any dvdcompare entry
+    if is_movie and movie_runtime and dur < movie_runtime * 0.5:
+        match = find_duration_match(dur, dvd_entries) if dvd_entries else None
+        if not match:
+            return True
 
     return False
 
@@ -559,8 +571,12 @@ def analyze_disc(
     # disable movie_runtime heuristics (main film / extended cut detection)
     effective_movie_runtime = movie_runtime
     if is_movie and episode_count == 0 and dvd_entries:
-        # Disc has dvdcompare data but no main film — it's extras-only
-        effective_movie_runtime = None
+        # Only disable movie_runtime if no disc in the set is a film disc.
+        # Film discs always have episode_count==0 because their features
+        # go into extras, but they still need main-film detection.
+        has_film_disc = any(d.is_film for d in current_disc_entries)
+        if not has_film_disc:
+            effective_movie_runtime = None
 
     # Select rippable titles
     titles = disc_info.titles if disc_info else []
