@@ -78,8 +78,8 @@ class UpdateScreen:
                 ft.Container(
                     ft.Column(notes_controls, spacing=8),
                     expand=True,
-                    padding=ft.padding.all(10),
-                    border=ft.border.all(1, ft.Colors.GREY_800),
+                    padding=ft.Padding(left=10, top=10, right=10, bottom=10),
+                    border=ft.Border.all(1, ft.Colors.GREY_800),
                     border_radius=8,
                 ),
                 ft.Container(height=10),
@@ -90,7 +90,7 @@ class UpdateScreen:
                             icon=ft.Icons.OPEN_IN_NEW,
                             on_click=lambda _: webbrowser.open(release_url),
                             style=ft.ButtonStyle(
-                                padding=ft.padding.symmetric(horizontal=30, vertical=15),
+                                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
                             ),
                             disabled=not release_url,
                         ),

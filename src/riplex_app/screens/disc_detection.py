@@ -47,7 +47,7 @@ class DiscDetectionScreen:
                 "Search Metadata",
                 icon=ft.Icons.SEARCH,
                 on_click=self._search,
-                style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+                style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
             )
             self.back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome"))
 
@@ -91,7 +91,7 @@ class DiscDetectionScreen:
             icon=ft.Icons.SEARCH,
             on_click=self._search,
             visible=False,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         self.back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome"))
 

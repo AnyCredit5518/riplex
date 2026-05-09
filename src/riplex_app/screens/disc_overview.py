@@ -71,7 +71,7 @@ class DiscOverviewScreen:
                             weight=ft.FontWeight.BOLD),
                     bgcolor=ft.Colors.GREEN_700,
                     border_radius=4,
-                    padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                    padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 )
             elif is_inserted:
                 badge = ft.Container(
@@ -79,7 +79,7 @@ class DiscOverviewScreen:
                             weight=ft.FontWeight.BOLD),
                     bgcolor=ft.Colors.BLUE_700,
                     border_radius=4,
-                    padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                    padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 )
             else:
                 badge = ft.Container(
@@ -87,7 +87,7 @@ class DiscOverviewScreen:
                             weight=ft.FontWeight.BOLD),
                     bgcolor=ft.Colors.GREY_700,
                     border_radius=4,
-                    padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                    padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 )
 
             # Disc format
@@ -140,7 +140,7 @@ class DiscOverviewScreen:
                         size=12, color=ft.Colors.BLUE_400,
                     ),
                 ], spacing=8),
-                padding=ft.padding.symmetric(vertical=8),
+                padding=ft.Padding(top=8, bottom=8),
             )
 
         back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("release"))
@@ -149,7 +149,7 @@ class DiscOverviewScreen:
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._start,
             style=ft.ButtonStyle(
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
+                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
                 bgcolor=ft.Colors.GREEN_700,
             ),
         )

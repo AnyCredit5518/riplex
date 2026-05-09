@@ -112,7 +112,7 @@ class OrchestrateDoneScreen:
             icon=ft.Icons.DRIVE_FILE_MOVE,
             on_click=self._organize,
             style=ft.ButtonStyle(
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
+                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
                 bgcolor=ft.Colors.GREEN_700,
             ),
             visible=total_success > 0,

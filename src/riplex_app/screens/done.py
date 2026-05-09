@@ -70,13 +70,13 @@ class DoneScreen:
             icon=ft.Icons.DRIVE_FILE_MOVE,
             on_click=self._organize,
             visible=output_dir is not None and len(successful) > 0,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         rip_another_btn = ft.ElevatedButton(
             "Rip Another Disc",
             icon=ft.Icons.ALBUM,
             on_click=self._rip_another,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         report_bug_btn = ft.OutlinedButton(
             "Report a Bug",

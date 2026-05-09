@@ -1,6 +1,7 @@
 """Riplex GUI - Flet-based companion app for riplex."""
 
 import logging
+import webbrowser
 
 import flet as ft
 
@@ -87,11 +88,26 @@ class RiplexApp:
         self.page.controls.clear()
         screen = self.screens[screen_name]
         self.page.controls.append(screen.build())
+        self.page.floating_action_button = ft.FloatingActionButton(
+            icon=ft.Icons.BUG_REPORT,
+            tooltip="Report a Bug",
+            on_click=self._open_bug_report,
+            mini=True,
+            bgcolor=ft.Colors.GREY_800,
+        )
         self.page.update()
 
         # Kick off background update check on welcome screen
         if screen_name == "welcome":
             screen.check_for_updates()
+
+    def _open_bug_report(self, e):
+        """Open a pre-filled GitHub bug report in the browser."""
+        from riplex_app.bug_report import build_bug_report_url
+
+        url = build_bug_report_url(self.state)
+        log.info("Opening bug report: %s", url)
+        webbrowser.open(url)
 
 
 def main():

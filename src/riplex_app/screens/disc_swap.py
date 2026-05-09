@@ -46,7 +46,7 @@ class DiscSwapScreen:
             icon=ft.Icons.DISC_FULL,
             on_click=self._scan,
             style=ft.ButtonStyle(
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
+                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
             ),
         )
         self.eject_btn = ft.OutlinedButton(

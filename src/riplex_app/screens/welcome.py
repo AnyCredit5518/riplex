@@ -181,7 +181,7 @@ class WelcomeScreen:
             icon=ft.Icons.ALBUM,
             on_click=self._start_rip,
             disabled=not can_rip,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
             tooltip="Detect a disc, look up metadata, rip selected titles, and organize into Plex.",
         )
         organize_button = ft.ElevatedButton(
@@ -189,7 +189,7 @@ class WelcomeScreen:
             icon=ft.Icons.FOLDER_OPEN,
             on_click=self._start_organize,
             disabled=not can_organize,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
             tooltip="Organize existing MKV rips into Plex-compatible folder structure.",
         )
 
@@ -205,7 +205,7 @@ class WelcomeScreen:
             ),
             bgcolor=ft.Colors.BLUE_50,
             border_radius=8,
-            padding=ft.padding.symmetric(horizontal=12, vertical=8),
+            padding=ft.Padding(left=12, top=8, right=12, bottom=8),
             visible=False,
         )
         self._update_info = None

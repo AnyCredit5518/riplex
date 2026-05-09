@@ -91,7 +91,7 @@ class MetadataScreen:
                         "Next",
                         icon=ft.Icons.ARROW_FORWARD,
                         on_click=self._next,
-                        style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+                        style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
                     ),
                 ]),
             ],

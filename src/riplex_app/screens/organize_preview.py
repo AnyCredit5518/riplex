@@ -1,6 +1,7 @@
 """Organize preview screen - dry-run plan and execute."""
 
 import asyncio
+import logging
 import threading
 from pathlib import Path
 
@@ -12,7 +13,9 @@ from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.metadata.planner import _plan_movie, _plan_show
 from riplex.models import PlannedMovie, SearchRequest
 from riplex.organizer import build_organize_plan, execute_plan
-from riplex.snapshot import save_organized_marker
+from riplex.snapshot import save_from_scanned, save_organized_marker
+
+log = logging.getLogger(__name__)
 
 
 class OrganizePreviewScreen:
@@ -91,6 +94,18 @@ class OrganizePreviewScreen:
                 result, planned, output_root, file_map,
                 scanned_files=scanned_map, disc_targets=targets,
             )
+
+            # Save organize snapshot (like the CLI does)
+            source_folder = self.app.state.get("source_folder")
+            if source_folder:
+                source_path = Path(source_folder)
+                snapshot_out = source_path / f"{source_path.name}.snapshot.json"
+                if not snapshot_out.exists():
+                    try:
+                        save_from_scanned(source_path, scanned, snapshot_out)
+                        log.info("Organize snapshot saved: %s", snapshot_out)
+                    except Exception as snap_exc:
+                        log.warning("Failed to save organize snapshot: %s", snap_exc)
 
             self.app.state["_organize_plan"] = (org_plan, planned)
 
@@ -209,7 +224,7 @@ class OrganizePreviewScreen:
             icon=ft.Icons.DRIVE_FILE_MOVE,
             on_click=self._execute,
             disabled=move_count == 0,
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
+            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         sections.append(
             ft.Row([

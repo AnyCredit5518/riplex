@@ -88,14 +88,14 @@ class SelectionScreen:
                 ft.Text("RIP", size=10, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                 bgcolor=ft.Colors.GREEN_700,
                 border_radius=4,
-                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 visible=is_recommended,
             )
             skip_badge = ft.Container(
                 ft.Text("SKIP", size=10, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                 bgcolor=ft.Colors.RED_700,
                 border_radius=4,
-                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 visible=not is_recommended,
             )
 
@@ -162,7 +162,7 @@ class SelectionScreen:
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._start_rip,
             style=ft.ButtonStyle(
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
+                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
                 bgcolor=ft.Colors.GREEN_700,
             ),
         )
