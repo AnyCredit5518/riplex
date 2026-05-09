@@ -61,7 +61,10 @@ class ReleaseScreen:
                     ft.Text(f"Looking up disc structure for \"{title}\" on dvdcompare.net...", size=14),
                 ], spacing=10),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                    ft.TextButton("Skip", on_click=lambda _: self._skip(None)),
+                ]),
             ],
             spacing=10,
             expand=True,
@@ -166,15 +169,23 @@ class ReleaseScreen:
 
     def _lookup_dvdcompare(self):
         """Fetch dvdcompare releases in background."""
+        import logging
+        log = logging.getLogger(__name__)
+
         tmdb_match = self.app.state["tmdb_match"]
         title = tmdb_match.title if tmdb_match else self.app.state["title"]
 
         try:
             disc_format = self._detect_disc_format()
             year = tmdb_match.year if tmdb_match else None
+            log.info("dvdcompare lookup: title=%r format=%r year=%r", title, disc_format, year)
             film = asyncio.run(find_film(title, disc_format, year=year))
+            log.info("dvdcompare lookup: found %r (%d releases)",
+                     film.title if film else None,
+                     len(film.releases) if film else 0)
             self.app.state["_dvdcompare_film"] = film
         except Exception as exc:
+            log.warning("dvdcompare lookup failed: %s", exc)
             self.app.state["_dvdcompare_error"] = str(exc)
 
         # Schedule navigation on main event loop
