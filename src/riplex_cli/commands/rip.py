@@ -19,7 +19,6 @@ from riplex.disc.makemkv import (
     MakeMKV,
     find_makemkvcon,
     run_disc_info,
-    run_rip,
 )
 from riplex.disc.provider import (
     detect_disc_format,
@@ -247,9 +246,8 @@ async def run_rip(args: argparse.Namespace) -> int:
         title_start = time.monotonic()
         title_bytes = t.size_bytes
 
-        rip_result = run_rip(
+        rip_result = MakeMKV(exe).rip(
             drive_idx, t.index, output_dir,
-            makemkvcon=exe,
             progress_callback=make_progress_callback(title_start, title_bytes),
         )
 
