@@ -60,9 +60,7 @@ class DiscProvider:
                       title, disc_format, release)
             return _dicts_to_discs(cached)
 
-        film = await find_film(title, disc_format, year=year)
-        log.debug("dvdcompare find_film('%s', format=%s, year=%s): %d release(s)",
-                  title, disc_format, year, len(film.releases) if film.releases else 0)
+        film = await self._fetch_film_cached(title, disc_format, year=year)
         discs = _convert_film(film, release)
         log.debug("Converted %d disc(s) from release '%s'", len(discs), release)
 
@@ -80,10 +78,29 @@ class DiscProvider:
         """Fetch dvdcompare data and select the best release.
 
         Single entry point for all dvdcompare lookups. Handles network
-        fetch, scoring, interactive prompt, and release conversion.
+        fetch, caching, scoring, interactive prompt, and release conversion.
         """
-        film = await find_film(title, disc_format, year=year)
+        film = await self._fetch_film_cached(title, disc_format, year=year)
         return select_dvdcompare_release(film, disc_info=disc_info, preferred=preferred)
+
+    async def _fetch_film_cached(
+        self,
+        title: str,
+        disc_format: str | None = None,
+        year: int | None = None,
+    ) -> FilmComparison:
+        """Fetch a FilmComparison, returning cached data when available."""
+        cache_key = cache.hash_key(f"film|{title}|{disc_format}|{year}")
+        cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
+        if cached is not None:
+            log.debug("dvdcompare film cache hit for '%s'", title)
+            return _dict_to_film(cached)
+
+        film = await find_film(title, disc_format, year=year)
+        log.debug("dvdcompare find_film('%s', format=%s, year=%s): %d release(s)",
+                  title, disc_format, year, len(film.releases) if film.releases else 0)
+        cache.cache_set(self.cache_ns, cache_key, dataclasses.asdict(film))
+        return film
 
 
 def _clean_feature_type(raw: str) -> str:
@@ -140,6 +157,26 @@ def _dicts_to_discs(data: list[dict]) -> list[PlannedDisc]:
         d["extras"] = [PlannedExtra(**e) for e in d.get("extras", [])]
         out.append(PlannedDisc(**d))
     return out
+
+
+def _dict_to_film(data: dict) -> FilmComparison:
+    """Deserialize a cached dict back into a FilmComparison."""
+    from dvdcompare.models import Disc, Feature, Release
+
+    def _to_feature(d: dict) -> Feature:
+        d["children"] = [_to_feature(c) for c in d.get("children", [])]
+        return Feature(**d)
+
+    releases = []
+    for r in data.get("releases", []):
+        discs = []
+        for disc in r.get("discs", []):
+            disc["features"] = [_to_feature(f) for f in disc.get("features", [])]
+            discs.append(Disc(**disc))
+        r["discs"] = discs
+        releases.append(Release(**r))
+    data["releases"] = releases
+    return FilmComparison(**data)
 
 
 def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:

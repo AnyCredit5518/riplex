@@ -5,8 +5,7 @@ import threading
 
 import flet as ft
 
-from dvdcompare.scraper import find_film
-from riplex.disc.provider import _convert_release
+from riplex.disc.provider import DiscProvider, _convert_release
 from riplex.disc.provider import detect_disc_format, score_releases
 
 
@@ -179,7 +178,8 @@ class ReleaseScreen:
             disc_format = self._detect_disc_format()
             year = tmdb_match.year if tmdb_match else None
             log.info("dvdcompare lookup: title=%r format=%r year=%r", title, disc_format, year)
-            film = asyncio.run(find_film(title, disc_format, year=year))
+            provider = DiscProvider()
+            film = asyncio.run(provider._fetch_film_cached(title, disc_format, year=year))
             log.info("dvdcompare lookup: found %r (%d releases)",
                      film.title if film else None,
                      len(film.releases) if film else 0)

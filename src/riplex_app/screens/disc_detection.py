@@ -262,8 +262,7 @@ class DiscDetectionScreen:
 
     def _fetch_dvdcompare_for_resume(self, session):
         """Fetch dvdcompare data and match the release from the manifest."""
-        from dvdcompare.scraper import find_film
-        from riplex.disc.provider import _convert_release, detect_disc_format
+        from riplex.disc.provider import DiscProvider, _convert_release, detect_disc_format
 
         disc_format = session.disc_format
         if not disc_format:
@@ -272,8 +271,9 @@ class DiscDetectionScreen:
                 disc_format = detect_disc_format(disc_info)
 
         try:
+            provider = DiscProvider()
             film = asyncio.run(
-                find_film(session.title, disc_format, year=session.year)
+                provider._fetch_film_cached(session.title, disc_format, year=session.year)
             )
             # Match release by name
             release = None
