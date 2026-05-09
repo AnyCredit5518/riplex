@@ -51,11 +51,11 @@ class TestCheckForUpdate:
                 assert check_for_update() is None
 
     def test_returns_none_when_up_to_date(self):
-        response_data = json.dumps({
+        response_data = json.dumps([{
             "tag_name": "v0.2.3",
             "html_url": "https://github.com/AnyCredit5518/riplex/releases/tag/v0.2.3",
             "assets": [],
-        }).encode()
+        }]).encode()
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = response_data
@@ -67,14 +67,15 @@ class TestCheckForUpdate:
                 assert check_for_update() is None
 
     def test_returns_update_info_when_newer(self):
-        response_data = json.dumps({
+        response_data = json.dumps([{
             "tag_name": "v0.3.0",
             "html_url": "https://github.com/AnyCredit5518/riplex/releases/tag/v0.3.0",
+            "body": "### Added\n- Cool feature",
             "assets": [
                 {"name": "riplex-ui-windows.exe", "browser_download_url": "https://example.com/win.exe"},
                 {"name": "riplex-ui-macos.zip", "browser_download_url": "https://example.com/mac.zip"},
             ],
-        }).encode()
+        }]).encode()
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = response_data
@@ -89,6 +90,52 @@ class TestCheckForUpdate:
         assert result["tag"] == "v0.3.0"
         assert "riplex-ui-windows.exe" in result["assets"]
         assert "riplex-ui-macos.zip" in result["assets"]
+        assert len(result["releases"]) == 1
+        assert result["releases"][0]["tag"] == "v0.3.0"
+
+    def test_groups_releases_by_minor_version(self):
+        response_data = json.dumps([
+            {"tag_name": "v0.5.2", "html_url": "url/v0.5.2", "body": "Fix 2", "assets": []},
+            {"tag_name": "v0.5.1", "html_url": "url/v0.5.1", "body": "Fix 1", "assets": []},
+            {"tag_name": "v0.5.0", "html_url": "url/v0.5.0", "body": "Big release", "assets": []},
+            {"tag_name": "v0.4.0", "html_url": "url/v0.4.0", "body": "Old", "assets": []},
+        ]).encode()
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = response_data
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        with patch("riplex_app.updater.get_current_version", return_value="0.4.0"):
+            with patch("urllib.request.urlopen", return_value=mock_resp):
+                result = check_for_update()
+
+        assert result is not None
+        assert result["tag"] == "v0.5.2"
+        assert len(result["releases"]) == 3
+        assert [r["tag"] for r in result["releases"]] == ["v0.5.2", "v0.5.1", "v0.5.0"]
+
+    def test_does_not_mix_major_versions(self):
+        response_data = json.dumps([
+            {"tag_name": "v1.0.1", "html_url": "url/v1.0.1", "body": "Patch", "assets": []},
+            {"tag_name": "v1.0.0", "html_url": "url/v1.0.0", "body": "Major", "assets": []},
+            {"tag_name": "v0.5.0", "html_url": "url/v0.5.0", "body": "Old minor", "assets": []},
+        ]).encode()
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = response_data
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        with patch("riplex_app.updater.get_current_version", return_value="0.5.0"):
+            with patch("urllib.request.urlopen", return_value=mock_resp):
+                result = check_for_update()
+
+        assert result is not None
+        assert result["tag"] == "v1.0.1"
+        # Should only contain v1.0.x, not v0.5.0
+        assert len(result["releases"]) == 2
+        assert [r["tag"] for r in result["releases"]] == ["v1.0.1", "v1.0.0"]
 
 
 # ---------------------------------------------------------------------------

@@ -23,31 +23,32 @@ class UpdateScreen:
             ])
 
         tag = update_info["tag"]
-        body = update_info.get("body", "").strip()
+        releases = update_info.get("releases", [])
         release_url = update_info.get("url", "")
         current = get_current_version()
 
-        # Clean up sparse release notes (auto-generated GitHub changelog links)
-        if body:
-            # De-duplicate repeated lines
-            seen = []
-            for line in body.splitlines():
-                if line not in seen:
-                    seen.append(line)
-            body = "\n".join(seen)
+        log.info("Update screen: %s -> %s (%d releases in series)", current, tag, len(releases))
 
-            # If it's just changelog links with no real content, replace with a summary
-            non_empty = [l for l in seen if l.strip()]
-            if all("full changelog" in l.lower() or not l.strip() for l in seen):
-                body = ""
+        # Build release notes content
+        notes_controls = []
+        for i, rel in enumerate(releases):
+            rel_body = self._clean_body(rel.get("body", ""))
+            if not rel_body:
+                rel_body = "*No release notes available.*"
 
-        if not body:
-            body = (
-                f"A new version of riplex ({tag}) is available.\n\n"
-                "Visit the release page for full details and download links."
+            notes_controls.append(
+                ft.Text(rel["tag"], size=16, weight=ft.FontWeight.BOLD),
             )
-
-        log.info("Update screen: %s -> %s", current, tag)
+            notes_controls.append(
+                ft.Markdown(
+                    rel_body,
+                    selectable=True,
+                    extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
+                    on_tap_link=lambda e: webbrowser.open(e.data),
+                ),
+            )
+            if i < len(releases) - 1:
+                notes_controls.append(ft.Divider(height=10, color=ft.Colors.GREY_800))
 
         return ft.Column(
             [
@@ -75,12 +76,7 @@ class UpdateScreen:
                 ft.Text("Release Notes", size=18, weight=ft.FontWeight.BOLD),
                 ft.Container(height=4),
                 ft.Container(
-                    ft.Markdown(
-                        body if body else "*No release notes available.*",
-                        selectable=True,
-                        extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
-                        on_tap_link=lambda e: webbrowser.open(e.data),
-                    ),
+                    ft.Column(notes_controls, spacing=8),
                     expand=True,
                     padding=ft.padding.all(10),
                     border=ft.border.all(1, ft.Colors.GREY_800),
@@ -113,3 +109,19 @@ class UpdateScreen:
 
     def _go_back(self, e):
         self.app.navigate("welcome")
+
+    @staticmethod
+    def _clean_body(body: str) -> str:
+        """Clean up sparse or auto-generated release notes."""
+        body = body.strip()
+        if not body:
+            return ""
+        # De-duplicate repeated lines
+        seen = []
+        for line in body.splitlines():
+            if line not in seen:
+                seen.append(line)
+        # If it's just changelog links with no real content, discard
+        if all("full changelog" in l.lower() or not l.strip() for l in seen):
+            return ""
+        return "\n".join(seen)
