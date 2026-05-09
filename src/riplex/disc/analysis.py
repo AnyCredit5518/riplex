@@ -17,6 +17,19 @@ _EDITION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Feature types that indicate featurette/bonus content (not episodes)
+_FEATURETTE_PLAY_ALL_TYPES = frozenset({
+    "featurette", "featurettes",
+    "behind the scenes", "behind-the-scenes",
+    "documentary", "interview", "interviews",
+    "deleted scene", "deleted scenes",
+})
+
+
+def _is_featurette_play_all(entry_type: str) -> bool:
+    """Return True if the entry type indicates a featurette collection."""
+    return entry_type.lower().strip() in _FEATURETTE_PLAY_ALL_TYPES
+
 
 def _detect_edition_name(
     duration: int,
@@ -118,7 +131,7 @@ def classify_title(
             and abs(t.duration_seconds - dur) < 5
             and t.size_bytes == title.size_bytes
         ):
-            return f"Duplicate of #{t.index} ({res_label}) - skip"
+            return f"Duplicate of #{t.index} ({res_label})"
 
     # Check if this is the main movie
     if is_movie and movie_runtime:
@@ -126,14 +139,17 @@ def classify_title(
             # Check if dvdcompare has a specific edition name (e.g. "Theatrical Cut")
             edition = _detect_edition_name(dur, dvd_entries, edition_hint="theatrical")
             if edition:
-                return f"{edition} ({res_label}) - rip this"
-            return f"MAIN FILM ({res_label}) - rip this"
+                return f"{edition} ({res_label})"
+            return f"MAIN FILM ({res_label})"
 
     # Check if this matches a dvdcompare "Play All" entry (before extended cut check)
     if dvd_entries:
         play_all_match = find_duration_match(dur, dvd_entries)
         if play_all_match and "play all" in play_all_match[0].lower():
-            return f"Play All ({res_label}) - skip (rip individual titles instead)"
+            pa_name, _, pa_type = play_all_match
+            colon_idx = pa_name.lower().find(": play all")
+            section = pa_name[:colon_idx] if colon_idx > 0 else pa_name
+            return f"{section}: Play All ({res_label})"
 
     # Check for extended/director's cut: significantly longer than theatrical
     # but within a plausible range (5-60 min longer)
@@ -143,8 +159,8 @@ def classify_title(
             # Try to get a specific name from dvdcompare entries
             edition_name = _detect_edition_name(dur, dvd_entries, edition_hint="extended")
             if edition_name:
-                return f"{edition_name} ({res_label}) - rip this"
-            return f"Extended Cut ({res_label}) - rip this"
+                return f"{edition_name} ({res_label})"
+            return f"Extended Cut ({res_label})"
 
     # Check if this is a play-all (dvdcompare total)
     if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
@@ -156,11 +172,8 @@ def classify_title(
             and t.duration_seconds > 120
         ]
         if same_res_individuals:
-            return (
-                f"Play-all ({res_label}, {title.chapters} chapters) - "
-                f"rip this OR the {len(same_res_individuals)} individual titles"
-            )
-        return f"Play-all ({res_label}, {title.chapters} chapters) - rip this"
+            return f"Play-all of {len(same_res_individuals)} titles ({res_label})"
+        return f"Play-all ({res_label})"
 
     # Disc-internal play-all detection: check if duration matches sum of other
     # titles at the same resolution (when no dvdcompare data available)
@@ -168,23 +181,29 @@ def classify_title(
     if play_all_match:
         parts = play_all_match
         part_indices = ", ".join(f"#{t.index}" for t in parts)
-        return (
-            f"Play-all ({res_label}, {title.chapters} ch, {title.segment_count} segments) - "
-            f"skip (rip {part_indices} individually)"
-        )
+        return f"Play-all of {part_indices} ({res_label})"
 
     # Check if this is a lower-resolution play-all (e.g. 1080p play-all of 4K episodes)
     cross_res_match = detect_cross_res_play_all(title, all_titles)
     if cross_res_match:
         other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
-        return f"Play-all ({res_label}) - skip (individual {other_res} titles available)"
+        return f"Play-all ({res_label}, individual {other_res} titles available)"
 
-    # Check if this matches a single dvdcompare episode
+    # Check if this matches a single dvdcompare entry
     best_match = find_duration_match(dur, dvd_entries)
     if best_match:
-        name, _, entry_type = best_match        # Skip if it matches a "Play All" entry from dvdcompare
+        name, _, entry_type = best_match
+        # Skip if it matches a "Play All" entry from dvdcompare
         if "play all" in name.lower():
-            return f"Play All ({res_label}) - skip (rip individual titles instead)"        # Check for a duplicate at different resolution
+            colon_idx = name.lower().find(": play all")
+            section = name[:colon_idx] if colon_idx > 0 else name
+            return f"{section}: Play All ({res_label})"
+
+        # Determine display label: include feature type for non-episode matches
+        is_extra = entry_type not in ("episode", "")
+        type_prefix = f"[{entry_type}] " if is_extra else ""
+
+        # Check for a duplicate at different resolution
         dups = [
             t for t in all_titles
             if t is not title
@@ -194,14 +213,21 @@ def classify_title(
         if dups:
             dup_res = "4K" if "3840" in dups[0].resolution else "1080p"
             if is_4k:
-                return f"{name} ({res_label}) - rip this (skip #{dups[0].index} {dup_res} duplicate)"
+                return f"{type_prefix}{name} ({res_label}, skip #{dups[0].index} {dup_res} duplicate)"
             else:
-                return f"{name} ({res_label}) - skip (rip #{dups[0].index} {dup_res} instead)"
-        return f"{name} ({res_label}) - rip this"
+                return f"{type_prefix}{name} ({res_label}, #{dups[0].index} is {dup_res})"
+        return f"{type_prefix}{name} ({res_label})"
 
     # Short title, likely menu/intro
     if dur < 120:
-        return "Very short - skip"
+        return f"Very short ({res_label})"
+
+    # When dvdcompare data exists and no match was found, this is unmatched content
+    # Don't call it "Episode" if it's much shorter than known episodes
+    if dvd_entries and episode_count > 0:
+        avg_episode = total_episode_runtime / episode_count
+        if dur < avg_episode * 0.3:
+            return f"Unmatched content ({res_label}, {format_seconds(dur)})"
 
     # Fall back: individual episode on a multi-title disc
     other_substantial = [
@@ -211,9 +237,9 @@ def classify_title(
         and t.resolution == title.resolution
     ]
     if other_substantial:
-        return f"Episode ({res_label}) - rip this"
+        return f"Episode ({res_label})"
 
-    return f"Unknown content ({res_label}, {format_seconds(dur)}) - rip to be safe"
+    return f"Unknown content ({res_label}, {format_seconds(dur)})"
 
 
 def is_skip_title(
@@ -250,11 +276,30 @@ def is_skip_title(
             if t is not title and "3840" in (t.resolution or "") and abs(t.duration_seconds - dur) < 30:
                 return True
 
-    # Skip titles matching a dvdcompare "Play All" entry
+    # Skip titles matching a dvdcompare "Play All" entry (but keep featurette play-alls)
     if dvd_entries:
         match = find_duration_match(dur, dvd_entries)
         if match and "play all" in match[0].lower():
-            return True
+            if not _is_featurette_play_all(match[2]):
+                return True
+
+    # On 4K discs, skip 1080p titles that match non-episode dvdcompare entries
+    # (featurettes, behind-the-scenes, etc. at lower resolution)
+    # Exception: keep 1080p featurette play-alls when no 4K version exists
+    if not is_4k and dvd_entries:
+        has_4k = any("3840" in (t.resolution or "") for t in all_titles if t.duration_seconds > 600)
+        if has_4k:
+            match = find_duration_match(dur, dvd_entries)
+            if match and match[2] != "episode":
+                # Keep featurette play-alls if no 4K counterpart at same duration
+                if "play all" in match[0].lower() and _is_featurette_play_all(match[2]):
+                    has_4k_version = any(
+                        "3840" in (t.resolution or "") and abs(t.duration_seconds - dur) < 30
+                        for t in all_titles if t is not title
+                    )
+                    if not has_4k_version:
+                        return False
+                return True
 
     # Skip dvdcompare-based play-all if individual episodes exist at same resolution
     if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
@@ -275,6 +320,16 @@ def is_skip_title(
     # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
     if detect_cross_res_play_all(title, all_titles):
         return True
+
+    # Skip unmatched short titles when dvdcompare data is available
+    # If we have episode metadata and this title is much shorter than episodes
+    # with no dvdcompare match, it's likely junk or an unlisted bonus
+    if dvd_entries and episode_count > 0:
+        match = find_duration_match(dur, dvd_entries)
+        if not match:
+            avg_episode = total_episode_runtime / episode_count
+            if dur < avg_episode * 0.3:
+                return True
 
     return False
 

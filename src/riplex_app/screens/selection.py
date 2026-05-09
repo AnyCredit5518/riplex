@@ -234,4 +234,42 @@ class SelectionScreen:
 
         self.app.state["output_dir"] = output_dir
 
+        # Save early snapshot at selection phase (before rip starts)
+        self._save_selection_snapshot(selected)
+
         self.app.navigate("progress")
+
+    def _save_selection_snapshot(self, selected_titles: list[int]):
+        """Save snapshot with disc info and metadata before rip starts."""
+        from pathlib import Path
+        from riplex.snapshot import get_debug_dir, save_rip_snapshot
+
+        output_dir = self.app.state.get("output_dir")
+        if not output_dir:
+            return
+
+        try:
+            debug_dir = get_debug_dir(Path(output_dir).parent)
+            disc_info = self.app.state.get("disc_info")
+            tmdb_match = self.app.state.get("tmdb_match")
+            discs = self.app.state.get("dvdcompare_discs", [])
+            release = self.app.state.get("release")
+
+            canonical = tmdb_match.title if tmdb_match else ""
+            year = tmdb_match.year if tmdb_match else None
+            is_movie = getattr(tmdb_match, "media_type", "movie") != "tv"
+            movie_runtime = self.app.state.get("movie_runtime")
+
+            save_rip_snapshot(
+                debug_dir, disc_info,
+                canonical=canonical, year=year, is_movie=is_movie,
+                movie_runtime=movie_runtime,
+                release_name=release.name if release else "",
+                discs=discs,
+                selected_titles=selected_titles,
+                phase="selection",
+            )
+            self.app.state["debug_dir"] = str(debug_dir)
+            log.info("Wrote selection snapshot to %s", debug_dir)
+        except Exception as exc:
+            log.warning("Failed to write selection snapshot: %s", exc)

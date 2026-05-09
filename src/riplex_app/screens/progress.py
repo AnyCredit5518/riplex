@@ -227,7 +227,9 @@ class ProgressScreen:
                 canonical=canonical, year=year, is_movie=is_movie,
                 movie_runtime=movie_runtime,
                 discs=discs,
+                selected_titles=self.app.state.get("selected_titles", []),
                 ripped_titles=[r.title_index for r in results if r.success],
+                phase="complete",
             )
             copy_debug_log(debug_dir)
             self.app.state["debug_dir"] = str(debug_dir)

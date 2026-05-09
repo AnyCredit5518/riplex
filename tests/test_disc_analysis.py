@@ -123,7 +123,6 @@ class TestClassifyTitle:
         play_all = _make_title(3, 6100, chapters=12, segments=2)
         result = classify_title(play_all, [t1, t2, play_all], [], False, None, 0, 0)
         assert "Play-all" in result
-        assert "skip" in result.lower()
 
 
 class TestDetectEditionName:
@@ -164,7 +163,6 @@ class TestClassifyTitleEditions:
         entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
         result = classify_title(t, [t], entries, True, 7200, 0, 0)
         assert "Theatrical Cut" in result
-        assert "rip this" in result
 
     def test_extended_cut_detected(self):
         theatrical = _make_title(0, 7200)
@@ -172,14 +170,12 @@ class TestClassifyTitleEditions:
         entries = [("The Film - Theatrical Cut (2160p)", 0, "film"), ("The Film - Extended Cut (2160p)", 0, "film")]
         result = classify_title(extended, [theatrical, extended], entries, True, 7200, 0, 0)
         assert "Extended Cut" in result
-        assert "rip this" in result
 
     def test_extended_cut_fallback_no_dvdcompare(self):
         theatrical = _make_title(0, 7200)
         extended = _make_title(1, 7900)
         result = classify_title(extended, [theatrical, extended], [], True, 7200, 0, 0)
         assert "Extended Cut" in result
-        assert "rip this" in result
 
     def test_not_extended_if_too_long(self):
         """A title >60min longer than theatrical should not be labeled extended."""

@@ -4,6 +4,13 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-08
+
+### Added
+
+- Disc fixture testing pattern for end-to-end classification tests using captured disc data.
+- `tests/test_disc_fixtures.py`: new test file for classification testing against real disc layouts.
+
 ## 2026-05-04
 
 ### Added

@@ -11,7 +11,7 @@ import flet as ft
 from riplex.config import load_config, get_api_key
 from riplex.disc.makemkv import find_makemkvcon
 from riplex.scanner import find_ffprobe
-from riplex_app.updater import check_for_update, get_current_version, get_download_url
+from riplex_app.updater import check_for_update, get_current_version
 
 log = logging.getLogger(__name__)
 
@@ -199,7 +199,7 @@ class WelcomeScreen:
                 [
                     ft.Icon(ft.Icons.SYSTEM_UPDATE, color=ft.Colors.BLUE_700),
                     ft.Text("", size=13, color=ft.Colors.BLUE_900),
-                    ft.TextButton("Download", on_click=self._open_update),
+                    ft.TextButton("View Details", on_click=self._open_update),
                 ],
                 spacing=8,
             ),
@@ -295,10 +295,10 @@ class WelcomeScreen:
         threading.Thread(target=_check, daemon=True).start()
 
     def _open_update(self, e):
-        """Open the download URL in the user's browser."""
+        """Navigate to the in-app update screen."""
         if self._update_info:
-            url = get_download_url(self._update_info)
-            webbrowser.open(url)
+            self.app.state["update_info"] = self._update_info
+            self.app.navigate("update")
 
     def _on_install_click(self, e):
         """Handle Install Missing Tools button click."""

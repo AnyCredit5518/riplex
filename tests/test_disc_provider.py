@@ -143,11 +143,13 @@ class TestConvertFilmOppenheimer:
         assert d.number == 3
         assert d.is_film is False
         # "To End All War" and "Innovations" are extras, "Story of Our Time" children are episodes
-        assert len(d.extras) == 2
+        # Play-all parent also added as extra for duration matching
+        assert len(d.extras) == 3
         assert d.extras[0].title == "To End All War"
         assert d.extras[0].runtime_seconds == 87 * 60 + 18
         assert d.extras[0].feature_type == "documentary"
-        assert d.extras[1].title == "Innovations in Film"
+        assert d.extras[1].title == "The Story of Our Time: Play All"
+        assert d.extras[2].title == "Innovations in Film"
 
     def test_disc_three_play_all_children_become_episodes(self):
         discs = _convert_film(_oppenheimer_film())
@@ -176,7 +178,9 @@ class TestConvertFilmPlanetEarth:
         assert d.episodes[0].title == "Coasts"
         assert d.episodes[1].title == "Ocean"
         assert d.episodes[2].title == "Deserts & Grasslands"
-        assert d.extras == []
+        # Play-all parent added as extra for duration matching
+        assert len(d.extras) == 1
+        assert d.extras[0].title == "Episodes: Play All"
 
     def test_disc_three_mixed(self):
         discs = _convert_film(_planet_earth_film())
@@ -185,9 +189,10 @@ class TestConvertFilmPlanetEarth:
         assert len(d.episodes) == 2
         assert d.episodes[0].title == "Human"
         assert d.episodes[1].title == "Heroes"
-        assert len(d.extras) == 1
-        assert d.extras[0].title == "Making of Planet Earth III"
-        assert d.extras[0].feature_type == "behind-the-scenes montage"
+        assert len(d.extras) == 2
+        assert d.extras[0].title == "Episodes: Play All"
+        assert d.extras[1].title == "Making of Planet Earth III"
+        assert d.extras[1].feature_type == "behind-the-scenes montage"
 
 
 class TestConvertFilmEdgeCases:

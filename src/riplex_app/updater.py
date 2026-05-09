@@ -63,6 +63,7 @@ def check_for_update() -> dict | None:
         return {
             "tag": latest_tag,
             "url": data.get("html_url", ""),
+            "body": data.get("body", ""),
             "assets": assets,
         }
 

@@ -120,8 +120,14 @@ def save_rip_snapshot(
     release_name: str = "",
     discs: list | None = None,
     ripped_titles: list[int] | None = None,
+    selected_titles: list[int] | None = None,
+    phase: str = "complete",
 ) -> Path | None:
     """Write ``riplex-rip.snapshot.json`` into *debug_dir*.
+
+    *phase* tracks where in the pipeline this snapshot was saved:
+    ``"selection"`` (before rip), ``"ripping"`` (in progress),
+    or ``"complete"`` (after rip).
 
     Returns the path on success, or ``None`` on failure.
     """
@@ -157,6 +163,8 @@ def save_rip_snapshot(
                     for d in (discs or [])
                 ],
             },
+            "phase": phase,
+            "selected_titles": selected_titles or [],
             "ripped_titles": ripped_titles or [],
         }
         snapshot = _v2_envelope("rip", data)

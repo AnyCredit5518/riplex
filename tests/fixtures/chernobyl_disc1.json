@@ -1,0 +1,76 @@
+{
+  "disc_name": "Chernobyl Disc 1",
+  "disc_type": "Blu-ray disc",
+  "titles": [
+    {"index": 0, "name": "Title 0", "duration_seconds": 3534, "chapters": 6, "size_bytes": 28672335052, "filename": "title_t00.mkv", "playlist": "00001.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "1"},
+    {"index": 1, "name": "Title 1", "duration_seconds": 340, "chapters": 3, "size_bytes": 644245094, "filename": "title_t01.mkv", "playlist": "00002.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "2"},
+    {"index": 2, "name": "Title 2", "duration_seconds": 440, "chapters": 3, "size_bytes": 1073741824, "filename": "title_t02.mkv", "playlist": "00003.mpls", "resolution": "1920x1080", "video_codec": "Mpeg4", "segment_count": 1, "segment_map": "3"},
+    {"index": 3, "name": "Title 3", "duration_seconds": 3707, "chapters": 6, "size_bytes": 30278874521, "filename": "title_t03.mkv", "playlist": "00004.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "4"},
+    {"index": 4, "name": "Title 4", "duration_seconds": 3896, "chapters": 6, "size_bytes": 31784629658, "filename": "title_t04.mkv", "playlist": "00005.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "5"},
+    {"index": 5, "name": "Title 5", "duration_seconds": 340, "chapters": 3, "size_bytes": 858993459, "filename": "title_t05.mkv", "playlist": "00006.mpls", "resolution": "1920x1080", "video_codec": "Mpeg4", "segment_count": 1, "segment_map": "6"},
+    {"index": 6, "name": "Title 6", "duration_seconds": 3707, "chapters": 6, "size_bytes": 30278874521, "filename": "title_t06.mkv", "playlist": "00007.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "7"},
+    {"index": 7, "name": "Title 7", "duration_seconds": 3896, "chapters": 6, "size_bytes": 31784629658, "filename": "title_t07.mkv", "playlist": "00008.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "8"},
+    {"index": 8, "name": "Title 8", "duration_seconds": 3534, "chapters": 6, "size_bytes": 28672335052, "filename": "title_t08.mkv", "playlist": "00009.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "9"},
+    {"index": 9, "name": "Title 9", "duration_seconds": 340, "chapters": 3, "size_bytes": 644245094, "filename": "title_t09.mkv", "playlist": "00010.mpls", "resolution": "3840x2160", "video_codec": "MpegH", "segment_count": 1, "segment_map": "10"},
+    {"index": 10, "name": "Title 10", "duration_seconds": 121, "chapters": 1, "size_bytes": 322122547, "filename": "title_t10.mkv", "playlist": "00011.mpls", "resolution": "1920x1080", "video_codec": "Mpeg4", "segment_count": 1, "segment_map": "11"},
+    {"index": 11, "name": "Title 11", "duration_seconds": 167, "chapters": 1, "size_bytes": 429496729, "filename": "title_t11.mkv", "playlist": "00012.mpls", "resolution": "1920x1080", "video_codec": "Mpeg4", "segment_count": 1, "segment_map": "12"},
+    {"index": 12, "name": "Title 12", "duration_seconds": 151, "chapters": 1, "size_bytes": 429496729, "filename": "title_t12.mkv", "playlist": "00013.mpls", "resolution": "1920x1080", "video_codec": "Mpeg4", "segment_count": 1, "segment_map": "13"}
+  ],
+  "dvdcompare": {
+    "release_name": "Blu-ray ALL America - Warner Home Video",
+    "discs": [
+      {
+        "number": 1,
+        "format": "Blu-ray 4K",
+        "is_film": false,
+        "features": [
+          {"title": "Episodes (with Play All option)", "runtime_seconds": 0, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "1:23:45", "runtime_seconds": 3534, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "Please Remain Calm", "runtime_seconds": 3896, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "Open Wide, O Earth", "runtime_seconds": 3707, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "Inside the Episodes", "runtime_seconds": 440, "feature_type": "featurettes", "is_play_all": true, "children": [
+            {"title": "1:23:45", "runtime_seconds": 151, "feature_type": null, "is_play_all": false, "children": []},
+            {"title": "Please Remain Calm", "runtime_seconds": 167, "feature_type": null, "is_play_all": false, "children": []},
+            {"title": "Open Wide, O Earth", "runtime_seconds": 121, "feature_type": null, "is_play_all": false, "children": []}
+          ]},
+          {"title": "What Is Chernobyl?", "runtime_seconds": 98, "feature_type": "featurette", "is_play_all": false, "children": []},
+          {"title": "Meet the Key Players", "runtime_seconds": 340, "feature_type": "featurettes", "is_play_all": true, "children": [
+            {"title": "Jared Harris (Valery Legasov: The Professor)", "runtime_seconds": 106, "feature_type": null, "is_play_all": false, "children": []},
+            {"title": "Stellan Skarsg\u00e5rd (Boris Shcherbina: The Apparatchik)", "runtime_seconds": 116, "feature_type": null, "is_play_all": false, "children": []},
+            {"title": "Emily Watson (Ulana Khomyuk: The Scientist)", "runtime_seconds": 116, "feature_type": null, "is_play_all": false, "children": []}
+          ]}
+        ]
+      },
+      {
+        "number": 2,
+        "format": "Blu-ray 4K",
+        "is_film": false,
+        "features": [
+          {"title": "Episodes (with Play All option)", "runtime_seconds": 0, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "The Happiness of All Mankind", "runtime_seconds": 3899, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "Vichnaya Pamyat", "runtime_seconds": 4293, "feature_type": null, "is_play_all": false, "children": []},
+          {"title": "Inside the Episodes", "runtime_seconds": 416, "feature_type": "featurettes", "is_play_all": true, "children": [
+            {"title": "The Happiness of All Mankind", "runtime_seconds": 206, "feature_type": null, "is_play_all": false, "children": []},
+            {"title": "Vichnaya Pamyat", "runtime_seconds": 210, "feature_type": null, "is_play_all": false, "children": []}
+          ]},
+          {"title": "Behind the Curtain - Director Johan Renck", "runtime_seconds": 97, "feature_type": "featurette", "is_play_all": false, "children": []},
+          {"title": "Script to Screen: The Divers", "runtime_seconds": 83, "feature_type": "featurette", "is_play_all": false, "children": []},
+          {"title": "Pivotal Moment: The Trial", "runtime_seconds": 132, "feature_type": "featurette", "is_play_all": false, "children": []},
+          {"title": "DISCS THREE-FOUR (Blu-ray copy)", "runtime_seconds": 0, "feature_type": null, "is_play_all": false, "children": []}
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "is_movie": false,
+    "movie_runtime": null,
+    "disc_number": 1,
+    "rip_indices": [0, 1, 2, 3, 4],
+    "skip_indices": [5, 6, 7, 8, 9, 10, 11, 12],
+    "episode_names": {
+      "0": "1:23:45",
+      "3": "Open Wide, O Earth",
+      "4": "Please Remain Calm"
+    }
+  }
+}

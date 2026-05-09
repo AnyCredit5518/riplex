@@ -97,6 +97,23 @@ def _clean_feature_type(raw: str) -> str:
     return raw.strip()
 
 
+_FEATURETTE_TYPES = frozenset({
+    "featurette", "featurettes",
+    "behind the scenes", "behind-the-scenes",
+    "documentary", "interview", "interviews",
+    "deleted scene", "deleted scenes",
+    "trailer", "trailers",
+})
+
+
+def _is_featurette_type(feature_type: str | None) -> bool:
+    """Return True if the feature_type indicates a featurette/bonus category."""
+    if not feature_type:
+        return False
+    cleaned = _clean_feature_type(feature_type).lower()
+    return cleaned in _FEATURETTE_TYPES
+
+
 async def lookup_discs(
     title: str,
     disc_format: str | None = None,
@@ -129,7 +146,16 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
     """Convert a single dvdcompare Release into PlannedDisc objects.
 
     Used for movies and TV mini-series where one release maps to the full
-    disc set.  Play-All groups become episodes; everything else is extras.
+    disc set.
+
+    Classification rules:
+    - Play-all groups whose feature_type is a featurette category
+      (e.g. "featurettes") → children become **extras**
+    - Other play-all groups with children → children become **episodes**
+    - Standalone features with no feature_type and runtime >= 600s on
+      non-film discs → **episodes** (these are actual TV episodes listed
+      outside of any group)
+    - Everything else → **extras**
     """
     discs: list[PlannedDisc] = []
     for dvc_disc in rel.discs:
@@ -138,19 +164,42 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
 
         for feature in dvc_disc.features:
             if feature.is_play_all and feature.children:
-                log.debug("Disc %d: play-all '%s' with %d children -> episodes",
-                          disc_offset + dvc_disc.number, feature.title, len(feature.children))
-                # Group with children = episodes or multi-part content
-                for i, child in enumerate(feature.children, 1):
-                    episodes.append(
-                        PlannedEpisode(
-                            season_number=0,
-                            episode_number=i,
-                            title=child.title,
-                            runtime="",
-                            runtime_seconds=child.runtime_seconds or 0,
+                # Always add the play-all parent as an extra so disc titles
+                # matching the compilation runtime get identified and skipped
+                if feature.runtime_seconds:
+                    extras.append(
+                        PlannedExtra(
+                            title=f"{feature.title}: Play All",
+                            runtime_seconds=feature.runtime_seconds or 0,
+                            feature_type=_clean_feature_type(feature.feature_type or ""),
                         )
                     )
+
+                # Check if this play-all is a featurette compilation
+                if _is_featurette_type(feature.feature_type):
+                    log.debug("Disc %d: featurette play-all '%s' with %d children -> extras",
+                              disc_offset + dvc_disc.number, feature.title, len(feature.children))
+                    for child in feature.children:
+                        extras.append(
+                            PlannedExtra(
+                                title=child.title,
+                                runtime_seconds=child.runtime_seconds or 0,
+                                feature_type=_clean_feature_type(feature.title),
+                            )
+                        )
+                else:
+                    log.debug("Disc %d: play-all '%s' with %d children -> episodes",
+                              disc_offset + dvc_disc.number, feature.title, len(feature.children))
+                    for i, child in enumerate(feature.children, 1):
+                        episodes.append(
+                            PlannedEpisode(
+                                season_number=0,
+                                episode_number=i,
+                                title=child.title,
+                                runtime="",
+                                runtime_seconds=child.runtime_seconds or 0,
+                            )
+                        )
             elif feature.children:
                 log.debug("Disc %d: extras group '%s' with %d children",
                           disc_offset + dvc_disc.number, feature.title,
@@ -164,6 +213,23 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                             feature_type=_clean_feature_type(feature.title),
                         )
                     )
+            elif (
+                not dvc_disc.is_film
+                and not feature.feature_type
+                and (feature.runtime_seconds or 0) >= 600
+            ):
+                log.debug("Disc %d: standalone episode '%s' (%ds)",
+                          disc_offset + dvc_disc.number, feature.title,
+                          feature.runtime_seconds or 0)
+                episodes.append(
+                    PlannedEpisode(
+                        season_number=0,
+                        episode_number=len(episodes) + 1,
+                        title=feature.title,
+                        runtime="",
+                        runtime_seconds=feature.runtime_seconds or 0,
+                    )
+                )
             else:
                 log.debug("Disc %d: extra '%s' (%ds) type='%s'",
                           disc_offset + dvc_disc.number, feature.title,

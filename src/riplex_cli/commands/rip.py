@@ -303,7 +303,10 @@ async def run_rip(args: argparse.Namespace) -> int:
             debug_dir, disc_info,
             canonical=canonical, year=year, is_movie=is_movie,
             movie_runtime=movie_runtime, release_name=release_name,
-            discs=discs, ripped_titles=[t.index for t in rip_titles],
+            discs=discs,
+            selected_titles=[t.index for t in rip_titles],
+            ripped_titles=[t.index for t in rip_titles],
+            phase="complete",
         )
         copy_debug_log(debug_dir)
 

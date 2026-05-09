@@ -19,6 +19,7 @@ from riplex_app.screens.organize_done import OrganizeDoneScreen
 from riplex_app.screens.disc_overview import DiscOverviewScreen
 from riplex_app.screens.disc_swap import DiscSwapScreen
 from riplex_app.screens.orchestrate_done import OrchestrateDoneScreen
+from riplex_app.screens.update import UpdateScreen
 
 
 class RiplexApp:
@@ -75,6 +76,7 @@ class RiplexApp:
             "disc_overview": DiscOverviewScreen(self),
             "disc_swap": DiscSwapScreen(self),
             "orchestrate_done": OrchestrateDoneScreen(self),
+            "update": UpdateScreen(self),
         }
 
         self.navigate("welcome")

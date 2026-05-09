@@ -106,6 +106,8 @@ class OrganizeDoneScreen:
 
         # Archive source folder if configured
         source_folder = self.app.state.get("source_folder")
+        if source_folder:
+            source_folder = Path(source_folder)
         archive_root = get_archive_root()
         if source_folder and archive_root and source_folder.exists():
             archive_dest = archive_source_folder(source_folder, archive_root)
