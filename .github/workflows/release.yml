@@ -50,6 +50,10 @@ jobs:
             --hidden-import riplex_app.screens.folder_picker ^
             --hidden-import riplex_app.screens.organize_preview ^
             --hidden-import riplex_app.screens.organize_done ^
+            --hidden-import riplex_app.screens.orchestrate_done ^
+            --hidden-import riplex_app.screens.disc_overview ^
+            --hidden-import riplex_app.screens.disc_swap ^
+            --hidden-import riplex_app.screens.update ^
             --collect-all flet ^
             --collect-all flet_desktop ^
             --collect-data dvdcompare_scraper ^
@@ -108,6 +112,10 @@ jobs:
             --hidden-import riplex_app.screens.folder_picker \
             --hidden-import riplex_app.screens.organize_preview \
             --hidden-import riplex_app.screens.organize_done \
+            --hidden-import riplex_app.screens.orchestrate_done \
+            --hidden-import riplex_app.screens.disc_overview \
+            --hidden-import riplex_app.screens.disc_swap \
+            --hidden-import riplex_app.screens.update \
             --collect-all flet \
             --collect-all flet_desktop \
             --collect-data dvdcompare_scraper \
@@ -129,9 +137,21 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
+
+      - name: Extract tag annotation
+        id: tag_notes
+        run: |
+          BODY=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
+          echo "body<<ENDOFNOTES" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "ENDOFNOTES" >> "$GITHUB_OUTPUT"
 
       - name: Prepare release files
         run: |
@@ -144,7 +164,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body: ${{ steps.tag_notes.outputs.body }}
           files: |
             release/riplex-windows.exe
             release/riplex-ui-windows.exe
