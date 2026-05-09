@@ -33,8 +33,9 @@ def build_rip_path(
     is not configured.
     """
     from riplex.config import get_output_root, get_rip_output
+    from riplex.normalize import sanitize_filename
 
-    folder_base = f"{canonical} ({year})"
+    folder_base = sanitize_filename(f"{canonical} ({year})")
     rip_output = get_rip_output()
     if rip_output:
         rip_root = Path(rip_output) / folder_base

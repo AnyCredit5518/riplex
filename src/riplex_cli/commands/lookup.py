@@ -323,7 +323,9 @@ async def run_lookup(args: argparse.Namespace) -> int:
             print("Error: --output or output_root config required for --create-folders.", file=sys.stderr)
             return 1
         rip_output = get_rip_output()
-        makemkv_root = Path(rip_output) / f"{canonical} ({year})" if rip_output else Path(output_val) / "Rips" / f"{canonical} ({year})"
+        from riplex.normalize import sanitize_filename
+        folder_base = sanitize_filename(f"{canonical} ({year})")
+        makemkv_root = Path(rip_output) / folder_base if rip_output else Path(output_val) / "Rips" / folder_base
         created = create_rip_folders(makemkv_root, discs)
         if created:
             print(f"\nCreated {len(created)} folder(s) under {makemkv_root}")

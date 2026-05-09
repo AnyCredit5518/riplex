@@ -52,8 +52,8 @@ def sanitize_filename(name: str) -> str:
     # Strip surrounding quotes
     if len(name) >= 2 and name[0] == '"' and name[-1] == '"':
         name = name[1:-1]
-    # Handle colon specifically: "Title: Subtitle" -> "Title Subtitle"
-    name = name.replace(": ", " ").replace(":", "")
+    # Handle colon specifically: "Title: Subtitle" -> "Title - Subtitle"
+    name = name.replace(": ", " - ").replace(":", "-")
     # Strip remaining illegal chars
     name = _WINDOWS_ILLEGAL.sub("", name)
     # Collapse whitespace

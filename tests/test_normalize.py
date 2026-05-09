@@ -15,13 +15,13 @@ from riplex.normalize import (
 
 class TestSanitizeFilename:
     def test_removes_colon_with_space(self):
-        assert sanitize_filename("Top Gun: Maverick") == "Top Gun Maverick"
+        assert sanitize_filename("Top Gun: Maverick") == "Top Gun - Maverick"
 
     def test_removes_colon_without_space(self):
-        assert sanitize_filename("X-Men:The Animated Series") == "X-MenThe Animated Series"
+        assert sanitize_filename("X-Men:The Animated Series") == "X-Men-The Animated Series"
 
     def test_removes_colon_with_space_xmen(self):
-        assert sanitize_filename("X-Men: The Animated Series") == "X-Men The Animated Series"
+        assert sanitize_filename("X-Men: The Animated Series") == "X-Men - The Animated Series"
 
     def test_removes_multiple_illegal_chars(self):
         assert sanitize_filename('Movie? <Title> "Sub"') == "Movie Title Sub"
@@ -73,7 +73,7 @@ class TestMovieNaming:
         assert movie_folder_name("Oppenheimer", 2023) == "Oppenheimer (2023)"
 
     def test_folder_name_with_colon(self):
-        assert movie_folder_name("Top Gun: Maverick", 2022) == "Top Gun Maverick (2022)"
+        assert movie_folder_name("Top Gun: Maverick", 2022) == "Top Gun - Maverick (2022)"
 
     def test_file_name(self):
         assert movie_file_name("Oppenheimer", 2023) == "Oppenheimer (2023).mkv"
@@ -111,7 +111,7 @@ class TestShowNaming:
         result = episode_file_name(
             "X-Men: The Animated Series", 1992, 1, 3, "Enter Magneto"
         )
-        assert result == "X-Men The Animated Series (1992) - s01e03 - Enter Magneto.mkv"
+        assert result == "X-Men - The Animated Series (1992) - s01e03 - Enter Magneto.mkv"
 
 
 class TestBuildPaths:

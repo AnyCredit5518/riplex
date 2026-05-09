@@ -506,7 +506,7 @@ class TestSplitDetection:
         assert "Season 00" in split.chapter_destinations[0]
         assert "s00e01" in split.chapter_destinations[0]
         assert "s00e06" in split.chapter_destinations[5]
-        assert "Diaries Ep6" in split.chapter_destinations[5]
+        assert "Diaries - Ep6" in split.chapter_destinations[5]
 
     def test_no_split_when_chapters_dont_match(self):
         """Chapters != Season 00 count falls through to extras folder."""
