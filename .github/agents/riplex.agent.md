@@ -113,6 +113,10 @@ Do NOT use `py -m riplex` (errors — riplex is a library package). Do NOT use `
 - GUI: Flet 0.84+ (optional `[gui]` extra)
 - External tools: makemkvcon, ffprobe, mkvmerge, mkvpropedit
 
+## Debugging the GUI
+
+The GUI writes detailed logs to `riplex_app.log` in the working directory (project root when launched from the repo). This log includes screen navigation, disc analysis details, title classification decisions, and rip progress. Check this file first when debugging GUI behavior — do NOT try to capture terminal output (Flet's `2>&1` redirect breaks its Flutter-Python IPC).
+
 ## Testing
 
 Run all tests:

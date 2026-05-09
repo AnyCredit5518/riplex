@@ -54,6 +54,8 @@ def sanitize_filename(name: str) -> str:
         name = name[1:-1]
     # Handle colon specifically: "Title: Subtitle" -> "Title - Subtitle"
     name = name.replace(": ", " - ").replace(":", "-")
+    # Replace Unicode replacement character (encoding errors) with dash
+    name = name.replace("\ufffd", "-")
     # Strip remaining illegal chars
     name = _WINDOWS_ILLEGAL.sub("", name)
     # Collapse whitespace

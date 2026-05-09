@@ -50,6 +50,9 @@ class TestSanitizeFilename:
     def test_strips_surrounding_quotes(self):
         assert sanitize_filename('"A Girl\'s Gotta Eat"') == "A Girl's Gotta Eat"
 
+    def test_replaces_unicode_replacement_char(self):
+        assert sanitize_filename('Aleks Svaensson \ufffd "Syvelleve"') == "Aleks Svaensson - Syvelleve"
+
 
 class TestFormatRuntime:
     def test_minutes_only(self):

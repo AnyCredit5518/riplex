@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -73,6 +74,65 @@ def find_ripped_discs(output_dir: Path) -> set[int]:
             if m:
                 ripped.add(int(m.group(1)))
     return ripped
+
+
+@dataclass
+class ExistingSession:
+    """Metadata recovered from an existing rip manifest on disk."""
+
+    title: str
+    year: int
+    media_type: str  # "movie" or "tv"
+    release_name: str
+    disc_format: str | None
+    rip_root: Path
+    ripped_discs: set[int]
+
+
+def find_existing_session(title: str) -> ExistingSession | None:
+    """Scan the rip output root for a session matching *title*.
+
+    Reads ``_rip_manifest.json`` files under the configured rip output
+    directory and returns session data if any manifest's ``title``
+    matches (case-insensitive).
+    """
+    from riplex.config import get_output_root, get_rip_output
+
+    rip_output = get_rip_output()
+    if rip_output:
+        root = Path(rip_output)
+    else:
+        root = Path(get_output_root()) / "Rips"
+
+    if not root.exists():
+        return None
+
+    title_lower = title.strip().lower()
+
+    for title_folder in root.iterdir():
+        if not title_folder.is_dir():
+            continue
+        for disc_folder in title_folder.iterdir():
+            manifest_path = disc_folder / "_rip_manifest.json"
+            if not manifest_path.exists():
+                continue
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if manifest.get("title", "").strip().lower() == title_lower:
+                ripped = find_ripped_discs(title_folder)
+                return ExistingSession(
+                    title=manifest.get("title", ""),
+                    year=manifest.get("year", 0),
+                    media_type=manifest.get("type", "movie"),
+                    release_name=manifest.get("release", ""),
+                    disc_format=manifest.get("format"),
+                    rip_root=title_folder,
+                    ripped_discs=ripped,
+                )
+
+    return None
 
 
 def build_scanned_from_manifests(rip_root: Path) -> list[ScannedDisc]:

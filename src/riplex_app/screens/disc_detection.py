@@ -1,5 +1,7 @@
 """Disc detection screen - scans drives and reads disc info."""
 
+import asyncio
+import logging
 import sys
 import threading
 
@@ -7,6 +9,8 @@ import flet as ft
 
 from riplex.disc.makemkv import run_drive_list, run_disc_info, DriveInfo
 from riplex.title import parse_volume_label
+
+log = logging.getLogger(__name__)
 
 
 def _safe_update(page: ft.Page):
@@ -209,9 +213,100 @@ class DiscDetectionScreen:
 
     def _search(self, e):
         """Proceed to metadata lookup with the current title."""
-        self.app.state["title"] = self.title_field.value.strip()
-        if not self.app.state["title"]:
+        title = self.title_field.value.strip()
+        if not title:
             self.title_field.error_text = "Enter a title"
             self.app.page.update()
             return
+        self.app.state["title"] = title
+
+        # In orchestrate mode, check for an existing rip session to resume
+        if self.app.state.get("workflow") == "orchestrate":
+            from riplex.manifest import find_existing_session
+
+            session = find_existing_session(title)
+            if session:
+                log.info("Found existing session for '%s' (%d) — resuming",
+                         session.title, session.year)
+                self._resume_session(session)
+                return
+
         self.app.navigate("metadata")
+
+    def _resume_session(self, session):
+        """Resume an orchestrate session from an existing rip manifest.
+
+        Constructs tmdb_match from manifest data, fetches dvdcompare
+        disc data in the background, then skips to disc_overview.
+        """
+        from riplex.metadata.provider import MetadataSearchResult
+
+        # Build a synthetic tmdb_match from the manifest
+        self.app.state["tmdb_match"] = MetadataSearchResult(
+            source_id="",
+            title=session.title,
+            year=session.year,
+            media_type=session.media_type,
+        )
+
+        # Show loading state
+        self.search_btn.disabled = True
+        self.search_btn.text = "Resuming session..."
+        self.app.page.update()
+
+        threading.Thread(
+            target=self._fetch_dvdcompare_for_resume,
+            args=(session,),
+            daemon=True,
+        ).start()
+
+    def _fetch_dvdcompare_for_resume(self, session):
+        """Fetch dvdcompare data and match the release from the manifest."""
+        from dvdcompare.scraper import find_film
+        from riplex.disc.provider import _convert_release, detect_disc_format
+
+        disc_format = session.disc_format
+        if not disc_format:
+            disc_info = self.app.state.get("disc_info")
+            if disc_info:
+                disc_format = detect_disc_format(disc_info)
+
+        try:
+            film = asyncio.run(
+                find_film(session.title, disc_format, year=session.year)
+            )
+            # Match release by name
+            release = None
+            if session.release_name and film.releases:
+                release = next(
+                    (r for r in film.releases
+                     if r.name == session.release_name),
+                    None,
+                )
+            if release is None and film.releases:
+                release = film.releases[0]
+
+            if release:
+                self.app.state["release"] = release
+                try:
+                    discs = _convert_release(release)
+                    self.app.state["dvdcompare_discs"] = discs
+                except Exception:
+                    self.app.state["dvdcompare_discs"] = []
+            else:
+                self.app.state["release"] = None
+                self.app.state["dvdcompare_discs"] = []
+
+            log.info("Resume: dvdcompare loaded, %d discs, release=%s",
+                     len(self.app.state.get("dvdcompare_discs", [])),
+                     session.release_name)
+
+        except Exception as exc:
+            log.warning("Resume: dvdcompare lookup failed: %s", exc)
+            self.app.state["release"] = None
+            self.app.state["dvdcompare_discs"] = []
+
+        async def _nav():
+            self.app.navigate("disc_overview")
+
+        self.app.page.run_task(_nav)
