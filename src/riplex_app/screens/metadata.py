@@ -48,7 +48,10 @@ class MetadataScreen:
                     ft.Text(f"Searching TMDb for \"{title}\"...", size=14),
                 ], spacing=10),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                    ft.TextButton("Skip", on_click=lambda _: self._continue_without_metadata(title)),
+                ]),
             ],
             spacing=10,
             expand=True,
@@ -101,18 +104,46 @@ class MetadataScreen:
         )
 
     def _build_error_view(self, title: str, error: str) -> ft.Control:
-        """Build the error view."""
+        """Build the error view with option to continue without metadata."""
         return ft.Column(
             [
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "TMDb is needed for canonical titles, years, and Plex folder "
+                    "structure. Without it, you can still rip the disc and organize later.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
                 ft.Divider(height=20),
                 ft.Text(error, size=14, color=ft.Colors.ORANGE),
+                ft.Container(height=10),
+                ft.Text(
+                    f"You can continue with the disc label \"{title}\" and rip "
+                    "without metadata. Organize your rips later when TMDb is available.",
+                    size=13,
+                ),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                    ft.ElevatedButton(
+                        "Rip without metadata",
+                        icon=ft.Icons.ARROW_FORWARD,
+                        on_click=lambda _: self._continue_without_metadata(title),
+                        style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
+                    ),
+                ]),
             ],
             spacing=10,
             expand=True,
         )
+
+    def _continue_without_metadata(self, title: str):
+        """Skip TMDb and proceed with volume label as title."""
+        self.app.state["tmdb_match"] = None
+        self.app.state["movie_runtime"] = None
+        self.app.state["skip_metadata"] = True
+        # Go directly to selection (skip release/dvdcompare — no metadata to match against)
+        self.app.navigate("selection")
 
     def _search_tmdb(self):
         """Search TMDb in background, then re-navigate to show results."""

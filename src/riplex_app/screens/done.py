@@ -69,7 +69,7 @@ class DoneScreen:
             "Organize",
             icon=ft.Icons.DRIVE_FILE_MOVE,
             on_click=self._organize,
-            visible=output_dir is not None and len(successful) > 0,
+            visible=output_dir is not None and len(successful) > 0 and tmdb_match is not None,
             style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         rip_another_btn = ft.ElevatedButton(
@@ -85,6 +85,13 @@ class DoneScreen:
         )
         quit_btn = ft.TextButton("Quit", on_click=self._quit)
 
+        no_metadata_hint = ft.Text(
+            "Ripped without metadata — use 'Organize Rips' from the home screen "
+            "when TMDb is available to move these files into your Plex library.",
+            size=12,
+            color=ft.Colors.ORANGE,
+        ) if tmdb_match is None and len(successful) > 0 else ft.Container()
+
         return ft.Column(
             [
                 ft.Row([icon, ft.Text(match_label, size=24, weight=ft.FontWeight.BOLD)], spacing=12),
@@ -97,6 +104,7 @@ class DoneScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                no_metadata_hint,
                 output_text,
                 ft.Container(height=10),
                 ft.Text("Files", size=14, weight=ft.FontWeight.BOLD),
