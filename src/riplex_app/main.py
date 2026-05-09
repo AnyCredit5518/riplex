@@ -97,9 +97,10 @@ class RiplexApp:
         )
         self.page.update()
 
-        # Kick off background update check on welcome screen
+        # Kick off background checks on welcome screen
         if screen_name == "welcome":
             screen.check_for_updates()
+            screen.check_connectivity()
 
     def _open_bug_report(self, e):
         """Open a pre-filled GitHub bug report in the browser."""

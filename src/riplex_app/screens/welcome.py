@@ -53,6 +53,14 @@ class WelcomeScreen:
                 ft.Row([icon, ft.Text(label, size=14)], spacing=8)
             )
 
+        # Online service connectivity (checked in background)
+        self._tmdb_status_icon = ft.Icon(ft.Icons.HOURGLASS_EMPTY, color=ft.Colors.GREY_500)
+        self._tmdb_status_text = ft.Text("TMDb API", size=14, color=ft.Colors.GREY_500)
+        self._dvdc_status_icon = ft.Icon(ft.Icons.HOURGLASS_EMPTY, color=ft.Colors.GREY_500)
+        self._dvdc_status_text = ft.Text("dvdcompare.net", size=14, color=ft.Colors.GREY_500)
+        status_rows.append(ft.Row([self._tmdb_status_icon, self._tmdb_status_text], spacing=8))
+        status_rows.append(ft.Row([self._dvdc_status_icon, self._dvdc_status_text], spacing=8))
+
         # Install tools section (shown when tools are missing)
         self._install_status = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._install_progress = ft.ProgressBar(visible=False, width=400)
@@ -291,6 +299,38 @@ class WelcomeScreen:
                     self.app.page.update()
 
                 self.app.page.run_task(_show)
+
+        threading.Thread(target=_check, daemon=True).start()
+
+    def check_connectivity(self):
+        """Ping TMDb and dvdcompare.net in background and update status icons."""
+        import httpx
+
+        def _ping(url: str, timeout: float = 5.0) -> bool:
+            try:
+                resp = httpx.head(url, timeout=timeout, follow_redirects=True)
+                return resp.status_code < 500
+            except Exception:
+                return False
+
+        def _check():
+            tmdb_ok = _ping("https://api.themoviedb.org/3")
+            dvdc_ok = _ping("https://www.dvdcompare.net")
+
+            async def _update():
+                self._tmdb_status_icon.name = ft.Icons.CHECK_CIRCLE if tmdb_ok else ft.Icons.WARNING
+                self._tmdb_status_icon.color = ft.Colors.GREEN if tmdb_ok else ft.Colors.ORANGE
+                self._tmdb_status_text.color = None if tmdb_ok else ft.Colors.ORANGE
+                self._tmdb_status_text.value = "TMDb API" if tmdb_ok else "TMDb API (unreachable)"
+
+                self._dvdc_status_icon.name = ft.Icons.CHECK_CIRCLE if dvdc_ok else ft.Icons.WARNING
+                self._dvdc_status_icon.color = ft.Colors.GREEN if dvdc_ok else ft.Colors.ORANGE
+                self._dvdc_status_text.color = None if dvdc_ok else ft.Colors.ORANGE
+                self._dvdc_status_text.value = "dvdcompare.net" if dvdc_ok else "dvdcompare.net (unreachable)"
+
+                self.app.page.update()
+
+            self.app.page.run_task(_update)
 
         threading.Thread(target=_check, daemon=True).start()
 
