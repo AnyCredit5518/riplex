@@ -217,7 +217,12 @@ def _apply_chapter_to_missing_splits(
         for move in remaining_moves:
             file_name = Path(move.source).name
             sf = scanned_files.get(file_name)
-            if sf and len(sf.chapter_durations) > 1:
+            # Only consider splitting files whose current match is a
+            # play-all / compilation entry.  Standalone featurettes that
+            # happen to have chapters matching missing entries should be
+            # left alone.
+            if (sf and len(sf.chapter_durations) > 1
+                    and move.label and "play all" in move.label.lower()):
                 log.debug("Chapter-to-missing: checking %s (%d chapters) against %d missing entries",
                           file_name, len(sf.chapter_durations), len(missing_pool))
                 matches = _match_chapters_to_pool(

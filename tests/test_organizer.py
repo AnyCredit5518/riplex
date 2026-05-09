@@ -700,13 +700,13 @@ class TestChapterToMissingSplits:
     """Test converting matched files to splits when chapters match missing entries."""
 
     def test_basic_movie_split(self):
-        """File matched as Trailer 3, but chapters match Teaser + Trailer 2."""
+        """File matched as Play All, but chapters match Teaser + Trailer 2."""
         result = OrganizeResult(
             matched=[
                 MatchCandidate(
                     file_name="t12.mkv",
                     file_duration_seconds=194,
-                    matched_label="Disc 3: Trailer 3",
+                    matched_label="Disc 3: Trailers: Play All",
                     matched_runtime_seconds=191,
                     delta_seconds=3,
                     confidence="high",
@@ -721,7 +721,7 @@ class TestChapterToMissingSplits:
         disc_targets = [
             ("Disc 3: Teaser", 71, 3),
             ("Disc 3: Trailer 2", 124, 3),
-            ("Disc 3: Trailer 3", 191, 3),
+            ("Disc 3: Trailers: Play All", 191, 3),
         ]
         scanned = {
             "t12.mkv": ScannedFile(
@@ -742,7 +742,7 @@ class TestChapterToMissingSplits:
         assert "Teaser.mkv" in split.chapter_destinations[0]
         assert "Trailer 2.mkv" in split.chapter_destinations[1]
         # Original match released back to missing
-        assert "Disc 3: Trailer 3" in op.missing
+        assert "Disc 3: Trailers: Play All" in op.missing
         # Consumed entries removed from missing
         assert "Disc 3: Teaser" not in op.missing
         assert "Disc 3: Trailer 2" not in op.missing
@@ -754,7 +754,7 @@ class TestChapterToMissingSplits:
                 MatchCandidate(
                     file_name="t12.mkv",
                     file_duration_seconds=194,
-                    matched_label="Disc 3: Trailer 3",
+                    matched_label="Disc 3: Trailers: Play All",
                     matched_runtime_seconds=191,
                     delta_seconds=3,
                     confidence="high",
@@ -762,7 +762,7 @@ class TestChapterToMissingSplits:
                 MatchCandidate(
                     file_name="t13.mkv",
                     file_duration_seconds=497,
-                    matched_label="Disc 3: Other Feature",
+                    matched_label="Disc 3: Features: Play All",
                     matched_runtime_seconds=501,
                     delta_seconds=4,
                     confidence="high",
@@ -781,9 +781,9 @@ class TestChapterToMissingSplits:
         disc_targets = [
             ("Disc 3: Teaser", 71, 3),
             ("Disc 3: Trailer 2", 124, 3),
-            ("Disc 3: Trailer 3", 191, 3),
+            ("Disc 3: Trailers: Play All", 191, 3),
             ("Disc 3: Opening Look", 307, 3),
-            ("Disc 3: Other Feature", 501, 3),
+            ("Disc 3: Features: Play All", 501, 3),
         ]
         scanned = {
             "t12.mkv": ScannedFile(
@@ -807,13 +807,13 @@ class TestChapterToMissingSplits:
         labels_0 = op.splits[0].chapter_labels
         assert "Disc 3: Teaser" in labels_0
         assert "Disc 3: Trailer 2" in labels_0
-        # t13 split: Trailer 3 (released by t12) + Opening Look
+        # t13 split: Trailers Play All (released by t12) + Opening Look
         labels_1 = op.splits[1].chapter_labels
-        assert "Disc 3: Trailer 3" in labels_1
+        assert "Disc 3: Trailers: Play All" in labels_1
         assert "Disc 3: Opening Look" in labels_1
         # Both original labels released back
-        assert "Disc 3: Trailer 3" not in op.missing  # consumed by t13
-        assert "Disc 3: Other Feature" in op.missing
+        assert "Disc 3: Trailers: Play All" not in op.missing  # consumed by t13
+        assert "Disc 3: Features: Play All" in op.missing
 
     def test_no_split_partial_chapter_match(self):
         """File with 3 chapters but only 2 match missing entries stays as move."""
@@ -924,13 +924,13 @@ class TestChapterToMissingSplits:
         assert len(op.splits) == 0
 
     def test_tv_show_chapter_to_missing(self):
-        """Chapter-to-missing works for TV show extras too."""
+        """Chapter-to-missing splits play-all entries for TV show extras."""
         result = OrganizeResult(
             matched=[
                 MatchCandidate(
                     file_name="extras.mkv",
                     file_duration_seconds=600,
-                    matched_label="Disc 2: Wrong Extra (featurette)",
+                    matched_label="Disc 2: Extras: Play All (featurette)",
                     matched_runtime_seconds=590,
                     delta_seconds=10,
                     confidence="high",
@@ -955,7 +955,7 @@ class TestChapterToMissingSplits:
         disc_targets = [
             ("Disc 2: Extra A (featurette)", 290, 2),
             ("Disc 2: Extra B (featurette)", 310, 2),
-            ("Disc 2: Wrong Extra (featurette)", 590, 2),
+            ("Disc 2: Extras: Play All (featurette)", 590, 2),
         ]
         scanned = {
             "extras.mkv": ScannedFile(
@@ -974,6 +974,47 @@ class TestChapterToMissingSplits:
         assert "Featurettes" in split.chapter_destinations[0]
         assert "Extra A.mkv" in split.chapter_destinations[0]
         assert "Extra B.mkv" in split.chapter_destinations[1]
+
+    def test_standalone_featurette_not_split(self):
+        """A standalone featurette with chapters should NOT be split even if
+        its chapters match missing entries by runtime."""
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="rabbit.mkv",
+                    file_duration_seconds=600,
+                    matched_label="Disc 2: Follow the White Rabbit (featurette)",
+                    matched_runtime_seconds=590,
+                    delta_seconds=10,
+                    confidence="high",
+                ),
+            ],
+            missing=["Disc 2: Extra A (featurette)", "Disc 2: Extra B (featurette)"],
+        )
+        plan = PlannedMovie(
+            canonical_title="The Matrix", year=1999,
+            runtime="2h 16m", runtime_seconds=8160,
+        )
+        disc_targets = [
+            ("Disc 2: Extra A (featurette)", 290, 2),
+            ("Disc 2: Extra B (featurette)", 310, 2),
+            ("Disc 2: Follow the White Rabbit (featurette)", 590, 2),
+        ]
+        scanned = {
+            "rabbit.mkv": ScannedFile(
+                name="rabbit.mkv", path="/rip/rabbit.mkv",
+                duration_seconds=600, chapter_count=2,
+                chapter_durations=[290, 310],
+            ),
+        }
+        op = build_organize_plan(
+            result, plan, Path("E:/Media"),
+            scanned_files=scanned, disc_targets=disc_targets,
+        )
+        # The file should remain as a regular move, not be split
+        assert len(op.splits) == 0
+        assert len(op.moves) == 1
+        assert "Follow the White Rabbit" in op.moves[0].destination
 
 
 class TestUnmatchedExtrasPolicy:
