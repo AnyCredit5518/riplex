@@ -53,6 +53,7 @@ def build_crash_report_url(
     exc_message: str,
     traceback_text: str,
     last_screen: str | None = None,
+    dump_path: str | None = None,
 ) -> str:
     """Return a GitHub new-issue URL pre-filled with crash details.
 
@@ -78,17 +79,26 @@ def build_crash_report_url(
     if len(traceback_text) > max_tb_len:
         traceback_text = (
             traceback_text[:max_tb_len]
-            + "\n... [truncated, see local riplex_app.log for full trace]"
+            + "\n... [truncated, see attached crash dump for full trace]"
         )
     params["traceback"] = traceback_text
 
+    debug_lines: list[str] = []
+    if dump_path:
+        debug_lines.append(
+            "**Crash dump (please attach this file):**\n"
+            f"`{dump_path}`\n\n"
+            "It contains the full traceback, app state, and recent logs."
+        )
     debug_paths = _find_debug_paths(state)
     if debug_paths:
-        params["debug-files"] = (
-            "Debug folder found at:\n"
+        debug_lines.append(
+            "Additional debug folders:\n"
             + "\n".join(f"`{p}`" for p in debug_paths)
             + "\n\nPlease zip and attach."
         )
+    if debug_lines:
+        params["debug-files"] = "\n\n".join(debug_lines)
 
     return _NEW_ISSUE_BASE + "?" + urllib.parse.urlencode(params)
 

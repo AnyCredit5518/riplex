@@ -76,5 +76,7 @@ body:
     attributes:
       label: Debug files
       description: |
-        If a `_riplex/` debug folder exists at your output directory, please
-        zip it and drag it here.
+        Please attach the crash dump file referenced above. It contains the
+        full traceback, app state, and recent logs needed to reproduce the
+        crash. If a `_riplex/` debug folder also exists at your output
+        directory, zip it and drag it here as well.

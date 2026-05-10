@@ -5,6 +5,7 @@ import sys
 import threading
 import traceback as tb_module
 import webbrowser
+from pathlib import Path
 
 import flet as ft
 
@@ -160,8 +161,24 @@ class RiplexApp:
     def _show_crash_dialog(self, exc_type: str, exc_message: str, traceback_text: str):
         """Show a modal dialog offering to file a crash report."""
         from riplex_app.bug_report import build_crash_report_url
+        from riplex_app.crash_dump import write_crash_dump
 
         last_screen = getattr(self, "_current_screen_name", None)
+
+        # Write a dump file with traceback + state + log tail. Best-effort.
+        dump_path: str | None = None
+        try:
+            dump = write_crash_dump(
+                exc_type=exc_type,
+                exc_message=exc_message,
+                traceback_text=traceback_text,
+                state=self.state,
+                last_screen=last_screen,
+            )
+            dump_path = str(dump)
+            log.error("Crash dump written: %s", dump_path)
+        except Exception:
+            log.exception("Failed to write crash dump")
 
         def report(_e):
             url = build_crash_report_url(
@@ -170,10 +187,20 @@ class RiplexApp:
                 exc_message=exc_message,
                 traceback_text=traceback_text,
                 last_screen=last_screen,
+                dump_path=dump_path,
             )
             log.info("Opening crash report: %s", url)
             webbrowser.open(url)
             close(_e)
+
+        def open_dump(_e):
+            if not dump_path:
+                return
+            try:
+                import os
+                os.startfile(str(Path(dump_path).parent))  # type: ignore[attr-defined]
+            except Exception:
+                log.exception("Failed to open crash dump folder")
 
         def close(_e):
             dialog.open = False
@@ -182,6 +209,53 @@ class RiplexApp:
         # Keep the visible traceback short; the full one goes to GitHub.
         preview = traceback_text.strip().splitlines()[-12:]
         preview_text = "\n".join(preview)
+
+        content_children: list[ft.Control] = [
+            ft.Text(f"{exc_type}: {exc_message}", selectable=True),
+            ft.Container(height=10),
+            ft.Text(
+                "Help us fix this by filing a crash report. The traceback "
+                "and version info will be pre-filled.",
+                size=12,
+            ),
+        ]
+        if dump_path:
+            content_children.extend([
+                ft.Container(height=6),
+                ft.Text(
+                    "A full crash dump (traceback + app state + recent logs) "
+                    "was saved to:",
+                    size=12,
+                ),
+                ft.Text(dump_path, size=11, selectable=True, font_family="Consolas"),
+                ft.Text(
+                    "Please attach this file to the GitHub issue.",
+                    size=12,
+                    italic=True,
+                ),
+            ])
+        content_children.extend([
+            ft.Container(height=10),
+            ft.Container(
+                content=ft.Text(preview_text, size=11, selectable=True, font_family="Consolas"),
+                bgcolor=ft.Colors.BLACK26,
+                padding=10,
+                border_radius=4,
+            ),
+        ])
+
+        actions: list[ft.Control] = [ft.TextButton("Dismiss", on_click=close)]
+        if dump_path:
+            actions.append(
+                ft.TextButton("Show Dump Folder", icon=ft.Icons.FOLDER_OPEN, on_click=open_dump)
+            )
+        actions.append(
+            ft.FilledButton(
+                "Report Crash",
+                icon=ft.Icons.BUG_REPORT,
+                on_click=report,
+            )
+        )
 
         dialog = ft.AlertDialog(
             modal=True,
@@ -193,34 +267,12 @@ class RiplexApp:
                 spacing=10,
             ),
             content=ft.Column(
-                [
-                    ft.Text(f"{exc_type}: {exc_message}", selectable=True),
-                    ft.Container(height=10),
-                    ft.Text(
-                        "Help us fix this by filing a crash report. The "
-                        "traceback and version info will be pre-filled.",
-                        size=12,
-                    ),
-                    ft.Container(height=10),
-                    ft.Container(
-                        content=ft.Text(preview_text, size=11, selectable=True, font_family="Consolas"),
-                        bgcolor=ft.Colors.BLACK26,
-                        padding=10,
-                        border_radius=4,
-                    ),
-                ],
+                content_children,
                 tight=True,
                 width=600,
                 scroll=ft.ScrollMode.AUTO,
             ),
-            actions=[
-                ft.TextButton("Dismiss", on_click=close),
-                ft.FilledButton(
-                    "Report Crash",
-                    icon=ft.Icons.BUG_REPORT,
-                    on_click=report,
-                ),
-            ],
+            actions=actions,
         )
         try:
             self.page.open(dialog)
@@ -248,11 +300,15 @@ def main():
         datefmt="%H:%M:%S",
     )
     # Write riplex_app logs to a file (Flet debug noise drowns the console)
+    from riplex_app.crash_dump import get_log_path
+
     app_logger = logging.getLogger("riplex_app")
-    fh = logging.FileHandler("riplex_app.log", mode="w", encoding="utf-8")
+    log_path = get_log_path()
+    fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s [%(name)s] %(message)s", datefmt="%H:%M:%S"))
     app_logger.addHandler(fh)
+    app_logger.info("Log file: %s", log_path)
     ft.app(target=RiplexApp)
 
 
