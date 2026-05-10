@@ -11,7 +11,7 @@ import flet as ft
 from riplex.config import load_config, get_api_key
 from riplex.disc.makemkv import find_makemkvcon
 from riplex.scanner import find_ffprobe
-from riplex_app.updater import check_for_update, get_current_version
+from riplex.updater import check_for_update, get_current_version
 
 log = logging.getLogger(__name__)
 

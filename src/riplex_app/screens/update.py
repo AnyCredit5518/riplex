@@ -5,7 +5,7 @@ import webbrowser
 
 import flet as ft
 
-from riplex_app.updater import get_current_version
+from riplex.updater import get_current_version
 
 log = logging.getLogger(__name__)
 

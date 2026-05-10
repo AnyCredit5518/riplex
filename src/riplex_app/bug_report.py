@@ -6,7 +6,7 @@ import platform
 import urllib.parse
 from pathlib import Path
 
-from riplex_app.updater import GITHUB_REPO, get_current_version
+from riplex.updater import GITHUB_REPO, get_current_version
 
 _NEW_ISSUE_BASE = f"https://github.com/{GITHUB_REPO}/issues/new"
 

@@ -1,14 +1,20 @@
 """Check for newer releases on GitHub."""
 
+import os
 import urllib.request
 import json
 import sys
 
-from riplex import __version__
+from riplex import __version__, cache
 
 GITHUB_REPO = "AnyCredit5518/riplex"
 RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
 LATEST_RELEASE_URL = f"{RELEASES_URL}/latest"
+
+_CACHE_NS = "updater"
+_CACHE_KEY = "update_check"
+_CACHE_TTL_DAYS = 1
+_SUPPRESS_ENV_VAR = "RIPLEX_NO_UPDATE_CHECK"
 
 
 def get_current_version() -> str:
@@ -118,3 +124,50 @@ def get_download_url(update_info: dict) -> str:
                 return url
     # Fallback to release page
     return update_info["url"]
+
+
+def is_check_suppressed() -> bool:
+    """Return True if update checks are disabled via environment variable."""
+    val = os.environ.get(_SUPPRESS_ENV_VAR, "").strip().lower()
+    return val in {"1", "true", "yes", "on"}
+
+
+def check_for_update_cached() -> dict | None:
+    """Cached wrapper around check_for_update().
+
+    Returns the same as check_for_update() but consults the local cache
+    first to avoid hitting the GitHub API on every CLI invocation.
+    Caches both positive (update available) and negative (no update)
+    results for 1 day.
+
+    Honors the RIPLEX_NO_UPDATE_CHECK environment variable: when set to
+    "1" / "true" / "yes" / "on", returns None without checking.
+    """
+    if is_check_suppressed():
+        return None
+    if get_current_version() == "dev":
+        return None
+
+    cached = cache.cache_get(_CACHE_NS, _CACHE_KEY, ttl_days=_CACHE_TTL_DAYS)
+    if cached is not None:
+        # Empty dict is the sentinel for "no update available"
+        return cached if cached else None
+
+    result = check_for_update()
+    # Cache empty dict for "no update", actual dict for "update available"
+    cache.cache_set(_CACHE_NS, _CACHE_KEY, result if result else {})
+    return result
+
+
+def format_update_notice(update_info: dict, command: str = "pipx upgrade riplex") -> str:
+    """Format a pip-style notice block announcing an available update."""
+    current = get_current_version()
+    tag = update_info["tag"].lstrip("v")
+    url = update_info.get("url", "")
+    lines = [
+        f"[notice] A new release of riplex is available: {current} -> {tag}",
+        f"[notice] To update, run: {command}",
+    ]
+    if url:
+        lines.append(f"[notice] Release notes: {url}")
+    return "\n".join(lines)

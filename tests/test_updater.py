@@ -1,4 +1,4 @@
-"""Tests for riplex_app.updater and welcome screen install logic."""
+"""Tests for riplex.updater and welcome screen install logic."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from riplex_app.updater import (
+from riplex import cache
+from riplex import updater
+from riplex.updater import (
     _parse_version,
     check_for_update,
     get_current_version,
@@ -42,11 +44,11 @@ class TestParseVersion:
 
 class TestCheckForUpdate:
     def test_returns_none_when_dev(self):
-        with patch("riplex_app.updater.get_current_version", return_value="dev"):
+        with patch("riplex.updater.get_current_version", return_value="dev"):
             assert check_for_update() is None
 
     def test_returns_none_on_network_error(self):
-        with patch("riplex_app.updater.get_current_version", return_value="0.2.3"):
+        with patch("riplex.updater.get_current_version", return_value="0.2.3"):
             with patch("urllib.request.urlopen", side_effect=OSError("no network")):
                 assert check_for_update() is None
 
@@ -62,7 +64,7 @@ class TestCheckForUpdate:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("riplex_app.updater.get_current_version", return_value="0.2.3"):
+        with patch("riplex.updater.get_current_version", return_value="0.2.3"):
             with patch("urllib.request.urlopen", return_value=mock_resp):
                 assert check_for_update() is None
 
@@ -82,7 +84,7 @@ class TestCheckForUpdate:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("riplex_app.updater.get_current_version", return_value="0.2.3"):
+        with patch("riplex.updater.get_current_version", return_value="0.2.3"):
             with patch("urllib.request.urlopen", return_value=mock_resp):
                 result = check_for_update()
 
@@ -106,7 +108,7 @@ class TestCheckForUpdate:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("riplex_app.updater.get_current_version", return_value="0.4.0"):
+        with patch("riplex.updater.get_current_version", return_value="0.4.0"):
             with patch("urllib.request.urlopen", return_value=mock_resp):
                 result = check_for_update()
 
@@ -127,7 +129,7 @@ class TestCheckForUpdate:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("riplex_app.updater.get_current_version", return_value="0.5.0"):
+        with patch("riplex.updater.get_current_version", return_value="0.5.0"):
             with patch("urllib.request.urlopen", return_value=mock_resp):
                 result = check_for_update()
 
@@ -217,3 +219,93 @@ class TestInstallToolsLogic:
         missing = ["mkvmerge", "mkvpropedit"]
         to_install = sorted(set(packages[t] for t in missing if packages.get(t)))
         assert to_install == ["MoritzBunkus.MKVToolNix"]
+
+
+# ---------------------------------------------------------------------------
+# Cached check + suppression + notice formatting
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _isolated_cache(tmp_path, monkeypatch):
+    """Redirect the cache to a tmp dir for each test."""
+    monkeypatch.setattr(cache, "get_cache_dir", lambda: tmp_path)
+    monkeypatch.setattr(cache, "_disabled", False)
+    yield
+
+
+@pytest.fixture
+def _force_version(monkeypatch):
+    """Pretend an installed version so the updater does not bail on 'dev'."""
+    monkeypatch.setattr(updater, "__version__", "0.6.0")
+    monkeypatch.setattr(updater, "get_current_version", lambda: "0.6.0")
+
+
+class TestSuppressionEnv:
+    def test_default(self, monkeypatch):
+        monkeypatch.delenv(updater._SUPPRESS_ENV_VAR, raising=False)
+        assert updater.is_check_suppressed() is False
+
+    @pytest.mark.parametrize("val", ["1", "true", "TRUE", "yes", "on"])
+    def test_truthy_values(self, monkeypatch, val):
+        monkeypatch.setenv(updater._SUPPRESS_ENV_VAR, val)
+        assert updater.is_check_suppressed() is True
+
+    @pytest.mark.parametrize("val", ["0", "false", "no", "off", ""])
+    def test_falsy_values(self, monkeypatch, val):
+        monkeypatch.setenv(updater._SUPPRESS_ENV_VAR, val)
+        assert updater.is_check_suppressed() is False
+
+
+class TestCheckForUpdateCached:
+    def test_suppressed_returns_none(self, monkeypatch, _isolated_cache, _force_version):
+        monkeypatch.setenv(updater._SUPPRESS_ENV_VAR, "1")
+        with patch.object(updater, "check_for_update") as mock_check:
+            assert updater.check_for_update_cached() is None
+        mock_check.assert_not_called()
+
+    def test_dev_version_returns_none(self, monkeypatch, _isolated_cache):
+        monkeypatch.setattr(updater, "get_current_version", lambda: "dev")
+        with patch.object(updater, "check_for_update") as mock_check:
+            assert updater.check_for_update_cached() is None
+        mock_check.assert_not_called()
+
+    def test_uses_cache_on_second_call(self, _isolated_cache, _force_version):
+        fake = {"tag": "v0.6.2", "url": "https://example/release"}
+        with patch.object(updater, "check_for_update", return_value=fake) as mock_check:
+            first = updater.check_for_update_cached()
+            second = updater.check_for_update_cached()
+        assert first == fake
+        assert second == fake
+        assert mock_check.call_count == 1
+
+    def test_caches_negative_result(self, _isolated_cache, _force_version):
+        with patch.object(updater, "check_for_update", return_value=None) as mock_check:
+            first = updater.check_for_update_cached()
+            second = updater.check_for_update_cached()
+        assert first is None
+        assert second is None
+        assert mock_check.call_count == 1
+
+
+class TestFormatUpdateNotice:
+    def test_includes_version_arrow(self, monkeypatch):
+        monkeypatch.setattr(updater, "get_current_version", lambda: "0.6.0")
+        info = {"tag": "v0.6.2", "url": "https://example/release"}
+        notice = updater.format_update_notice(info)
+        assert "0.6.0 -> 0.6.2" in notice
+        assert "pipx upgrade riplex" in notice
+        assert "https://example/release" in notice
+
+    def test_omits_url_when_missing(self, monkeypatch):
+        monkeypatch.setattr(updater, "get_current_version", lambda: "0.6.0")
+        info = {"tag": "v0.6.2", "url": ""}
+        notice = updater.format_update_notice(info)
+        assert "Release notes:" not in notice
+        assert "0.6.0 -> 0.6.2" in notice
+
+    def test_custom_command(self, monkeypatch):
+        monkeypatch.setattr(updater, "get_current_version", lambda: "0.6.0")
+        info = {"tag": "v0.6.2", "url": "https://example/release"}
+        notice = updater.format_update_notice(info, command="brew upgrade riplex")
+        assert "brew upgrade riplex" in notice

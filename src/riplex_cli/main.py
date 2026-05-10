@@ -14,6 +14,7 @@ import sys
 from riplex import __version__
 from riplex.config import load_config
 from riplex.ui import set_auto_mode
+from riplex.updater import check_for_update_cached, format_update_notice
 
 from riplex_cli.commands.lookup import run_lookup
 from riplex_cli.commands.orchestrate import run_orchestrate
@@ -353,6 +354,27 @@ async def _run(args: argparse.Namespace) -> int:
     return 1
 
 
+def _print_update_notice_if_available(args: argparse.Namespace) -> None:
+    """Print a pip-style update notice to stderr if a new release exists.
+
+    Skipped for the setup command (avoid noise during first-time setup) and
+    when --json output is requested (keep machine-readable output clean).
+    Network/cache failures are silent so the CLI never fails because of
+    the update check.
+    """
+    if args.command == "setup":
+        return
+    if getattr(args, "json", False):
+        return
+    try:
+        info = check_for_update_cached()
+    except Exception:
+        return
+    if not info:
+        return
+    print(format_update_notice(info), file=sys.stderr)
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -370,7 +392,9 @@ def main() -> None:
         print()
 
     set_auto_mode(getattr(args, "auto", False))
-    sys.exit(asyncio.run(_run(args)))
+    exit_code = asyncio.run(_run(args))
+    _print_update_notice_if_available(args)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
