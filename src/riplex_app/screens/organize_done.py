@@ -10,6 +10,7 @@ import flet as ft
 
 from riplex.config import get_archive_root, get_output_root
 from riplex.models import PlannedMovie
+from riplex.normalize import movie_folder_name, show_folder_name
 from riplex.organizer import archive_source_folder
 
 log = logging.getLogger(__name__)
@@ -44,9 +45,13 @@ class OrganizeDoneScreen:
         output_folder = None
         if planned and output_root:
             if isinstance(planned, PlannedMovie):
-                output_folder = Path(output_root) / "Movies" / f"{planned.canonical_title} ({planned.year})"
+                output_folder = Path(output_root) / "Movies" / movie_folder_name(
+                    planned.canonical_title, planned.year,
+                )
             else:
-                output_folder = Path(output_root) / "TV Shows" / f"{planned.canonical_title} ({planned.year})"
+                output_folder = Path(output_root) / "TV Shows" / show_folder_name(
+                    planned.canonical_title, planned.year,
+                )
 
         # Title
         title_text = ""
@@ -163,13 +168,25 @@ class OrganizeDoneScreen:
     def _open_folder(self, folder: Path):
         """Open the output folder in the system file manager."""
         folder_str = str(folder)
-        system = platform.system()
-        if system == "Windows":
-            os.startfile(folder_str)
-        elif system == "Darwin":
-            subprocess.Popen(["open", folder_str])
-        else:
-            subprocess.Popen(["xdg-open", folder_str])
+        if not folder.exists():
+            log.warning("Open folder: path does not exist: %s", folder_str)
+            self._show_snack(f"Folder not found: {folder_str}")
+            return
+        try:
+            system = platform.system()
+            if system == "Windows":
+                os.startfile(folder_str)
+            elif system == "Darwin":
+                subprocess.Popen(["open", folder_str])
+            else:
+                subprocess.Popen(["xdg-open", folder_str])
+        except OSError as exc:
+            log.warning("Open folder failed for %s: %s", folder_str, exc)
+            self._show_snack(f"Could not open folder: {exc}")
+
+    def _show_snack(self, message: str) -> None:
+        """Display a snackbar message at the bottom of the screen."""
+        self.app.page.open(ft.SnackBar(content=ft.Text(message)))
 
     def _organize_another(self, e):
         """Reset organize state and go to folder picker."""
