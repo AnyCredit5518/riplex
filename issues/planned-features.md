@@ -21,38 +21,6 @@ episode collapsing.
   override for users with separate libraries.
 
 
-## Orchestrate Flow (GUI)
-
-The GUI has rip and organize flows. The orchestrate flow (multi-disc pipeline
-with disc-swap prompts) is not yet implemented.
-
-### Key pieces needed
-
-- Disc swap prompt screen
-- Session state tracking across disc swaps (accumulated rip results, metadata)
-- Disc number auto-detection after each swap
-- Error recovery (retry/skip failed disc)
-- Cancel mid-flow and organize what's been ripped so far
-
-
-## Bug Report Submission
-
-### Problem
-
-Snapshot files for debugging are mixed in with media files and have
-inconsistent formats. Users must hunt for debug artifacts across multiple
-locations when filing bug reports.
-
-### Plan
-
-1. Move all debug artifacts into a `_riplex/` subfolder (Plex-ignored).
-2. Consistent v2 snapshot envelope format with type discriminator.
-3. GUI writes same snapshots as CLI.
-4. "Report a Bug" button in GUI: opens pre-filled GitHub issue, copies
-   debug folder path to clipboard.
-5. `.github/ISSUE_TEMPLATE/bug_report.yml` for structured reports.
-
-
 ## Interactive Lookup Command
 
 `riplex lookup` currently auto-picks the first TMDb match and default
@@ -77,17 +45,4 @@ tracks when ripping, not just the default/English track.
   if the user explicitly configures preferred languages
 
 
-## Drop Pre-built Intel macOS Binary
 
-The `macos-13` (Intel) CI runner is slow to queue and GitHub is phasing out
-Intel Mac hardware. Intel Macs are a shrinking minority of users.
-
-### Plan
-
-- Remove the `macos-13` / `x86_64` matrix entry from `release.yml`
-- Remove `riplex-macos-x86_64` and `riplex-ui-macos-x86_64.zip` from the
-  release step
-- Update `updater.py` to stop looking for arch-specific assets (only arm64)
-- Update installation docs: macOS section offers only the ARM build; Intel
-  Mac users are directed to install from source (venv + `pip install -e`)
-- Update README download table accordingly
