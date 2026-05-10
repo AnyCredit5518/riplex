@@ -46,6 +46,53 @@ def build_bug_report_url(state: dict) -> str:
     return _NEW_ISSUE_BASE + "?" + urllib.parse.urlencode(params)
 
 
+def build_crash_report_url(
+    state: dict,
+    *,
+    exc_type: str,
+    exc_message: str,
+    traceback_text: str,
+    last_screen: str | None = None,
+) -> str:
+    """Return a GitHub new-issue URL pre-filled with crash details.
+
+    Targets the crash_report.yml template. GitHub limits URL length to ~8KB,
+    so the traceback is truncated if necessary.
+    """
+    params: dict[str, str] = {
+        "template": "crash_report.yml",
+        "labels": "bug,crash",
+    }
+
+    params["version"] = get_current_version()
+    params["platform"] = platform.platform()
+    params["frontend"] = "GUI"
+    params["exception-type"] = exc_type
+    if exc_message:
+        params["exception-message"] = exc_message[:500]
+    if last_screen:
+        params["last-screen"] = last_screen
+
+    # Truncate traceback to keep URL under GitHub's ~8KB limit.
+    max_tb_len = 6000
+    if len(traceback_text) > max_tb_len:
+        traceback_text = (
+            traceback_text[:max_tb_len]
+            + "\n... [truncated, see local riplex_app.log for full trace]"
+        )
+    params["traceback"] = traceback_text
+
+    debug_paths = _find_debug_paths(state)
+    if debug_paths:
+        params["debug-files"] = (
+            "Debug folder found at:\n"
+            + "\n".join(f"`{p}`" for p in debug_paths)
+            + "\n\nPlease zip and attach."
+        )
+
+    return _NEW_ISSUE_BASE + "?" + urllib.parse.urlencode(params)
+
+
 def _find_debug_paths(state: dict) -> list[str]:
     """Return paths to _riplex debug folders or snapshot files, if they exist."""
     paths: list[str] = []

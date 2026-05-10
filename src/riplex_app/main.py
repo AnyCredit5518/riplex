@@ -1,6 +1,9 @@
 """Riplex GUI - Flet-based companion app for riplex."""
 
 import logging
+import sys
+import threading
+import traceback as tb_module
 import webbrowser
 
 import flet as ft
@@ -82,9 +85,14 @@ class RiplexApp:
 
         self.navigate("welcome")
 
+        # Install error handlers to surface a "Report Crash" dialog.
+        self.page.on_error = self._on_page_error
+        self._install_excepthooks()
+
     def navigate(self, screen_name: str):
         """Switch to a named screen."""
         log.info("navigate -> %s", screen_name)
+        self._current_screen_name = screen_name
         self.page.controls.clear()
         screen = self.screens[screen_name]
         self.page.controls.append(screen.build())
@@ -109,6 +117,128 @@ class RiplexApp:
         url = build_bug_report_url(self.state)
         log.info("Opening bug report: %s", url)
         webbrowser.open(url)
+
+    # ------------------------------------------------------------------
+    # Crash handling
+    # ------------------------------------------------------------------
+    def _on_page_error(self, e):
+        """Flet calls this for unhandled exceptions in event handlers."""
+        # Flet passes ControlEvent with `data` containing the traceback string.
+        traceback_text = getattr(e, "data", None) or str(e)
+        # Best-effort parse of exception type/message from the last line.
+        exc_type, exc_message = _parse_exception_summary(traceback_text)
+        log.error("page.on_error: %s: %s", exc_type, exc_message)
+        log.error("Traceback:\n%s", traceback_text)
+        self._show_crash_dialog(exc_type, exc_message, traceback_text)
+
+    def _install_excepthooks(self):
+        """Install sys.excepthook + threading.excepthook to catch crashes."""
+        prev_sys_hook = sys.excepthook
+        prev_thread_hook = threading.excepthook
+
+        def sys_hook(exc_type, exc_value, exc_tb):
+            try:
+                tb_text = "".join(tb_module.format_exception(exc_type, exc_value, exc_tb))
+                log.error("Unhandled exception:\n%s", tb_text)
+                self._show_crash_dialog(exc_type.__name__, str(exc_value), tb_text)
+            finally:
+                prev_sys_hook(exc_type, exc_value, exc_tb)
+
+        def thread_hook(args):
+            try:
+                tb_text = "".join(
+                    tb_module.format_exception(args.exc_type, args.exc_value, args.exc_traceback)
+                )
+                log.error("Unhandled thread exception:\n%s", tb_text)
+                self._show_crash_dialog(args.exc_type.__name__, str(args.exc_value), tb_text)
+            finally:
+                prev_thread_hook(args)
+
+        sys.excepthook = sys_hook
+        threading.excepthook = thread_hook
+
+    def _show_crash_dialog(self, exc_type: str, exc_message: str, traceback_text: str):
+        """Show a modal dialog offering to file a crash report."""
+        from riplex_app.bug_report import build_crash_report_url
+
+        last_screen = getattr(self, "_current_screen_name", None)
+
+        def report(_e):
+            url = build_crash_report_url(
+                self.state,
+                exc_type=exc_type,
+                exc_message=exc_message,
+                traceback_text=traceback_text,
+                last_screen=last_screen,
+            )
+            log.info("Opening crash report: %s", url)
+            webbrowser.open(url)
+            close(_e)
+
+        def close(_e):
+            dialog.open = False
+            self.page.update()
+
+        # Keep the visible traceback short; the full one goes to GitHub.
+        preview = traceback_text.strip().splitlines()[-12:]
+        preview_text = "\n".join(preview)
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [
+                    ft.Icon(ft.Icons.ERROR, color=ft.Colors.RED_400),
+                    ft.Text("riplex crashed"),
+                ],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [
+                    ft.Text(f"{exc_type}: {exc_message}", selectable=True),
+                    ft.Container(height=10),
+                    ft.Text(
+                        "Help us fix this by filing a crash report. The "
+                        "traceback and version info will be pre-filled.",
+                        size=12,
+                    ),
+                    ft.Container(height=10),
+                    ft.Container(
+                        content=ft.Text(preview_text, size=11, selectable=True, font_family="Consolas"),
+                        bgcolor=ft.Colors.BLACK26,
+                        padding=10,
+                        border_radius=4,
+                    ),
+                ],
+                tight=True,
+                width=600,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            actions=[
+                ft.TextButton("Dismiss", on_click=close),
+                ft.FilledButton(
+                    "Report Crash",
+                    icon=ft.Icons.BUG_REPORT,
+                    on_click=report,
+                ),
+            ],
+        )
+        try:
+            self.page.open(dialog)
+        except Exception:  # pragma: no cover — last-ditch fallback
+            log.exception("Failed to show crash dialog")
+
+
+def _parse_exception_summary(traceback_text: str) -> tuple[str, str]:
+    """Extract exception type and message from the last line of a traceback."""
+    last_line = ""
+    for line in reversed(traceback_text.strip().splitlines()):
+        if line.strip():
+            last_line = line.strip()
+            break
+    if ":" in last_line:
+        exc_type, _, exc_message = last_line.partition(":")
+        return exc_type.strip(), exc_message.strip()
+    return last_line or "Exception", ""
 
 
 def main():

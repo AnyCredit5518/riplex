@@ -1,0 +1,80 @@
+name: Crash Report
+description: Report an unhandled exception / crash in riplex (auto-filed from the GUI's "Report Crash" button)
+title: "[Crash] "
+labels: ["bug", "crash"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a crash! Most fields below are pre-filled by the
+        GUI. Please review and add anything else that might help reproduce.
+
+  - type: input
+    id: version
+    attributes:
+      label: riplex version
+      placeholder: "e.g. 0.1.1.dev18"
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "e.g. Windows-11-10.0.26100-SP0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frontend
+    attributes:
+      label: Frontend
+      options:
+        - CLI
+        - GUI
+    validations:
+      required: true
+
+  - type: input
+    id: exception-type
+    attributes:
+      label: Exception type
+      placeholder: "e.g. FileNotFoundError"
+    validations:
+      required: true
+
+  - type: input
+    id: exception-message
+    attributes:
+      label: Exception message
+      placeholder: "e.g. [WinError 2] The system cannot find the file specified"
+
+  - type: input
+    id: last-screen
+    attributes:
+      label: Last screen / action
+      description: Which screen were you on, or what did you click, when the crash happened?
+      placeholder: "e.g. organize_done — clicked Open Folder"
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback
+      description: Full Python traceback (auto-filled by the GUI).
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-were-you-doing
+    attributes:
+      label: What were you doing?
+      description: Brief description of the steps leading up to the crash.
+
+  - type: textarea
+    id: debug-files
+    attributes:
+      label: Debug files
+      description: |
+        If a `_riplex/` debug folder exists at your output directory, please
+        zip it and drag it here.
