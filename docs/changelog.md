@@ -4,6 +4,21 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-09
+
+### Changed
+
+- Installation guide: complete restructure for clarity. Install riplex first, then setup, then manual tool installation as a fallback. Each install option now covers all platforms (Windows, macOS, Linux, immutable Linux distros).
+- Installation guide: Windows executable instructions rewritten with step-by-step PATH setup, SmartScreen guidance, and separate GUI vs CLI paths.
+- Installation guide: macOS CLI now installs to `/usr/local/bin/riplex` with proper rename.
+- Installation guide: Option C (from source) split into numbered steps with separate Windows and macOS/Linux commands.
+- Installation guide: tkinter/folder picker note now covers both macOS and Linux.
+
+### Added
+
+- Installation guide: Linux (Bazzite, Fedora Silverblue, immutable distros) sections for pipx install and manual tool installation, including Flatpak wrapper script for MKVToolNix.
+- Installation guide: MakeMKV registration pulled into its own subsection.
+
 ## 2026-05-08
 
 ### Added
