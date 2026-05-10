@@ -7,7 +7,22 @@ import traceback as tb_module
 import webbrowser
 from pathlib import Path
 
-import flet as ft
+try:
+    import flet as ft
+except ModuleNotFoundError as exc:  # pragma: no cover — only triggers without [gui] extra
+    if exc.name == "flet":
+        sys.stderr.write(
+            "\nriplex-ui requires the GUI dependencies, which are not installed.\n\n"
+            "If you installed riplex with pipx, run:\n"
+            "    pipx install --force 'riplex[gui]'\n"
+            "or, to add the GUI to an existing install:\n"
+            "    pipx inject riplex flet\n\n"
+            "If you installed with pip, run:\n"
+            "    pip install 'riplex[gui]'\n\n"
+            "See https://github.com/AnyCredit5518/riplex#installation for details.\n"
+        )
+        sys.exit(1)
+    raise
 
 log = logging.getLogger("riplex_app")
 
