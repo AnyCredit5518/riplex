@@ -173,11 +173,15 @@ def scan_folder(
     folder: Path,
     *,
     on_progress: Callable[[int, int, str], None] | None = None,
+    on_discover: Callable[[int], None] | None = None,
 ) -> list[ScannedDisc]:
     """Scan a MakeMKV rip folder and return disc groupings with durations.
 
     Handles both flat layouts (all MKVs in one folder) and multi-disc
     layouts (subfolders per disc like "Special Features/", "Disc 1/").
+
+    *on_discover*, if provided, is called as ``on_discover(total)`` once
+    file discovery finishes and before probing begins.
 
     *on_progress*, if provided, is called as ``on_progress(current, total, filename)``
     after each file is probed.
@@ -217,6 +221,9 @@ def scan_folder(
         all_files.extend(mkvs)
     total = len(all_files)
     scanned_count = 0
+
+    if on_discover:
+        on_discover(total)
 
     # Root-level files become disc group with folder name
     if root_mkvs:

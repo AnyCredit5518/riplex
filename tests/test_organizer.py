@@ -147,6 +147,42 @@ class TestBuildOrganizePlanMovie:
         assert "King Kong (2005)" in op.moves[0].destination
         assert "King Kong (2005)" in op.moves[1].destination
 
+    def test_movie_with_edition_from_disc_label(self):
+        """Edition tag extracted from multi-edition disc target label."""
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="KK_t00.mkv",
+                    file_duration_seconds=11236,
+                    matched_label="Disc 1: Theatrical Cut (movie)",
+                    matched_runtime_seconds=11236,
+                    delta_seconds=0,
+                    confidence="high",
+                ),
+                MatchCandidate(
+                    file_name="KK_t02.mkv",
+                    file_duration_seconds=12008,
+                    matched_label="Disc 1: Extended Cut (movie)",
+                    matched_runtime_seconds=12008,
+                    delta_seconds=0,
+                    confidence="high",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 2
+        dests = [m.destination for m in op.moves]
+        assert any("{edition-Theatrical Cut}" in d for d in dests)
+        assert any("{edition-Extended Cut}" in d for d in dests)
+        assert all("King Kong (2005)" in d for d in dests)
+
     def test_movie_no_edition_without_classification(self):
         """No edition tag when classification is empty or has no edition."""
         result = OrganizeResult(

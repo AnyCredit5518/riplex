@@ -155,11 +155,22 @@ class FolderPickerScreen:
         """Run ffprobe scan in background."""
         log.info("scanning %s", folder)
 
+        def _on_discover(total: int):
+            log.debug("scan discovered %d file(s)", total)
+
+            async def _update():
+                self._progress_text.value = f"Probing file 1 of {total}..."
+                self._progress_bar.value = 0
+                self._progress_detail.value = "This can take a moment for large files"
+                self.app.page.update()
+
+            self.app.page.run_task(_update)
+
         def _on_progress(current: int, total: int, filename: str):
             log.debug("scan progress %d/%d %s", current, total, filename)
 
             async def _update():
-                self._progress_text.value = f"Scanning file {current} of {total}..."
+                self._progress_text.value = f"Probing file {current} of {total}..."
                 self._progress_bar.value = current / total if total else 0
                 self._progress_detail.value = filename
                 self.app.page.update()
@@ -167,7 +178,7 @@ class FolderPickerScreen:
             self.app.page.run_task(_update)
 
         try:
-            scanned = scan_folder(folder, on_progress=_on_progress)
+            scanned = scan_folder(folder, on_progress=_on_progress, on_discover=_on_discover)
             log.info("scan complete: %d disc(s)", len(scanned))
             self.app.state["_scan_result"] = scanned
         except Exception as exc:

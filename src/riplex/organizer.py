@@ -461,7 +461,15 @@ def _compute_destination(
     # Movie main file
     if "(movie)" in label:
         edition = None
-        if candidate.classification:
+        # Check for edition in label (from multi-edition disc targets)
+        # e.g. "Disc 1: Theatrical Cut (movie)"
+        if label.startswith("Disc ") and ": " in label:
+            edition_part = label.split(": ", 1)[1].replace(" (movie)", "")
+            m = _EDITION_RE.search(edition_part)
+            if m:
+                edition = m.group(1)
+        # Fallback: check rip-time classification
+        if not edition and candidate.classification:
             m = _EDITION_RE.search(candidate.classification)
             if m:
                 edition = m.group(1)

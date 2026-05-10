@@ -166,6 +166,12 @@ _MAX_MATCH_DELTA = 300
 
 _PLAY_ALL_RE = re.compile(r"\bplay\s*all\b", re.IGNORECASE)
 
+# Edition patterns in dvdcompare feature titles
+_EDITION_RE = re.compile(
+    r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
+    re.IGNORECASE,
+)
+
 
 def collect_disc_targets(
     discs: list[PlannedDisc],
@@ -178,6 +184,7 @@ def collect_disc_targets(
     whichever disc has ``is_film=True``).
     """
     targets: list[tuple[str, int, int | None]] = []
+    suppress_movie_target = False
 
     # Identify the film disc number (if any) so the movie target is
     # constrained to that disc's folder.
@@ -201,21 +208,41 @@ def collect_disc_targets(
 
         # Collect non-play-all extras as targets; play-all entries are
         # redundant when individual parts are also listed on the disc.
-        # Also skip "The Film ..." entries on film discs: they represent
-        # the main feature which is already covered by the movie target.
+        # Also skip "The Film ..." entries on film discs UNLESS there are
+        # multiple editions (e.g. Theatrical Cut + Extended Cut).
         play_all_extras: list[PlannedExtra] = []
         regular_extras: list[PlannedExtra] = []
+        film_entries: list[PlannedExtra] = []
         for ex in disc.extras:
-            if ex.runtime_seconds <= 0:
-                continue
             if disc.is_film and ex.title.lower().startswith("the film"):
-                log.debug("Disc %d: skipping film entry '%s' (covered by movie target)",
-                          disc.number, ex.title)
+                film_entries.append(ex)
+                continue
+            if ex.runtime_seconds <= 0:
                 continue
             if _PLAY_ALL_RE.search(ex.title):
                 play_all_extras.append(ex)
             else:
                 regular_extras.append(ex)
+
+        # Handle "The Film ..." entries on film discs
+        if len(film_entries) > 1:
+            # Multiple editions: create edition-aware targets and suppress
+            # the single TMDb movie target added above.  Runtimes may be
+            # zero when dvdcompare only lists the title/resolution; those
+            # are filled in during matching by pairing editions with files
+            # by duration order (shortest = theatrical, longest = extended).
+            suppress_movie_target = True
+            for ex in film_entries:
+                m = _EDITION_RE.search(ex.title)
+                edition = m.group(1) if m else ex.title
+                label = f"{prefix}: {edition} (movie)"
+                runtime = ex.runtime_seconds or 0
+                log.debug("Disc %d: multi-edition film entry '%s' -> target '%s' (%ds)",
+                          disc.number, ex.title, label, runtime)
+                targets.append((label, runtime, disc.number))
+        elif film_entries:
+            log.debug("Disc %d: skipping single film entry '%s' (covered by movie target)",
+                      disc.number, film_entries[0].title)
 
         # Only include play-all entries if there are no other targets on
         # this disc (episodes or regular extras) to match against.
@@ -232,6 +259,12 @@ def collect_disc_targets(
             if ex.feature_type:
                 label += f" ({ex.feature_type})"
             targets.append((label, ex.runtime_seconds, disc.number))
+
+    # If multi-edition entries replaced the single movie target, remove it
+    if suppress_movie_target and targets and "(movie)" in targets[0][0]:
+        removed = targets.pop(0)
+        log.debug("Suppressed single movie target '%s' in favor of edition targets",
+                  removed[0])
 
     return targets
 
@@ -427,16 +460,82 @@ def match_discs(
         claimed_files.add(fi)
         claimed_targets.add(ti)
 
+    # --- Pass 2: zero-runtime edition targets ---
+    # When dvdcompare lists multiple editions without runtimes (e.g.
+    # "Theatrical Cut" and "Extended Cut" both with runtime=0), pair
+    # unclaimed edition targets with unclaimed files by duration order:
+    # shortest file = theatrical, longest = extended/director's.
+    _THEATRICAL_WORDS = {"theatrical"}
+    _EXTENDED_WORDS = {"extended", "director", "unrated", "ultimate"}
+
+    zero_edition_targets = [
+        ti for ti, (label, runtime_s, _) in enumerate(targets)
+        if ti not in claimed_targets and runtime_s == 0 and "(movie)" in label
+    ]
+    if zero_edition_targets:
+        # Find unclaimed files on the same disc(s)
+        edition_disc = targets[zero_edition_targets[0]][2]
+        unclaimed_files = [
+            fi for fi in range(len(all_scanned))
+            if fi not in claimed_files
+            and all_scanned[fi].duration_seconds > 0
+            and (edition_disc is None or file_disc[fi] is None or file_disc[fi] == edition_disc)
+        ]
+        # Sort targets: theatrical first, then extended
+        def _edition_sort_key(ti: int) -> int:
+            label_lower = targets[ti][0].lower()
+            if any(w in label_lower for w in _THEATRICAL_WORDS):
+                return 0
+            if any(w in label_lower for w in _EXTENDED_WORDS):
+                return 1
+            return 2
+        zero_edition_targets.sort(key=_edition_sort_key)
+        # Sort files by duration (shortest first = theatrical)
+        unclaimed_files.sort(key=lambda fi: all_scanned[fi].duration_seconds)
+
+        for ti, fi in zip(zero_edition_targets, unclaimed_files):
+            sf = all_scanned[fi]
+            label = targets[ti][0]
+            log.debug("Edition match (no runtime): %s (%ds) -> '%s'",
+                      sf.name, sf.duration_seconds, label)
+            matched.append(
+                MatchCandidate(
+                    file_name=sf.name,
+                    file_duration_seconds=sf.duration_seconds,
+                    matched_label=label,
+                    matched_runtime_seconds=sf.duration_seconds,
+                    delta_seconds=0,
+                    confidence="medium",
+                    classification=sf.classification,
+                )
+            )
+            claimed_files.add(fi)
+            claimed_targets.add(ti)
+
     unmatched = [
         all_scanned[i]
         for i in range(len(all_scanned))
         if i not in claimed_files
     ]
-    missing = [
-        targets[i][0]
-        for i in range(len(targets))
-        if i not in claimed_targets
-    ]
+
+    # Only report missing targets from discs the user actually has
+    # folders for (or targets with no disc constraint).  If no folder
+    # mapped to any disc (e.g. single folder with no disc number),
+    # include all targets as missing (fallback to previous behavior).
+    present_discs = set(folder_map.values()) - {None}
+    if present_discs:
+        missing = [
+            targets[i][0]
+            for i in range(len(targets))
+            if i not in claimed_targets
+            and (targets[i][2] is None or targets[i][2] in present_discs)
+        ]
+    else:
+        missing = [
+            targets[i][0]
+            for i in range(len(targets))
+            if i not in claimed_targets
+        ]
 
     for sf in unmatched:
         log.debug("Unmatched file: %s (%ds)", sf.name, sf.duration_seconds)

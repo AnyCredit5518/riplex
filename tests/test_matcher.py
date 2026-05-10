@@ -620,3 +620,230 @@ class TestMaxDeltaThreshold:
         unmatched_names = {f.name for f in result.unmatched}
         assert "itb_t00.mkv" in unmatched_names
         assert "itb_t01.mkv" in unmatched_names
+
+
+class TestMissingFilteredToPresent:
+    """Missing targets only include discs the user has folders for."""
+
+    def test_only_disc_1_present(self):
+        """When user has only Disc 1, missing from Disc 2+ are not reported."""
+        movie = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="Audio Commentary", runtime_seconds=0),
+                ],
+            ),
+            PlannedDisc(
+                number=2, disc_format="Blu-ray",
+                extras=[
+                    PlannedExtra(title="Making Of", runtime_seconds=3600, feature_type="documentary"),
+                    PlannedExtra(title="Interviews", runtime_seconds=1800, feature_type="interview"),
+                ],
+            ),
+            PlannedDisc(
+                number=3, disc_format="Blu-ray",
+                extras=[
+                    PlannedExtra(title="Deleted Scenes", runtime_seconds=900, feature_type="deleted scenes"),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(name="t00.mkv", path="x", duration_seconds=11236),
+                ],
+            ),
+        ]
+
+        result = match_discs(scanned, discs, movie)
+
+        # Movie should match
+        assert len(result.matched) == 1
+        assert "King Kong (movie)" in result.matched[0].matched_label
+
+        # Missing should only contain targets from disc 1, not disc 2 or 3
+        for label in result.missing:
+            assert "Disc 2" not in label
+            assert "Disc 3" not in label
+
+    def test_all_discs_present(self):
+        """When user has all discs, missing includes targets from all discs."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray",
+                extras=[PlannedExtra(title="Feature A", runtime_seconds=600)],
+            ),
+            PlannedDisc(
+                number=2, disc_format="Blu-ray",
+                extras=[PlannedExtra(title="Feature B", runtime_seconds=300)],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(folder_name="Disc 1", files=[]),
+            ScannedDisc(folder_name="Disc 2", files=[]),
+        ]
+
+        result = match_discs(scanned, discs)
+
+        # Both features should appear in missing (no files to match)
+        assert len(result.missing) == 2
+        labels = set(result.missing)
+        assert any("Feature A" in l for l in labels)
+        assert any("Feature B" in l for l in labels)
+
+
+class TestMultiEditionFilm:
+    """Multiple editions (Theatrical + Extended) on the same film disc."""
+
+    def test_two_editions_create_separate_targets(self):
+        """Disc with Theatrical Cut + Extended Cut creates two movie targets."""
+        movie = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film - Theatrical Cut", runtime_seconds=11236),
+                    PlannedExtra(title="The Film - Extended Cut", runtime_seconds=12008),
+                ],
+            ),
+        ]
+
+        targets = collect_disc_targets(discs, movie)
+
+        # Should have two edition targets, NOT the single TMDb movie target
+        labels = [t[0] for t in targets]
+        assert any("Theatrical Cut" in l and "(movie)" in l for l in labels)
+        assert any("Extended Cut" in l and "(movie)" in l for l in labels)
+        # The generic "King Kong (movie)" should be suppressed
+        assert not any(l == "King Kong (movie)" for l in labels)
+
+    def test_two_editions_no_runtimes(self):
+        """dvdcompare entries without runtimes still create edition targets."""
+        movie = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film - Theatrical Cut (2160p)", runtime_seconds=0),
+                    PlannedExtra(title="The Film - Extended Cut (2160p)", runtime_seconds=0),
+                ],
+            ),
+        ]
+
+        targets = collect_disc_targets(discs, movie)
+        labels = [t[0] for t in targets]
+        assert any("Theatrical Cut" in l and "(movie)" in l for l in labels)
+        assert any("Extended Cut" in l and "(movie)" in l for l in labels)
+        assert not any(l == "King Kong (movie)" for l in labels)
+
+    def test_two_editions_match_files(self):
+        """Two MKV files match the two editions by duration order when no runtimes."""
+        movie = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film - Theatrical Cut (2160p)", runtime_seconds=0),
+                    PlannedExtra(title="The Film - Extended Cut (2160p)", runtime_seconds=0),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(name="King Kong_t00.mkv", path="x", duration_seconds=11236),
+                    ScannedFile(name="King Kong_t02.mkv", path="x", duration_seconds=12008),
+                ],
+            ),
+        ]
+
+        result = match_discs(scanned, discs, movie)
+
+        assert len(result.matched) == 2
+        assert len(result.unmatched) == 0
+
+        # Verify correct assignments: shorter = theatrical, longer = extended
+        t00 = next(c for c in result.matched if c.file_name == "King Kong_t00.mkv")
+        t02 = next(c for c in result.matched if c.file_name == "King Kong_t02.mkv")
+        assert "Theatrical Cut" in t00.matched_label
+        assert "Extended Cut" in t02.matched_label
+
+    def test_two_editions_with_runtimes_match(self):
+        """Two editions with known runtimes match via normal greedy pairing."""
+        movie = PlannedMovie(
+            canonical_title="King Kong",
+            year=2005,
+            runtime="3h 7m",
+            runtime_seconds=11236,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film - Theatrical Cut", runtime_seconds=11236),
+                    PlannedExtra(title="The Film - Extended Cut", runtime_seconds=12008),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(name="KK_t00.mkv", path="x", duration_seconds=11236),
+                    ScannedFile(name="KK_t02.mkv", path="x", duration_seconds=12008),
+                ],
+            ),
+        ]
+
+        result = match_discs(scanned, discs, movie)
+
+        assert len(result.matched) == 2
+        assert len(result.unmatched) == 0
+
+    def test_single_film_entry_still_skipped(self):
+        """A single 'The Film' entry is skipped (existing behavior)."""
+        movie = PlannedMovie(
+            canonical_title="Oppenheimer",
+            year=2023,
+            runtime="3h 0m",
+            runtime_seconds=10822,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film", runtime_seconds=10822),
+                ],
+            ),
+        ]
+
+        targets = collect_disc_targets(discs, movie)
+
+        # Should have only the TMDb movie target, not the dvdcompare entry
+        labels = [t[0] for t in targets]
+        assert "Oppenheimer (movie)" in labels
+        assert len(labels) == 1
