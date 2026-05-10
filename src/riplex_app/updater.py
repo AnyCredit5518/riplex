@@ -3,7 +3,8 @@
 import urllib.request
 import json
 import sys
-from importlib.metadata import version, PackageNotFoundError
+
+from riplex import __version__
 
 GITHUB_REPO = "AnyCredit5518/riplex"
 RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
@@ -12,10 +13,7 @@ LATEST_RELEASE_URL = f"{RELEASES_URL}/latest"
 
 def get_current_version() -> str:
     """Return the installed package version, or 'dev' if not installed."""
-    try:
-        return version("riplex")
-    except PackageNotFoundError:
-        return "dev"
+    return __version__
 
 
 def _parse_version(tag: str) -> tuple:
