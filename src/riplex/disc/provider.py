@@ -21,6 +21,7 @@ from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
 log = logging.getLogger(__name__)
 
 _DVDCOMPARE_TTL_DAYS = 30
+_DVDCOMPARE_NEG_TTL_DAYS = 7
 _CACHE_NS = "dvdcompare"
 
 
@@ -39,9 +40,11 @@ class DiscProvider:
         self,
         cache_ns: str = _CACHE_NS,
         ttl_days: int = _DVDCOMPARE_TTL_DAYS,
+        neg_ttl_days: int = _DVDCOMPARE_NEG_TTL_DAYS,
     ) -> None:
         self.cache_ns = cache_ns
         self.ttl_days = ttl_days
+        self.neg_ttl_days = neg_ttl_days
 
     # -- lookup -----------------------------------------------------------
 
@@ -89,14 +92,31 @@ class DiscProvider:
         disc_format: str | None = None,
         year: int | None = None,
     ) -> FilmComparison:
-        """Fetch a FilmComparison, returning cached data when available."""
+        """Fetch a FilmComparison, returning cached data when available.
+
+        Negative lookups (no results on dvdcompare) are also cached with a
+        shorter TTL to avoid hammering the search endpoint for titles that
+        don't exist.
+        """
         cache_key = cache.hash_key(f"film|{title}|{disc_format}|{year}")
+
+        # Check for negative cache first (shorter TTL)
+        neg_cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.neg_ttl_days)
+        if neg_cached is not None and neg_cached.get("_negative"):
+            log.debug("dvdcompare negative cache hit for '%s'", title)
+            raise LookupError(f"No dvdcompare results for '{title}' (cached)")
+
         cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
-        if cached is not None:
+        if cached is not None and not cached.get("_negative"):
             log.debug("dvdcompare film cache hit for '%s'", title)
             return _dict_to_film(cached)
 
-        film = await find_film(title, disc_format, year=year)
+        try:
+            film = await find_film(title, disc_format, year=year)
+        except LookupError:
+            log.debug("dvdcompare no results for '%s', caching negative result", title)
+            cache.cache_set(self.cache_ns, cache_key, {"_negative": True})
+            raise
         log.debug("dvdcompare find_film('%s', format=%s, year=%s): %d release(s)",
                   title, disc_format, year, len(film.releases) if film.releases else 0)
         cache.cache_set(self.cache_ns, cache_key, dataclasses.asdict(film))
