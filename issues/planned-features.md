@@ -160,5 +160,50 @@ which means it goes stale fast and we forget to credit people.
      what it owns; everything else in `CONTRIBUTORS.md` stays hand-editable.
 
 
+## SKIP Reason Column on Selection Screen
+
+The Selection screen currently shows a `RIP` / `SKIP` badge next to each
+title, but doesn't tell the user *why* a title was marked SKIP. Users have
+to check `_riplex` snapshots or the GUI log to understand the heuristic's
+reasoning, which makes it hard to spot bad recommendations (e.g. a
+soundtrack Play-All being mistakenly skipped, or an unmatched short title
+that's actually a legitimate menu loop).
+
+### Plan
+
+1. **Refactor `is_skip_title()`** in `src/riplex/disc/analysis.py` to return
+   a structured result (e.g. a small dataclass `SkipDecision(skip: bool,
+   reason: str | None)`) instead of just `bool`. Each branch returns a
+   short, user-facing reason string:
+   - `"Too short (<2 min)"`
+   - `"Duplicate of #N"`
+   - `"Lower-res copy of 4K title"`
+   - `"Play-All wrapper (covered by individual entries)"`
+   - `"Lower-res featurette (4K version exists)"`
+   - `"Disc-internal play-all"`
+   - `"Cross-resolution play-all"`
+   - `"Unmatched short clip (likely junk)"`
+   - `"Unmatched, well below movie runtime"`
+2. **Backward-compat wrapper**: keep a thin `is_skip_title() -> bool` that
+   calls the new function and returns `.skip`, so existing callers
+   (`select_rippable_titles`, tests) keep working.
+3. **Plumb the reason through to the Selection screen**: store reason on
+   the title row state (or pass via a parallel dict keyed by title index)
+   and render it as a new column or as a tooltip on the SKIP badge.
+4. **Frontend treatment**:
+   - **GUI**: small grey text after the existing badge, e.g.
+     `SKIP — Play-All wrapper`, or hover-tooltip on the badge for users
+     who don't want extra visual clutter. Decide based on screenshot
+     review.
+   - **CLI**: include the reason in the `[SKIP] # N` log lines (already
+     have the structure; just append the reason).
+5. **Tests**: add unit tests asserting the reason string for each branch
+   so future refactors don't silently break the user-facing message.
+6. **Future**: once reasons are surfaced, consider an "override SKIP"
+   action that lets users force-rip a skipped title and optionally
+   record feedback ("this skip was wrong because…") for tuning the
+   heuristics.
+
+
 
 
