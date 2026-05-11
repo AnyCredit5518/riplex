@@ -114,4 +114,51 @@ subtitle tracks differ, we should:
    suffixes (naming convention TBD).
 
 
+## Automated Contributors List Updater
+
+`CONTRIBUTORS.md` lists community members who have helped riplex by reporting
+bugs (and eventually other contribution categories). Today it's hand-edited,
+which means it goes stale fast and we forget to credit people.
+
+### Plan
+
+1. **Script** — `scripts/update_contributors.py` that:
+   - Uses the GitHub REST API (via `requests` or `PyGithub`) to enumerate
+     closed issues in `AnyCredit5518/riplex` labeled `bug`.
+   - For each issue, checks whether it was referenced by a merged commit
+     on the default branch (search commit messages for `#N`, `fixes #N`,
+     `closes #N`, etc.) — only counts issues that led to an actual fix.
+   - Tallies issues per opener, excluding `AnyCredit5518` and any account
+     ending in `[bot]`.
+   - Maps tally to rank: 🐛 4+, 🔍 8+, 🛡️ 15+, 💎 25+ (matches existing
+     thresholds in `CONTRIBUTORS.md`).
+   - Renders the "Bug Bashers" table between two HTML comment markers
+     (`<!-- BUG_BASHERS:START -->` / `<!-- BUG_BASHERS:END -->`) so the
+     surrounding prose stays hand-editable.
+   - Sorts by issue count (desc), then username (asc) for stable diffs.
+   - Reads token from `GITHUB_TOKEN` env var; falls back to unauthenticated
+     requests (lower rate limit) for local runs without a token.
+   - Has unit tests covering the rank-mapping, exclusion list, marker
+     replacement, and the "referenced by merged commit" detection (with
+     mocked API responses).
+
+2. **Workflow** — `.github/workflows/update-contributors.yml`:
+   - Triggers: `schedule: cron '0 12 * * 1'` (every Monday 12:00 UTC) +
+     `workflow_dispatch` for on-demand runs.
+   - Runs `python scripts/update_contributors.py`, then uses
+     `peter-evans/create-pull-request` to open a PR titled
+     `chore: refresh CONTRIBUTORS.md` if there's a diff.
+   - Uses the built-in `GITHUB_TOKEN` — no extra secrets needed.
+   - PR is opened against `main` so the maintainer can review additions
+     and rank promotions before merging.
+
+3. **Future contribution categories** (out of scope for v1, but design with
+   them in mind):
+   - Code contributors (PRs merged) — once external PRs start landing.
+   - Documentation contributors — `docs/` PRs merged.
+   - Each category gets its own marker block so the script touches only
+     what it owns; everything else in `CONTRIBUTORS.md` stays hand-editable.
+
+
+
 
