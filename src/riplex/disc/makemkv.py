@@ -533,15 +533,31 @@ class MakeMKV:
         if mkv_files:
             output_file = str(mkv_files[-1])
 
-        success = proc.returncode == 0
+        # makemkvcon returns 0 even when it fails to save a title (e.g.
+        # HashCheck / read errors on a damaged disc). Parse the summary
+        # line to determine real success: "MSG:5004,...,N titles saved, M failed".
+        saved_count, failed_count, last_error = _parse_rip_summary(raw_lines)
+        success = (
+            proc.returncode == 0
+            and saved_count >= 1
+            and failed_count == 0
+            and bool(output_file)
+        )
         error_msg = ""
         if not success:
-            error_msg = f"makemkvcon exited with code {proc.returncode}"
+            if last_error:
+                error_msg = last_error
+            elif failed_count > 0:
+                error_msg = f"makemkvcon reported {failed_count} failed title(s)"
+            elif proc.returncode != 0:
+                error_msg = f"makemkvcon exited with code {proc.returncode}"
+            else:
+                error_msg = "makemkvcon produced no output file"
 
         return RipResult(
             title_index=title_index,
             success=success,
-            output_file=output_file,
+            output_file=output_file if success else "",
             error_message=error_msg,
         )
 
@@ -565,6 +581,34 @@ def _parse_progress(line: str) -> RipProgress | None:
         )
     except ValueError:
         return None
+
+
+_RIP_SUMMARY_RE = re.compile(r'MSG:5004,[^,]*,[^,]*,"(\d+) titles? saved, (\d+) failed"')
+_MSG_TEXT_RE = re.compile(r'MSG:(\d+),[^,]*,[^,]*,"([^"]*)"')
+
+
+def _parse_rip_summary(lines: list[str]) -> tuple[int, int, str]:
+    """Extract (saved_count, failed_count, last_error_message) from output.
+
+    makemkvcon emits ``MSG:5004,...,"N titles saved, M failed"`` near the
+    end of every rip. Returns (-1, -1, "") if the summary line was not
+    found (e.g. the process was killed before completion).
+    """
+    saved = -1
+    failed = -1
+    last_error = ""
+    for line in lines:
+        m = _RIP_SUMMARY_RE.search(line)
+        if m:
+            saved = int(m.group(1))
+            failed = int(m.group(2))
+            continue
+        # Capture the most recent serious error (MSG codes 5003, 1002, 2023)
+        # for surfacing to the user.
+        em = _MSG_TEXT_RE.match(line)
+        if em and em.group(1) in {"5003", "1002", "2023"}:
+            last_error = em.group(2)
+    return saved, failed, last_error
 
 
 def run_rip(
