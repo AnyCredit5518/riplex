@@ -205,5 +205,114 @@ that's actually a legitimate menu loop).
    heuristics.
 
 
+## Boxset / Multi-Film Collection Support
+
+Multi-film boxsets (Godfather Trilogy 50th Anniversary, LOTR Extended,
+Star Wars Original Trilogy, John Wick Collection, etc.) are currently
+broken end-to-end:
+
+- **Rip phase:** the boxset's primary TMDb match (e.g. "The Godfather"
+  1972, runtime ~175 min) is used as the `(is_movie, movie_runtime)`
+  context for *every* disc. When ripping Disc 4 (Godfather Part III,
+  ~170 min Theatrical + ~170 min Coda), neither title matches the
+  expected runtime closely enough to win "main film", so the heuristic
+  falls through and labels both as `Episode (4K)`.
+- **Organize phase:** with one TMDb identity but files spanning multiple
+  films, files whose runtime doesn't match Part I are bucketed as
+  Unmatched, and folder names are wrong.
+- **Disc-overview UX:** discs are shown as "Disc 1, Disc 2 …" with no
+  indication of which film(s) live on each disc.
+
+### Reframe
+
+"Rip each disc as its own movie" isn't the right rule — sometimes one
+film spans multiple discs (long restorations, dual-format releases),
+sometimes one disc has multiple short films (anthologies, double
+features). The right model is:
+
+> **A boxset = N films + shared extras. Each film needs its own TMDb
+> identity. The mapping from films to discs is many-to-many.**
+
+### Plan
+
+1. **Detect multi-film releases** during metadata/release lookup:
+   - Heuristics on the boxset name (`Trilogy`, `Collection`, `Anthology`,
+     `Saga`, `Quadrilogy`, `Complete …`) and on the dvdcompare release
+     name.
+   - Or detect when the dvdcompare release has multiple distinct "main
+     film" headers across discs (vs. a single-film boxset that's just
+     loaded with extras like Inception or The Thing).
+
+2. **New data model** — `BoxsetRelease` in `riplex/metadata/`:
+   ```
+   BoxsetRelease(
+     boxset_name: str,
+     films: list[BoxsetFilm],
+     shared_extras_disc_indices: list[int],
+   )
+   BoxsetFilm(
+     tmdb_match: TmdbMatch,
+     dvdcompare_disc_indices: list[int],   # discs this film appears on
+     runtime_seconds: int,
+     variants: list[str],                  # Theatrical, Extended, Coda, etc.
+   )
+   ```
+
+3. **New "Boxset Films" screen / lookup step** — after release selection,
+   if a boxset is detected, prompt the user to confirm:
+   - List of films auto-suggested from disc headers.
+   - For each film: TMDb auto-match with manual override (reuse
+     metadata-screen UI).
+   - Disc assignment matrix: which disc(s) contain this film, which discs
+     are shared-extras-only.
+   - Save the resolved `BoxsetRelease` into state so rip + organize use it.
+
+4. **Per-disc film context during rip:**
+   - When ripping disc N, look up which `BoxsetFilm`(s) live on it.
+   - If exactly one: use *that* film's TMDb match + runtime as the
+     `(is_movie, movie_runtime)` context for skip/keep heuristics and
+     output folder naming. (This alone would fix the Godfather Part III
+     bug.)
+   - If multiple: pass a list of expected runtimes; main-film detection
+     accepts a match against any of them.
+   - If shared-extras only: skip main-film logic entirely, treat all
+     long titles as featurettes.
+
+5. **Per-disc context during organize:**
+   - Files from a disc map to that disc's film(s) by runtime.
+   - Each film organizes into its own `Movies/<Title (Year)>/` folder.
+   - Variants (Theatrical, Coda, Extended) become separate files within
+     the film's folder using existing edition naming.
+   - Shared-extras discs route to a configurable destination: per-film
+     folder of the most-related film, a shared `Boxset Extras/` folder,
+     or the first film's folder. Default TBD — most likely first film
+     since Plex collections handle the boxset grouping at the library
+     level.
+
+6. **Disc-overview UX:** show film name(s) per disc, e.g.
+   - `Disc 1: The Godfather (1972) — 4K`
+   - `Disc 2: The Godfather Part II (1974) — 4K`
+   - `Disc 3: The Godfather Part III (1990) — 4K (Theatrical + Coda)`
+   - `Disc 4: Bonus Features — Blu-ray`
+
+7. **Tactical mitigation while the full feature is being built:**
+   - When a disc's titles match the expected `movie_runtime` poorly
+     (e.g. all candidates are >10 min off) AND there are 1–2 long
+     titles, *don't* fall through to episode classification. Instead,
+     pick the longest title as a probable main film and classify the
+     rest as extras. This stops the Godfather Part III "everything is
+     an episode" failure mode for any boxset, even before per-film
+     TMDb is wired up.
+   - Add a console/log warning when this fallback fires so users know
+     the metadata didn't fully match.
+
+8. **Test fixtures:**
+   - Godfather Trilogy 50th Anniversary (3 films, multiple variants on
+     Disc 4, shared bonus disc).
+   - LOTR Extended Trilogy (3 films, each spans 2 discs theatrical/extras).
+   - Star Wars Original Trilogy 4K (3 films, mostly disc-per-film).
+   - John Wick 1–4 Collection (4 films, simple disc-per-film).
+
+
 
 
