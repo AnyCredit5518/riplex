@@ -9,6 +9,7 @@ import flet as ft
 
 from riplex.disc.makemkv import run_rip, RipProgress, RipResult
 from riplex.snapshot import copy_debug_log, get_debug_dir, save_rip_snapshot
+from riplex_app.keep_awake import keep_awake
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +118,10 @@ class ProgressScreen:
 
     def _run_rips(self):
         """Rip all selected titles sequentially."""
+        with keep_awake("ripping titles"):
+            self._run_rips_inner()
+
+    def _run_rips_inner(self):
         selected = self.app.state["selected_titles"]
         output_dir = self.app.state["output_dir"]
         makemkvcon = self.app.state["makemkvcon"]
