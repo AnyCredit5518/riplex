@@ -313,6 +313,16 @@ features). The right model is:
    - Star Wars Original Trilogy 4K (3 films, mostly disc-per-film).
    - John Wick 1–4 Collection (4 films, simple disc-per-film).
 
+9. **Share one dvdcompare lookup across all discs in a boxset:**
+   - Today each disc in a boxset workflow currently re-runs dvdcompare
+     for the same FilmComparison. With the disc cache (30-day TTL) this
+     hits cache after the first disc, but the orchestrate flow should
+     fetch once per *boxset* up front and re-use that
+     `FilmComparison`/`PlannedDisc` set for every subsequent disc swap,
+     bypassing the cache layer entirely.
+   - Implementation lands naturally with the `BoxsetRelease` data model
+     (item 2 above): one fetch produces the full disc map.
+
 
 
 

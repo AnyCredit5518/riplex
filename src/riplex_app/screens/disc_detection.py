@@ -1,4 +1,20 @@
-"""Disc detection screen - scans drives and reads disc info."""
+"""Disc detection screen — lists drives, polls for inserted discs, and lets
+the user pick which drive to read from.
+
+Replaces the original auto-pick-only flow. The screen now:
+
+* Runs a one-shot ``makemkv_preflight`` so a missing or broken makemkvcon
+  surfaces immediately instead of after a 60 s scan.
+* Polls ``MakeMKV.drive_list`` every few seconds in a background thread so
+  inserting / ejecting a disc updates the UI without manual refresh.
+* Renders one row per detected drive with a per-drive status badge and a
+  primary action (``Read disc``).
+* Auto-starts the read only when exactly one drive is loaded and the user
+  has not already clicked another drive.
+* Routes failures through a friendly error panel with ``Retry`` and
+  ``Open bug report`` buttons; the bug bundle picks up the captured
+  preflight context via ``app.state['makemkv_diag']``.
+"""
 
 import asyncio
 import logging
@@ -7,13 +23,21 @@ import threading
 
 import flet as ft
 
-from riplex.disc.makemkv import run_drive_list, run_disc_info, DriveInfo
+from riplex.disc.makemkv import (
+    DriveInfo,
+    MakeMKV,
+    MakeMKVPreflight,
+    makemkv_preflight,
+    run_disc_info,
+)
 from riplex.title import parse_volume_label
 
 log = logging.getLogger(__name__)
 
+POLL_INTERVAL_S = 3.0
 
-def _safe_update(page: ft.Page):
+
+def _safe_update(page: ft.Page) -> None:
     """Force a UI update from a background thread."""
     try:
         page.update()
@@ -21,91 +45,101 @@ def _safe_update(page: ft.Page):
         pass
 
 
+def diff_drive_lists(
+    previous: list[DriveInfo] | None,
+    current: list[DriveInfo],
+) -> bool:
+    """Return ``True`` if the visible drive list changed between polls.
+
+    Compares only the fields the GUI renders so we don't repaint the
+    panel on every poll. Pure function — extracted to keep it testable
+    without Flet.
+    """
+    if previous is None:
+        return True
+    visible_prev = [d for d in previous if d.is_present]
+    visible_now = [d for d in current if d.is_present]
+    if len(visible_prev) != len(visible_now):
+        return True
+    for a, b in zip(visible_prev, visible_now):
+        if (a.index, a.device, a.has_disc, a.disc_label, a.state_label) != (
+            b.index, b.device, b.has_disc, b.disc_label, b.state_label,
+        ):
+            return True
+    return False
+
+
 class DiscDetectionScreen:
     def __init__(self, app):
         self.app = app
+        self._poll_stop: threading.Event | None = None
+        self._poll_thread: threading.Thread | None = None
+        self._user_picked: bool = False
+        self._reading: bool = False
+        self._last_drives: list[DriveInfo] | None = None
 
+    # ------------------------------------------------------------------
+    # build() — top-level dispatcher between "post-read results" and the
+    # interactive scanning UI.
+    # ------------------------------------------------------------------
     def build(self) -> ft.Control:
-        # Check if disc was already read (re-navigate after background read)
+        # Already-read state: navigation came back here after a successful
+        # background read. Show the title-confirmation form.
         disc_read_done = self.app.state.pop("_disc_read_done", False)
         drive = self.app.state.get("drive")
         disc_info = self.app.state.get("disc_info")
-
         if disc_read_done and disc_info and drive:
-            # Show results directly
-            title = self.app.state.get("title", "")
-            n_titles = len(disc_info.titles)
-            total_size = sum(t.size_bytes for t in disc_info.titles) / (1024 ** 3)
+            return self._build_results_view(drive, disc_info)
 
-            self.title_field = ft.TextField(
-                label="Title",
-                hint_text="Auto-detected from disc label",
-                value=title,
-                width=500,
-            )
-            self.search_btn = ft.ElevatedButton(
-                "Search Metadata",
-                icon=ft.Icons.SEARCH,
-                on_click=self._search,
-                style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-            )
-            self.back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome"))
+        # Normal flow: render the interactive scanning panel.
+        self._user_picked = False
+        self._reading = False
+        self._last_drives = None
+        return self._build_scanning_view()
 
-            return ft.Column(
-                [
-                    ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Text(
-                        "Your disc has been read. Verify the title below and edit it if "
-                        "the auto-detected name is wrong, then search for metadata.",
-                        size=13,
-                        color=ft.Colors.GREY_500,
-                    ),
-                    ft.Divider(height=20),
-                    ft.Row([
-                        ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN),
-                        ft.Text(f"Found: {drive.disc_label} ({drive.device})", size=14, color=ft.Colors.GREEN),
-                    ], spacing=10),
-                    ft.Text(f"{n_titles} titles, {total_size:.1f} GB total", size=12, color=ft.Colors.GREY_400),
-                    ft.Container(height=10),
-                    self.title_field,
-                    ft.Container(expand=True),
-                    ft.Row([self.back_btn, self.search_btn]),
-                ],
-                spacing=10,
-                scroll=ft.ScrollMode.AUTO,
-                expand=True,
-            )
+    # ------------------------------------------------------------------
+    # Results view (after a successful disc read).
+    # ------------------------------------------------------------------
+    def _build_results_view(self, drive: DriveInfo, disc_info) -> ft.Control:
+        title = self.app.state.get("title", "")
+        n_titles = len(disc_info.titles)
+        total_size = sum(t.size_bytes for t in disc_info.titles) / (1024 ** 3)
 
-        # Normal flow: scanning
-        self.status_text = ft.Text("Scanning drives...", size=14)
-        self.spinner = ft.ProgressRing(width=30, height=30)
-        self.drive_list = ft.Column(spacing=8)
         self.title_field = ft.TextField(
             label="Title",
             hint_text="Auto-detected from disc label",
+            value=title,
             width=500,
-            visible=False,
         )
         self.search_btn = ft.ElevatedButton(
             "Search Metadata",
             icon=ft.Icons.SEARCH,
             on_click=self._search,
-            visible=False,
             style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
         )
         self.back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome"))
 
-        self.content = ft.Column(
+        return ft.Column(
             [
                 ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
-                    "Scanning for disc drives. Make sure a disc is inserted.",
+                    "Your disc has been read. Verify the title below and edit it if "
+                    "the auto-detected name is wrong, then search for metadata.",
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
-                ft.Row([self.spinner, self.status_text], spacing=10),
-                self.drive_list,
+                ft.Row([
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN),
+                    ft.Text(
+                        f"Found: {drive.disc_label} ({drive.device})",
+                        size=14, color=ft.Colors.GREEN,
+                    ),
+                ], spacing=10),
+                ft.Text(
+                    f"{n_titles} titles, {total_size:.1f} GB total",
+                    size=12, color=ft.Colors.GREY_400,
+                ),
                 ft.Container(height=10),
                 self.title_field,
                 ft.Container(expand=True),
@@ -116,103 +150,440 @@ class DiscDetectionScreen:
             expand=True,
         )
 
-        # Start scanning in background
-        threading.Thread(target=self._scan_drives, daemon=True).start()
+    # ------------------------------------------------------------------
+    # Interactive scanning view.
+    # ------------------------------------------------------------------
+    def _build_scanning_view(self) -> ft.Control:
+        # Stop any stale poller from a previous build (e.g. if the user
+        # navigated back to this screen).
+        self._stop_polling()
 
+        self.preflight_text = ft.Text(
+            "Checking makemkvcon\u2026",
+            size=12, color=ft.Colors.GREY_500,
+        )
+        self.refresh_btn = ft.IconButton(
+            icon=ft.Icons.REFRESH,
+            tooltip="Rescan drives now",
+            on_click=lambda _: self._trigger_poll_now(),
+        )
+        self.status_text = ft.Text("Scanning drives\u2026", size=14)
+        self.spinner = ft.ProgressRing(width=20, height=20)
+        self.drive_panel = ft.Column(spacing=8)
+        self.error_panel = ft.Container(visible=False)
+        self.back_btn = ft.TextButton("Back", on_click=lambda _: self._on_back())
+
+        self.content = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
+                        ft.Container(expand=True),
+                        self.refresh_btn,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Text(
+                    "Insert a disc and pick the drive to read from. The list updates "
+                    "automatically every few seconds.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
+                self.preflight_text,
+                ft.Divider(height=10),
+                ft.Row([self.spinner, self.status_text], spacing=10),
+                self.drive_panel,
+                self.error_panel,
+                ft.Container(expand=True),
+                ft.Row([self.back_btn]),
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+        )
+
+        # Run preflight + first scan + start poller in a background thread
+        # so build() returns immediately.
+        threading.Thread(target=self._initial_scan, daemon=True).start()
         return self.content
 
-    def _scan_drives(self):
-        """Scan for disc drives in background thread."""
+    # ------------------------------------------------------------------
+    # Preflight + polling.
+    # ------------------------------------------------------------------
+    def _initial_scan(self) -> None:
+        """Run preflight, do the first drive scan, then start the poller."""
         try:
-            drives = run_drive_list(makemkvcon=self.app.state["makemkvcon"])
-            drives_with_disc = [d for d in drives if d.has_disc]
+            preflight = makemkv_preflight(self.app.state.get("makemkvcon"))
+        except Exception as exc:  # defensive; preflight catches its own errors
+            log.exception("makemkv preflight crashed: %s", exc)
+            preflight = MakeMKVPreflight(exe=None, available=False, error=str(exc))
 
-            if not drives_with_disc:
-                self.spinner.visible = False
-                self.status_text.value = "No disc found. Insert a disc and try again."
-                self.status_text.color = ft.Colors.ORANGE
-                self.app.page.update()
-                return
+        self.app.state["makemkv_diag"] = {
+            "exe": str(preflight.exe) if preflight.exe else "",
+            "version": preflight.version,
+            "available": preflight.available,
+            "error": preflight.error,
+        }
 
-            # If multiple drives with discs, let user pick
-            if len(drives_with_disc) > 1:
-                self.spinner.visible = False
-                self.status_text.value = "Multiple discs detected. Select one:"
-                for drive in drives_with_disc:
-                    self.drive_list.controls.append(
-                        ft.ElevatedButton(
-                            f"{drive.disc_label} ({drive.device})",
-                            on_click=lambda _, d=drive: self._select_drive(d),
-                        )
-                    )
-                self.app.page.update()
-            else:
-                # Single drive: read it directly in this thread (no nested thread)
-                drive = drives_with_disc[0]
-                self.app.state["drive"] = drive
-                self.status_text.value = f"Reading disc: {drive.disc_label} ({drive.device})...\nThis can take up to a minute."
-                self.status_text.color = None
-                self.app.page.update()
-                self._read_disc(drive)
+        if not preflight.available:
+            self._show_preflight_failure(preflight)
+            return
 
+        self.preflight_text.value = (
+            f"makemkvcon: {preflight.version or 'detected'}  \u2014  {preflight.exe}"
+        )
+        self.preflight_text.color = ft.Colors.GREY_400
+        _safe_update(self.app.page)
+
+        self._poll_once(initial=True)
+        self._start_polling()
+
+    def _start_polling(self) -> None:
+        if self._poll_thread and self._poll_thread.is_alive():
+            return
+        self._poll_stop = threading.Event()
+        self._poll_thread = threading.Thread(
+            target=self._poll_loop,
+            daemon=True,
+            name="riplex-drive-poll",
+        )
+        self._poll_thread.start()
+
+    def _stop_polling(self) -> None:
+        if self._poll_stop is not None:
+            self._poll_stop.set()
+        self._poll_stop = None
+        self._poll_thread = None
+
+    def _poll_loop(self) -> None:
+        stop = self._poll_stop
+        assert stop is not None
+        while not stop.wait(POLL_INTERVAL_S):
+            if self._reading:
+                continue
+            try:
+                self._poll_once(initial=False)
+            except Exception:
+                log.exception("drive poll iteration failed")
+
+    def _trigger_poll_now(self) -> None:
+        if self._reading:
+            return
+        threading.Thread(
+            target=lambda: self._poll_once(initial=False),
+            daemon=True,
+        ).start()
+
+    def _poll_once(self, *, initial: bool) -> None:
+        try:
+            mk = MakeMKV(self.app.state.get("makemkvcon"))
+            drives = mk.drive_list()
         except Exception as exc:
-            self.spinner.visible = False
-            self.status_text.value = f"Error scanning drives: {exc}"
-            self.status_text.color = ft.Colors.RED
-            self.app.page.update()
+            log.warning("drive_list failed: %s", exc)
+            if initial:
+                self._show_error(
+                    "Couldn\u2019t list drives",
+                    f"makemkvcon failed: {exc}",
+                )
+            return
 
-    def _select_drive(self, drive: DriveInfo):
-        """Read disc info from selected drive."""
+        if not diff_drive_lists(self._last_drives, drives):
+            return
+        self._last_drives = drives
+        self._render_drives(drives)
+        self._maybe_auto_pick(drives)
+
+    # ------------------------------------------------------------------
+    # Rendering.
+    # ------------------------------------------------------------------
+    def _render_drives(self, drives: list[DriveInfo]) -> None:
+        visible = [d for d in drives if d.is_present]
+
+        self.spinner.visible = False
+        self.error_panel.visible = False
+
+        if not visible:
+            self.status_text.value = (
+                "No optical drives detected. Connect a drive and click Refresh."
+            )
+            self.status_text.color = ft.Colors.ORANGE
+            self.drive_panel.controls.clear()
+            _safe_update(self.app.page)
+            return
+
+        loaded_count = sum(1 for d in visible if d.has_disc)
+        if loaded_count == 0:
+            self.status_text.value = (
+                f"{len(visible)} drive(s) detected. Insert a disc \u2014 the list "
+                "refreshes every few seconds."
+            )
+            self.status_text.color = ft.Colors.GREY_400
+        else:
+            self.status_text.value = (
+                f"{loaded_count} of {len(visible)} drive(s) have a disc. Pick one to read."
+            )
+            self.status_text.color = None
+
+        self.drive_panel.controls = [self._build_drive_row(d) for d in visible]
+        _safe_update(self.app.page)
+
+    def _build_drive_row(self, drive: DriveInfo) -> ft.Control:
+        if drive.has_disc:
+            icon = ft.Icon(ft.Icons.ALBUM, color=ft.Colors.GREEN)
+            status_color = ft.Colors.GREEN
+            primary = ft.ElevatedButton(
+                "Read disc",
+                icon=ft.Icons.PLAY_ARROW,
+                on_click=lambda _, d=drive: self._on_pick_drive(d),
+            )
+        else:
+            icon = ft.Icon(ft.Icons.RADIO_BUTTON_UNCHECKED, color=ft.Colors.GREY_500)
+            status_color = ft.Colors.GREY_500
+            primary = ft.OutlinedButton(
+                "Empty",
+                icon=ft.Icons.EJECT,
+                disabled=True,
+            )
+
+        device_label = drive.device or f"#{drive.index}"
+        name_label = drive.name or "(unknown drive)"
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    icon,
+                    ft.Column(
+                        [
+                            ft.Text(
+                                f"{device_label}  \u2014  {name_label}",
+                                size=13, weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(
+                                drive.state_label or ("Disc loaded" if drive.has_disc else "Empty"),
+                                size=12, color=status_color,
+                            ),
+                        ],
+                        spacing=2, expand=True,
+                    ),
+                    primary,
+                ],
+                spacing=12,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=10,
+            border=ft.border.all(1, ft.Colors.GREY_800),
+            border_radius=6,
+        )
+
+    # ------------------------------------------------------------------
+    # Auto-pick + manual pick.
+    # ------------------------------------------------------------------
+    def _maybe_auto_pick(self, drives: list[DriveInfo]) -> None:
+        if self._user_picked or self._reading:
+            return
+        loaded = [d for d in drives if d.is_present and d.has_disc]
+        if len(loaded) != 1:
+            return
+        drive = loaded[0]
+        log.info("auto-picking sole loaded drive %s (%s)", drive.index, drive.device)
+        self._begin_read(drive)
+
+    def _on_pick_drive(self, drive: DriveInfo) -> None:
+        self._user_picked = True
+        self._begin_read(drive)
+
+    def _begin_read(self, drive: DriveInfo) -> None:
+        if self._reading:
+            return
+        self._reading = True
+        self._stop_polling()
+
         self.app.state["drive"] = drive
+        self.error_panel.visible = False
         self.spinner.visible = True
-        self.status_text.value = f"Reading disc: {drive.disc_label} ({drive.device})...\nThis can take up to a minute."
+        self.status_text.value = (
+            f"Reading disc: {drive.disc_label or '(no label)'} ({drive.device})\u2026\n"
+            "This can take up to a minute."
+        )
         self.status_text.color = None
-        self.drive_list.controls.clear()
-        self.app.page.update()
+        self.drive_panel.controls.clear()
+        _safe_update(self.app.page)
 
         threading.Thread(target=self._read_disc, args=(drive,), daemon=True).start()
 
-    def _read_disc(self, drive: DriveInfo):
-        """Read disc info in background."""
+    def _read_disc(self, drive: DriveInfo) -> None:
         try:
-            print(f"[disc_detection] Reading disc info for drive {drive.index}...", file=sys.stderr)
-            disc_info = run_disc_info(drive.index, makemkvcon=self.app.state["makemkvcon"])
-            print(f"[disc_detection] Got {len(disc_info.titles) if disc_info else 0} titles", file=sys.stderr)
+            print(
+                f"[disc_detection] Reading disc info for drive {drive.index}\u2026",
+                file=sys.stderr,
+            )
+            disc_info = run_disc_info(
+                drive.index,
+                makemkvcon=self.app.state.get("makemkvcon"),
+            )
+            print(
+                f"[disc_detection] Got "
+                f"{len(disc_info.titles) if disc_info else 0} titles",
+                file=sys.stderr,
+            )
 
             if disc_info is None or not disc_info.titles:
-                self.spinner.visible = False
-                self.status_text.value = "No titles found on disc. Try ejecting and reinserting."
-                self.status_text.color = ft.Colors.ORANGE
-                _safe_update(self.app.page)
+                self._reading = False
+                self._show_error(
+                    "No titles found on disc",
+                    "Try ejecting and reinserting the disc, or pick a different drive.",
+                    allow_retry=True,
+                )
                 return
 
             self.app.state["disc_info"] = disc_info
-
-            # Parse title from volume label
-            title = self._parse_volume_label(drive.disc_label)
-            self.app.state["title"] = title
+            self.app.state["title"] = self._parse_volume_label(drive.disc_label)
             self.app.state["_disc_read_done"] = True
 
-            # Schedule navigation on the main event loop
             async def _nav():
                 self.app.navigate("disc_detection")
 
             self.app.page.run_task(_nav)
 
         except Exception as exc:
-            print(f"[disc_detection] Error: {exc}", file=sys.stderr)
-            self.spinner.visible = False
-            self.status_text.value = f"Error reading disc: {exc}"
-            self.status_text.color = ft.Colors.RED
-            _safe_update(self.app.page)
+            log.exception("disc read failed")
+            self._reading = False
+            self._show_error(
+                "Couldn\u2019t read disc",
+                str(exc),
+                allow_retry=True,
+            )
 
+    # ------------------------------------------------------------------
+    # Error panels.
+    # ------------------------------------------------------------------
+    def _show_preflight_failure(self, preflight: MakeMKVPreflight) -> None:
+        self.spinner.visible = False
+        self.preflight_text.value = (
+            f"makemkvcon unavailable: {preflight.error}"
+        )
+        self.preflight_text.color = ft.Colors.RED
+        self.status_text.value = (
+            "Riplex can\u2019t talk to MakeMKV. Install or repair MakeMKV "
+            "and click Refresh."
+        )
+        self.status_text.color = ft.Colors.RED
+        self.drive_panel.controls.clear()
+        self.error_panel.content = self._build_error_panel(
+            "MakeMKV not available",
+            preflight.error or "makemkvcon could not be invoked.",
+            allow_retry=True,
+            install_hint=True,
+        )
+        self.error_panel.visible = True
+        _safe_update(self.app.page)
+
+    def _show_error(
+        self,
+        title: str,
+        detail: str,
+        *,
+        allow_retry: bool = True,
+    ) -> None:
+        self.spinner.visible = False
+        self.status_text.value = title
+        self.status_text.color = ft.Colors.RED
+        self.error_panel.content = self._build_error_panel(
+            title, detail, allow_retry=allow_retry, install_hint=False,
+        )
+        self.error_panel.visible = True
+        _safe_update(self.app.page)
+
+    def _build_error_panel(
+        self,
+        title: str,
+        detail: str,
+        *,
+        allow_retry: bool,
+        install_hint: bool,
+    ) -> ft.Control:
+        children: list[ft.Control] = [
+            ft.Row(
+                [
+                    ft.Icon(ft.Icons.ERROR_OUTLINE, color=ft.Colors.RED),
+                    ft.Text(title, size=14, weight=ft.FontWeight.BOLD),
+                ],
+                spacing=8,
+            ),
+            ft.Text(detail, size=12, color=ft.Colors.GREY_300, selectable=True),
+            ft.Text(
+                "Debug logs are written to the riplex log directory and "
+                "included automatically when you open a bug report.",
+                size=11, color=ft.Colors.GREY_500,
+            ),
+        ]
+        actions: list[ft.Control] = []
+        if allow_retry:
+            actions.append(
+                ft.ElevatedButton(
+                    "Retry",
+                    icon=ft.Icons.REFRESH,
+                    on_click=lambda _: self._on_retry(),
+                )
+            )
+        if install_hint:
+            actions.append(
+                ft.TextButton(
+                    "Download MakeMKV \u2197",
+                    url="https://www.makemkv.com/download/",
+                )
+            )
+        actions.append(
+            ft.OutlinedButton(
+                "Open bug report",
+                icon=ft.Icons.BUG_REPORT,
+                on_click=lambda _: self._open_bug_report(),
+            )
+        )
+        children.append(ft.Row(actions, spacing=8, wrap=True))
+
+        return ft.Container(
+            content=ft.Column(children, spacing=8),
+            padding=12,
+            border=ft.border.all(1, ft.Colors.RED_900),
+            border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.RED),
+        )
+
+    # ------------------------------------------------------------------
+    # Misc handlers.
+    # ------------------------------------------------------------------
+    def _on_retry(self) -> None:
+        self._reading = False
+        self._user_picked = False
+        self._last_drives = None
+        self.error_panel.visible = False
+        self.spinner.visible = True
+        self.status_text.value = "Scanning drives\u2026"
+        self.status_text.color = None
+        _safe_update(self.app.page)
+        threading.Thread(target=self._initial_scan, daemon=True).start()
+
+    def _on_back(self) -> None:
+        self._stop_polling()
+        self.app.navigate("welcome")
+
+    def _open_bug_report(self) -> None:
+        import webbrowser
+        from riplex_app.bug_report import build_bug_report_url
+
+        url = build_bug_report_url(self.app.state)
+        log.info("Opening bug report from disc_detection: %s", url)
+        webbrowser.open(url)
+
+    # ------------------------------------------------------------------
+    # Helpers preserved from the previous implementation.
+    # ------------------------------------------------------------------
     def _parse_volume_label(self, label: str) -> str:
-        """Convert volume label to a human title guess."""
         result = parse_volume_label(label)
         return result if result else label.replace("_", " ").strip().title()
 
     def _search(self, e):
-        """Proceed to metadata lookup with the current title."""
         title = self.title_field.value.strip()
         if not title:
             self.title_field.error_text = "Enter a title"
@@ -220,28 +591,23 @@ class DiscDetectionScreen:
             return
         self.app.state["title"] = title
 
-        # In orchestrate mode, check for an existing rip session to resume
         if self.app.state.get("workflow") == "orchestrate":
             from riplex.manifest import find_existing_session
 
             session = find_existing_session(title)
             if session:
-                log.info("Found existing session for '%s' (%d) — resuming",
-                         session.title, session.year)
+                log.info(
+                    "Found existing session for '%s' (%d) — resuming",
+                    session.title, session.year,
+                )
                 self._resume_session(session)
                 return
 
         self.app.navigate("metadata")
 
     def _resume_session(self, session):
-        """Resume an orchestrate session from an existing rip manifest.
-
-        Constructs tmdb_match from manifest data, fetches dvdcompare
-        disc data in the background, then skips to disc_overview.
-        """
         from riplex.metadata.provider import MetadataSearchResult
 
-        # Build a synthetic tmdb_match from the manifest
         self.app.state["tmdb_match"] = MetadataSearchResult(
             source_id="",
             title=session.title,
@@ -249,7 +615,6 @@ class DiscDetectionScreen:
             media_type=session.media_type,
         )
 
-        # Show loading state
         self.search_btn.disabled = True
         self.search_btn.text = "Resuming session..."
         self.app.page.update()
@@ -261,7 +626,6 @@ class DiscDetectionScreen:
         ).start()
 
     def _fetch_dvdcompare_for_resume(self, session):
-        """Fetch dvdcompare data and match the release from the manifest."""
         from riplex.disc.provider import DiscProvider, _convert_release, detect_disc_format
 
         disc_format = session.disc_format
@@ -273,9 +637,8 @@ class DiscDetectionScreen:
         try:
             provider = DiscProvider()
             film = asyncio.run(
-                provider._fetch_film_cached(session.title, disc_format, year=session.year)
+                provider.fetch_film(session.title, disc_format, year=session.year)
             )
-            # Match release by name
             release = None
             if session.release_name and film.releases:
                 release = next(
@@ -297,9 +660,11 @@ class DiscDetectionScreen:
                 self.app.state["release"] = None
                 self.app.state["dvdcompare_discs"] = []
 
-            log.info("Resume: dvdcompare loaded, %d discs, release=%s",
-                     len(self.app.state.get("dvdcompare_discs", [])),
-                     session.release_name)
+            log.info(
+                "Resume: dvdcompare loaded, %d discs, release=%s",
+                len(self.app.state.get("dvdcompare_discs", [])),
+                session.release_name,
+            )
 
         except Exception as exc:
             log.warning("Resume: dvdcompare lookup failed: %s", exc)

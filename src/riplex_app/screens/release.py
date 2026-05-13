@@ -65,6 +65,10 @@ class ReleaseScreen:
         if not new_title:
             return
         self.app.state["dvdcompare_title_override"] = new_title
+        # Clear any previously-selected release so we don't auto-skip the
+        # lookup with the old data.
+        self.app.state["release"] = None
+        self.app.state["dvdcompare_discs"] = []
         self.app.state.pop("_dvdcompare_film", None)
         self.app.state.pop("_dvdcompare_error", None)
         self.app.navigate("release")
@@ -88,6 +92,14 @@ class ReleaseScreen:
         dvdc_error = self.app.state.pop("_dvdcompare_error", None)
         if dvdc_error:
             return self._build_no_releases_view(dvdc_error, title=title)
+
+        # If we already have a release selected (e.g. user came back from a
+        # later screen), avoid re-fetching. Show a summary with the option
+        # to change.
+        existing_release = self.app.state.get("release")
+        existing_discs = self.app.state.get("dvdcompare_discs")
+        if existing_release is not None and existing_discs:
+            return self._build_current_release_view(existing_release, existing_discs)
 
         # Loading state
         content = ft.Column(
@@ -228,7 +240,7 @@ class ReleaseScreen:
             year = tmdb_match.year if tmdb_match else None
             log.info("dvdcompare lookup: title=%r format=%r year=%r", title, disc_format, year)
             provider = DiscProvider()
-            film = asyncio.run(provider._fetch_film_cached(title, disc_format, year=year))
+            film = asyncio.run(provider.fetch_film(title, disc_format, year=year))
             log.info("dvdcompare lookup: found %r (%d releases)",
                      film.title if film else None,
                      len(film.releases) if film else 0)
@@ -248,6 +260,60 @@ class ReleaseScreen:
         idx = int(self.release_radio_group.value)
         release = self.film_comparison.releases[idx]
         self._use_release(release)
+
+    def _continue(self, _e):
+        """Proceed to the next screen using the already-selected release."""
+        self.app.navigate(self._next_screen)
+
+    def _change_release(self, _e):
+        """Clear the current dvdcompare selection and re-trigger lookup."""
+        self.app.state["release"] = None
+        self.app.state["dvdcompare_discs"] = []
+        self.app.state.pop("_dvdcompare_film", None)
+        self.app.state.pop("_dvdcompare_error", None)
+        self.app.navigate("release")
+
+    def _build_current_release_view(self, release, discs) -> ft.Control:
+        """Show the already-picked release without re-querying dvdcompare."""
+        disc_count = len(discs)
+        disc_word = "disc" if disc_count == 1 else "discs"
+        return ft.Column(
+            [
+                ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "You've already selected a dvdcompare release for this title. "
+                    "Continue, or pick a different release.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
+                ft.Divider(height=20),
+                ft.Row([
+                    ft.Icon(ft.Icons.ALBUM, color=ft.Colors.BLUE, size=20),
+                    ft.Text(
+                        f"{release.name}  [{disc_count} {disc_word}]",
+                        size=14,
+                        weight=ft.FontWeight.W_500,
+                    ),
+                ], spacing=10),
+                ft.Container(expand=True),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                    ft.TextButton(
+                        "Change release",
+                        icon=ft.Icons.SWAP_HORIZ,
+                        on_click=self._change_release,
+                    ),
+                    ft.ElevatedButton(
+                        "Continue",
+                        icon=ft.Icons.ARROW_FORWARD,
+                        on_click=self._continue,
+                        style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
+                    ),
+                ]),
+            ],
+            spacing=10,
+            expand=True,
+        )
 
     def _skip(self, e):
         """Proceed without dvdcompare data."""

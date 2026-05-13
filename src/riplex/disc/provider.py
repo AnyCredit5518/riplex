@@ -7,9 +7,14 @@ summaries.
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import logging
+import os
 import re
+import time
+
+import httpx
 
 from dvdcompare.cli import select_releases
 from dvdcompare.models import FilmComparison
@@ -22,7 +27,32 @@ log = logging.getLogger(__name__)
 
 _DVDCOMPARE_TTL_DAYS = 30
 _DVDCOMPARE_NEG_TTL_DAYS = 7
+_DVDCOMPARE_HTTP_ERROR_TTL_SECONDS = 5 * 60  # 5 minutes
 _CACHE_NS = "dvdcompare"
+
+# Global throttle: at most one dvdcompare network round-trip every N seconds
+# across the entire process, regardless of how many UI threads/tasks try to
+# fetch concurrently. Tunable via env var for tests.
+_MIN_INTERVAL_S = float(os.environ.get("RIPLEX_DVDCOMPARE_MIN_INTERVAL_S", "3.0"))
+_request_lock = asyncio.Lock()
+_last_request_at: float = 0.0
+
+
+def _parse_retry_after(response: httpx.Response | None) -> int | None:
+    """Parse a Retry-After header value into seconds, or None.
+
+    Per RFC 7231 Retry-After may be either a delta-seconds integer or an
+    HTTP-date. We only handle the integer form here.
+    """
+    if response is None:
+        return None
+    raw = response.headers.get("Retry-After")
+    if not raw:
+        return None
+    try:
+        return max(0, int(raw.strip()))
+    except (TypeError, ValueError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +93,7 @@ class DiscProvider:
                       title, disc_format, release)
             return _dicts_to_discs(cached)
 
-        film = await self._fetch_film_cached(title, disc_format, year=year)
+        film = await self.fetch_film(title, disc_format, year=year)
         discs = _convert_film(film, release)
         log.debug("Converted %d disc(s) from release '%s'", len(discs), release)
 
@@ -83,10 +113,10 @@ class DiscProvider:
         Single entry point for all dvdcompare lookups. Handles network
         fetch, caching, scoring, interactive prompt, and release conversion.
         """
-        film = await self._fetch_film_cached(title, disc_format, year=year)
+        film = await self.fetch_film(title, disc_format, year=year)
         return select_dvdcompare_release(film, disc_info=disc_info, preferred=preferred)
 
-    async def _fetch_film_cached(
+    async def fetch_film(
         self,
         title: str,
         disc_format: str | None = None,
@@ -94,33 +124,154 @@ class DiscProvider:
     ) -> FilmComparison:
         """Fetch a FilmComparison, returning cached data when available.
 
-        Negative lookups (no results on dvdcompare) are also cached with a
-        shorter TTL to avoid hammering the search endpoint for titles that
-        don't exist.
+        - Successful results are cached for ``ttl_days``.
+        - "No results" (LookupError) is negative-cached for ``neg_ttl_days``.
+        - HTTP/network failures are negative-cached for a short period (5
+          min, or longer if the server returned Retry-After). This prevents
+          a transient block from being re-hit on every UI navigation.
+        - All real network requests are funnelled through a process-wide
+          throttle so we never burst dvdcompare with parallel calls.
         """
         cache_key = cache.hash_key(f"film|{title}|{disc_format}|{year}")
 
-        # Check for negative cache first (shorter TTL)
-        neg_cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.neg_ttl_days)
-        if neg_cached is not None and neg_cached.get("_negative"):
-            log.debug("dvdcompare negative cache hit for '%s'", title)
-            raise LookupError(f"No dvdcompare results for '{title}' (cached)")
+        # Check the negative cache (short, custom expiry).
+        neg = _read_negative_cache(self.cache_ns, cache_key)
+        if neg is not None:
+            kind, message = neg
+            if kind == "noresults":
+                log.debug("dvdcompare negative cache hit for '%s'", title)
+                raise LookupError(f"No dvdcompare results for '{title}' (cached)")
+            log.debug("dvdcompare http-error cache hit for '%s': %s", title, message)
+            raise LookupError(
+                f"dvdcompare temporarily unavailable for '{title}' "
+                f"({message or 'recent request failed'})"
+            )
 
+        # Positive cache.
         cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
         if cached is not None and not cached.get("_negative"):
             log.debug("dvdcompare film cache hit for '%s'", title)
             return _dict_to_film(cached)
 
+        # Real fetch (throttled).
         try:
-            film = await find_film(title, disc_format, year=year)
+            film = await _throttled_find_film(title, disc_format, year=year)
         except LookupError:
             log.debug("dvdcompare no results for '%s', caching negative result", title)
-            cache.cache_set(self.cache_ns, cache_key, {"_negative": True})
+            _write_negative_cache(
+                self.cache_ns,
+                cache_key,
+                kind="noresults",
+                message="",
+                ttl_seconds=self.neg_ttl_days * 86400,
+            )
             raise
+        except httpx.HTTPStatusError as exc:
+            retry_after = _parse_retry_after(exc.response)
+            ttl_seconds = max(
+                _DVDCOMPARE_HTTP_ERROR_TTL_SECONDS, retry_after or 0
+            )
+            status = exc.response.status_code if exc.response is not None else "?"
+            log.warning(
+                "dvdcompare HTTP %s for '%s', caching short-TTL block (%ds, "
+                "retry_after=%s)", status, title, ttl_seconds, retry_after,
+            )
+            _write_negative_cache(
+                self.cache_ns,
+                cache_key,
+                kind="http_error",
+                message=f"HTTP {status}",
+                ttl_seconds=ttl_seconds,
+            )
+            raise LookupError(
+                f"dvdcompare returned HTTP {status} for '{title}'"
+            ) from exc
+        except httpx.RequestError as exc:
+            log.warning("dvdcompare network error for '%s': %s", title, exc)
+            _write_negative_cache(
+                self.cache_ns,
+                cache_key,
+                kind="http_error",
+                message=type(exc).__name__,
+                ttl_seconds=_DVDCOMPARE_HTTP_ERROR_TTL_SECONDS,
+            )
+            raise LookupError(
+                f"dvdcompare network error for '{title}': {exc}"
+            ) from exc
+
         log.debug("dvdcompare find_film('%s', format=%s, year=%s): %d release(s)",
                   title, disc_format, year, len(film.releases) if film.releases else 0)
         cache.cache_set(self.cache_ns, cache_key, dataclasses.asdict(film))
         return film
+
+    # Backwards-compatible alias for the previous private name. Older callers
+    # in screens / external code may still use this; prefer ``fetch_film``.
+    _fetch_film_cached = fetch_film
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers: negative cache + throttle
+# ---------------------------------------------------------------------------
+
+
+def _read_negative_cache(
+    cache_ns: str, cache_key: str
+) -> tuple[str, str] | None:
+    """Return (kind, message) from negative cache, or None if absent/expired.
+
+    The cache entry uses an absolute ``_expires_at`` epoch so we can pin the
+    expiry to wall-clock time and respect Retry-After values directly.
+    """
+    entry = cache.cache_get(cache_ns, cache_key, ttl_days=365)
+    if not isinstance(entry, dict) or not entry.get("_negative"):
+        return None
+    expires_at = entry.get("_expires_at")
+    if isinstance(expires_at, (int, float)) and time.time() > expires_at:
+        return None  # expired; treat as miss
+    return entry.get("_kind", "noresults"), entry.get("_message", "")
+
+
+def _write_negative_cache(
+    cache_ns: str,
+    cache_key: str,
+    *,
+    kind: str,
+    message: str,
+    ttl_seconds: float,
+) -> None:
+    """Store a negative-cache entry with an absolute expiry."""
+    cache.cache_set(
+        cache_ns,
+        cache_key,
+        {
+            "_negative": True,
+            "_kind": kind,
+            "_message": message,
+            "_expires_at": time.time() + ttl_seconds,
+        },
+    )
+
+
+async def _throttled_find_film(
+    title: str, disc_format: str | None, *, year: int | None = None
+) -> FilmComparison:
+    """Call ``find_film`` under a process-wide minimum-interval lock.
+
+    Ensures even concurrent ``fetch_film`` calls (multiple UI threads, an
+    orchestrate flow, parallel boxset discs) cannot burst dvdcompare with
+    back-to-back requests.
+    """
+    global _last_request_at
+    async with _request_lock:
+        now = time.monotonic()
+        wait = _MIN_INTERVAL_S - (now - _last_request_at)
+        if wait > 0:
+            log.debug("dvdcompare throttle: waiting %.2fs before request", wait)
+            await asyncio.sleep(wait)
+        try:
+            return await find_film(title, disc_format, year=year)
+        finally:
+            _last_request_at = time.monotonic()
 
 
 def _clean_feature_type(raw: str) -> str:
