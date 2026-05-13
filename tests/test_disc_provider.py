@@ -204,3 +204,52 @@ class TestConvertFilmEdgeCases:
         film = _oppenheimer_film()
         with pytest.raises(LookupError):
             _convert_film(film, "nonexistent")
+
+
+class TestBoxsetWithQuotedTitleDiscs:
+    """Boxset releases where the scraper now splits inline quoted-title
+    DISC headers into separate physical discs (e.g. BTTF 40th Anniversary)."""
+
+    def test_each_physical_disc_becomes_a_planned_disc(self):
+        # Mirrors what dvdcompare-scraper >= 0.1.15 produces for boxsets
+        # that previously glued multiple physical discs into one entry.
+        film = FilmComparison(
+            title="Back to the Future",
+            year=1985,
+            format="Blu-ray 4K",
+            releases=[
+                Release(
+                    name="40th Anniversary Trilogy",
+                    year=2025,
+                    discs=[
+                        Disc(number=1, format="Blu-ray 4K",
+                             title="Back to the Future", is_film=True),
+                        Disc(number=2, format="Blu-ray",
+                             title="Back to the Future", is_film=True),
+                        Disc(number=3, format="Blu-ray 4K",
+                             title="Back to the Future Part II", is_film=True),
+                        Disc(number=4, format="Blu-ray",
+                             title="Back to the Future Part II", is_film=True),
+                        Disc(number=5, format="Blu-ray 4K",
+                             title="Back to the Future Part III", is_film=True),
+                        Disc(number=6, format="Blu-ray",
+                             title="Back to the Future Part III", is_film=True),
+                        Disc(number=7, format="", is_film=False,
+                             features=[Feature(title="Bonus", runtime_seconds=600)]),
+                        Disc(number=8, format="", is_film=False,
+                             features=[Feature(title="40th Anniversary Bonus",
+                                               runtime_seconds=1200)]),
+                    ],
+                ),
+            ],
+        )
+
+        planned = _convert_film(film)
+        assert len(planned) == 8
+        assert [d.number for d in planned] == [1, 2, 3, 4, 5, 6, 7, 8]
+        assert planned[0].disc_format == "Blu-ray 4K"
+        assert planned[0].is_film is True
+        assert planned[5].disc_format == "Blu-ray"
+        assert planned[5].is_film is True
+        assert planned[6].is_film is False
+        assert planned[7].is_film is False

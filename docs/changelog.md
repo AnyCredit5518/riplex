@@ -4,6 +4,12 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-13
+
+### Changed
+
+- Bumped `dvdcompare-scraper` pin to `>=0.1.15`, which adds quoted-title disc-header parsing. Boxsets such as *Back to the Future 40th Anniversary Trilogy* that glue six physical discs into a single dvdcompare disc entry are now split correctly into one PlannedDisc per physical disc.
+
 ## 2026-05-12
 
 ### Added
