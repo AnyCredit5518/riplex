@@ -14,10 +14,47 @@ class MetadataScreen:
     def __init__(self, app):
         self.app = app
         self.tmdb_results: list[MetadataSearchResult] = []
+        self._search_field: ft.TextField | None = None
 
     @property
     def _back_screen(self) -> str:
         return "folder_picker" if self.app.state.get("workflow") == "organize" else "disc_detection"
+
+    def _build_search_bar(self, title: str, *, searching: bool) -> ft.Control:
+        """Search field + button so the user can refine the query in place."""
+        self._search_field = ft.TextField(
+            label="Search title",
+            value=title,
+            expand=True,
+            on_submit=self._on_search_click,
+            disabled=searching,
+            hint_text="Edit and press Enter to search again",
+        )
+        return ft.Row(
+            [
+                self._search_field,
+                ft.ElevatedButton(
+                    "Search",
+                    icon=ft.Icons.SEARCH,
+                    on_click=self._on_search_click,
+                    disabled=searching,
+                ),
+            ],
+            spacing=10,
+        )
+
+    def _on_search_click(self, _e):
+        """Re-run TMDb search with the edited title."""
+        if self._search_field is None:
+            return
+        new_title = (self._search_field.value or "").strip()
+        if not new_title:
+            return
+        self.app.state["title"] = new_title
+        # Clear any pending results/error so build() goes back to loading state.
+        self.app.state.pop("_tmdb_results", None)
+        self.app.state.pop("_tmdb_error", None)
+        self.app.navigate("metadata")
 
     def build(self) -> ft.Control:
         title = self.app.state["title"]
@@ -43,6 +80,7 @@ class MetadataScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                self._build_search_bar(title, searching=True),
                 ft.Row([
                     ft.ProgressRing(width=30, height=30),
                     ft.Text(f"Searching TMDb for \"{title}\"...", size=14),
@@ -80,11 +118,13 @@ class MetadataScreen:
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     "Choose the correct movie or TV show from the results below. "
-                    "This determines the title, year, and runtime used for matching.",
+                    "This determines the title, year, and runtime used for matching. "
+                    "Not seeing what you expected? Edit the title and search again.",
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                self._build_search_bar(title, searching=False),
                 ft.Text("Select a match:", size=14),
                 self.radio_group,
                 ft.Container(expand=True),
@@ -115,6 +155,7 @@ class MetadataScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                self._build_search_bar(title, searching=False),
                 ft.Text(error, size=14, color=ft.Colors.ORANGE),
                 ft.Container(height=10),
                 ft.Text(
@@ -197,6 +238,8 @@ class MetadataScreen:
         idx = int(self.radio_group.value)
         selected = self.tmdb_results[idx]
         self.app.state["tmdb_match"] = selected
+        # New TMDb match invalidates any prior dvdcompare title override.
+        self.app.state.pop("dvdcompare_title_override", None)
 
         # For movies, fetch full detail to get runtime before proceeding
         if selected.media_type == "movie":

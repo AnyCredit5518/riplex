@@ -13,6 +13,7 @@ class ReleaseScreen:
     def __init__(self, app):
         self.app = app
         self.film_comparison = None
+        self._search_field: ft.TextField | None = None
 
     @property
     def _next_screen(self) -> str:
@@ -23,9 +24,53 @@ class ReleaseScreen:
             return "disc_overview"
         return "selection"
 
+    def _current_search_title(self) -> str:
+        """Title to use for dvdcompare lookup (user override > TMDb > raw title)."""
+        override = self.app.state.get("dvdcompare_title_override")
+        if override:
+            return override
+        tmdb_match = self.app.state.get("tmdb_match")
+        if tmdb_match:
+            return tmdb_match.title
+        return self.app.state["title"]
+
+    def _build_search_bar(self, title: str, *, searching: bool) -> ft.Control:
+        """Editable dvdcompare search field."""
+        self._search_field = ft.TextField(
+            label="dvdcompare search title",
+            value=title,
+            expand=True,
+            on_submit=self._on_search_click,
+            disabled=searching,
+            hint_text="Edit and press Enter to look up a different title",
+        )
+        return ft.Row(
+            [
+                self._search_field,
+                ft.ElevatedButton(
+                    "Search",
+                    icon=ft.Icons.SEARCH,
+                    on_click=self._on_search_click,
+                    disabled=searching,
+                ),
+            ],
+            spacing=10,
+        )
+
+    def _on_search_click(self, _e):
+        """Re-run dvdcompare lookup with an edited title."""
+        if self._search_field is None:
+            return
+        new_title = (self._search_field.value or "").strip()
+        if not new_title:
+            return
+        self.app.state["dvdcompare_title_override"] = new_title
+        self.app.state.pop("_dvdcompare_film", None)
+        self.app.state.pop("_dvdcompare_error", None)
+        self.app.navigate("release")
+
     def build(self) -> ft.Control:
-        tmdb_match = self.app.state["tmdb_match"]
-        title = tmdb_match.title if tmdb_match else self.app.state["title"]
+        title = self._current_search_title()
 
         # Check if dvdcompare data already fetched (re-render after background lookup)
         cached_film = self.app.state.pop("_dvdcompare_film", None)
@@ -33,7 +78,7 @@ class ReleaseScreen:
             self.film_comparison = cached_film
             releases = self.film_comparison.releases if self.film_comparison else []
             if not releases:
-                return self._build_no_releases_view()
+                return self._build_no_releases_view(title=title)
             if len(releases) == 1:
                 self._use_release(releases[0])
                 return ft.Column()  # will navigate away
@@ -42,7 +87,7 @@ class ReleaseScreen:
         # Error/skip state
         dvdc_error = self.app.state.pop("_dvdcompare_error", None)
         if dvdc_error:
-            return self._build_no_releases_view(dvdc_error)
+            return self._build_no_releases_view(dvdc_error, title=title)
 
         # Loading state
         content = ft.Column(
@@ -55,6 +100,7 @@ class ReleaseScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                self._build_search_bar(title, searching=True),
                 ft.Row([
                     ft.ProgressRing(width=30, height=30),
                     ft.Text(f"Looking up disc structure for \"{title}\" on dvdcompare.net...", size=14),
@@ -136,9 +182,11 @@ class ReleaseScreen:
             expand=True,
         )
 
-    def _build_no_releases_view(self, message: str = None) -> ft.Control:
+    def _build_no_releases_view(self, message: str = None, *, title: str = "") -> ft.Control:
         """Build view when no releases found."""
-        msg = message or "No dvdcompare releases found. Proceeding without disc structure data."
+        msg = message or "No dvdcompare releases found. Try a different search title, or continue without disc structure data."
+        if not title:
+            title = self._current_search_title()
         return ft.Column(
             [
                 ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
@@ -150,6 +198,7 @@ class ReleaseScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                self._build_search_bar(title, searching=False),
                 ft.Text(msg, size=14, color=ft.Colors.ORANGE),
                 ft.Container(expand=True),
                 ft.Row([
@@ -171,8 +220,8 @@ class ReleaseScreen:
         import logging
         log = logging.getLogger(__name__)
 
-        tmdb_match = self.app.state["tmdb_match"]
-        title = tmdb_match.title if tmdb_match else self.app.state["title"]
+        title = self._current_search_title()
+        tmdb_match = self.app.state.get("tmdb_match")
 
         try:
             disc_format = self._detect_disc_format()

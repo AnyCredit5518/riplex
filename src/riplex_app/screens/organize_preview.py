@@ -23,6 +23,20 @@ class OrganizePreviewScreen:
         self.app = app
         self.organize_plan = None
         self.planned = None
+        self._progress_text: ft.Text | None = None
+
+    def _set_progress(self, msg: str) -> None:
+        """Thread-safe update of the loading status line."""
+        log.info("organize progress: %s", msg)
+        text = self._progress_text
+        if text is None:
+            return
+        try:
+            text.value = msg
+            text.update()
+        except Exception:
+            # Page may have navigated away; ignore.
+            pass
 
     def build(self) -> ft.Control:
         # Check for pre-built plan (re-render after background work)
@@ -36,13 +50,21 @@ class OrganizePreviewScreen:
             return self._build_error_view(plan_error)
 
         # Loading state
+        self._progress_text = ft.Text("Starting...", size=14)
         content = ft.Column(
             [
                 ft.Text("Organize Preview", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "Building the organize plan. This involves TMDb episode "
+                    "lookups, matching disc files to titles, and computing "
+                    "target paths.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
                 ft.Divider(height=20),
                 ft.Row([
                     ft.ProgressRing(width=30, height=30),
-                    ft.Text("Building organize plan...", size=14),
+                    self._progress_text,
                 ], spacing=10),
                 ft.Container(expand=True),
                 ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
@@ -79,12 +101,17 @@ class OrganizePreviewScreen:
                 finally:
                     await provider.close()
 
+            kind = "movie" if tmdb_match.media_type == "movie" else "show"
+            self._set_progress(f"Fetching TMDb {kind} details for \"{tmdb_match.title}\"...")
             planned = asyncio.run(_do_plan())
 
             # Match scanned files against planned content
+            n_files = sum(len(d.files) for d in scanned)
+            self._set_progress(f"Matching {n_files} disc file(s) against {len(dvdcompare_discs) or 0} dvdcompare disc(s)...")
             result = match_discs(scanned, dvdcompare_discs, planned)
 
             # Build file maps
+            self._set_progress("Building target paths...")
             file_map = {f.name: f.path for d in scanned for f in d.files}
             scanned_map = {f.name: f for d in scanned for f in d.files}
             targets = collect_disc_targets(dvdcompare_discs, planned) if dvdcompare_discs else None
@@ -101,12 +128,14 @@ class OrganizePreviewScreen:
                 source_path = Path(source_folder)
                 snapshot_out = source_path / f"{source_path.name}.snapshot.json"
                 if not snapshot_out.exists():
+                    self._set_progress("Saving snapshot...")
                     try:
                         save_from_scanned(source_path, scanned, snapshot_out)
                         log.info("Organize snapshot saved: %s", snapshot_out)
                     except Exception as snap_exc:
                         log.warning("Failed to save organize snapshot: %s", snap_exc)
 
+            self._set_progress("Done. Rendering preview...")
             self.app.state["_organize_plan"] = (org_plan, planned)
 
         except Exception as exc:
