@@ -303,36 +303,68 @@ class WelcomeScreen:
         threading.Thread(target=_check, daemon=True).start()
 
     def check_connectivity(self):
-        """Ping TMDb and dvdcompare.net in background and update status icons."""
-        import httpx
+        """Ping TMDb and dvdcompare.net in background and update status icons.
 
-        def _ping(url: str, timeout: float = 5.0) -> bool:
+        Results are cached on ``self.app.state`` for the session so revisiting
+        the welcome screen does not re-fire requests. The dvdcompare ping uses
+        the same browser-like User-Agent and headers as the real scraper so
+        the status check itself can't trip bot detection.
+        """
+        import httpx
+        from dvdcompare.scraper import build_browser_headers
+
+        # Session-cached results — never re-ping in the same process.
+        cached_tmdb = self.app.state.get("_connectivity_tmdb")
+        cached_dvdc = self.app.state.get("_connectivity_dvdc")
+        if cached_tmdb is not None and cached_dvdc is not None:
+            self._apply_connectivity(cached_tmdb, cached_dvdc)
+            return
+
+        def _ping(url: str, *, headers: dict | None = None, timeout: float = 5.0) -> bool:
             try:
-                resp = httpx.head(url, timeout=timeout, follow_redirects=True)
+                # Use GET, not HEAD — HEAD is uncommon in browsers and some
+                # WAFs treat it as a bot signal. We're hitting the homepage
+                # which a browser visit would hit anyway.
+                resp = httpx.get(
+                    url,
+                    headers=headers,
+                    timeout=timeout,
+                    follow_redirects=True,
+                )
                 return resp.status_code < 500
             except Exception:
                 return False
 
         def _check():
+            # TMDb: small, cheap, well-known API endpoint. The default httpx
+            # UA is fine here because TMDb is not bot-sensitive.
             tmdb_ok = _ping("https://api.themoviedb.org/3")
-            dvdc_ok = _ping("https://www.dvdcompare.net")
+            # dvdcompare: browser headers so this ping is indistinguishable
+            # from a normal homepage visit.
+            dvdc_ok = _ping("https://www.dvdcompare.net/", headers=build_browser_headers())
+
+            self.app.state["_connectivity_tmdb"] = tmdb_ok
+            self.app.state["_connectivity_dvdc"] = dvdc_ok
 
             async def _update():
-                self._tmdb_status_icon.name = ft.Icons.CHECK_CIRCLE if tmdb_ok else ft.Icons.WARNING
-                self._tmdb_status_icon.color = ft.Colors.GREEN if tmdb_ok else ft.Colors.ORANGE
-                self._tmdb_status_text.color = None if tmdb_ok else ft.Colors.ORANGE
-                self._tmdb_status_text.value = "TMDb API" if tmdb_ok else "TMDb API (unreachable)"
-
-                self._dvdc_status_icon.name = ft.Icons.CHECK_CIRCLE if dvdc_ok else ft.Icons.WARNING
-                self._dvdc_status_icon.color = ft.Colors.GREEN if dvdc_ok else ft.Colors.ORANGE
-                self._dvdc_status_text.color = None if dvdc_ok else ft.Colors.ORANGE
-                self._dvdc_status_text.value = "dvdcompare.net" if dvdc_ok else "dvdcompare.net (unreachable)"
-
+                self._apply_connectivity(tmdb_ok, dvdc_ok)
                 self.app.page.update()
 
             self.app.page.run_task(_update)
 
         threading.Thread(target=_check, daemon=True).start()
+
+    def _apply_connectivity(self, tmdb_ok: bool, dvdc_ok: bool) -> None:
+        """Update the status icons / text given known connectivity results."""
+        self._tmdb_status_icon.name = ft.Icons.CHECK_CIRCLE if tmdb_ok else ft.Icons.WARNING
+        self._tmdb_status_icon.color = ft.Colors.GREEN if tmdb_ok else ft.Colors.ORANGE
+        self._tmdb_status_text.color = None if tmdb_ok else ft.Colors.ORANGE
+        self._tmdb_status_text.value = "TMDb API" if tmdb_ok else "TMDb API (unreachable)"
+
+        self._dvdc_status_icon.name = ft.Icons.CHECK_CIRCLE if dvdc_ok else ft.Icons.WARNING
+        self._dvdc_status_icon.color = ft.Colors.GREEN if dvdc_ok else ft.Colors.ORANGE
+        self._dvdc_status_text.color = None if dvdc_ok else ft.Colors.ORANGE
+        self._dvdc_status_text.value = "dvdcompare.net" if dvdc_ok else "dvdcompare.net (unreachable)"
 
     def _open_update(self, e):
         """Navigate to the in-app update screen."""
