@@ -44,6 +44,33 @@ def find_makemkvcon() -> Path | None:
     return None
 
 
+_MAKEMKV_VERSION_RE = re.compile(r'"MakeMKV (v[^\s"]+[^"]*?) started"')
+
+
+def makemkv_preflight(exe: Path | None = None, timeout: float = 8.0) -> "MakeMKVPreflight":
+    """Verify a makemkvcon executable is available without invoking it.
+
+    Earlier revisions ran ``makemkvcon -r info disc:9999`` to capture the
+    version banner, but that subcommand also enumerates every optical
+    drive — so a freshly inserted disc that's still spinning up could
+    block long enough to time out and falsely flag a working install as
+    broken. We now only check that the binary exists; the very first
+    poll of :meth:`MakeMKV.drive_list` will surface any real failures
+    through the screen's existing error panel.
+
+    *timeout* is accepted for backwards compatibility and ignored.
+    """
+    del timeout  # retained for API compatibility
+    resolved = exe or find_makemkvcon()
+    if resolved is None:
+        return MakeMKVPreflight(
+            exe=None,
+            available=False,
+            error="makemkvcon executable not found on PATH or in common install locations.",
+        )
+    return MakeMKVPreflight(exe=resolved, version="", available=True)
+
+
 @dataclass
 class DiscTitle:
     """A single title (playlist) on a disc as reported by makemkvcon."""
@@ -73,6 +100,18 @@ class DriveInfo:
     disc_label: str  # volume label (e.g. "FROZEN_PLANET_II_D2")
     device: str  # OS device name (e.g. "D:")
     has_disc: bool
+    is_present: bool = True  # False = empty placeholder slot reported by makemkvcon
+    state_label: str = ""  # human-readable status, e.g. "Empty", "Loading", "Disc loaded"
+
+
+@dataclass
+class MakeMKVPreflight:
+    """Result of probing the makemkvcon executable before any real scan."""
+
+    exe: Path | None
+    version: str = ""  # e.g. "v1.18.3 win(x64-release)"
+    available: bool = False
+    error: str = ""  # short human-readable failure reason
 
 
 @dataclass
@@ -188,8 +227,28 @@ def parse_disc_info(output: str) -> DiscInfo:
     return DiscInfo(disc_name=disc_name, disc_type=disc_type, titles=titles)
 
 
+# makemkvcon DRV:index,visible,enabled,flags,name,disc_label,device
+# `visible` is a state code that documents the drive slot:
+#   0 = empty / closed       1 = empty / open / no disc
+#   2 = disc loaded          3 = loading                 256 = no drive in slot
+_DRIVE_STATE_LABELS = {
+    0: "Empty",
+    1: "Tray open",
+    2: "Disc loaded",
+    3: "Loading\u2026",
+    4: "No disc",
+    256: "",
+}
+
+
 def parse_drive_list(output: str) -> list[DriveInfo]:
-    """Parse makemkvcon -r info list output into DriveInfo objects."""
+    """Parse makemkvcon -r info list output into DriveInfo objects.
+
+    Returns one entry per ``DRV:`` line, including empty placeholder slots
+    (``visible == 256``) which carry no name or device. The GUI uses the
+    ``is_present`` flag to filter those out, while CLI callers continue to
+    rely on ``has_disc`` as before.
+    """
     drives: list[DriveInfo] = []
     for line in output.splitlines():
         line = line.strip()
@@ -199,14 +258,20 @@ def parse_drive_list(output: str) -> list[DriveInfo]:
         if not parts or len(parts) < 7:
             continue
         index = int(parts[0])
-        flags = int(parts[1])
-        has_disc = (flags & 2) != 0  # bit 1 = disc inserted
+        visible = int(parts[1])
+        has_disc = visible == 2  # state 2 = disc loaded
+        is_present = visible != 256 and bool(parts[4] or parts[6])
+        state_label = _DRIVE_STATE_LABELS.get(visible, f"State {visible}")
+        if has_disc and parts[5]:
+            state_label = f"Disc: {parts[5]}"
         drives.append(DriveInfo(
             index=index,
             name=parts[4],
             disc_label=parts[5],
             device=parts[6],
             has_disc=has_disc,
+            is_present=is_present,
+            state_label=state_label,
         ))
     return drives
 

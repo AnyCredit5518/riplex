@@ -35,6 +35,25 @@ Common issues and solutions reported by users.
 
 ---
 
+## GUI: disc not being detected
+
+**Symptom:** `riplex-ui` shows "No disc found" or sits on the disc detection screen even though a disc is inserted.
+
+**What the GUI does:**
+
+* On the **Disc Detection** screen, riplex now lists every optical drive your system reports, with a per-drive status badge (`Empty`, `Tray open`, `Disc loaded`, etc.).
+* The list refreshes automatically every few seconds — inserting or ejecting a disc updates the screen without manual refresh. Click the circular ↻ button at the top right to force an immediate rescan.
+* If exactly one drive has a loaded disc, riplex starts reading it automatically. With multiple drives or zero loaded drives, click `Read disc` next to the drive you want to use.
+
+**If your drive is missing entirely:**
+
+1. Confirm MakeMKV sees the drive. Open the MakeMKV GUI or run `makemkvcon -r info list` and look for a `DRV:` line with your device path.
+2. If MakeMKV does not list it, the issue is at the OS/driver level — riplex only displays what MakeMKV reports.
+3. Check the `makemkvcon: …` line at the top of the screen. If it shows `unavailable`, click the bundled "Download MakeMKV" link or follow the [installation guide](getting-started/installation.md).
+4. Use the `Open bug report` button on the error panel — it pre-fills the GitHub issue with the captured MakeMKV diagnostics (executable path, version, last error) and points you at the log directory to attach.
+
+---
+
 ## Invalid config file (TOML parse error)
 
 **Symptom:** Running any riplex command crashes with a `TOMLDecodeError` traceback mentioning your config file.

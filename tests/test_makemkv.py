@@ -5,8 +5,10 @@ from unittest.mock import MagicMock, patch
 
 from riplex.disc.makemkv import (
     DiscTitle,
+    MakeMKVPreflight,
     RipResult,
     build_stream_fingerprint,
+    makemkv_preflight,
     parse_disc_info,
     parse_drive_list,
     _parse_progress,
@@ -105,11 +107,55 @@ class TestParseDriveList:
         assert d.has_disc is True
         assert d.disc_label == "FROZEN_PLANET_II_D2"
         assert d.device == "D:"
+        assert d.is_present is True
+        assert d.state_label.startswith("Disc:")
 
     def test_empty_drives(self):
         for d in self.drives[1:]:
             assert d.has_disc is False
             assert d.disc_label == ""
+            # Placeholder slots (visible == 256, no name/device) should be
+            # flagged as not present so the GUI can hide them.
+            assert d.is_present is False
+
+
+class TestParseDriveListStates:
+    """Verify per-state labels for drives with no disc / opened tray."""
+
+    def test_empty_with_drive_present(self):
+        # visible=0 (empty closed), device populated => present but no disc
+        line = 'DRV:0,0,999,0,"BD-RE Drive","","E:"\n'
+        drives = parse_drive_list(line)
+        assert len(drives) == 1
+        d = drives[0]
+        assert d.is_present is True
+        assert d.has_disc is False
+        assert d.state_label == "Empty"
+
+    def test_tray_open(self):
+        line = 'DRV:0,1,999,0,"BD-RE Drive","","E:"\n'
+        d = parse_drive_list(line)[0]
+        assert d.has_disc is False
+        assert d.state_label == "Tray open"
+
+
+class TestMakemkvPreflight:
+    def test_no_executable_found(self):
+        with patch("riplex.disc.makemkv.find_makemkvcon", return_value=None):
+            result = makemkv_preflight()
+        assert isinstance(result, MakeMKVPreflight)
+        assert result.available is False
+        assert result.exe is None
+        assert "not found" in result.error
+
+    def test_executable_present_is_available(self):
+        # Preflight is intentionally a path-only check now: invoking
+        # makemkvcon for a banner could enumerate drives and block on a
+        # spinning-up disc, falsely flagging a working install as broken.
+        result = makemkv_preflight(Path("fake_makemkvcon"))
+        assert result.available is True
+        assert result.exe == Path("fake_makemkvcon")
+        assert result.error == ""
 
 
 class TestParseDiscInfoEmpty:

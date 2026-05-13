@@ -34,6 +34,18 @@ def build_bug_report_url(state: dict) -> str:
     elif state.get("title"):
         params["disc-name"] = state["title"]
 
+    # MakeMKV diagnostics captured by the disc detection screen
+    diag = state.get("makemkv_diag")
+    if diag:
+        diag_lines = [
+            f"- exe: `{diag.get('exe') or '<not found>'}`",
+            f"- version: `{diag.get('version') or '<unknown>'}`",
+            f"- available: `{diag.get('available')}`",
+        ]
+        if diag.get("error"):
+            diag_lines.append(f"- error: {diag.get('error')}")
+        params["makemkv-diag"] = "\n".join(diag_lines)
+
     # Debug files hint
     debug_paths = _find_debug_paths(state)
     if debug_paths:
