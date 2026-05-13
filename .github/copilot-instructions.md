@@ -74,6 +74,30 @@ riplex-ui              # Launch the Flet GUI
 
 Do NOT use `python -m riplex` (that errors — riplex is a library package, not runnable). Do NOT use `python -m riplex_cli.main` when the entry point works.
 
+Because `riplex` is editable-installed (`pip install -e .`), any local edit
+to source files under `src/riplex/`, `src/riplex_cli/`, or `src/riplex_app/`
+is live the next time you launch `riplex-ui` or run a `riplex` CLI command.
+No reinstall step is needed for normal development.
+
+## Upgrading dependencies
+
+The only dependency that needs an explicit upgrade is `dvdcompare-scraper`,
+since it's installed from PyPI (not editable). After a new version is
+published (every push to its `main` branch auto-bumps the patch and
+publishes), bump the pin in `pyproject.toml` and run:
+```
+pip install -e ".[dev,gui]" --upgrade
+```
+
+Close `riplex-ui` first if it's running — the `.exe` shim is locked while
+the process is alive and pip will fail with `WinError 32`.
+
+To verify the upgrade picked up the new version:
+```
+py -m pip show dvdcompare-scraper | Select-String Version
+```
+
+
 ## Dry-run default
 
 All destructive commands (`rip`, `organize`, `orchestrate`) are dry-run by default. There is no `--dry-run` flag. Use `--execute` to actually perform the operation.
