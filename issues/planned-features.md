@@ -323,6 +323,187 @@ features). The right model is:
    - Implementation lands naturally with the `BoxsetRelease` data model
      (item 2 above): one fetch produces the full disc map.
 
+10. **Follow per-film page links for linked discs in a boxset release.**
+
+    *Discovered while ripping BTTF 40th Anniversary Trilogy after the
+    quoted-title disc-header parser landed (dvdcompare-scraper 0.1.15).*
+
+    ### Symptom
+
+    On the boxset's release page (e.g. *Back to the Future / Blu-ray 4K
+    / 40th Anniversary Trilogy*), only the **primary film's** discs list
+    their extras inline. The discs belonging to the other films in the
+    boxset appear as bare headers with **no extras listed**, e.g.:
+
+    ```
+    DISC 1 "Back to the Future" (Blu-ray 4K)   ← inline extras (32 items)
+    DISC 2 "Back to the Future" (Blu-ray)      ← inline extras (38 items)
+    DISC 3 "Back to the Future Part II" (Blu-ray 4K)   ← (no content listed)
+    DISC 4 "Back to the Future Part II" (Blu-ray)      ← (no content listed)
+    DISC 5 "Back to the Future Part III" (Blu-ray 4K)  ← (no content listed)
+    DISC 6 "Back to the Future Part III" (Blu-ray)     ← (no content listed)
+    DISC 7 (Blu-ray)                            ← inline extras (26 items)
+    DISC 8 (Blu-ray)                            ← inline extras (5 items)
+    ```
+
+    This is visible in the current disc-overview screen: discs 3-6 show
+    `(no content listed)`. Without per-disc content riplex falls back
+    to duration-only heuristics for those discs and can't classify
+    featurettes vs. main film, can't match titles to specific extras,
+    and can't surface what the user should expect to be on each disc.
+
+    ### Root cause in dvdcompare HTML
+
+    On the boxset release page, each non-primary disc header is wrapped
+    in an `<a href="film.php?fid=NNNN">` linking to **that film's own
+    dvdcompare comparison page**:
+
+    ```html
+    <b>DISC ONE "Back to the Future" (Blu-ray 4K)</b>
+    <br>* The Film
+    <br>Q&amp;A Commentary by Director Robert Zemeckis ... (2002)
+    ... 30 more rows of inline extras ...
+
+    <a href="film.php?fid=16875"><b>DISC TWO "Back to the Future" (Blu-ray)</b></a>
+    <br>* The Film
+    <br>Q&amp;A Commentary by Director Robert Zemeckis ... (2002)
+    ... 36 more rows of inline extras ...
+
+    <a href="film.php?fid=55540"><b>DISC THREE "Back to the Future Part II" (Blu-ray 4K)</b></a>
+    <br>                                          ← no rows follow
+    <a href="film.php?fid=16876"><b>DISC FOUR "Back to the Future Part II" (Blu-ray)</b></a>
+    <br>
+    <a href="film.php?fid=55541"><b>DISC FIVE "Back to the Future Part III" (Blu-ray 4K)</b></a>
+    <br>
+    <a href="film.php?fid=16877"><b>DISC SIX "Back to the Future Part III" (Blu-ray)</b></a>
+    <br>
+    <b>DISC SEVEN (Blu-ray)</b>
+    <br>"The Hollywood Museum Goes Back to the Future" ...
+    ```
+
+    Two distinct patterns are present in this single release:
+
+    - **Linked-and-listed** (e.g. DISC TWO `fid=16875`): the header is
+      a link, but extras are *also* listed inline. Following the link
+      is optional — the inline data is authoritative for this release.
+    - **Linked-and-empty** (e.g. DISCs 3-6): the header is a link with
+      no inline extras at all. The link is the *only* way to get the
+      disc's contents.
+
+    Bonus discs (7, 8) and the primary film's discs (1, 2) are
+    **inline-only** with no link.
+
+    ### Scope
+
+    This affects **any multi-film boxset** on dvdcompare where the
+    individual films also have standalone pages. Confirmed patterns:
+
+    - BTTF 40th Anniversary Trilogy (6 feature discs + 2 bonus).
+    - 35th Anniversary Ultimate Trilogy (3 feature discs + 1 bonus) —
+      same structure, fewer discs.
+    - Same structure expected for Godfather Trilogy 50th Anniversary,
+      LOTR Extended, Star Wars Original Trilogy 4K, Indiana Jones,
+      Mission: Impossible Collections, etc.
+
+    Single-film boxsets (Inception, The Thing) do **not** have this
+    problem — they have only one film page, so all discs are
+    inline-only with no cross-links.
+
+    ### Plan
+
+    1. **Scraper: surface the per-disc link.**
+
+       Add two optional fields to `dvdcompare.models.Disc`:
+
+       ```python
+       linked_film_id: int | None = None    # 16875 in href="film.php?fid=16875"
+       linked_film_url: str | None = None   # absolute URL of the linked page
+       ```
+
+       Update `parse_extras` to detect when the surrounding `<a href>`
+       of a `<b>DISC ...</b>` header points at `film.php?fid=NNNN` and
+       record those values on the `Disc`. Leave both `None` when no
+       link is present.
+
+       This is a parser-only change, similar to the quoted-title work.
+       No new HTTP calls in the scraper itself.
+
+    2. **Scraper: optional enrichment API.**
+
+       Add a new method (or `find_film` flag) that, given a
+       `FilmComparison` whose discs have linked-but-empty extras,
+       resolves each link to the corresponding `FilmComparison`/release
+       and **back-fills** the empty `Disc.features` list from the
+       linked page.
+
+       Resolution rule when fetching a linked film page: find the
+       release whose name matches the *originating* boxset release name
+       (e.g. *"40th Anniversary Trilogy"*), then find the disc within
+       it whose `(number, format, title)` matches the linked header,
+       and copy its features.
+
+       This is opt-in because it's expensive (1 extra HTTP request per
+       linked disc — up to 4 for BTTF) and most callers only want the
+       single-page view. The throttle layer in riplex already serializes
+       these.
+
+    3. **Riplex: invoke enrichment when a boxset is detected.**
+
+       When `_convert_release` sees any `Disc` with no features but a
+       `linked_film_id`, call the enrichment API once (after the user
+       has confirmed the release) to back-fill all linked discs, then
+       proceed with normal classification. The cache key for the parent
+       boxset should incorporate the enrichment state so we don't keep
+       re-fetching when re-opening the same release.
+
+       This integrates with item 9 (one dvdcompare lookup per boxset):
+       enrichment runs once up front and the result is cached.
+
+    4. **Disc-overview UX.**
+
+       Replace `(no content listed)` for linked-and-empty discs with
+       `(loading from linked page…)` while enrichment runs, then refresh
+       the disc summary once back-filled. If enrichment fails (HTTP
+       error, link broken, release name not found on linked page), fall
+       back to `(no content listed — see <linked_film_url>)` and keep
+       the disc rip-able with duration-only heuristics.
+
+    5. **Negative cache / failure modes.**
+
+       - Linked page returns 404 / non-2xx → negative-cache like any
+         dvdcompare failure (existing infrastructure).
+       - Linked page doesn't contain a release with the matching name →
+         log warning, leave features empty, don't crash. This will
+         happen for re-released boxsets where the per-film page has a
+         narrower release list than the boxset page.
+       - Linked page's matching release has a disc with same number but
+         different `(format, title)` → keep both candidates' features as
+         a best-effort merge.
+
+    6. **Tests.**
+
+       - Parser: verify `linked_film_id` and `linked_film_url` are
+         populated from `<a href="film.php?fid=NNNN"><b>DISC ...</b></a>`
+         wrappers, and remain `None` for plain `<b>DISC ...</b>`
+         headers.
+       - Parser: linked-and-listed (DISC TWO style) still produces the
+         inline features alongside the link.
+       - Scraper enrichment: given a parent release and a synthetic
+         second `FilmComparison` containing the matching release, the
+         enrichment back-fills features into the placeholder disc.
+       - Riplex `_convert_release`: a disc with `linked_film_id` set and
+         empty features triggers the enrichment hook (mocked) and then
+         classifies normally.
+
+    7. **Out of scope / future.**
+
+       Cross-boxset deduplication (the *same* per-film page is referenced
+       by multiple boxset releases, e.g. both 35th and 40th Anniversary
+       link to `fid=16875` for BTTF 1 Blu-ray): the existing positive
+       cache already covers this once the linked page has been fetched
+       once. No special handling needed.
+
+
 
 
 
