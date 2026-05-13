@@ -28,6 +28,20 @@ For the GUI, also include the gui extra:
 pip install -e ".[dev,gui]"
 ```
 
+### Editable-installing dvdcompare-scraper (optional)
+
+By default `dvdcompare-scraper` is pulled from PyPI as a regular install, so
+local edits to that sibling repo (typically at
+`../dvdcompare-scraper/`) do not take effect until a new version is
+published. To pick up scraper changes immediately without bumping the
+version, editable-install it once:
+
+```
+pip install -e ../dvdcompare-scraper
+```
+
+After this, `riplex-ui` and the CLI will use the local checkout directly.
+
 ### macOS extras (Homebrew Python only)
 
 If you installed Python via Homebrew, two additional one-time steps are needed:
