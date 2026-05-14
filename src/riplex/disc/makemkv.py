@@ -649,15 +649,22 @@ def _parse_progress(line: str) -> RipProgress | None:
 
 
 _RIP_SUMMARY_RE = re.compile(r'MSG:5004,[^,]*,[^,]*,"(\d+) titles? saved, (\d+) failed"')
+# When all titles succeed, makemkvcon emits MSG:5005 (and MSG:5036) with just
+# "N titles saved" — no ", M failed" suffix. We treat that as saved=N, failed=0.
+_RIP_SUMMARY_SUCCESS_RE = re.compile(r'MSG:(?:5005|5036),[^,]*,[^,]*,"(?:Copy complete\. )?(\d+) titles? saved')
 _MSG_TEXT_RE = re.compile(r'MSG:(\d+),[^,]*,[^,]*,"([^"]*)"')
 
 
 def _parse_rip_summary(lines: list[str]) -> tuple[int, int, str]:
     """Extract (saved_count, failed_count, last_error_message) from output.
 
-    makemkvcon emits ``MSG:5004,...,"N titles saved, M failed"`` near the
-    end of every rip. Returns (-1, -1, "") if the summary line was not
-    found (e.g. the process was killed before completion).
+    makemkvcon emits one of these near the end of every rip:
+    - ``MSG:5004,...,"N titles saved, M failed"`` (when there were failures)
+    - ``MSG:5005,...,"N titles saved"`` (when all succeeded)
+    - ``MSG:5036,...,"Copy complete. N titles saved."`` (final summary)
+
+    Returns (-1, -1, "") if no summary line was found (e.g. the process was
+    killed before completion).
     """
     saved = -1
     failed = -1
@@ -667,6 +674,14 @@ def _parse_rip_summary(lines: list[str]) -> tuple[int, int, str]:
         if m:
             saved = int(m.group(1))
             failed = int(m.group(2))
+            continue
+        sm = _RIP_SUMMARY_SUCCESS_RE.search(line)
+        if sm:
+            # Only set if the failure-form summary hasn't already populated
+            # these (5004 takes precedence since it reports failures explicitly).
+            if failed < 0:
+                saved = int(sm.group(1))
+                failed = 0
             continue
         # Capture the most recent serious error (MSG codes 5003, 1002, 2023)
         # for surfacing to the user.
