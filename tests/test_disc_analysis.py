@@ -237,6 +237,43 @@ class TestIsSkipTitle:
             False, None, 0, 0, dvd_entries,
         ) is False
 
+    def test_keep_1080p_extra_on_4k_disc_without_4k_counterpart(self):
+        """On a 4K disc with 1080p-only extras (Universal BttF 40th Anniversary
+        pattern), the 1080p extras should NOT be skipped just because a 4K
+        main film exists on the same disc. They're the only copy."""
+        # 4K main film (movie length) so the disc qualifies as "has_4k"
+        main_4k = _make_title(0, 7098, resolution="3840x2160")
+        # 1080p featurette with a dvdcompare entry but NO 4K counterpart
+        feat_1080 = _make_title(1, 1027, resolution="1920x1080")
+        dvd_entries = [
+            ("Tales from the Future: Third Time's the Charm", 1027, "featurette"),
+        ]
+        assert is_skip_title(
+            feat_1080, [main_4k, feat_1080],
+            True, 7098, 0, 0, dvd_entries,
+        ) is False
+
+    def test_skip_1080p_extra_when_4k_counterpart_exists(self):
+        """When the same extra exists in both 4K and 1080p on the disc
+        (true duplicate), keep the 4K version and skip the 1080p."""
+        main_4k = _make_title(0, 7098, resolution="3840x2160")
+        # Same featurette, both resolutions, same duration
+        feat_4k = _make_title(1, 248, resolution="3840x2160")
+        feat_1080 = _make_title(2, 248, resolution="1920x1080")
+        dvd_entries = [
+            ("Music Video by ZZ Top: Doubleback", 248, "extra"),
+        ]
+        # 1080p version should be skipped (4K duplicate exists)
+        assert is_skip_title(
+            feat_1080, [main_4k, feat_4k, feat_1080],
+            True, 7098, 0, 0, dvd_entries,
+        ) is True
+        # 4K version should be kept
+        assert is_skip_title(
+            feat_4k, [main_4k, feat_4k, feat_1080],
+            True, 7098, 0, 0, dvd_entries,
+        ) is False
+
 
 class TestBuildDvdEntries:
     def test_builds_entries(self):

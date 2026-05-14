@@ -289,22 +289,23 @@ def is_skip_title(
                 return True
 
     # On 4K discs, skip 1080p titles that match non-episode dvdcompare entries
-    # (featurettes, behind-the-scenes, etc. at lower resolution)
-    # Exception: keep 1080p featurette play-alls when no 4K version exists
+    # ONLY when a 4K physical title at the same duration also exists on the
+    # disc (i.e. the 1080p title is a true duplicate). Some studios (e.g.
+    # Universal) ship the 4K main film on a 4K disc but include most extras
+    # at 1080p only — in that case the 1080p extras are the *only* copy and
+    # must be ripped, not skipped.
     if not is_4k and dvd_entries:
         has_4k = any("3840" in (t.resolution or "") for t in all_titles if t.duration_seconds > 600)
         if has_4k:
             match = find_duration_match(dur, dvd_entries)
             if match and match[2] != "episode":
-                # Keep featurette play-alls if no 4K counterpart at same duration
-                if "play all" in match[0].lower() and _is_featurette_play_all(match[2]):
-                    has_4k_version = any(
-                        "3840" in (t.resolution or "") and abs(t.duration_seconds - dur) < 30
-                        for t in all_titles if t is not title
-                    )
-                    if not has_4k_version:
-                        return False
-                return True
+                has_4k_version = any(
+                    "3840" in (t.resolution or "")
+                    and abs(t.duration_seconds - dur) < 30
+                    for t in all_titles if t is not title
+                )
+                if has_4k_version:
+                    return True
 
     # Skip dvdcompare-based play-all if individual episodes exist at same resolution
     if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:

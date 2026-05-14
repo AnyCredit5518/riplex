@@ -216,7 +216,8 @@ class TestChernobylDisc1:
             )
 
     def test_1080p_skipped_when_4k_exists(self, disc_data):
-        """1080p titles should be skipped when 4K versions exist."""
+        """1080p titles should be skipped only when a 4K version exists on
+        the same disc. 1080p-only extras (no 4K counterpart) must be kept."""
         disc_info, planned_discs, expected = disc_data
 
         analysis = analyze_disc(
@@ -227,9 +228,15 @@ class TestChernobylDisc1:
         )
 
         rip_indices = [t.index for t in analysis.rippable_titles]
-        # #5 (1080p version of #1) and #10, #11, #12 (1080p featurettes)
-        # should not be in rip list
-        for idx in [5, 10, 11, 12]:
-            assert idx not in rip_indices, (
-                f"Title #{idx} (1080p) should be skipped: {analysis.classifications[idx]}"
+        # #5 (1080p version of #1, 4K counterpart exists) should be skipped.
+        # #10, #11, #12 (1080p featurette children with no 4K counterpart)
+        # must NOT be skipped — they're the only copy of that content.
+        assert 5 not in rip_indices, (
+            f"Title #5 (1080p dup of 4K #1) should be skipped: "
+            f"{analysis.classifications[5]}"
+        )
+        for idx in [10, 11, 12]:
+            assert idx in rip_indices, (
+                f"Title #{idx} (1080p featurette with no 4K counterpart) "
+                f"should NOT be skipped: {analysis.classifications[idx]}"
             )
