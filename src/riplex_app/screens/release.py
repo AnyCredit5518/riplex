@@ -2,16 +2,11 @@
 
 import asyncio
 import threading
-import webbrowser
 
 import flet as ft
 
-from riplex import cache as _cache
 from riplex.disc.provider import DiscProvider, _convert_release
-from riplex.disc.provider import detect_disc_format, film_url, parse_film_id, score_releases
-
-
-_OVERRIDE_CACHE_NS = "dvdcompare_film_id_override"
+from riplex.disc.provider import detect_disc_format, score_releases
 
 
 class ReleaseScreen:
@@ -19,8 +14,6 @@ class ReleaseScreen:
         self.app = app
         self.film_comparison = None
         self._search_field: ft.TextField | None = None
-        self._fid_field: ft.TextField | None = None
-        self._fid_error: ft.Text | None = None
 
     @property
     def _next_screen(self) -> str:
@@ -79,114 +72,6 @@ class ReleaseScreen:
         self.app.state.pop("_dvdcompare_film", None)
         self.app.state.pop("_dvdcompare_error", None)
         self.app.navigate("release")
-
-    # -- film URL / manual fid override UI --------------------------------
-
-    def _build_film_link(self, film) -> ft.Control | None:
-        """Build a "View on dvdcompare.net" button for the current film."""
-        if film is None or not getattr(film, "film_id", None):
-            return None
-        url = film_url(film.film_id)
-
-        def _open(_e, _url=url):
-            webbrowser.open(_url)
-
-        return ft.Row(
-            [
-                ft.Icon(ft.Icons.OPEN_IN_NEW, size=16, color=ft.Colors.BLUE),
-                ft.TextButton(
-                    f"View on dvdcompare.net (fid={film.film_id})",
-                    on_click=_open,
-                    tooltip=url,
-                ),
-            ],
-            spacing=4,
-        )
-
-    def _build_fid_override_section(self) -> ft.Control:
-        """Editable manual film-id / URL override input."""
-        self._fid_field = ft.TextField(
-            label="Manual override (paste dvdcompare URL or fid)",
-            hint_text="e.g. 55540 or https://www.dvdcompare.net/comparisons/film.php?fid=55540",
-            expand=True,
-            on_submit=self._on_fid_override_submit,
-        )
-        self._fid_error = ft.Text("", size=12, color=ft.Colors.RED, visible=False)
-        persisted = self._load_persisted_override()
-        hint_controls = []
-        if persisted is not None:
-            hint_controls.append(
-                ft.Row([
-                    ft.Text(
-                        f"Currently using saved override fid={persisted}.",
-                        size=12,
-                        color=ft.Colors.GREY_500,
-                    ),
-                    ft.TextButton(
-                        "Clear saved override",
-                        on_click=self._on_clear_override,
-                    ),
-                ], spacing=10),
-            )
-        return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Text(
-                        "Wrong film? Open dvdcompare.net, find the right page, "
-                        "and paste its URL or fid here:",
-                        size=12,
-                        color=ft.Colors.GREY_500,
-                    ),
-                    ft.Row(
-                        [
-                            self._fid_field,
-                            ft.ElevatedButton(
-                                "Use this",
-                                icon=ft.Icons.CHECK,
-                                on_click=self._on_fid_override_submit,
-                            ),
-                        ],
-                        spacing=10,
-                    ),
-                    self._fid_error,
-                    *hint_controls,
-                ],
-                spacing=6,
-            ),
-            padding=ft.Padding(left=0, top=8, right=0, bottom=8),
-        )
-
-    def _on_fid_override_submit(self, _e):
-        if self._fid_field is None:
-            return
-        raw = (self._fid_field.value or "").strip()
-        fid = parse_film_id(raw)
-        if fid is None:
-            if self._fid_error is not None:
-                self._fid_error.value = (
-                    "Couldn't parse a film id from that input. "
-                    "Expected a number like 55540 or a "
-                    "dvdcompare.net/comparisons/film.php?fid=... URL."
-                )
-                self._fid_error.visible = True
-                self.app.page.update()
-            return
-        # Stash for the next lookup pass and trigger a refresh.
-        self.app.state["_dvdcompare_film_id_override"] = fid
-        self.app.state["release"] = None
-        self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
-        self.app.navigate("release")
-
-    def _on_clear_override(self, _e):
-        self._clear_persisted_override()
-        self.app.state["release"] = None
-        self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
-        self.app.navigate("release")
-
 
     def build(self) -> ft.Control:
         title = self._current_search_title()
@@ -281,27 +166,18 @@ class ReleaseScreen:
             value=default_value,
         )
 
-        film_link = self._build_film_link(self.film_comparison)
-        header_children = [
-            ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
-            ft.Text(
-                "Multiple releases were found on dvdcompare.net. Pick the one "
-                "that matches your physical disc (region, edition, distributor).",
-                size=13,
-                color=ft.Colors.GREY_500,
-            ),
-        ]
-        if film_link is not None:
-            header_children.append(film_link)
-        header_children.append(ft.Divider(height=20))
-
         return ft.Column(
             [
-                *header_children,
+                ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "Multiple releases were found on dvdcompare.net. Pick the one "
+                    "that matches your physical disc (region, edition, distributor).",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
+                ft.Divider(height=20),
                 ft.Text("Select your disc release:", size=14),
                 self.release_radio_group,
-                ft.Divider(height=20),
-                self._build_fid_override_section(),
                 ft.Container(expand=True),
                 ft.Row([
                     ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
@@ -336,8 +212,6 @@ class ReleaseScreen:
                 ft.Divider(height=20),
                 self._build_search_bar(title, searching=False),
                 ft.Text(msg, size=14, color=ft.Colors.ORANGE),
-                ft.Divider(height=20),
-                self._build_fid_override_section(),
                 ft.Container(expand=True),
                 ft.Row([
                     ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
@@ -364,30 +238,11 @@ class ReleaseScreen:
         try:
             disc_format = self._detect_disc_format()
             year = tmdb_match.year if tmdb_match else None
+            log.info("dvdcompare lookup: title=%r format=%r year=%r", title, disc_format, year)
             provider = DiscProvider()
-
-            # Per-session manual override (just submitted).
-            session_fid = self.app.state.pop("_dvdcompare_film_id_override", None)
-            # Persisted override (set on a previous run for this title/format).
-            persisted_fid = self._load_persisted_override() if session_fid is None else None
-            override_fid = session_fid if session_fid is not None else persisted_fid
-
-            if override_fid is not None:
-                log.info("dvdcompare lookup: using film id override fid=%s (source=%s)",
-                         override_fid, "session" if session_fid is not None else "persisted")
-                film = asyncio.run(provider.fetch_film_by_id(override_fid))
-                # Persist on success so subsequent navigations / disc swaps
-                # auto-use the same fid.
-                if session_fid is not None:
-                    self._save_persisted_override(override_fid)
-            else:
-                log.info("dvdcompare lookup: title=%r format=%r year=%r",
-                         title, disc_format, year)
-                film = asyncio.run(provider.fetch_film(title, disc_format, year=year))
-
-            log.info("dvdcompare lookup: found %r (fid=%s, %d releases)",
+            film = asyncio.run(provider.fetch_film(title, disc_format, year=year))
+            log.info("dvdcompare lookup: found %r (%d releases)",
                      film.title if film else None,
-                     film.film_id if film else None,
                      len(film.releases) if film else 0)
             self.app.state["_dvdcompare_film"] = film
         except Exception as exc:

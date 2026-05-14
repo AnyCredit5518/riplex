@@ -208,82 +208,6 @@ class DiscProvider:
     # in screens / external code may still use this; prefer ``fetch_film``.
     _fetch_film_cached = fetch_film
 
-    async def fetch_film_by_id(self, film_id: int) -> FilmComparison:
-        """Fetch a specific dvdcompare film page by its film id.
-
-        Used by the UI's manual-override path when our auto-ranking picks
-        the wrong film page. Cached on success; HTTP/network failures
-        propagate as LookupError after caching a short-TTL negative entry.
-        """
-        cache_key = cache.hash_key(f"film-by-id|{film_id}")
-
-        cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
-        if cached is not None and not cached.get("_negative"):
-            log.debug("dvdcompare film-by-id cache hit for %s", film_id)
-            return _dict_to_film(cached)
-
-        url = film_url(film_id)
-        try:
-            film = await _throttled_get_film_by_url(url)
-        except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response is not None else "?"
-            log.warning("dvdcompare HTTP %s fetching fid=%s", status, film_id)
-            raise LookupError(
-                f"dvdcompare returned HTTP {status} for fid={film_id}"
-            ) from exc
-        except httpx.RequestError as exc:
-            log.warning("dvdcompare network error fetching fid=%s: %s", film_id, exc)
-            raise LookupError(
-                f"dvdcompare network error for fid={film_id}: {exc}"
-            ) from exc
-
-        if not film.releases:
-            raise LookupError(f"dvdcompare film {film_id} has no releases")
-
-        cache.cache_set(self.cache_ns, cache_key, dataclasses.asdict(film))
-        return film
-
-
-# ---------------------------------------------------------------------------
-# Public URL / fid helpers
-# ---------------------------------------------------------------------------
-
-from dvdcompare.scraper import BASE_URL as _DVDCOMPARE_BASE_URL  # noqa: E402
-
-
-def film_url(film_id: int | str) -> str:
-    """Return the public dvdcompare comparison URL for a film id."""
-    return f"{_DVDCOMPARE_BASE_URL}/comparisons/film.php?fid={film_id}"
-
-
-_FID_RE = re.compile(r"(?:fid=|film\.php\?fid=|^)(\d+)")
-
-
-def parse_film_id(value: str) -> int | None:
-    """Extract a numeric film id from a bare number or a dvdcompare URL.
-
-    Returns ``None`` if no fid can be parsed.
-
-    Accepted forms:
-      - ``"55540"``
-      - ``"fid=55540"``
-      - ``"https://www.dvdcompare.net/comparisons/film.php?fid=55540"``
-      - ``"https://www.dvdcompare.net/comparisons/film.php?fid=55540#2"``
-    """
-    if not value:
-        return None
-    s = value.strip()
-    if not s:
-        return None
-    # Pure digits
-    if s.isdigit():
-        return int(s)
-    m = _FID_RE.search(s)
-    if m:
-        return int(m.group(1))
-    return None
-
-
 
 # ---------------------------------------------------------------------------
 # Internal helpers: negative cache + throttle
@@ -356,21 +280,6 @@ async def _throttled_find_film(
             if disc_format:
                 return await _find_film_prefer_format(title, disc_format, year)
             return await find_film(title, disc_format, year=year)
-        finally:
-            _last_request_at = time.monotonic()
-
-
-async def _throttled_get_film_by_url(url: str) -> FilmComparison:
-    """Call ``get_film_by_url`` under the same throttle as ``find_film``."""
-    global _last_request_at
-    async with _request_lock:
-        now = time.monotonic()
-        wait = _MIN_INTERVAL_S - (now - _last_request_at)
-        if wait > 0:
-            log.debug("dvdcompare throttle: waiting %.2fs before request", wait)
-            await asyncio.sleep(wait)
-        try:
-            return await get_film_by_url(url)
         finally:
             _last_request_at = time.monotonic()
 

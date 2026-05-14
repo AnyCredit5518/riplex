@@ -10,11 +10,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - Bumped `dvdcompare-scraper` pin to `>=0.1.15`, which adds quoted-title disc-header parsing. Boxsets such as *Back to the Future 40th Anniversary Trilogy* that glue six physical discs into a single dvdcompare disc entry are now split correctly into one PlannedDisc per physical disc.
 
-### Added
-
-- Disc Release screen: "View on dvdcompare.net" link showing the auto-selected film page so users can verify region/edition before committing to a long rip.
-- Disc Release screen: manual film-id override input. Paste either a bare fid (e.g. `55540`) or a full URL (`https://www.dvdcompare.net/comparisons/film.php?fid=55540`) and riplex will fetch and use that film page instead. The chosen fid is persisted per `(title, disc_format)` so swapping discs in the same box set keeps the override, with a "Clear saved override" affordance.
-
 ## 2026-05-12
 
 ### Added
