@@ -164,6 +164,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Auto-generate notes from commits and PRs since the previous tag,
+          # then prepend the tag annotation (if any) as a header. Using just
+          # the tag annotation produces single-line releases when the tag
+          # was created with `git tag -a -m "<subject>"` and no body.
+          generate_release_notes: true
           body: ${{ steps.tag_notes.outputs.body }}
           files: |
             release/riplex-windows.exe
