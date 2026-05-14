@@ -18,7 +18,7 @@ import httpx
 
 from dvdcompare.cli import select_releases
 from dvdcompare.models import FilmComparison
-from dvdcompare.scraper import find_film
+from dvdcompare.scraper import find_film, get_film_by_url, search
 
 from riplex import cache
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
@@ -260,6 +260,14 @@ async def _throttled_find_film(
     Ensures even concurrent ``fetch_film`` calls (multiple UI threads, an
     orchestrate flow, parallel boxset discs) cannot burst dvdcompare with
     back-to-back requests.
+
+    When ``disc_format`` is provided we trust it more than ``year``:
+    dvdcompare occasionally lists the re-release year for 4K editions
+    (e.g. Back to the Future Part II is shown as 1990 on its 4K page even
+    though the film released in 1989), which makes the upstream
+    ``find_film`` prefer-year heuristic pick the DVD page over the 4K
+    page. We work around that by doing the search ourselves and ranking
+    format-match above year-match when a disc format is known.
     """
     global _last_request_at
     async with _request_lock:
@@ -269,9 +277,56 @@ async def _throttled_find_film(
             log.debug("dvdcompare throttle: waiting %.2fs before request", wait)
             await asyncio.sleep(wait)
         try:
+            if disc_format:
+                return await _find_film_prefer_format(title, disc_format, year)
             return await find_film(title, disc_format, year=year)
         finally:
             _last_request_at = time.monotonic()
+
+
+async def _find_film_prefer_format(
+    title: str, disc_format: str, year: int | None
+) -> FilmComparison:
+    """Search dvdcompare and pick the film page that best matches the disc
+    format we have in hand, preferring format match over year match.
+
+    Ranking (highest first):
+      1. format match AND year match
+      2. format match (any year)
+      3. year match (no format on the search result)
+      4. first result
+    """
+    results = await search(title)
+    if not results:
+        raise LookupError(f"No dvdcompare results for '{title}'")
+
+    fmt_norm = disc_format.strip().lower()
+
+    def fmt_matches(sr) -> bool:
+        return (sr.disc_format or "").strip().lower() == fmt_norm
+
+    def year_matches(sr) -> bool:
+        return year is not None and sr.year == year
+
+    # Tier 1: format + year
+    for sr in results:
+        if fmt_matches(sr) and year_matches(sr):
+            log.debug("dvdcompare pick (format+year): %s", sr.url)
+            return await get_film_by_url(sr.url)
+    # Tier 2: format only
+    for sr in results:
+        if fmt_matches(sr):
+            log.debug("dvdcompare pick (format-only, year=%s actual=%s): %s",
+                      year, sr.year, sr.url)
+            return await get_film_by_url(sr.url)
+    # Tier 3: year only (no format listed on result)
+    for sr in results:
+        if year_matches(sr) and not sr.disc_format:
+            log.debug("dvdcompare pick (year-only, no result format): %s", sr.url)
+            return await get_film_by_url(sr.url)
+    # Tier 4: first result
+    log.debug("dvdcompare pick (first result fallback): %s", results[0].url)
+    return await get_film_by_url(results[0].url)
 
 
 def _clean_feature_type(raw: str) -> str:
