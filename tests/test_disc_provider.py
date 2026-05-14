@@ -253,3 +253,46 @@ class TestBoxsetWithQuotedTitleDiscs:
         assert planned[5].is_film is True
         assert planned[6].is_film is False
         assert planned[7].is_film is False
+
+class TestFilmUrl:
+    def test_film_url_int(self):
+        from riplex.disc.provider import film_url
+        assert film_url(55540) == "https://www.dvdcompare.net/comparisons/film.php?fid=55540"
+
+    def test_film_url_str(self):
+        from riplex.disc.provider import film_url
+        assert film_url("55540") == "https://www.dvdcompare.net/comparisons/film.php?fid=55540"
+
+
+class TestParseFilmId:
+    def test_bare_digits(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("55540") == 55540
+
+    def test_full_url(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("https://www.dvdcompare.net/comparisons/film.php?fid=55540") == 55540
+
+    def test_url_with_anchor(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("https://www.dvdcompare.net/comparisons/film.php?fid=55540#2") == 55540
+
+    def test_query_fragment(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("fid=12345") == 12345
+
+    def test_whitespace_stripped(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("  55540  ") == 55540
+
+    def test_garbage_returns_none(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("not a film id") is None
+
+    def test_empty_returns_none(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("") is None
+
+    def test_whitespace_only_returns_none(self):
+        from riplex.disc.provider import parse_film_id
+        assert parse_film_id("   ") is None
