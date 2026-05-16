@@ -110,6 +110,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Skip interactive prompts, use best-guess defaults.",
     )
+    org_parser.add_argument(
+        "--rescan",
+        action="store_true",
+        default=False,
+        help=(
+            "Ignore _rip_manifest.json files and re-probe every MKV with "
+            "ffprobe.  By default, riplex reuses rip-time metadata from "
+            "the manifest when present (faster, preserves classification)."
+        ),
+    )
 
     # --- lookup ---
     guide_parser = subs.add_parser(

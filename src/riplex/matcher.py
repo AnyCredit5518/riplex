@@ -161,8 +161,32 @@ def format_match_report(candidates: list[MatchCandidate]) -> str:
 _FILM_DISC_MARKER = -1
 
 # Absolute maximum delta (seconds) beyond which a pairing is rejected.
-# Prevents garbage matches when no good candidate exists.
-_MAX_MATCH_DELTA = 300
+# The movie target gets a generous tolerance because main-feature
+# runtimes from TMDb are often rounded to the nearest minute and may
+# omit credits / disc-specific intros.  Extras tend to have precise
+# dvdcompare runtimes, so a much tighter cap prevents short featurettes
+# from being matched to unrelated short clips.
+_MAX_MATCH_DELTA = 300         # movie target
+_MAX_MATCH_DELTA_EXTRA = 120   # episodes + extras
+
+# Classification prefixes that signal "rip-time classifier could not
+# identify this title".  When set, the file must not be claimed by a
+# named target unless the delta is very small (< _HIGH_THRESHOLD).
+_UNIDENTIFIED_CLASSIFICATION_PREFIXES = (
+    "Unmatched content",
+    "Unknown content",
+    "Very short",
+)
+
+
+def _is_movie_target(label: str) -> bool:
+    return label.endswith("(movie)")
+
+
+def _is_unidentified(classification: str) -> bool:
+    if not classification:
+        return False
+    return classification.startswith(_UNIDENTIFIED_CLASSIFICATION_PREFIXES)
 
 _PLAY_ALL_RE = re.compile(r"\bplay\s*all\b", re.IGNORECASE)
 
@@ -437,12 +461,30 @@ def match_discs(
     for delta, fi, ti in pairings:
         if fi in claimed_files or ti in claimed_targets:
             continue
-        if delta > _MAX_MATCH_DELTA:
-            log.debug("Stopping greedy claims: delta %ds exceeds max %ds",
-                      delta, _MAX_MATCH_DELTA)
-            break
-        sf = all_scanned[fi]
         label, runtime_s, _t_disc = targets[ti]
+        is_movie = _is_movie_target(label)
+        max_delta = _MAX_MATCH_DELTA if is_movie else _MAX_MATCH_DELTA_EXTRA
+        if delta > max_delta:
+            # Skip — but don't break, since later pairings may involve a
+            # movie target with a looser cap.  Pairings are still sorted
+            # by delta, so any remaining pair this large is also too large.
+            log.debug("Skip pairing: %s -> '%s' delta=%ds exceeds cap %ds",
+                      all_scanned[fi].name, label, delta, max_delta)
+            continue
+        sf = all_scanned[fi]
+        # Honor rip-time classification: if the classifier explicitly
+        # flagged this file as unidentified/short, require a tight delta
+        # before pairing it with a named target.
+        if (
+            not is_movie
+            and _is_unidentified(sf.classification)
+            and delta > _HIGH_THRESHOLD
+        ):
+            log.debug(
+                "Reject pairing on classification: %s [%s] -> '%s' delta=%ds",
+                sf.name, sf.classification, label, delta,
+            )
+            continue
         conf = _confidence(delta)
         log.debug("Claim: %s (%ds) -> '%s' (%ds) delta=%ds [%s]",
                   sf.name, sf.duration_seconds, label, runtime_s, delta, conf)

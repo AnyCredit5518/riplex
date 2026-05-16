@@ -175,10 +175,25 @@ class OrganizePreviewScreen:
                 "medium": ft.Colors.YELLOW,
                 "low": ft.Colors.ORANGE,
             }.get(move.confidence, ft.Colors.GREY)
+            # Confidence chip: shows label + delta so the user can spot
+            # weak (medium/low) matches before executing.
+            delta = getattr(move, "delta_seconds", 0)
+            conf_label = (move.confidence or "?").upper()
+            if delta:
+                conf_text = f"{conf_label} \u00B1{delta}s"
+            else:
+                conf_text = conf_label
+            conf_chip = ft.Container(
+                content=ft.Text(conf_text, size=10, color=conf_color, weight=ft.FontWeight.BOLD),
+                bgcolor=ft.Colors.with_opacity(0.12, conf_color),
+                padding=ft.Padding(left=6, right=6, top=2, bottom=2),
+                border_radius=4,
+            )
             move_rows.append(
                 ft.Row([
                     ft.Icon(ft.Icons.CHECK_CIRCLE, color=conf_color, size=16),
-                    ft.Text(f"{src_name}", size=12, width=250, no_wrap=True),
+                    conf_chip,
+                    ft.Text(f"{src_name}", size=12, width=220, no_wrap=True),
                     ft.Icon(ft.Icons.ARROW_FORWARD, size=14, color=ft.Colors.GREY_500),
                     ft.Text(f"{dest_folder}/{dest_name}", size=12, expand=True, no_wrap=True),
                 ], spacing=6)

@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 from riplex.config import get_rip_output
 from riplex.detect import detect_format
+from riplex.manifest import build_scanned_from_manifests
 from riplex.scanner import scan_folder
 from riplex.snapshot import load_organized_marker
 from riplex.title import infer_title_from_scanned
@@ -124,8 +125,48 @@ class FolderPickerScreen:
             return
         self.folder_field.error_text = None
 
-        self.app.state["source_folder"] = Path(path)
+        folder = Path(path)
+        self.app.state["source_folder"] = folder
 
+        # Fast path: if every disc subfolder has a _rip_manifest.json,
+        # load metadata from the manifest instead of running ffprobe.
+        if self._has_complete_manifests(folder):
+            log.info("loading scan from rip manifests in %s", folder)
+            try:
+                scanned = build_scanned_from_manifests(folder)
+            except Exception as exc:
+                log.exception("manifest load failed; falling back to ffprobe")
+                scanned = None
+            if scanned:
+                self.app.state["_scan_from_manifest"] = True
+                self.app.state["_scan_result"] = scanned
+                self.app.navigate("folder_picker")
+                return
+
+        self.app.state["_scan_from_manifest"] = False
+        self._start_ffprobe_scan(folder)
+
+    def _has_complete_manifests(self, folder: Path) -> bool:
+        subfolders_with_mkvs = [
+            c for c in folder.iterdir()
+            if c.is_dir() and any(c.glob("*.mkv"))
+        ]
+        if not subfolders_with_mkvs:
+            return False
+        return all((c / "_rip_manifest.json").exists() for c in subfolders_with_mkvs)
+
+    def _rescan_with_ffprobe(self, e):
+        """User clicked the 'Rescan with ffprobe' banner button."""
+        folder = self.app.state.get("source_folder")
+        if not folder:
+            return
+        # Clear any cached scan and force a fresh ffprobe scan.
+        self.app.state.pop("scanned", None)
+        self.app.state.pop("_scan_result", None)
+        self.app.state["_scan_from_manifest"] = False
+        self._start_ffprobe_scan(folder)
+
+    def _start_ffprobe_scan(self, folder: Path):
         # Show scanning state with progress
         self._progress_text = ft.Text("Discovering files...", size=14)
         self._progress_bar = ft.ProgressBar(width=400)
@@ -149,7 +190,7 @@ class FolderPickerScreen:
         )
         self.app.page.update()
 
-        threading.Thread(target=self._do_scan, args=(Path(path),), daemon=True).start()
+        threading.Thread(target=self._do_scan, args=(folder,), daemon=True).start()
 
     def _do_scan(self, folder: Path):
         """Run ffprobe scan in background."""
@@ -219,6 +260,31 @@ class FolderPickerScreen:
                 ),
             ]
 
+        # Banner shown when the scan came from rip manifests (instant load).
+        manifest_banner = []
+        if self.app.state.get("_scan_from_manifest"):
+            manifest_banner = [
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.BOLT, color=ft.Colors.GREEN_400, size=18),
+                        ft.Text(
+                            "Loaded instantly from rip manifests (no ffprobe needed).",
+                            size=13,
+                            color=ft.Colors.GREEN_400,
+                            expand=True,
+                        ),
+                        ft.TextButton(
+                            "Rescan with ffprobe",
+                            icon=ft.Icons.REFRESH,
+                            on_click=self._rescan_with_ffprobe,
+                        ),
+                    ], spacing=8),
+                    bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.GREEN),
+                    padding=12,
+                    border_radius=8,
+                ),
+            ]
+
         # Build disc summary rows
         disc_rows = []
         for d in scanned:
@@ -252,6 +318,7 @@ class FolderPickerScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                *manifest_banner,
                 *marker_banner,
                 ft.Text(
                     f"Scanned {len(scanned)} disc{'s' if len(scanned) != 1 else ''}, "

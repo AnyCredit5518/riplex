@@ -542,7 +542,9 @@ class TestMaxDeltaThreshold:
         assert len(result.unmatched) == 1
 
     def test_within_threshold_still_matches(self):
-        """A file 200s away from the target still matches (under 300s)."""
+        """A file 100s away from the target still matches (under the
+        extra cap of 120s).
+        """
         discs = [
             PlannedDisc(
                 number=1,
@@ -556,13 +558,65 @@ class TestMaxDeltaThreshold:
             ScannedDisc(
                 folder_name="Disc 1",
                 files=[
-                    ScannedFile(name="a.mkv", path="x", duration_seconds=3200),
+                    ScannedFile(name="a.mkv", path="x", duration_seconds=3100),
                 ],
             ),
         ]
         result = match_discs(scanned, discs)
         assert len(result.matched) == 1
-        assert result.matched[0].confidence == "low"
+        assert result.matched[0].confidence == "medium"
+
+    def test_movie_target_still_uses_300s_cap(self):
+        """The main-movie target keeps the generous 300s cap so TMDb
+        runtimes rounded to the nearest minute still match.
+        """
+        from riplex.models import PlannedMovie
+
+        plan = PlannedMovie(
+            canonical_title="Foo", year=2020,
+            runtime="120m", runtime_seconds=7200,
+        )
+        discs = [PlannedDisc(number=1, disc_format="Blu-ray", is_film=True)]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(name="film.mkv", path="x", duration_seconds=7450),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs, plan)
+        assert len(result.matched) == 1
+        assert "(movie)" in result.matched[0].matched_label
+
+    def test_extra_with_unidentified_classification_rejected(self):
+        """A file the rip-time classifier flagged as 'Unmatched content'
+        must not be paired with a named extra target unless the delta
+        is very small.
+        """
+        discs = [
+            PlannedDisc(
+                number=1,
+                disc_format="Blu-ray",
+                extras=[
+                    PlannedExtra(title="Hoverboard Commercial", runtime_seconds=66),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="t14.mkv", path="x", duration_seconds=170,
+                        classification="Unmatched content (4K, 2:50)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        assert len(result.matched) == 0
+        assert len(result.unmatched) == 1
 
     def test_blue_planet_ii_scenario(self):
         """INTO THE BLUE files rejected by max delta and play-all filter."""

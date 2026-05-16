@@ -59,6 +59,7 @@ riplex organize <folder> [options]
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--force` | Re-organize files even if already tagged as organized |
+| `--rescan` | Ignore `_rip_manifest.json` files and re-probe every MKV with ffprobe. By default, riplex reuses rip-time metadata from the manifest when present (faster, preserves classification). |
 | `--json` | Output as JSON |
 | `--api-key` | TMDb API key |
 | `--snapshot` | Replay from a snapshot JSON file instead of scanning live files |

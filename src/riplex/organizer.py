@@ -75,6 +75,7 @@ class FileMove:
     destination: str
     label: str  # what this file was matched to
     confidence: str
+    delta_seconds: int = 0  # |file_runtime - target_runtime|, for diagnostics
 
 
 @dataclass
@@ -86,6 +87,7 @@ class SplitMove:
     chapter_labels: list[str]  # one label per chapter
     confidence: str
     original_label: str = ""  # the dvdcompare match label
+    delta_seconds: int = 0
 
 
 @dataclass
@@ -396,6 +398,7 @@ def build_organize_plan(
                 destination=str(dest),
                 label=candidate.matched_label,
                 confidence=candidate.confidence,
+                delta_seconds=candidate.delta_seconds,
             )
         )
 

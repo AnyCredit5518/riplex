@@ -10,3 +10,6 @@ build/
 riplex.toml
 plex-planner.toml
 riplex_app.log
+
+# Local dev fixture captures (scripts/capture_fixture.py output)
+_captures/

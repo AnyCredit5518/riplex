@@ -11,6 +11,7 @@ from riplex.config import get_api_key, get_archive_root, get_output_root
 from riplex.dedup import find_all_redundant, remove_duplicates
 from riplex.detect import detect_format, detect_incomplete, group_title_folders, infer_media_type_from_files
 from riplex.lookup import lookup_metadata
+from riplex.manifest import build_scanned_from_manifests
 from riplex.matcher import (
     collect_disc_targets,
     map_folders_to_discs,
@@ -39,6 +40,38 @@ from riplex_cli.formatting import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def _has_complete_manifests(folder: Path) -> bool:
+    """Return True if every direct subfolder containing MKVs also has a
+    ``_rip_manifest.json`` (i.e. the folder was produced by ``riplex rip``).
+    """
+    subfolders_with_mkvs = [
+        c for c in folder.iterdir()
+        if c.is_dir() and any(c.glob("*.mkv"))
+    ]
+    if not subfolders_with_mkvs:
+        return False
+    return all((c / "_rip_manifest.json").exists() for c in subfolders_with_mkvs)
+
+
+def _load_scanned(folder: Path, args: argparse.Namespace) -> list:
+    """Load ScannedDisc list, preferring rip manifests when present.
+
+    Re-probes via ffprobe when ``--rescan`` is set or when manifests are
+    missing/incomplete.
+    """
+    if not getattr(args, "rescan", False) and _has_complete_manifests(folder):
+        print(
+            f"Loading rip manifests from {folder} (use --rescan to force ffprobe).",
+            file=sys.stderr,
+        )
+        scanned = build_scanned_from_manifests(folder)
+        if scanned:
+            return scanned
+        print("Manifests found but no usable entries; falling back to ffprobe scan.", file=sys.stderr)
+    print(f"Scanning {folder} ...", file=sys.stderr)
+    return scan_folder(folder)
 
 
 async def run_organize(args: argparse.Namespace) -> int:
@@ -203,9 +236,8 @@ async def _organize_multi_folder(
 
     all_scanned: list[ScannedDisc] = []
     for folder in folders:
-        print(f"Scanning {folder} ...", file=sys.stderr)
         try:
-            scanned = scan_folder(folder)
+            scanned = _load_scanned(folder, args)
             snapshot_out = folder / f"{folder.name}.snapshot.json"
             if not snapshot_out.exists():
                 snapshot_save_from_scanned(folder, scanned, snapshot_out)
@@ -244,9 +276,8 @@ async def _organize_single(
             )
             return 0
 
-    print(f"Scanning {folder} ...", file=sys.stderr)
     try:
-        scanned = scan_folder(folder)
+        scanned = _load_scanned(folder, args)
     except RuntimeError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
