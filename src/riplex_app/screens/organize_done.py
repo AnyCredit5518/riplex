@@ -185,8 +185,13 @@ class OrganizeDoneScreen:
             self._show_snack(f"Could not open folder: {exc}")
 
     def _show_snack(self, message: str) -> None:
-        """Display a snackbar message at the bottom of the screen."""
-        self.app.page.open(ft.SnackBar(content=ft.Text(message)))
+        """Display a snackbar message at the bottom of the screen.
+
+        Uses ``show_dialog`` which works for any overlay control (dialog
+        or snackbar) across Flet 0.84+ and 0.85+ — the older ``page.open``
+        was removed in 0.85.
+        """
+        self.app.page.show_dialog(ft.SnackBar(content=ft.Text(message)))
 
     def _organize_another(self, e):
         """Reset organize state and go to folder picker."""

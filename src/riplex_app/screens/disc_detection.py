@@ -371,7 +371,9 @@ class DiscDetectionScreen:
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             padding=10,
-            border=ft.border.all(1, ft.Colors.GREY_800),
+            # ``ft.Border.all`` (uppercase) is the cross-version form;
+            # the lowercase ``ft.border`` module was removed in Flet 0.85.
+            border=ft.Border.all(1, ft.Colors.GREY_800),
             border_radius=6,
         )
 
@@ -545,7 +547,7 @@ class DiscDetectionScreen:
         return ft.Container(
             content=ft.Column(children, spacing=8),
             padding=12,
-            border=ft.border.all(1, ft.Colors.RED_900),
+            border=ft.Border.all(1, ft.Colors.RED_900),
             border_radius=6,
             bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.RED),
         )
@@ -637,7 +639,7 @@ class DiscDetectionScreen:
         try:
             provider = DiscProvider()
             film = asyncio.run(
-                provider.fetch_film(session.title, disc_format, year=session.year)
+                provider._fetch_film_cached(session.title, disc_format, year=session.year)
             )
             release = None
             if session.release_name and film.releases:

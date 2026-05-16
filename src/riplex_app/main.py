@@ -290,7 +290,9 @@ class RiplexApp:
             actions=actions,
         )
         try:
-            self.page.open(dialog)
+            # ``show_dialog`` exists in Flet 0.84+ and is the only form that
+            # survives the rename to remove ``page.open()`` in 0.85+.
+            self.page.show_dialog(dialog)
         except Exception:  # pragma: no cover — last-ditch fallback
             log.exception("Failed to show crash dialog")
 

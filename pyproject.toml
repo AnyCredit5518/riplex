@@ -22,7 +22,13 @@ dev = [
     "respx>=0.21",
 ]
 gui = [
-    "flet>=0.84",
+    # Pin to a tested Flet range.  We've verified 0.84 and 0.85 both work
+    # with the GUI's current API usage (``ft.Border.all``,
+    # ``page.show_dialog``).  An open upper bound risked picking up
+    # breaking renames silently (see issue #12); cap at the next minor
+    # bump so a future Flet release can't break ``pip install`` for
+    # everyone the moment it lands on PyPI.
+    "flet>=0.84,<0.86",
     # tkinter is also required for the folder picker buttons but cannot be
     # installed via pip — it is part of Python's standard library and must be
     # installed at the OS level:
