@@ -1,73 +1,70 @@
 # riplex
 
-Rip a disc, get a Plex-ready folder. No renaming, no guessing which `title_t07.mkv` is the main feature.
+Automatically organizes MKV files from physical disc collections into Plex-compatible folder structures with the right names, the right folders, and no manual work.
 
-![Rip flow demo](screenshots/0_Rip_Flow_BTTF.gif)
+<p align="center">
+	<img src="screenshots/0_Rip_Flow_BTTF.gif" alt="Rip flow demo" width="800">
+</p>
 
 ## Why?
 
-After MakeMKV finishes with a disc, you're left with a pile of files named `title_t00.mkv`, `title_t01.mkv`, ... — and no idea which is the main feature, which are featurettes, which are duplicates, and which is the play-all compilation you didn't want. Multi-disc box sets multiply the pain.
+After using MakeMKV to back up a disc, you're left with a pile of generically-named files (`title_t00.mkv`, `title_t01.mkv`, ...) and no idea which is the main film, which are featurettes, which are duplicates, and which is the play-all compilation you didn't need. For a multi-disc TV series, you're looking at hours of manual effort: reading disc cases, Googling runtimes, renaming files one by one, and building the exact folder hierarchy Plex demands.
 
-riplex automates the rest of the job:
-
-- Reads the disc and identifies the title from the volume label
-- Looks up canonical metadata from [TMDb](https://www.themoviedb.org/) and per-disc content breakdowns from [dvdcompare.net](https://www.dvdcompare.net)
-- Classifies every title (main feature, episode, featurette, play-all, duplicate, junk) and picks what's worth ripping
-- Hands off to MakeMKV, then renames and files everything into the exact Plex folder structure
+riplex solves this by pulling metadata from TMDb (canonical titles, years, episode info) and [dvdcompare.net](https://www.dvdcompare.net) (per-disc content breakdowns including featurettes, deleted scenes, runtimes), then automatically classifying, deduplicating, matching, renaming, and organizing everything into the correct Plex structure.
 
 ## Get started
 
-### Desktop app (recommended)
+Start with the [Getting Started guide](docs/getting-started/installation.md). It covers all three install paths:
 
-Download the latest release from the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest):
+- **Pre-built app**: fastest way to try riplex. Download links and platform-specific notes are in the [installation guide](docs/getting-started/installation.md#option-a-pre-built-executables).
+- **pipx**: recommended if you have Python or do not mind installing it. See [Option B](docs/getting-started/installation.md#option-b-install-with-pipx-recommended).
+- **From source**: for developers and unsupported binary platforms. See [Option C](docs/getting-started/installation.md#option-c-install-from-source).
 
-- **Windows** — `riplex-ui-windows.exe`, double-click to run
-- **macOS** (Apple Silicon) — `riplex-ui-macos.zip`, unzip, open `riplex-ui.app`
-- **macOS** (Intel) / **Linux** — [install with pipx](docs/getting-started/installation.md#option-b-install-with-pipx-recommended)
+If you just want the desktop app right now, the latest binaries are on the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest).
 
-The app walks you through setup on first launch (TMDb key, paths, missing tools).
+After installing:
 
-### Command line
-
-For scripted runs, headless servers, or if you just prefer a terminal:
-
-```bash
-pipx install "riplex[gui]"
-riplex setup
-riplex orchestrate --execute
-```
-
-Full CLI reference: [docs/reference/cli.md](docs/reference/cli.md).
+1. Run setup. The GUI walks you through it on first launch, or you can use [`riplex setup`](docs/getting-started/installation.md#setup).
+2. Follow the [Typical Workflow guide](docs/guide/workflow.md) for the end-to-end flow.
+3. If you prefer the terminal, use the [CLI reference](docs/reference/cli.md) for command details.
 
 ## What it looks like
 
-**Multi-disc box sets** — riplex understands that a "Back to the Future Trilogy" Blu-ray set is six physical discs and walks you through ripping each one:
+A single film release that spans multiple discs (for example a 4K + Blu-ray + bonus disc combo pack) is treated as one project. riplex walks you through ripping each disc and merges everything into the correct Plex folder:
 
 ![Multi-disc overview](screenshots/5_Multi_Disc_Overview_BTTF.png)
 
-More screenshots: [welcome](screenshots/1_Welcome_Screen.png), [disc detection](screenshots/2_Disc_Detection_BTTF.png), [metadata lookup](screenshots/3_Metadata_Lookup_BTTF.png), [release picker](screenshots/4_Disc_Release_BTTF.png), [title selection](screenshots/5_Select_Title_to_RIP_BTTF.png).
+More screenshots:
+[welcome](screenshots/1_Welcome_Screen.png),
+[disc detection](screenshots/2_Disc_Detection_BTTF.png),
+[metadata lookup](screenshots/3_Metadata_Lookup_BTTF.png),
+[release picker](screenshots/4_Disc_Release_BTTF.png),
+[title selection](screenshots/5_Select_Title_to_RIP_BTTF.png).
+
+> [!NOTE]
+> riplex currently handles one film (or one TV show) per session. Multi-film box sets that bundle separate films onto separate discs (e.g. a trilogy in one box) need to be ripped one film at a time.
 
 ## Requirements
 
 riplex uses MakeMKV, ffmpeg, and MKVToolNix under the hood. The setup wizard installs them for you on Windows (winget), macOS (Homebrew), and Debian/Ubuntu Linux (apt). On other platforms see [the installation guide](docs/getting-started/installation.md).
 
-You'll also need a free [TMDb API key](https://www.themoviedb.org/settings/api) — the wizard prompts you for it.
+You'll also need a free [TMDb API key](https://www.themoviedb.org/settings/api). The wizard prompts you for it.
 
 ## Data sources
 
-- **[TMDb](https://www.themoviedb.org/)** — canonical movie and TV metadata (titles, years, episodes, runtimes)
-- **[dvdcompare.net](https://www.dvdcompare.net)** — per-disc content breakdowns (featurettes, deleted scenes, play-all groupings, runtimes). An invaluable community resource
+- **[TMDb](https://www.themoviedb.org/)**: canonical movie and TV metadata (titles, years, episodes, runtimes)
+- **[dvdcompare.net](https://www.dvdcompare.net)**: per-disc content breakdowns (featurettes, deleted scenes, play-all groupings, runtimes). An invaluable community resource.
 
 ## Related projects
 
-- **[dvdcompare-scraper](https://github.com/AnyCredit5518/dvdcompare-scraper)** — Python client for dvdcompare.net. Powers riplex's disc lookup. Contributions welcome.
+- **[dvdcompare-scraper](https://github.com/AnyCredit5518/dvdcompare-scraper)**: Python client for dvdcompare.net. Powers riplex's disc lookup. Contributions welcome.
 
 ## Documentation
 
-- [Getting started](docs/getting-started/installation.md) — installation, configuration
-- [User guide](docs/guide/workflow.md) — end-to-end workflows
-- [CLI reference](docs/reference/cli.md) — every command and flag
-- [Architecture](docs/architecture.md) — design, data flow, project structure
+- [Getting started](docs/getting-started/installation.md): installation, configuration
+- [User guide](docs/guide/workflow.md): end-to-end workflows
+- [CLI reference](docs/reference/cli.md): every command and flag
+- [Architecture](docs/architecture.md): design, data flow, project structure
 
 ## License
 
