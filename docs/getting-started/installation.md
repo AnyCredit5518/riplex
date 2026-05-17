@@ -4,9 +4,12 @@
 
 There are three ways to install riplex:
 
-- **[Pre-built executables](#option-a-pre-built-executables)** - easiest, no Python needed
-- **[pipx](#option-b-install-with-pipx-recommended)** - recommended for Python users
-- **[From source](#option-c-install-from-source)** - for developers
+- **[Pre-built executables](#option-a-pre-built-executables)** — fastest
+  way to try riplex. No Python required, but upgrades mean re-downloading.
+- **[pipx](#option-b-install-with-pipx-recommended)** — recommended.
+  Requires Python, but `pipx upgrade riplex` makes staying current effortless.
+- **[From source](#option-c-install-from-source)** — for developers and
+  platforms without a pre-built binary (Intel Mac, Linux).
 
 ### Option A: Pre-built executables
 
