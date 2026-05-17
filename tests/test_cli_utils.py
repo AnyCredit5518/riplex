@@ -151,6 +151,12 @@ class TestParseVolumeLabel:
     def test_preserves_mid_title_dash(self):
         assert parse_volume_label("ANT-MAN_AND_THE_WASP_Disc_1") == "Ant-man And The Wasp"
 
+    def test_strips_compact_season_disc_suffix(self):
+        assert parse_volume_label("Hannibal St01bd1") == "Hannibal"
+
+    def test_strips_season_disc_suffix_with_separators(self):
+        assert parse_volume_label("HANNIBAL_S1_BD1") == "Hannibal"
+
 
 # ---------------------------------------------------------------------------
 # _detect_disc_format

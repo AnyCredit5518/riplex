@@ -11,6 +11,10 @@ _TRAILING_YEAR_RE = re.compile(r"\s*\(\d{4}\)\s*$")
 _TRAILING_DISC_RE = re.compile(
     r"\s*[-_]?\s*(?:D(?:isc)?\s*\d+)\s*$", re.IGNORECASE,
 )
+_TRAILING_SEASON_DISC_RE = re.compile(
+    r"\s*[-_]?\s*S(?:eason|t)?\s*\d+[\s_-]*(?:BD|B(?:lu[-_ ]*ray)|D(?:isc)?)[\s_-]*\d+\s*$",
+    re.IGNORECASE,
+)
 
 
 def strip_year_from_title(name: str) -> tuple[str, int | None]:
@@ -58,8 +62,9 @@ def parse_volume_label(label: str) -> str | None:
     if not label or len(label) < 2:
         return None
 
-    # Strip disc number suffix including its leading separator.
-    cleaned = re.sub(r"[\s_-]+D(?:isc[\s_]*)?\d+\s*$", "", label, flags=re.IGNORECASE)
+    # Strip common trailing physical-disc markers.
+    cleaned = _TRAILING_SEASON_DISC_RE.sub("", label)
+    cleaned = re.sub(r"[\s_-]+D(?:isc[\s_]*)?\d+\s*$", "", cleaned, flags=re.IGNORECASE)
 
     # Replace underscores with spaces
     cleaned = cleaned.replace("_", " ").strip()
