@@ -2,6 +2,8 @@
 
 Automatically organizes MKV files from physical disc collections into Plex-compatible folder structures with the right names, the right folders, and no manual work.
 
+riplex includes both a desktop app for guided ripping and a full CLI for terminal-first and automated workflows.
+
 <p align="center">
 	<img src="screenshots/0_Rip_Flow_BTTF.gif" alt="Rip flow demo" width="800">
 </p>
@@ -20,7 +22,9 @@ Start with the [Getting Started guide](docs/getting-started/installation.md). It
 - **pipx**: recommended if you have Python or do not mind installing it. See [Option B](docs/getting-started/installation.md#option-b-install-with-pipx-recommended).
 - **From source**: for developers and unsupported binary platforms. See [Option C](docs/getting-started/installation.md#option-c-install-from-source).
 
-If you just want the desktop app right now, the latest binaries are on the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest).
+If you just want the desktop app right now, the latest binaries are on the [Releases page](https://github.com/AnyCredit5518/riplex/releases/latest). For the guided desktop flow after install, see the [GUI Walkthrough](docs/gui-guide/gui-walkthrough.md).
+
+If you prefer the command line, riplex also ships a full CLI with `lookup`, `rip`, `organize`, and `orchestrate` workflows. For the end-to-end terminal flow, see the [CLI Workflow guide](docs/cli-guide/workflow.md).
 
 After installing:
 

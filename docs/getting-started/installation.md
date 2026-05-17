@@ -231,6 +231,9 @@ through setup automatically.
 If you want to preview the desktop flow before ripping a disc, see the
 [GUI Walkthrough](../gui-guide/gui-walkthrough.md).
 
+If you prefer the terminal workflow after setup, see the
+[CLI Workflow guide](../cli-guide/workflow.md).
+
 The setup wizard will:
 
 1. Ask for your TMDb API key (free at https://www.themoviedb.org/settings/api)
