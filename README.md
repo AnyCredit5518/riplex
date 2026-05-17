@@ -25,8 +25,9 @@ If you just want the desktop app right now, the latest binaries are on the [Rele
 After installing:
 
 1. Run setup. The GUI walks you through it on first launch, or you can use [`riplex setup`](docs/getting-started/installation.md#setup).
-2. Follow the [Typical Workflow guide](docs/guide/workflow.md) for the end-to-end flow.
-3. If you prefer the terminal, use the [CLI reference](docs/reference/cli.md) for command details.
+2. If you want to see the GUI step by step, read the [GUI Walkthrough](docs/gui-guide/gui-walkthrough.md).
+3. Follow the [CLI Workflow guide](docs/cli-guide/workflow.md) for the end-to-end flow.
+4. If you prefer the terminal, use the [CLI reference](docs/reference/cli.md) for command details.
 
 ## What it looks like
 
@@ -62,7 +63,8 @@ You'll also need a free [TMDb API key](https://www.themoviedb.org/settings/api).
 ## Documentation
 
 - [Getting started](docs/getting-started/installation.md): installation, configuration
-- [User guide](docs/guide/workflow.md): end-to-end workflows
+- [GUI walkthrough](docs/gui-guide/gui-walkthrough.md): the main desktop flow, screen by screen
+- [CLI workflow](docs/cli-guide/workflow.md): end-to-end terminal workflows
 - [CLI reference](docs/reference/cli.md): every command and flag
 - [Architecture](docs/architecture.md): design, data flow, project structure
 

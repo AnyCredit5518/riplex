@@ -65,7 +65,8 @@ docs/
   naming-rules.md      # Plex naming conventions
   changelog.md         # Documentation changelog (Keep a Changelog format)
   getting-started/     # Installation, configuration
-  guide/               # Per-command workflow guides
+  gui-guide/           # Desktop app walkthroughs
+  cli-guide/           # Command-by-command workflow guides
   reference/           # CLI reference
 ```
 
@@ -162,8 +163,15 @@ Docs live in `docs/` and are referenced from README.md.
 - `docs/naming-rules.md`: Plex naming conventions and folder layout rules
 - `docs/changelog.md`: Documentation changelog (update when docs change)
 - `docs/getting-started/`: Installation and configuration guides
-- `docs/guide/`: Per-command workflow walkthroughs
+- `docs/gui-guide/`: Desktop app walkthroughs
+- `docs/cli-guide/`: Command-by-command workflow walkthroughs
 - `docs/reference/cli.md`: Complete CLI option reference
+
+*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\gui-walkthrough.md
+*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\workflow.md
+*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\orchestrate.md
+*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\lookup.md
+*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\organize.md
 
 ### Documentation rules
 

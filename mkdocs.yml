@@ -48,11 +48,13 @@ nav:
   - Getting Started:
       - Installation: getting-started/installation.md
       - Configuration: getting-started/configuration.md
-  - User Guide:
-      - Typical Workflow: guide/workflow.md
-      - Orchestrate: guide/orchestrate.md
-      - Lookup: guide/lookup.md
-      - Organizing Files: guide/organize.md
+  - GUI Guide:
+    - Walkthrough: gui-guide/gui-walkthrough.md
+  - CLI Guide:
+    - Workflow: cli-guide/workflow.md
+    - Orchestrate: cli-guide/orchestrate.md
+    - Lookup: cli-guide/lookup.md
+    - Organizing Files: cli-guide/organize.md
   - CLI Reference: reference/cli.md
   - Architecture: architecture.md
   - Plex Naming Rules: naming-rules.md

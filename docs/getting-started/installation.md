@@ -228,6 +228,9 @@ riplex setup
 Or just launch the GUI -- it checks for missing tools on startup and walks you
 through setup automatically.
 
+If you want to preview the desktop flow before ripping a disc, see the
+[GUI Walkthrough](../gui-guide/gui-walkthrough.md).
+
 The setup wizard will:
 
 1. Ask for your TMDb API key (free at https://www.themoviedb.org/settings/api)

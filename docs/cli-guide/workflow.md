@@ -1,6 +1,9 @@
-# Typical Workflow
+# CLI Workflow
 
-This page walks through the recommended end-to-end workflow for ripping a disc set and organizing it into Plex.
+This page walks through the recommended end-to-end command-line workflow for ripping a disc set and organizing it into Plex.
+
+If you want to see the desktop app screen by screen first, start with the
+[GUI Walkthrough](../gui-guide/gui-walkthrough.md).
 
 ## Recommended: Use `orchestrate`
 

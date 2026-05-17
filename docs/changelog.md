@@ -4,6 +4,17 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-16
+
+### Added
+
+- New GUI walkthrough guide with screenshots for the main desktop flow: welcome, disc detection, metadata lookup, release picker, title selection, and multi-disc overview.
+
+### Changed
+
+- Split the user guides into `docs/gui-guide/` and `docs/cli-guide/` so the desktop flow and terminal flow are documented separately.
+- Linked the new GUI walkthrough from the README, installation guide, CLI workflow guide, and docs index so beginners can discover the desktop flow more easily.
+
 ## v0.7.1 — 2026-05-16
 
 ### Fixed
@@ -141,7 +152,7 @@ Summary: organize-time match quality fixes, faster post-rip organize, and a rele
 
 ### Added
 
-- Orchestrate guide (`docs/guide/orchestrate.md`): full documentation for the new primary workflow command
+- Orchestrate guide (`docs/cli-guide/orchestrate.md`): full documentation for the new primary workflow command
 - `orchestrate` subcommand in CLI Reference with complete options table
 - `rip` subcommand added to README (features block, usage examples, CLI reference table)
 - `orchestrate` subcommand added to README (features block, usage examples, CLI reference table)
@@ -159,7 +170,7 @@ Summary: organize-time match quality fixes, faster post-rip organize, and a rele
 - Rip-guide output examples updated to use configurable rip output path instead of hardcoded `_MakeMKV`
 - Architecture section updated from 4 modes to 6 modes (added orchestrate, rip)
 - Project structure listings updated to include all current source and test files
-- `docs/guide/workflow.md` updated to recommend orchestrate as the primary workflow
+- `docs/cli-guide/workflow.md` updated to recommend orchestrate as the primary workflow
 - `docs/architecture.md` updated with orchestrate and rip modes and data flows
 - `PLANNED_FEATURES.md` orchestrate section moved to "Recently Implemented"
 - CLI reference tables for organize (added `--snapshot`, `--auto`) and rip-guide (added `--drive`) updated

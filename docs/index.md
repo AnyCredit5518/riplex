@@ -10,10 +10,10 @@ riplex has four commands, each targeting a different stage of the disc ripping w
 
 | Command | Stage | What it does |
 |---|---|---|
-| [`orchestrate`](guide/orchestrate.md) | Full pipeline | Multi-disc rip-then-organize in one session |
+| [`orchestrate`](cli-guide/orchestrate.md) | Full pipeline | Multi-disc rip-then-organize in one session |
 | [`rip`](reference/cli.md#rip) | Ripping | Single-disc rip via makemkvcon with auto title selection |
-| [`organize`](guide/organize.md) | After ripping | Scans MKV files, deduplicates, matches by runtime, moves into Plex layout |
-| [`lookup`](guide/lookup.md) | Before ripping | Shows disc contents from dvdcompare, recommends which titles to rip, creates folder structure |
+| [`organize`](cli-guide/organize.md) | After ripping | Scans MKV files, deduplicates, matches by runtime, moves into Plex layout |
+| [`lookup`](cli-guide/lookup.md) | Before ripping | Shows disc contents from dvdcompare, recommends which titles to rip, creates folder structure |
 
 ## Quick start
 
@@ -32,6 +32,9 @@ riplex organize path/to/rips/Oppenheimer --execute
 ```
 
 See [Installation](getting-started/installation.md) for full setup instructions.
+
+If you prefer the desktop app, see the [GUI Walkthrough](gui-guide/gui-walkthrough.md)
+for the main flow with screenshots.
 
 ## Features
 
