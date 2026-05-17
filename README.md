@@ -30,16 +30,16 @@ After installing:
 
 ## What it looks like
 
-A single film release that spans multiple discs (for example a 4K + Blu-ray + bonus disc combo pack) is treated as one project. riplex walks you through ripping each disc and merges everything into the correct Plex folder:
+Instead of leaving you to sort through a wall of raw MakeMKV titles, riplex helps you understand what is actually on the disc and choose the titles worth ripping. It surfaces likely matches, highlights junk and duplicates, and helps you avoid play-all traps.
 
-![Multi-disc overview](screenshots/5_Multi_Disc_Overview_BTTF.png)
+![Title selection](screenshots/5_Select_Title_to_RIP_BTTF.png)
 
 More screenshots:
 [welcome](screenshots/1_Welcome_Screen.png),
 [disc detection](screenshots/2_Disc_Detection_BTTF.png),
 [metadata lookup](screenshots/3_Metadata_Lookup_BTTF.png),
 [release picker](screenshots/4_Disc_Release_BTTF.png),
-[title selection](screenshots/5_Select_Title_to_RIP_BTTF.png).
+[disc overview](screenshots/5_Multi_Disc_Overview_BTTF.png).
 
 > [!NOTE]
 > riplex currently handles one film (or one TV show) per session. Multi-film box sets that bundle separate films onto separate discs (e.g. a trilogy in one box) need to be ripped one film at a time.
