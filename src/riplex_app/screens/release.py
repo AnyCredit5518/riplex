@@ -36,8 +36,11 @@ class ReleaseScreen:
         override = self.app.state.get("dvdcompare_title_override")
         if override:
             return override
+        season_number = self.app.state.get("season_number")
         tmdb_match = self.app.state.get("tmdb_match")
         if tmdb_match:
+            if tmdb_match.media_type == "tv" and season_number is not None:
+                return f"{tmdb_match.title}: Season {season_number}"
             return tmdb_match.title
         return self.app.state["title"]
 

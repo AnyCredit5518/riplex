@@ -63,8 +63,11 @@ async def lookup_metadata(
 
     if not skip_dvdcompare:
         try:
+            dvdcompare_title = canonical
+            if not is_movie and request.season_number is not None:
+                dvdcompare_title = f"{canonical}: Season {request.season_number}"
             discs, release_name = await fetch_and_select_release(
-                canonical,
+                dvdcompare_title,
                 disc_format=disc_format,
                 disc_info=disc_info,
                 preferred=preferred_release,

@@ -10,11 +10,11 @@ import flet as ft
 log = logging.getLogger(__name__)
 
 from riplex.config import get_rip_output
-from riplex.detect import detect_format
+from riplex.detect import TitleGroup, detect_format, detect_organize_layout
 from riplex.manifest import build_scanned_from_manifests
 from riplex.scanner import scan_folder
 from riplex.snapshot import load_organized_marker
-from riplex.title import infer_title_from_scanned
+from riplex.title import infer_title_from_scanned, parse_season_number
 
 
 class FolderPickerScreen:
@@ -22,6 +22,10 @@ class FolderPickerScreen:
         self.app = app
 
     def build(self) -> ft.Control:
+        batch_groups = self.app.state.pop("_batch_groups", None)
+        if batch_groups is not None:
+            return self._build_batch_groups_view(batch_groups)
+
         # Check for scan results from background thread
         scan_result = self.app.state.pop("_scan_result", None)
         if scan_result is not None:
@@ -128,6 +132,16 @@ class FolderPickerScreen:
         folder = Path(path)
         self.app.state["source_folder"] = folder
 
+        layout = detect_organize_layout(folder)
+        if layout.mode == "batch":
+            self.app.state["_batch_groups"] = layout.groups
+            self.app.navigate("folder_picker")
+            return
+        if layout.mode == "empty":
+            self.folder_field.error_text = "No MKV files found in that folder."
+            self.folder_field.update()
+            return
+
         # Fast path: if every disc subfolder has a _rip_manifest.json,
         # load metadata from the manifest instead of running ffprobe.
         if self._has_complete_manifests(folder):
@@ -231,6 +245,85 @@ class FolderPickerScreen:
 
         self.app.page.run_task(_nav)
 
+    def _build_batch_groups_view(self, groups: list[TitleGroup]) -> ft.Control:
+        rows: list[ft.Control] = []
+        for group in groups:
+            label = group.title
+            if group.season_number is not None:
+                label = f"{label} Season {group.season_number}"
+            folder_list = ", ".join(folder.name for folder in group.folders)
+            rows.append(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(label, size=14, weight=ft.FontWeight.BOLD),
+                            ft.Text(folder_list, size=12, color=ft.Colors.GREY_500),
+                            ft.Row(
+                                [
+                                    ft.ElevatedButton(
+                                        "Open",
+                                        icon=ft.Icons.ARROW_FORWARD,
+                                        on_click=lambda _, g=group: self._open_group(g),
+                                    )
+                                ]
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                    padding=12,
+                    border=ft.Border.all(1, ft.Colors.GREY_800),
+                    border_radius=8,
+                )
+            )
+
+        return ft.Column(
+            [
+                ft.Text("Organize Rips", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "This folder contains multiple organize groups. Pick the one you want to process.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                ),
+                ft.Divider(height=20),
+                ft.Column(rows, spacing=10, scroll=ft.ScrollMode.AUTO),
+                ft.Container(expand=True),
+                ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+            ],
+            spacing=10,
+            expand=True,
+        )
+
+    def _open_group(self, group: TitleGroup) -> None:
+        if len(group.folders) != 1:
+            # Multi-folder groups still need a shared library batch scanner.
+            self.app.state["_scan_error"] = (
+                "This organize group spans multiple folders. Pick a season folder directly for now."
+            )
+            self.app.navigate("folder_picker")
+            return
+        folder = group.folders[0]
+        self.app.state["source_folder"] = folder
+        self.app.state["title"] = group.title
+        if group.season_number is not None:
+            self.app.state["season_number"] = group.season_number
+        else:
+            self.app.state.pop("season_number", None)
+
+        if self._has_complete_manifests(folder):
+            try:
+                scanned = build_scanned_from_manifests(folder)
+            except Exception:
+                log.exception("manifest load failed; falling back to ffprobe")
+                scanned = None
+            if scanned:
+                self.app.state["_scan_from_manifest"] = True
+                self.app.state["_scan_result"] = scanned
+                self.app.navigate("folder_picker")
+                return
+
+        self.app.state["_scan_from_manifest"] = False
+        self._start_ffprobe_scan(folder)
+
     def _build_results_view(self, scanned) -> ft.Control:
         """Show scan results and let user confirm/edit title."""
         self.app.state["scanned"] = scanned
@@ -307,6 +400,13 @@ class FolderPickerScreen:
             value=inferred,
             width=500,
         )
+        inferred_season = parse_season_number(self.app.state["source_folder"].name)
+        self.season_field = ft.TextField(
+            label="Season number (TV only, optional)",
+            value=str(inferred_season) if inferred_season is not None else "",
+            width=240,
+            hint_text="e.g. 6",
+        )
 
         return ft.Column(
             [
@@ -330,6 +430,8 @@ class FolderPickerScreen:
                 ft.Container(height=10),
                 ft.Text("Detected title:", size=14),
                 self.title_field,
+                ft.Text("Season override:", size=14),
+                self.season_field,
                 ft.Container(expand=True),
                 ft.Row([
                     ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
@@ -367,5 +469,15 @@ class FolderPickerScreen:
             self.title_field.error_text = "Title is required."
             self.title_field.update()
             return
+        season_text = self.season_field.value.strip() if self.season_field.value else ""
+        if season_text:
+            if not season_text.isdigit() or int(season_text) < 0:
+                self.season_field.error_text = "Enter a valid season number."
+                self.season_field.update()
+                return
+            self.app.state["season_number"] = int(season_text)
+            self.season_field.error_text = None
+        else:
+            self.app.state.pop("season_number", None)
         self.app.state["title"] = title
         self.app.navigate("metadata")

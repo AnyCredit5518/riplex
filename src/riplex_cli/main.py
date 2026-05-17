@@ -45,6 +45,12 @@ def _build_parser() -> argparse.ArgumentParser:
     org_parser.add_argument("--title", help="Override title (default: folder name).")
     org_parser.add_argument("--year", type=int, help="Release year.")
     org_parser.add_argument(
+        "--season",
+        dest="season_number",
+        type=int,
+        help="TV season number to organize (for example: 6 for Scrubs Season 6).",
+    )
+    org_parser.add_argument(
         "--type",
         dest="media_type",
         choices=["movie", "tv", "auto"],
@@ -207,6 +213,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     rip_parser.add_argument("--year", type=int, help="Release year.")
     rip_parser.add_argument(
+        "--season",
+        dest="season_number",
+        type=int,
+        help="TV season number (auto-detected from labels like Scrubs_S06 when possible).",
+    )
+    rip_parser.add_argument(
         "--type", dest="media_type", choices=["movie", "tv", "auto"],
         default="auto",
     )
@@ -278,6 +290,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Drive index (e.g. 0), device name (e.g. D:), or 'auto' (default: auto).",
     )
     orch_parser.add_argument("--year", type=int, help="Release year.")
+    orch_parser.add_argument(
+        "--season",
+        dest="season_number",
+        type=int,
+        help="TV season number (auto-detected from labels like Scrubs_S06 when possible).",
+    )
     orch_parser.add_argument(
         "--type", dest="media_type", choices=["movie", "tv", "auto"],
         default="auto",

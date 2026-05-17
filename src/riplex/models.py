@@ -12,6 +12,7 @@ class SearchRequest:
 
     title: str
     year: int | None = None
+    season_number: int | None = None
     media_type: Literal["movie", "tv", "auto"] = "auto"
     include_specials: bool = True
     include_extras_skeleton: bool = True

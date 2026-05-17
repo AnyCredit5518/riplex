@@ -10,7 +10,9 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+from riplex.title import parse_season_number, parse_title_and_season, strip_year_from_title
 
 if TYPE_CHECKING:
     from riplex.models import ScannedDisc, ScannedFile
@@ -34,7 +36,16 @@ class TitleGroup:
 
     title: str
     folders: list[Path] = field(default_factory=list)
+    season_number: int | None = None
     detected_format: str | None = None
+
+
+@dataclass
+class OrganizeLayout:
+    """How an organize root should be processed."""
+
+    mode: Literal["single", "batch", "empty"]
+    groups: list[TitleGroup] = field(default_factory=list)
 
 
 def detect_format(discs: list[ScannedDisc]) -> str | None:
@@ -124,7 +135,8 @@ def group_title_folders(root: Path) -> list[TitleGroup]:
     Ignores folders starting with ``_`` (e.g. ``_archive``).
     Returns groups sorted by title, each containing the original folder paths.
     """
-    groups: dict[str, list[Path]] = {}
+    groups: dict[tuple[str, int | None], list[Path]] = {}
+    root_title, _ = strip_year_from_title(root.name)
 
     for sub in sorted(root.iterdir()):
         if not sub.is_dir():
@@ -142,12 +154,36 @@ def group_title_folders(root: Path) -> list[TitleGroup]:
             continue
 
         base = _normalize_title(sub.name)
-        groups.setdefault(base, []).append(sub)
+        title, season_number = parse_title_and_season(base)
+        if title is None and season_number is not None:
+            title = root_title
+        if title is None:
+            title = base
+            season_number = parse_season_number(base)
+        groups.setdefault((title, season_number), []).append(sub)
 
     result: list[TitleGroup] = []
-    for title in sorted(groups):
-        result.append(TitleGroup(title=title, folders=groups[title]))
+    for title, season_number in sorted(groups):
+        result.append(TitleGroup(title=title, folders=groups[(title, season_number)], season_number=season_number))
     return result
+
+
+def detect_organize_layout(root: Path) -> OrganizeLayout:
+    """Classify an organize root as single-title, batch, or empty.
+
+    Single mode covers a flat folder of MKVs or a folder whose immediate
+    subfolders are disc folders. Batch mode covers roots that contain nested
+    season/title folders such as ``Show/Season 6/Disc 1``.
+    """
+    has_root_mkvs = any(root.glob("*.mkv"))
+    has_sub_mkvs = any(root.glob("*/*.mkv"))
+    has_nested_mkvs = any(root.glob("*/*/*.mkv"))
+
+    if has_root_mkvs or (has_sub_mkvs and not has_nested_mkvs):
+        return OrganizeLayout(mode="single")
+    if has_sub_mkvs or has_nested_mkvs:
+        return OrganizeLayout(mode="batch", groups=group_title_folders(root))
+    return OrganizeLayout(mode="empty")
 
 
 def infer_media_type(disc_info) -> str:

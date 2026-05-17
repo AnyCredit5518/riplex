@@ -12,7 +12,7 @@ from riplex_cli.formatting import (
 from riplex.detect import infer_media_type
 from riplex.disc.provider import detect_disc_format, disc_content_summary
 from riplex.manifest import build_scanned_from_manifests, find_ripped_discs
-from riplex.title import infer_title_from_scanned, parse_volume_label, strip_year_from_title
+from riplex.title import infer_title_from_scanned, parse_season_number, parse_title_and_season, parse_volume_label, strip_year_from_title
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra, ScannedDisc, ScannedFile
 
 
@@ -156,6 +156,34 @@ class TestParseVolumeLabel:
 
     def test_strips_season_disc_suffix_with_separators(self):
         assert parse_volume_label("HANNIBAL_S1_BD1") == "Hannibal"
+
+
+class TestParseSeasonNumber:
+    def test_parses_season_word_form(self):
+        assert parse_season_number("Season 6") == 6
+
+    def test_parses_short_form(self):
+        assert parse_season_number("S06") == 6
+
+    def test_parses_embedded_season(self):
+        assert parse_season_number("Scrubs Season 6") == 6
+
+    def test_parses_underscore_short_form(self):
+        assert parse_season_number("SCRUBS_S06") == 6
+
+    def test_returns_none_when_missing(self):
+        assert parse_season_number("Scrubs") is None
+
+
+class TestParseTitleAndSeason:
+    def test_parses_compact_rip_label(self):
+        assert parse_title_and_season("SCRUBS_S06") == ("Scrubs", 6)
+
+    def test_parses_season_word_label(self):
+        assert parse_title_and_season("SCRUBS_SEASON6") == ("Scrubs", 6)
+
+    def test_parses_show_name_and_season(self):
+        assert parse_title_and_season("Scrubs Season 6") == ("Scrubs", 6)
 
 
 # ---------------------------------------------------------------------------

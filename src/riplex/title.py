@@ -15,6 +15,14 @@ _TRAILING_SEASON_DISC_RE = re.compile(
     r"\s*[-_]?\s*S(?:eason|t)?\s*\d+[\s_-]*(?:BD|B(?:lu[-_ ]*ray)|D(?:isc)?)[\s_-]*\d+\s*$",
     re.IGNORECASE,
 )
+_SEASON_NUMBER_RE = re.compile(
+    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-])",
+    re.IGNORECASE,
+)
+_SEASON_TOKEN_RE = re.compile(
+    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-])",
+    re.IGNORECASE,
+)
 
 
 def strip_year_from_title(name: str) -> tuple[str, int | None]:
@@ -81,3 +89,28 @@ def parse_volume_label(label: str) -> str | None:
         else:
             result.append(w.capitalize())
     return " ".join(result)
+
+
+def parse_season_number(label: str) -> int | None:
+    """Extract a season number from a folder or label string."""
+    if not label:
+        return None
+    match = _SEASON_NUMBER_RE.search(label)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def parse_title_and_season(label: str) -> tuple[str | None, int | None]:
+    """Extract a base title and optional season number from a label string."""
+    if not label or len(label) < 2:
+        return None, None
+
+    season_number = parse_season_number(label)
+    cleaned = _TRAILING_SEASON_DISC_RE.sub("", label)
+    cleaned = _SEASON_TOKEN_RE.sub(" ", cleaned)
+    title = parse_volume_label(cleaned)
+    return title, season_number

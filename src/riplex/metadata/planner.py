@@ -139,6 +139,8 @@ async def _plan_show(
 
     seasons: list[PlannedSeason] = []
     for sm in detail.seasons:
+        if request.season_number is not None and sm.season_number != request.season_number:
+            continue
         episodes: list[PlannedEpisode] = []
         for em in sm.episodes:
             fname = episode_file_name(

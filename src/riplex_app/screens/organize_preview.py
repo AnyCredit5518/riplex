@@ -91,6 +91,7 @@ class OrganizePreviewScreen:
                     request = SearchRequest(
                         title=tmdb_match.title,
                         year=tmdb_match.year,
+                        season_number=self.app.state.get("season_number"),
                         media_type=tmdb_match.media_type,
                     )
                     if tmdb_match.media_type == "movie":

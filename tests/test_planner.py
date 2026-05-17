@@ -197,3 +197,56 @@ async def test_plan_excludes_specials():
     # Specials excluded at the provider level; just verify no Season 00
     season_nums = [s.season_number for s in result.seasons]
     assert 0 not in season_nums
+
+
+@pytest.mark.asyncio
+async def test_plan_tv_show_filters_to_requested_season():
+    provider = FakeProvider(
+        search_results=[
+            MetadataSearchResult(
+                source_id="tv:1",
+                title="Scrubs",
+                year=2001,
+                media_type="tv",
+            )
+        ],
+        show_detail=ShowDetail(
+            source_id="tv:1",
+            title="Scrubs",
+            year=2001,
+            seasons=[
+                SeasonMetadata(
+                    season_number=1,
+                    episodes=[
+                        EpisodeMetadata(
+                            season_number=1,
+                            episode_number=1,
+                            title="My First Day",
+                            runtime_seconds=1440,
+                        )
+                    ],
+                ),
+                SeasonMetadata(
+                    season_number=6,
+                    episodes=[
+                        EpisodeMetadata(
+                            season_number=6,
+                            episode_number=1,
+                            title="My Mirror Image",
+                            runtime_seconds=1500,
+                        )
+                    ],
+                ),
+            ],
+        ),
+    )
+    request = SearchRequest(title="Scrubs", year=2001, season_number=6)
+    result = await plan(request, provider)
+
+    assert isinstance(result, PlannedShow)
+    assert [s.season_number for s in result.seasons] == [6]
+    assert result.seasons[0].episodes[0].file_name == (
+        "Scrubs (2001) - s06e01 - My Mirror Image.mkv"
+    )
+    assert "\\TV Shows\\Scrubs (2001)\\Season 06\\" in result.relative_paths
+    assert "\\TV Shows\\Scrubs (2001)\\Season 01\\" not in result.relative_paths

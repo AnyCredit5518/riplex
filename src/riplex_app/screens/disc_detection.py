@@ -30,7 +30,7 @@ from riplex.disc.makemkv import (
     makemkv_preflight,
     run_disc_info,
 )
-from riplex.title import parse_volume_label
+from riplex.title import parse_title_and_season, parse_volume_label
 
 log = logging.getLogger(__name__)
 
@@ -439,7 +439,12 @@ class DiscDetectionScreen:
                 return
 
             self.app.state["disc_info"] = disc_info
-            self.app.state["title"] = self._parse_volume_label(drive.disc_label)
+            parsed_title, parsed_season = parse_title_and_season(drive.disc_label)
+            self.app.state["title"] = parsed_title or self._parse_volume_label(drive.disc_label)
+            if parsed_season is not None:
+                self.app.state["season_number"] = parsed_season
+            else:
+                self.app.state.pop("season_number", None)
             self.app.state["_disc_read_done"] = True
 
             async def _nav():

@@ -7,6 +7,7 @@ import pytest
 from riplex.detect import (
     TitleGroup,
     _normalize_title,
+    detect_organize_layout,
     detect_format,
     detect_incomplete,
     group_title_folders,
@@ -224,3 +225,53 @@ class TestGroupTitleFolders:
         groups = group_title_folders(tmp_path)
         titles = [g.title for g in groups]
         assert titles == sorted(titles)
+
+    def test_show_season_subfolders_use_root_title(self, tmp_path):
+        show_root = tmp_path / "Scrubs"
+        show_root.mkdir()
+        for name in ["Season 6", "Season 7"]:
+            season_dir = show_root / name
+            season_dir.mkdir()
+            disc_dir = season_dir / "Disc 1"
+            disc_dir.mkdir()
+            (disc_dir / "file.mkv").write_bytes(b"\x00")
+
+        groups = group_title_folders(show_root)
+
+        assert len(groups) == 2
+        assert [(g.title, g.season_number) for g in groups] == [
+            ("Scrubs", 6),
+            ("Scrubs", 7),
+        ]
+
+
+class TestDetectOrganizeLayout:
+    def test_single_for_disc_subfolders(self, tmp_path):
+        root = tmp_path / "Show"
+        root.mkdir()
+        for name in ["Disc 1", "Disc 2"]:
+            disc_dir = root / name
+            disc_dir.mkdir()
+            (disc_dir / "file.mkv").write_bytes(b"\x00")
+
+        layout = detect_organize_layout(root)
+
+        assert layout.mode == "single"
+
+    def test_batch_for_season_subfolders(self, tmp_path):
+        root = tmp_path / "Show"
+        root.mkdir()
+        for name in ["Season 6", "Season 7"]:
+            season_dir = root / name
+            season_dir.mkdir()
+            disc_dir = season_dir / "Disc 1"
+            disc_dir.mkdir()
+            (disc_dir / "file.mkv").write_bytes(b"\x00")
+
+        layout = detect_organize_layout(root)
+
+        assert layout.mode == "batch"
+        assert [(g.title, g.season_number) for g in layout.groups] == [
+            ("Show", 6),
+            ("Show", 7),
+        ]

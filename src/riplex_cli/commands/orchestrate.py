@@ -31,7 +31,7 @@ from riplex.manifest import (
 )
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
-from riplex.title import parse_volume_label
+from riplex.title import parse_title_and_season, parse_volume_label
 from riplex.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text
 
 from riplex_cli.formatting import (
@@ -182,10 +182,12 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # Auto-detect title
     title_arg = getattr(args, "title", None)
     if not title_arg:
-        title_arg = parse_volume_label(volume_label)
+        title_arg, parsed_season = parse_title_and_season(volume_label)
         if title_arg:
             print(f"Auto-detected title from volume label: {title_arg}", file=sys.stderr)
             title_arg = prompt_text("Title", default=title_arg)
+            if getattr(args, "season_number", None) is None and parsed_season is not None:
+                args.season_number = parsed_season
         else:
             print("Error: could not detect title from volume label. Provide --title.", file=sys.stderr)
             return 1
@@ -216,6 +218,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         request = SearchRequest(
             title=title_arg,
             year=getattr(args, "year", None),
+            season_number=getattr(args, "season_number", None),
             media_type=media_type_arg,
         )
         release = getattr(args, "release", None)

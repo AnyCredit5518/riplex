@@ -9,7 +9,7 @@ from pathlib import Path
 
 from riplex.config import get_api_key, get_archive_root, get_output_root
 from riplex.dedup import find_all_redundant, remove_duplicates
-from riplex.detect import detect_format, detect_incomplete, group_title_folders, infer_media_type_from_files
+from riplex.detect import detect_format, detect_incomplete, detect_organize_layout, infer_media_type_from_files
 from riplex.lookup import lookup_metadata
 from riplex.manifest import build_scanned_from_manifests
 from riplex.matcher import (
@@ -29,6 +29,7 @@ from riplex.snapshot import (
 )
 from riplex.title import (
     infer_title_from_scanned,
+    parse_season_number,
     strip_year_from_title,
 )
 from riplex.ui import prompt_confirm, prompt_text
@@ -146,10 +147,9 @@ async def run_organize(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        has_root_mkvs = any(folder.glob("*.mkv"))
-        has_sub_mkvs = any(folder.glob("*/*.mkv"))
+        layout = detect_organize_layout(folder)
 
-        if has_root_mkvs or (has_sub_mkvs and not any(folder.glob("*/*/*.mkv"))):
+        if layout.mode == "single":
             if args.title:
                 title = args.title
             else:
@@ -159,7 +159,7 @@ async def run_organize(args: argparse.Namespace) -> int:
             return await _organize_single(
                 folder, title, args, output_root, provider,
             )
-        elif has_sub_mkvs or any(folder.glob("*/*/*.mkv")):
+        elif layout.mode == "batch":
             return await _organize_batch(
                 folder, args, output_root, provider,
             )
@@ -177,7 +177,7 @@ async def _organize_batch(
     provider: TmdbProvider,
 ) -> int:
     """Batch organize: auto-detect title groups and process each."""
-    groups = group_title_folders(root)
+    groups = detect_organize_layout(root).groups
     if not groups:
         print("No title groups found.", file=sys.stderr)
         return 1
@@ -189,8 +189,16 @@ async def _organize_batch(
 
     overall_rc = 0
     for i, group in enumerate(groups):
+        requested_season = getattr(args, "season_number", None)
+        if requested_season is not None and group.season_number is not None and requested_season != group.season_number:
+            print(f"Skipping {group.title} Season {group.season_number:02d} (requested season {requested_season}).", file=sys.stderr)
+            continue
+
         print(f"\n{'='*60}", file=sys.stderr)
-        print(f"[{i+1}/{len(groups)}] {group.title}", file=sys.stderr)
+        group_label = group.title
+        if group.season_number is not None:
+            group_label = f"{group.title} Season {group.season_number}"
+        print(f"[{i+1}/{len(groups)}] {group_label}", file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
 
         if len(group.folders) == 1:
@@ -207,6 +215,10 @@ async def _organize_batch(
             if inferred_year and not getattr(args, "year", None):
                 args.year = inferred_year
 
+        original_season = getattr(args, "season_number", None)
+        if original_season is None and group.season_number is not None:
+            args.season_number = group.season_number
+
         if len(group.folders) == 1:
             rc = await _organize_single(
                 target_folder, title, args, output_root, provider,
@@ -215,6 +227,8 @@ async def _organize_batch(
             rc = await _organize_multi_folder(
                 group.folders, title, args, output_root, provider,
             )
+
+        args.season_number = original_season
 
         if rc != 0 and rc != 1:
             overall_rc = rc
@@ -373,6 +387,12 @@ async def organize_with_scanned(
             title = inferred
         title = prompt_text("Title", default=title)
 
+    if getattr(args, "season_number", None) is None and source_folder is not None:
+        inferred_season = parse_season_number(source_folder.name)
+        if inferred_season is not None:
+            args.season_number = inferred_season
+            log.debug("Inferred season_number=%s from folder name %r", inferred_season, source_folder.name)
+
     # Auto-detect media type from file durations
     media_type = getattr(args, "media_type", "auto")
     if media_type == "auto":
@@ -385,6 +405,7 @@ async def organize_with_scanned(
         request = SearchRequest(
             title=title,
             year=getattr(args, "year", None),
+            season_number=getattr(args, "season_number", None),
             media_type=media_type,
         )
         disc_format_arg = disc_format  # captured from detect_format above
