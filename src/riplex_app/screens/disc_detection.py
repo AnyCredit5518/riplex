@@ -26,6 +26,7 @@ import flet as ft
 from riplex.disc.makemkv import (
     DriveInfo,
     MakeMKV,
+    MakeMKVError,
     MakeMKVPreflight,
     makemkv_preflight,
     run_disc_info,
@@ -278,6 +279,19 @@ class DiscDetectionScreen:
         try:
             mk = MakeMKV(self.app.state.get("makemkvcon"))
             drives = mk.drive_list()
+        except MakeMKVError as exc:
+            log.warning("makemkvcon refused to list drives (code %s): %s", exc.code, exc)
+            self._show_error(
+                "MakeMKV won\u2019t scan drives",
+                f"makemkvcon reported: {exc}\n\n"
+                "MakeMKV must be updated (or a valid registration key entered) "
+                "before riplex can detect discs. The free beta key is refreshed "
+                "monthly on the MakeMKV forum.",
+                allow_retry=True,
+                install_hint=True,
+                key_hint=True,
+            )
+            return
         except Exception as exc:
             log.warning("drive_list failed: %s", exc)
             if initial:
@@ -491,12 +505,19 @@ class DiscDetectionScreen:
         detail: str,
         *,
         allow_retry: bool = True,
+        install_hint: bool = False,
+        key_hint: bool = False,
     ) -> None:
         self.spinner.visible = False
         self.status_text.value = title
         self.status_text.color = ft.Colors.RED
+        self.drive_panel.controls.clear()
         self.error_panel.content = self._build_error_panel(
-            title, detail, allow_retry=allow_retry, install_hint=False,
+            title,
+            detail,
+            allow_retry=allow_retry,
+            install_hint=install_hint,
+            key_hint=key_hint,
         )
         self.error_panel.visible = True
         _safe_update(self.app.page)
@@ -508,6 +529,7 @@ class DiscDetectionScreen:
         *,
         allow_retry: bool,
         install_hint: bool,
+        key_hint: bool = False,
     ) -> ft.Control:
         children: list[ft.Control] = [
             ft.Row(
@@ -538,6 +560,13 @@ class DiscDetectionScreen:
                 ft.TextButton(
                     "Download MakeMKV \u2197",
                     url="https://www.makemkv.com/download/",
+                )
+            )
+        if key_hint:
+            actions.append(
+                ft.TextButton(
+                    "Get beta key \u2197",
+                    url="https://forum.makemkv.com/forum/viewtopic.php?t=1053",
                 )
             )
         actions.append(

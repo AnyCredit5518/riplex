@@ -5,12 +5,14 @@ from unittest.mock import MagicMock, patch
 
 from riplex.disc.makemkv import (
     DiscTitle,
+    MakeMKVError,
     MakeMKVPreflight,
     RipResult,
     build_stream_fingerprint,
     makemkv_preflight,
     parse_disc_info,
     parse_drive_list,
+    parse_fatal_message,
     _parse_progress,
     _split_robot_line,
     run_rip,
@@ -137,6 +139,81 @@ class TestParseDriveListStates:
         d = parse_drive_list(line)[0]
         assert d.has_disc is False
         assert d.state_label == "Tray open"
+
+
+class TestParseFatalMessage:
+    def test_returns_none_for_normal_output(self):
+        output = (
+            'MSG:1005,0,1,"MakeMKV v1.18.3 win(x64-release) started",'
+            '"%1 started","MakeMKV v1.18.3 win(x64-release)"\n'
+            'DRV:0,2,999,12,"BD-RE Drive","DISC_LABEL","D:"\n'
+        )
+        assert parse_fatal_message(output) is None
+
+    def test_detects_expired_beta(self):
+        output = (
+            'MSG:1005,0,1,"MakeMKV v1.18.3 started","%1","MakeMKV v1.18.3"\n'
+            'MSG:5021,131332,1,"This application version is too old.  '
+            'Please download the latest version at http://www.makemkv.com/ '
+            'or enter a registration key to continue using the current version.",'
+            '"This application version is too old.  Please download the latest '
+            'version at %1 or enter a registration key to continue using the '
+            'current version.","http://www.makemkv.com/"\n'
+        )
+        fatal = parse_fatal_message(output)
+        assert fatal is not None
+        code, message = fatal
+        assert code == 5021
+        assert "too old" in message
+        assert "makemkv.com" in message
+
+    def test_ignores_unknown_msg_codes(self):
+        output = 'MSG:9999,0,1,"some other message","%1","x"\n'
+        assert parse_fatal_message(output) is None
+
+
+class TestDriveListRaisesOnFatal:
+    """``MakeMKV.drive_list`` should raise MakeMKVError when makemkvcon\n
+    runs but emits a fatal MSG (e.g. expired beta) with zero DRV lines.\n
+    """
+
+    def test_raises_on_expired_beta(self, tmp_path):
+        from riplex.disc.makemkv import MakeMKV
+
+        fake_exe = tmp_path / "makemkvcon.exe"
+        fake_exe.write_text("")
+        mk = MakeMKV(fake_exe)
+
+        fatal_output = (
+            'MSG:1005,0,1,"MakeMKV v1.18.3 started","%1","MakeMKV v1.18.3"\n'
+            'MSG:5021,131332,1,"This application version is too old.",'
+            '"This application version is too old.",""\n'
+        )
+
+        completed = MagicMock()
+        completed.stdout = fatal_output
+        completed.stderr = ""
+        with patch("riplex.disc.makemkv.subprocess.run", return_value=completed):
+            try:
+                mk.drive_list()
+            except MakeMKVError as exc:
+                assert exc.code == 5021
+                assert "too old" in str(exc)
+                return
+        raise AssertionError("MakeMKVError was not raised")
+
+    def test_returns_empty_when_no_fatal(self, tmp_path):
+        from riplex.disc.makemkv import MakeMKV
+
+        fake_exe = tmp_path / "makemkvcon.exe"
+        fake_exe.write_text("")
+        mk = MakeMKV(fake_exe)
+
+        completed = MagicMock()
+        completed.stdout = 'MSG:1005,0,1,"started","%1","x"\n'
+        completed.stderr = ""
+        with patch("riplex.disc.makemkv.subprocess.run", return_value=completed):
+            assert mk.drive_list() == []
 
 
 class TestMakemkvPreflight:

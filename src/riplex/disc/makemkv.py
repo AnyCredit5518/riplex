@@ -114,6 +114,15 @@ class MakeMKVPreflight:
     error: str = ""  # short human-readable failure reason
 
 
+class MakeMKVError(RuntimeError):
+    """makemkvcon ran but refused to do useful work (e.g. expired beta key)."""
+
+    def __init__(self, message: str, *, code: int | None = None, raw: str = ""):
+        super().__init__(message)
+        self.code = code
+        self.raw = raw
+
+
 @dataclass
 class DiscInfo:
     """Parsed disc information from makemkvcon -r info."""
@@ -276,6 +285,43 @@ def parse_drive_list(output: str) -> list[DriveInfo]:
     return drives
 
 
+# MSG codes makemkvcon emits when it refuses to do real work. The user-facing
+# message is the first quoted field. Anything in this set should be surfaced
+# verbatim to the user with an actionable hint, since the rest of the run
+# will silently produce empty results otherwise (no DRV lines, no titles).
+_MAKEMKV_FATAL_MSG_CODES: frozenset[int] = frozenset({
+    5021,  # "This application version is too old..." (expired beta key)
+    5022,  # registration key expired
+    5023,  # registration key invalid
+})
+
+
+def parse_fatal_message(output: str) -> tuple[int, str] | None:
+    """Return ``(code, message)`` for the first known fatal MSG line, else None.
+
+    makemkvcon emits ``MSG:<code>,<flags>,<count>,"<text>",...`` lines.
+    When it refuses to scan (expired beta, invalid key, etc.) it prints
+    one of those and then exits without any ``DRV:`` lines, which makes
+    ``parse_drive_list`` legitimately return ``[]``. Callers can use
+    this helper to distinguish "no drives" from "makemkvcon won't run".
+    """
+    for line in output.splitlines():
+        if not line.startswith("MSG:"):
+            continue
+        parts = _split_robot_line(line[4:])
+        if len(parts) < 4:
+            continue
+        try:
+            code = int(parts[0])
+        except ValueError:
+            continue
+        if code not in _MAKEMKV_FATAL_MSG_CODES:
+            continue
+        # parts[3] is the rendered, human-readable message text.
+        return code, parts[3]
+    return None
+
+
 def _split_robot_line(text: str) -> list[str]:
     """Split a makemkvcon robot-mode CSV line, respecting quoted strings."""
     parts: list[str] = []
@@ -415,7 +461,12 @@ class MakeMKV:
         return parse_disc_info(output)
 
     def drive_list(self) -> list[DriveInfo]:
-        """List available optical drives."""
+        """List available optical drives.
+
+        Raises :class:`MakeMKVError` if makemkvcon ran but returned no
+        drive lines because of a known fatal condition (most commonly
+        an expired beta version that refuses to scan until updated).
+        """
         exe = self._require_exe()
 
         cmd = [str(exe), "-r", "info", "list"]
@@ -429,7 +480,13 @@ class MakeMKV:
             **_SUBPROCESS_FLAGS,
         )
         output = result.stdout + result.stderr
-        return parse_drive_list(output)
+        drives = parse_drive_list(output)
+        if not drives:
+            fatal = parse_fatal_message(output)
+            if fatal is not None:
+                code, message = fatal
+                raise MakeMKVError(message, code=code, raw=output)
+        return drives
 
     def resolve_drive(self, drive_arg: str = "auto") -> DriveInfo:
         """Resolve a drive argument to a :class:`DriveInfo`.
