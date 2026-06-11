@@ -31,6 +31,17 @@ class ReleaseScreen:
             return "disc_overview"
         return "selection"
 
+    def _skip_next_screen(self) -> str:
+        """Screen to use when continuing without dvdcompare data."""
+        workflow = self.app.state.get("workflow")
+        if workflow == "orchestrate":
+            self.app.state["_orchestrate_disc_number"] = 1
+            self.app.state["disc_queue"] = [1]
+            self.app.state["current_disc_idx"] = 0
+            self.app.state["all_rip_results"] = {}
+            return "selection"
+        return self._next_screen
+
     def _current_search_title(self) -> str:
         """Title to use for dvdcompare lookup (user override > TMDb > raw title)."""
         override = self.app.state.get("dvdcompare_title_override")
@@ -499,7 +510,7 @@ class ReleaseScreen:
     def _skip(self, e):
         """Proceed without dvdcompare data."""
         self.app.state["dvdcompare_discs"] = []
-        self.app.navigate(self._next_screen)
+        self.app.navigate(self._skip_next_screen())
 
     def _use_release(self, release):
         """Convert a dvdcompare release to PlannedDiscs and navigate."""
