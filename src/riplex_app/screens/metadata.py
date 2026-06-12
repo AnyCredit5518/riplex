@@ -149,7 +149,7 @@ class MetadataScreen:
             [
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
-                    "TMDb is needed for canonical titles, years, and Plex folder "
+                    "TMDb is needed for canonical titles, years, and media-library folder "
                     "structure. Without it, you can still rip the disc and organize later.",
                     size=13,
                     color=ft.Colors.GREY_500,

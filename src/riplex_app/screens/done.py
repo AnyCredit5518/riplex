@@ -87,7 +87,7 @@ class DoneScreen:
 
         no_metadata_hint = ft.Text(
             "Ripped without metadata — use 'Organize Rips' from the home screen "
-            "when TMDb is available to move these files into your Plex library.",
+            "when TMDb is available to move these files into your media library.",
             size=12,
             color=ft.Colors.ORANGE,
         ) if tmdb_match is None and len(successful) > 0 else ft.Container()

@@ -16,13 +16,30 @@ from riplex.updater import check_for_update, get_current_version
 log = logging.getLogger(__name__)
 
 
+def has_complete_config(config: dict) -> bool:
+    """Return True when required GUI setup values are present."""
+    return bool(
+        config
+        and config.get("tmdb_api_key")
+        and config.get("output_root")
+        and config.get("rip_output")
+    )
+
+
+def should_show_setup(config: dict, state: dict) -> bool:
+    """Return True when the welcome screen should show setup fields."""
+    return not has_complete_config(config) or bool(state.get("_show_setup"))
+
+
 class WelcomeScreen:
     def __init__(self, app):
         self.app = app
 
     def build(self) -> ft.Control:
         config = load_config()
-        has_config = bool(config and config.get("tmdb_api_key"))
+        has_api_key = bool(config and config.get("tmdb_api_key"))
+        has_config = has_complete_config(config)
+        show_setup = should_show_setup(config, self.app.state)
         has_makemkv = find_makemkvcon() is not None
         has_ffprobe = find_ffprobe() is not None
         from riplex.splitter import find_mkvmerge
@@ -31,7 +48,7 @@ class WelcomeScreen:
         # Status indicators
         checks = [
             ("Config file", has_config),
-            ("TMDb API key", has_config),
+            ("TMDb API key", has_api_key),
             ("makemkvcon", has_makemkv),
             ("ffprobe", has_ffprobe),
             ("mkvmerge", has_mkvmerge),
@@ -102,7 +119,7 @@ class WelcomeScreen:
         can_rip = all(ok for _, ok in checks)
         can_organize = has_config and has_ffprobe
 
-        # Setup fields (shown if config missing)
+        # Setup fields (shown if config missing or user chooses to edit)
         self.api_key_field = ft.TextField(
             label="TMDb API key",
             value=config.get("tmdb_api_key", ""),
@@ -111,7 +128,7 @@ class WelcomeScreen:
             expand=True,
         )
         self.output_root_field = ft.TextField(
-            label="Plex library root",
+            label="Media library root",
             value=config.get("output_root", ""),
             expand=True,
         )
@@ -155,8 +172,9 @@ class WelcomeScreen:
                 ft.Container(height=8),
                 _make_browse_row(self.output_root_field),
                 ft.Text(
-                    "Your Plex media library root. Organized files will be placed "
-                    "into Movies/ and TV Shows/ subfolders here.",
+                    "Your media library root. Organized files will be placed "
+                    "into Movies/ and TV Shows/ subfolders here using "
+                    "Plex-compatible naming.",
                     size=11,
                     color=ft.Colors.GREY_600,
                 ),
@@ -177,10 +195,20 @@ class WelcomeScreen:
                     color=ft.Colors.GREY_600,
                 ),
                 ft.Container(height=8),
-                ft.ElevatedButton("Save Config", on_click=self._save_config),
+                ft.Row(
+                    [
+                        ft.ElevatedButton("Save Config", on_click=self._save_config),
+                        ft.TextButton(
+                            "Cancel",
+                            on_click=self._hide_setup,
+                            visible=has_config,
+                        ),
+                    ],
+                    spacing=8,
+                ),
             ],
             spacing=4,
-            visible=not has_config,
+            visible=show_setup,
         )
 
         # Workflow buttons
@@ -190,7 +218,7 @@ class WelcomeScreen:
             on_click=self._start_rip,
             disabled=not can_rip,
             style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-            tooltip="Detect a disc, look up metadata, rip selected titles, and organize into Plex.",
+            tooltip="Detect a disc, look up metadata, rip selected titles, and organize into your media library.",
         )
         organize_button = ft.ElevatedButton(
             "Organize Rips",
@@ -228,7 +256,7 @@ class WelcomeScreen:
                 ),
                 self.update_banner,
                 ft.Text(
-                    "Rip physical discs and organize into Plex-compatible libraries.",
+                    "Rip physical discs and organize them into a media library with Plex-compatible naming.",
                     size=14,
                     color=ft.Colors.GREY_400,
                 ),
@@ -244,6 +272,16 @@ class WelcomeScreen:
                 ft.Column(status_rows, spacing=4),
                 install_section,
                 ft.Container(height=10),
+                ft.Row(
+                    [
+                        ft.OutlinedButton(
+                            "Edit Settings",
+                            icon=ft.Icons.SETTINGS,
+                            on_click=self._show_setup,
+                            visible=has_config and not show_setup,
+                        ),
+                    ],
+                ),
                 setup_section,
                 ft.Container(expand=True),
                 ft.Text("What would you like to do?", size=16, weight=ft.FontWeight.BOLD),
@@ -645,6 +683,17 @@ class WelcomeScreen:
         )
 
         # Refresh the screen
+        self.app.state.pop("_show_setup", None)
+        self.app.navigate("welcome")
+
+    def _show_setup(self, e):
+        """Reveal config fields for editing after first-run setup."""
+        self.app.state["_show_setup"] = True
+        self.app.navigate("welcome")
+
+    def _hide_setup(self, e):
+        """Hide config fields without saving changes."""
+        self.app.state.pop("_show_setup", None)
         self.app.navigate("welcome")
 
     def _start_rip(self, e):

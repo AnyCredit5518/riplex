@@ -17,7 +17,7 @@ class OrchestrateDoneScreen:
     """Shown after all discs in the orchestrate queue have been ripped.
 
     Displays a summary of all disc rips and offers to organize the
-    ripped files into Plex-compatible folder structure.
+    ripped files into a Plex-compatible folder structure.
     """
 
     def __init__(self, app):
@@ -108,7 +108,7 @@ class OrchestrateDoneScreen:
             on_click=self._open_folder,
         )
         organize_btn = ft.ElevatedButton(
-            "Organize into Plex",
+            "Organize into Library",
             icon=ft.Icons.DRIVE_FILE_MOVE,
             on_click=self._organize,
             style=ft.ButtonStyle(
@@ -136,8 +136,8 @@ class OrchestrateDoneScreen:
                 ft.Column(disc_rows, spacing=6),
                 ft.Container(height=10),
                 ft.Text(
-                    "All selected discs have been ripped. Click 'Organize into Plex' "
-                    "to match files to metadata and move them into your Plex library.",
+                    "All selected discs have been ripped. Click 'Organize into Library' "
+                    "to match files to metadata and move them into your media library.",
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
@@ -202,7 +202,7 @@ class OrchestrateDoneScreen:
                 self._organize_status.value = f"Error: {exc}"
                 self._organize_status.color = ft.Colors.RED
                 e.control.disabled = False
-                e.control.text = "Organize into Plex"
+                e.control.text = "Organize into Library"
                 self.app.page.update()
 
         threading.Thread(target=_do_organize, daemon=True).start()

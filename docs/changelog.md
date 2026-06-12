@@ -4,6 +4,16 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.8.0 — 2026-06-12
+
+### Added
+
+- **GUI: editable settings after first-run setup.** The welcome screen now exposes an **Edit Settings** button after configuration is complete, so users can update the TMDb API key, media library root, MakeMKV rip output folder, and optional archive folder without re-running setup from the command line.
+
+### Changed
+
+- **GUI: less Plex-specific library wording.** User-facing destination copy now refers to a general media library while retaining **Plex-compatible naming** where the current folder/file convention is being described.
+
 ## v0.7.4 — 2026-06-10
 
 ### Fixed
