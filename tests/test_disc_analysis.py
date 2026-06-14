@@ -416,7 +416,7 @@ class TestDetectDiscNumber:
 class TestAnalyzeDisc:
     """Tests for the analyze_disc() shared entry point."""
 
-    def _make_fake_disc(self, number, ep_runtimes, extra_runtimes=None):
+    def _make_fake_disc(self, number, ep_runtimes, extra_runtimes=None, extra_titles=None, is_film=False):
         class FakeEp:
             def __init__(self, title, runtime):
                 self.title = title
@@ -434,9 +434,16 @@ class TestAnalyzeDisc:
                 self.episodes = eps
                 self.extras = extras
                 self.disc_format = "Blu-ray"
+                self.is_film = is_film
 
         eps = [FakeEp(f"Ep {i+1}", rt) for i, rt in enumerate(ep_runtimes)]
-        extras = [FakeExtra(f"Extra {i+1}", rt) for i, rt in enumerate(extra_runtimes or [])]
+        if extra_titles is None:
+            extras = [FakeExtra(f"Extra {i+1}", rt) for i, rt in enumerate(extra_runtimes or [])]
+        else:
+            extras = [
+                FakeExtra(title, runtime)
+                for title, runtime in zip(extra_titles, extra_runtimes or [])
+            ]
         return FakeDisc(number, eps, extras)
 
     def test_filters_to_detected_disc(self):
@@ -507,3 +514,30 @@ class TestAnalyzeDisc:
         # Should still classify titles (main film detected by runtime)
         assert len(analysis.rippable_titles) >= 1
         assert len(analysis.classifications) == 2
+
+    def test_3d_2d_movie_variants_are_labeled_by_size(self):
+        disc = self._make_fake_disc(
+            2,
+            [],
+            extra_runtimes=[0, 0],
+            extra_titles=["The Film (3D) (1080p)", "The Film (2D) (1080p)"],
+            is_film=True,
+        )
+        titles = [
+            _make_title(
+                0, 2653, resolution="1920x1080",
+                size=14_494_550_016,
+            ),
+            _make_title(
+                3, 2653, resolution="1920x1080",
+                size=13_900_886_016,
+            ),
+        ]
+        info = DiscInfo(disc_name="MYSTERY", disc_type="Blu-ray disc", titles=titles)
+
+        analysis = analyze_disc(
+            info, [disc], disc_number=2, is_movie=True, movie_runtime=2700,
+        )
+
+        assert analysis.classifications[0] == "3D Edition (1080p)"
+        assert analysis.classifications[3] == "2D Edition (1080p)"

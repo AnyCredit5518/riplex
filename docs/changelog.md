@@ -4,6 +4,27 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.9.0 — 2026-06-13
+
+Summary: Plex-aligned movie version and edition support for combo-disc releases, with better organize preview matching for 4K, Blu-ray, and 3D movie rips.
+
+### Added
+
+- **Plex movie versions and editions.** Movie organization now distinguishes Plex versions, such as `4k` and `1080p`, from Plex editions, such as `{edition-3D}`. Multiple 2D resolutions are organized together in the base movie folder, while 3D rips are organized as a separate Plex edition folder.
+- **3D movie edition output.** 3D movie rips now use Plex's edition naming convention in both folder and file names, for example `Movie Title (Year) {edition-3D}/Movie Title (Year) - 1080p {edition-3D}.mkv`.
+- **Combo-pack movie matching.** Multi-disc releases with separate 4K, Blu-ray, and 3D film discs now match each main feature independently so the 4K movie, standard 1080p movie, and 3D edition can all be organized from the same release.
+
+### Changed
+
+- **2D is treated as the base movie, not an edition.** dvdcompare labels such as `2D` are still useful for matching disc targets, but the organized Plex output keeps 2D files in the normal `Movie Title (Year)` folder instead of creating `{edition-2D}` folders.
+- **Resolution suffixes are inferred from scanned video dimensions.** Standard Blu-ray movie rips now receive a `- 1080p` suffix when ffprobe reports 1920x1080 video, matching the existing `- 4k` behavior for 2160p content.
+- **Duplicate bonus features no longer clutter the missing list.** If the same bonus feature appears on multiple discs and one copy is matched, equivalent duplicate targets from other present discs are suppressed from the organize preview's missing section.
+
+### Fixed
+
+- **4K main feature skipped in 4K + 3D combo releases.** Multi-edition film entries on a separate 3D/2D Blu-ray disc no longer suppress the generic movie target needed to match a separate 4K film disc.
+- **Matched extras still shown as missing.** Duplicate extras such as `Behind The Scenes` and `Humpback Whales` no longer appear under missing after one copy has already been matched and planned for organization.
+
 ## v0.8.0 — 2026-06-12
 
 ### Added

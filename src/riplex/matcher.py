@@ -188,6 +188,24 @@ def _is_unidentified(classification: str) -> bool:
         return False
     return classification.startswith(_UNIDENTIFIED_CLASSIFICATION_PREFIXES)
 
+
+_DISC_LABEL_PREFIX_RE = re.compile(r"^Disc\s+\d+:\s*", re.IGNORECASE)
+_TRAILING_TYPE_RE = re.compile(
+    r"\s+\((?:featurette|documentary|interview|interviews|deleted scenes?|trailer|trailers|short|shorts)\)$",
+    re.IGNORECASE,
+)
+
+
+def _duplicate_content_key(label: str) -> str | None:
+    """Return a cross-disc comparison key for duplicate non-movie targets."""
+    if _is_movie_target(label):
+        return None
+    key = _DISC_LABEL_PREFIX_RE.sub("", label).strip()
+    key = _TRAILING_TYPE_RE.sub("", key).strip()
+    if not key:
+        return None
+    return re.sub(r"\s+", " ", key).casefold()
+
 _PLAY_ALL_RE = re.compile(r"\bplay\s*all\b", re.IGNORECASE)
 
 # Edition patterns in dvdcompare feature titles
@@ -195,6 +213,21 @@ _EDITION_RE = re.compile(
     r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
     re.IGNORECASE,
 )
+_FORMAT_EDITION_RE = re.compile(r"\b(3D|2D|IMAX|Open Matte)\b", re.IGNORECASE)
+
+
+def _extract_movie_edition(text: str) -> str:
+    """Extract a Plex movie edition label from dvdcompare film-entry text."""
+    m = _EDITION_RE.search(text)
+    if m:
+        return m.group(1)
+    m = _FORMAT_EDITION_RE.search(text)
+    if not m:
+        return ""
+    value = m.group(1)
+    if value.lower() == "open matte":
+        return "Open Matte"
+    return value.upper()
 
 
 def collect_disc_targets(
@@ -251,14 +284,15 @@ def collect_disc_targets(
         # Handle "The Film ..." entries on film discs
         if len(film_entries) > 1:
             # Multiple editions: create edition-aware targets and suppress
-            # the single TMDb movie target added above.  Runtimes may be
-            # zero when dvdcompare only lists the title/resolution; those
-            # are filled in during matching by pairing editions with files
-            # by duration order (shortest = theatrical, longest = extended).
-            suppress_movie_target = True
+            # the single TMDb movie target added above only when it would
+            # point at this same disc.  In combo packs, a separate 4K disc
+            # can be the base movie while a Blu-ray disc carries 3D/2D
+            # variants; those need both the generic movie target and the
+            # edition-aware targets.
+            if film_disc_num is None or disc.number == film_disc_num:
+                suppress_movie_target = True
             for ex in film_entries:
-                m = _EDITION_RE.search(ex.title)
-                edition = m.group(1) if m else ex.title
+                edition = _extract_movie_edition(ex.title) or ex.title
                 label = f"{prefix}: {edition} (movie)"
                 runtime = ex.runtime_seconds or 0
                 log.debug("Disc %d: multi-edition film entry '%s' -> target '%s' (%ds)",
@@ -515,14 +549,6 @@ def match_discs(
         if ti not in claimed_targets and runtime_s == 0 and "(movie)" in label
     ]
     if zero_edition_targets:
-        # Find unclaimed files on the same disc(s)
-        edition_disc = targets[zero_edition_targets[0]][2]
-        unclaimed_files = [
-            fi for fi in range(len(all_scanned))
-            if fi not in claimed_files
-            and all_scanned[fi].duration_seconds > 0
-            and (edition_disc is None or file_disc[fi] is None or file_disc[fi] == edition_disc)
-        ]
         # Sort targets: theatrical first, then extended
         def _edition_sort_key(ti: int) -> int:
             label_lower = targets[ti][0].lower()
@@ -531,34 +557,72 @@ def match_discs(
             if any(w in label_lower for w in _EXTENDED_WORDS):
                 return 1
             return 2
-        zero_edition_targets.sort(key=_edition_sort_key)
-        # Sort files by duration (shortest first = theatrical)
-        unclaimed_files.sort(key=lambda fi: all_scanned[fi].duration_seconds)
 
-        for ti, fi in zip(zero_edition_targets, unclaimed_files):
-            sf = all_scanned[fi]
-            label = targets[ti][0]
-            log.debug("Edition match (no runtime): %s (%ds) -> '%s'",
-                      sf.name, sf.duration_seconds, label)
-            matched.append(
-                MatchCandidate(
-                    file_name=sf.name,
-                    file_duration_seconds=sf.duration_seconds,
-                    matched_label=label,
-                    matched_runtime_seconds=sf.duration_seconds,
-                    delta_seconds=0,
-                    confidence="medium",
-                    classification=sf.classification,
-                )
+        edition_discs = sorted(
+            {targets[ti][2] for ti in zero_edition_targets},
+            key=lambda d: -1 if d is None else d,
+        )
+        for edition_disc in edition_discs:
+            disc_targets = [ti for ti in zero_edition_targets if targets[ti][2] == edition_disc]
+            unclaimed_files = [
+                fi for fi in range(len(all_scanned))
+                if fi not in claimed_files
+                and all_scanned[fi].duration_seconds > 0
+                and (edition_disc is None or file_disc[fi] is None or file_disc[fi] == edition_disc)
+            ]
+
+            disc_targets.sort(key=_edition_sort_key)
+            target_labels = [targets[ti][0].lower() for ti in disc_targets]
+            has_3d_2d_targets = (
+                any("3d" in label for label in target_labels)
+                and any("2d" in label for label in target_labels)
             )
-            claimed_files.add(fi)
-            claimed_targets.add(ti)
+            if has_3d_2d_targets:
+                # 3D MVC titles carry an extra eye view and are typically larger
+                # than their same-runtime 2D companion on the same disc.
+                disc_targets.sort(
+                    key=lambda ti: 0 if "3d" in targets[ti][0].lower() else 1
+                )
+                unclaimed_files.sort(key=lambda fi: all_scanned[fi].size_bytes, reverse=True)
+            else:
+                # Sort files by duration (shortest first = theatrical)
+                unclaimed_files.sort(key=lambda fi: all_scanned[fi].duration_seconds)
+
+            for ti, fi in zip(disc_targets, unclaimed_files):
+                sf = all_scanned[fi]
+                label = targets[ti][0]
+                log.debug("Edition match (no runtime): %s (%ds) -> '%s'",
+                          sf.name, sf.duration_seconds, label)
+                matched.append(
+                    MatchCandidate(
+                        file_name=sf.name,
+                        file_duration_seconds=sf.duration_seconds,
+                        matched_label=label,
+                        matched_runtime_seconds=sf.duration_seconds,
+                        delta_seconds=0,
+                        confidence="medium",
+                        classification=sf.classification,
+                    )
+                )
+                claimed_files.add(fi)
+                claimed_targets.add(ti)
 
     unmatched = [
         all_scanned[i]
         for i in range(len(all_scanned))
         if i not in claimed_files
     ]
+
+    matched_content_keys = {
+        key for key in (_duplicate_content_key(targets[i][0]) for i in claimed_targets)
+        if key is not None
+    }
+
+    def _is_missing_target(target_index: int) -> bool:
+        if target_index in claimed_targets:
+            return False
+        key = _duplicate_content_key(targets[target_index][0])
+        return key is None or key not in matched_content_keys
 
     # Only report missing targets from discs the user actually has
     # folders for (or targets with no disc constraint).  If no folder
@@ -569,14 +633,14 @@ def match_discs(
         missing = [
             targets[i][0]
             for i in range(len(targets))
-            if i not in claimed_targets
+            if _is_missing_target(i)
             and (targets[i][2] is None or targets[i][2] in present_discs)
         ]
     else:
         missing = [
             targets[i][0]
             for i in range(len(targets))
-            if i not in claimed_targets
+            if _is_missing_target(i)
         ]
 
     for sf in unmatched:

@@ -183,6 +183,214 @@ class TestBuildOrganizePlanMovie:
         assert any("{edition-Extended Cut}" in d for d in dests)
         assert all("King Kong (2005)" in d for d in dests)
 
+    def test_movie_with_3d_and_2d_uses_3d_edition_and_base_folder(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Butterflies_t00.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Disc 2: 3D (movie)",
+                    matched_runtime_seconds=2653,
+                    delta_seconds=0,
+                    confidence="medium",
+                ),
+                MatchCandidate(
+                    file_name="Butterflies_t03.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Disc 2: 2D (movie)",
+                    matched_runtime_seconds=2653,
+                    delta_seconds=0,
+                    confidence="medium",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        scanned = {
+            "Butterflies_t00.mkv": ScannedFile(
+                name="Butterflies_t00.mkv", path="/rip/Butterflies_t00.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+            "Butterflies_t03.mkv": ScannedFile(
+                name="Butterflies_t03.mkv", path="/rip/Butterflies_t03.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+        }
+
+        op = build_organize_plan(result, plan, Path("E:/Media"), scanned_files=scanned)
+
+        assert len(op.moves) == 2
+        dests = [m.destination for m in op.moves]
+        assert any(
+            "Flight of the Butterflies (2012) {edition-3D}"
+            in d and "Flight of the Butterflies (2012) - 1080p {edition-3D}.mkv" in d
+            for d in dests
+        )
+        assert any(
+            "Flight of the Butterflies (2012) {edition-" not in d
+            and "Flight of the Butterflies (2012) - 1080p.mkv" in d
+            for d in dests
+        )
+
+    def test_movie_with_only_3d_uses_edition_folder(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Butterflies_3d.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Disc 2: 3D (movie)",
+                    matched_runtime_seconds=2653,
+                    delta_seconds=0,
+                    confidence="medium",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        scanned = {
+            "Butterflies_3d.mkv": ScannedFile(
+                name="Butterflies_3d.mkv", path="/rip/Butterflies_3d.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+        }
+
+        op = build_organize_plan(result, plan, Path("E:/Media"), scanned_files=scanned)
+
+        assert len(op.moves) == 1
+        dest = op.moves[0].destination
+        assert "Flight of the Butterflies (2012) {edition-3D}" in dest
+        assert "Flight of the Butterflies (2012) - 1080p {edition-3D}.mkv" in dest
+
+    def test_movie_with_4k_1080p_and_3d_versions(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Butterflies_4k.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Flight of the Butterflies (movie)",
+                    matched_runtime_seconds=2700,
+                    delta_seconds=47,
+                    confidence="medium",
+                    classification="MAIN FILM (4K)",
+                ),
+                MatchCandidate(
+                    file_name="Butterflies_2d.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Disc 1: 2D (movie)",
+                    matched_runtime_seconds=2653,
+                    delta_seconds=0,
+                    confidence="medium",
+                ),
+                MatchCandidate(
+                    file_name="Butterflies_3d.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Disc 2: 3D (movie)",
+                    matched_runtime_seconds=2653,
+                    delta_seconds=0,
+                    confidence="medium",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        scanned = {
+            "Butterflies_2d.mkv": ScannedFile(
+                name="Butterflies_2d.mkv", path="/rip/Butterflies_2d.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+            "Butterflies_3d.mkv": ScannedFile(
+                name="Butterflies_3d.mkv", path="/rip/Butterflies_3d.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+        }
+
+        op = build_organize_plan(result, plan, Path("E:/Media"), scanned_files=scanned)
+
+        assert len(op.moves) == 3
+        dests = [m.destination for m in op.moves]
+        assert any("Flight of the Butterflies (2012) - 4k.mkv" in d for d in dests)
+        assert any(
+            "Flight of the Butterflies (2012) {edition-" not in d
+            and "Flight of the Butterflies (2012) - 1080p.mkv" in d
+            for d in dests
+        )
+        assert any(
+            "Flight of the Butterflies (2012) {edition-3D}"
+            in d and "Flight of the Butterflies (2012) - 1080p {edition-3D}.mkv" in d
+            for d in dests
+        )
+
+    def test_movie_4k_version_suffix_from_classification(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Butterflies_4k.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Flight of the Butterflies (movie)",
+                    matched_runtime_seconds=2700,
+                    delta_seconds=47,
+                    confidence="medium",
+                    classification="MAIN FILM (4K)",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+
+        op = build_organize_plan(result, plan, Path("E:/Media"))
+
+        assert len(op.moves) == 1
+        assert "Flight of the Butterflies (2012) - 4k.mkv" in op.moves[0].destination
+
+    def test_movie_1080p_version_suffix_from_scan(self):
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="Butterflies_bluray.mkv",
+                    file_duration_seconds=2653,
+                    matched_label="Flight of the Butterflies (movie)",
+                    matched_runtime_seconds=2700,
+                    delta_seconds=47,
+                    confidence="medium",
+                ),
+            ],
+        )
+        plan = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        scanned = {
+            "Butterflies_bluray.mkv": ScannedFile(
+                name="Butterflies_bluray.mkv", path="/rip/Butterflies_bluray.mkv",
+                duration_seconds=2653, max_width=1920, max_height=1080,
+            ),
+        }
+
+        op = build_organize_plan(result, plan, Path("E:/Media"), scanned_files=scanned)
+
+        assert len(op.moves) == 1
+        dest = op.moves[0].destination
+        assert "Flight of the Butterflies (2012) {edition-" not in dest
+        assert "Flight of the Butterflies (2012) - 1080p.mkv" in dest
+
     def test_movie_no_edition_without_classification(self):
         """No edition tag when classification is empty or has no edition."""
         result = OrganizeResult(

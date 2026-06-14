@@ -35,6 +35,43 @@ _EDITION_RE = re.compile(
     r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
     re.IGNORECASE,
 )
+_FORMAT_EDITION_RE = re.compile(r"\b(3D|IMAX|Open Matte)\b", re.IGNORECASE)
+_VERSION_4K_RE = re.compile(r"\b(?:4K|2160p)\b", re.IGNORECASE)
+_VERSION_1080P_RE = re.compile(r"\b1080p\b", re.IGNORECASE)
+
+
+def _extract_movie_edition(text: str) -> str:
+    """Extract a Plex movie edition label from classifier/match text."""
+    m = _EDITION_RE.search(text)
+    if m:
+        return m.group(1)
+    m = _FORMAT_EDITION_RE.search(text)
+    if not m:
+        return ""
+    value = m.group(1)
+    if value.lower() == "open matte":
+        return "Open Matte"
+    return value.upper()
+
+
+def _extract_movie_version_suffix(text: str) -> str:
+    """Extract a Plex multi-version suffix from classifier/match text."""
+    if _VERSION_4K_RE.search(text):
+        return "4k"
+    if _VERSION_1080P_RE.search(text):
+        return "1080p"
+    return ""
+
+
+def _infer_movie_version_suffix(scanned_file: ScannedFile | None, edition: str | None) -> str:
+    """Infer a Plex multi-version suffix from scanned video dimensions."""
+    if not scanned_file:
+        return ""
+    if scanned_file.max_width >= 3840 or scanned_file.max_height >= 2160:
+        return "4k"
+    if scanned_file.max_width >= 1920 or scanned_file.max_height >= 1080:
+        return "1080p"
+    return ""
 
 # Map dvdcompare feature_type strings to Plex extras folder names
 _EXTRAS_FOLDER_MAP: dict[str, str] = {
@@ -380,7 +417,7 @@ def build_organize_plan(
                         )
                         continue
 
-        dest = _compute_destination(candidate, plan, base)
+        dest = _compute_destination(candidate, plan, base, scanned_files.get(candidate.file_name))
         if dest is None:
             # Could not resolve to a valid Plex path; treat as unmatched.
             log.debug("No valid destination for '%s' (label='%s'), treating as unmatched",
@@ -452,6 +489,7 @@ def _compute_destination(
     candidate: MatchCandidate,
     plan: PlannedMovie | PlannedShow,
     base: Path,
+    scanned_file: ScannedFile | None = None,
 ) -> Path | None:
     """Compute the Plex-canonical destination path for a matched file.
 
@@ -464,20 +502,29 @@ def _compute_destination(
     # Movie main file
     if "(movie)" in label:
         edition = None
+        version_suffix = ""
         # Check for edition in label (from multi-edition disc targets)
         # e.g. "Disc 1: Theatrical Cut (movie)"
         if label.startswith("Disc ") and ": " in label:
             edition_part = label.split(": ", 1)[1].replace(" (movie)", "")
-            m = _EDITION_RE.search(edition_part)
-            if m:
-                edition = m.group(1)
+            edition = _extract_movie_edition(edition_part) or None
+            version_suffix = _extract_movie_version_suffix(edition_part)
         # Fallback: check rip-time classification
         if not edition and candidate.classification:
-            m = _EDITION_RE.search(candidate.classification)
-            if m:
-                edition = m.group(1)
-        dest = base / movie_file_name(plan.canonical_title, plan.year, edition=edition)
-        log.debug("  -> movie main file (edition=%s): %s", edition, dest)
+            edition = _extract_movie_edition(candidate.classification) or None
+        if not version_suffix and candidate.classification:
+            version_suffix = _extract_movie_version_suffix(candidate.classification)
+        if not version_suffix:
+            version_suffix = _infer_movie_version_suffix(scanned_file, edition)
+        movie_base = base.parent / movie_folder_name(plan.canonical_title, plan.year, edition=edition) if edition else base
+        file_name = movie_file_name(
+            plan.canonical_title,
+            plan.year,
+            edition=edition,
+            version_suffix=version_suffix,
+        )
+        dest = movie_base / file_name
+        log.debug("  -> movie main file (edition=%s, version=%s): %s", edition, version_suffix, dest)
         return dest
 
     # Episode: label like "Disc 1: Coasts" or "s01e01 - Title"

@@ -86,10 +86,18 @@ def movie_folder_name(title: str, year: int, edition: str | None = None) -> str:
     return name
 
 
-def movie_file_name(title: str, year: int, ext: str = ".mkv", edition: str | None = None) -> str:
+def movie_file_name(
+    title: str,
+    year: int,
+    ext: str = ".mkv",
+    edition: str | None = None,
+    version_suffix: str = "",
+) -> str:
     """Build the canonical Plex movie filename."""
     safe = sanitize_filename(title)
     name = f"{safe} ({year})"
+    if version_suffix:
+        name += f" - {sanitize_filename(version_suffix)}"
     if edition:
         name += f" {{edition-{edition}}}"
     return f"{name}{ext}"

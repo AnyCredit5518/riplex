@@ -16,6 +16,7 @@ _EDITION_RE = re.compile(
     r"((?:Extended|Director'?s|Unrated|Ultimate|Special|Theatrical)\s+(?:Cut|Edition|Version))",
     re.IGNORECASE,
 )
+_FORMAT_EDITION_RE = re.compile(r"\b(3D|2D|IMAX|Open Matte)\b", re.IGNORECASE)
 
 # Feature types that indicate featurette/bonus content (not episodes)
 _FEATURETTE_PLAY_ALL_TYPES = frozenset({
@@ -70,6 +71,70 @@ def _detect_edition_name(
                 return c
 
     return candidates[0]
+
+
+def _extract_movie_edition(text: str) -> str | None:
+    """Extract a movie edition label from dvdcompare film-entry text."""
+    m = _EDITION_RE.search(text)
+    if m:
+        return m.group(1)
+    m = _FORMAT_EDITION_RE.search(text)
+    if not m:
+        return None
+    value = m.group(1)
+    if value.lower() == "open matte":
+        return "Open Matte"
+    return value.upper()
+
+
+def _apply_movie_variant_classifications(
+    classifications: dict[int, str],
+    titles: list,
+    current_disc_entries: list,
+    movie_runtime: int | None,
+) -> None:
+    """Label same-runtime movie variants such as 3D/2D using dvdcompare hints."""
+    if not movie_runtime:
+        return
+
+    film_entries = []
+    for disc in current_disc_entries:
+        if not getattr(disc, "is_film", False):
+            continue
+        for extra in getattr(disc, "extras", []):
+            title = getattr(extra, "title", "")
+            if not title.lower().startswith("the film"):
+                continue
+            edition = _extract_movie_edition(title)
+            if edition:
+                film_entries.append((edition, getattr(extra, "runtime_seconds", 0) or 0))
+
+    if len(film_entries) < 2:
+        return
+
+    candidate_titles = [
+        title for title in titles
+        if abs(title.duration_seconds - movie_runtime) < 60
+        and classifications.get(title.index, "").startswith("MAIN FILM")
+    ]
+    if len(candidate_titles) < 2:
+        return
+
+    edition_names = [edition for edition, _ in film_entries]
+    has_3d_2d = "3D" in edition_names and "2D" in edition_names
+    if has_3d_2d:
+        sorted_entries = sorted(film_entries, key=lambda entry: 0 if entry[0] == "3D" else 1)
+        sorted_titles = sorted(candidate_titles, key=lambda title: title.size_bytes, reverse=True)
+    else:
+        sorted_entries = sorted(
+            film_entries,
+            key=lambda entry: 0 if "theatrical" in entry[0].lower() else 1,
+        )
+        sorted_titles = sorted(candidate_titles, key=lambda title: title.duration_seconds)
+
+    for title, (edition, _) in zip(sorted_titles, sorted_entries):
+        res_label = "4K" if "3840" in (title.resolution or "") else "1080p"
+        classifications[title.index] = f"{edition} Edition ({res_label})"
 
 
 def format_seconds(seconds: int) -> str:
@@ -592,6 +657,10 @@ def analyze_disc(
         classifications[t.index] = classify_title(
             t, titles, dvd_entries, is_movie, effective_movie_runtime,
             total_episode_runtime, episode_count,
+        )
+    if is_movie:
+        _apply_movie_variant_classifications(
+            classifications, titles, current_disc_entries, effective_movie_runtime,
         )
 
     return DiscAnalysis(

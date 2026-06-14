@@ -753,6 +753,31 @@ class TestMissingFilteredToPresent:
         assert any("Feature A" in l for l in labels)
         assert any("Feature B" in l for l in labels)
 
+    def test_duplicate_extra_matched_on_one_disc_not_reported_missing_on_another(self):
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K",
+                extras=[PlannedExtra(title="Humpback Whales", runtime_seconds=138)],
+            ),
+            PlannedDisc(
+                number=2, disc_format="Blu-ray",
+                extras=[PlannedExtra(title="Humpback Whales", runtime_seconds=138)],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(folder_name="Disc 1", files=[]),
+            ScannedDisc(
+                folder_name="Disc 2",
+                files=[ScannedFile(name="humpback.mkv", path="x", duration_seconds=138)],
+            ),
+        ]
+
+        result = match_discs(scanned, discs)
+
+        assert len(result.matched) == 1
+        assert result.matched[0].matched_label == "Disc 2: Humpback Whales"
+        assert result.missing == []
+
 
 class TestMultiEditionFilm:
     """Multiple editions (Theatrical + Extended) on the same film disc."""
@@ -808,6 +833,29 @@ class TestMultiEditionFilm:
         assert any("Extended Cut" in l and "(movie)" in l for l in labels)
         assert not any(l == "King Kong (movie)" for l in labels)
 
+    def test_3d_2d_film_entries_create_edition_targets(self):
+        movie = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        discs = [
+            PlannedDisc(
+                number=2, disc_format="Blu-ray", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film (3D) (1080p)", runtime_seconds=0),
+                    PlannedExtra(title="The Film (2D) (1080p)", runtime_seconds=0),
+                ],
+            ),
+        ]
+
+        targets = collect_disc_targets(discs, movie)
+        labels = [t[0] for t in targets]
+        assert "Disc 2: 3D (movie)" in labels
+        assert "Disc 2: 2D (movie)" in labels
+        assert "Flight of the Butterflies (movie)" not in labels
+
     def test_two_editions_match_files(self):
         """Two MKV files match the two editions by duration order when no runtimes."""
         movie = PlannedMovie(
@@ -845,6 +893,102 @@ class TestMultiEditionFilm:
         t02 = next(c for c in result.matched if c.file_name == "King Kong_t02.mkv")
         assert "Theatrical Cut" in t00.matched_label
         assert "Extended Cut" in t02.matched_label
+
+    def test_3d_2d_editions_match_by_size_when_runtime_is_equal(self):
+        movie = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        discs = [
+            PlannedDisc(
+                number=2, disc_format="Blu-ray", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film (3D) (1080p)", runtime_seconds=0),
+                    PlannedExtra(title="The Film (2D) (1080p)", runtime_seconds=0),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 2",
+                files=[
+                    ScannedFile(
+                        name="Butterflies_t03.mkv", path="x",
+                        duration_seconds=2653, size_bytes=13_900_886_016,
+                    ),
+                    ScannedFile(
+                        name="Butterflies_t00.mkv", path="x",
+                        duration_seconds=2653, size_bytes=14_494_550_016,
+                    ),
+                ],
+            ),
+        ]
+
+        result = match_discs(scanned, discs, movie)
+
+        assert len(result.matched) == 2
+        large = next(c for c in result.matched if c.file_name == "Butterflies_t00.mkv")
+        small = next(c for c in result.matched if c.file_name == "Butterflies_t03.mkv")
+        assert large.matched_label == "Disc 2: 3D (movie)"
+        assert small.matched_label == "Disc 2: 2D (movie)"
+
+    def test_4k_movie_target_kept_when_3d_2d_entries_are_on_second_disc(self):
+        movie = PlannedMovie(
+            canonical_title="Flight of the Butterflies",
+            year=2012,
+            runtime="45m",
+            runtime_seconds=2700,
+        )
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray 4K", is_film=True,
+                extras=[PlannedExtra(title="The Film (2160p)", runtime_seconds=0)],
+            ),
+            PlannedDisc(
+                number=2, disc_format="Blu-ray", is_film=True,
+                extras=[
+                    PlannedExtra(title="The Film (3D) (1080p)", runtime_seconds=0),
+                    PlannedExtra(title="The Film (2D) (1080p)", runtime_seconds=0),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="title_t00.mkv", path="x",
+                        duration_seconds=2654, size_bytes=18_890_000_000,
+                    ),
+                ],
+            ),
+            ScannedDisc(
+                folder_name="Disc 2",
+                files=[
+                    ScannedFile(
+                        name="Butterflies_t00.mkv", path="x",
+                        duration_seconds=2654, size_bytes=13_421_000_000,
+                    ),
+                    ScannedFile(
+                        name="Butterflies_t03.mkv", path="x",
+                        duration_seconds=2654, size_bytes=9_846_000_000,
+                    ),
+                ],
+            ),
+        ]
+
+        result = match_discs(scanned, discs, movie)
+
+        assert len(result.matched) == 3
+        disc1 = next(c for c in result.matched if c.file_name == "title_t00.mkv")
+        disc2_large = next(c for c in result.matched if c.file_name == "Butterflies_t00.mkv")
+        disc2_small = next(c for c in result.matched if c.file_name == "Butterflies_t03.mkv")
+        assert disc1.matched_label == "Flight of the Butterflies (movie)"
+        assert disc2_large.matched_label == "Disc 2: 3D (movie)"
+        assert disc2_small.matched_label == "Disc 2: 2D (movie)"
+        assert result.unmatched == []
 
     def test_two_editions_with_runtimes_match(self):
         """Two editions with known runtimes match via normal greedy pairing."""
