@@ -77,7 +77,7 @@ def run_setup(force: bool = False) -> int:
         value = input(f"{label}{prompt_hint}{suffix}: ").strip()
         return value if value else current
 
-    tmdb_key = prompt("tmdb_api_key", "TMDb API key", "free at themoviedb.org/settings/api", mask=True)
+    tmdb_key = prompt("tmdb_api_key", "TMDb API key or Read Access Token", "free at themoviedb.org/settings/api", mask=True)
     output_root = prompt("output_root", "Plex library root", "e.g. E:/Media")
     rip_output = prompt("rip_output", "MakeMKV rip output folder", "e.g. E:/Media/Rips")
     archive_root = prompt("archive_root", "Archive root (optional)", "move raw rips here after organizing")

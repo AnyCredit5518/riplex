@@ -4,6 +4,12 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.9.2 — 2026-06-24
+
+### Fixed
+
+- **TMDb credentials: accept both the API Key and the Read Access Token.** TMDb's settings page offers a v3 API Key (query parameter auth) and a v4 API Read Access Token (bearer header auth). riplex now auto-detects which credential was provided and uses the matching auth scheme, so pasting the Read Access Token no longer fails with `401 Unauthorized`. The setup wizard, GUI welcome screen, and docs now note that either credential works.
+
 ## v0.9.0 — 2026-06-13
 
 Summary: Plex-aligned movie version and edition support for combo-disc releases, with better organize preview matching for 4K, Blu-ray, and 3D movie rips.

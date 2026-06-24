@@ -243,6 +243,9 @@ The setup wizard will:
     > enter "riplex" as the app name and `https://github.com/AnyCredit5518/riplex`
     > as the URL. The rest of the form can be filled with basic info -- it
     > doesn't need to be a real business. The key is approved instantly.
+    >
+    > The settings page offers both an **API Key** (v3) and an **API Read
+    > Access Token** (v4). riplex accepts either one.
 
 2. Ask where your Plex library and MakeMKV rip folders are
 3. Check for required tools (MakeMKV, ffprobe, mkvmerge, mkvpropedit)

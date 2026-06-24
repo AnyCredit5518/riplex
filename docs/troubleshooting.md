@@ -74,6 +74,8 @@ riplex setup --force
 
 **Solution:** TMDb asks for an app name and URL when you request a key. You can enter "riplex" as the app name and `https://github.com/AnyCredit5518/riplex` as the URL. The rest of the form can be filled with basic info - it doesn't need to be a real business. The key is approved instantly.
 
+The settings page shows two credentials: an **API Key** (v3) and an **API Read Access Token** (v4). riplex accepts either one - paste whichever you copied. If you get a `401 Unauthorized` error, double-check that the value was copied in full.
+
 Sign up and request a key at: https://www.themoviedb.org/settings/api
 
 ---

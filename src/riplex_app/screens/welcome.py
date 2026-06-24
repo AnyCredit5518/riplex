@@ -164,8 +164,9 @@ class WelcomeScreen:
                 ft.Container(height=4),
                 self.api_key_field,
                 ft.Text(
-                    "Required. Get a free API key at themoviedb.org/settings/api — "
-                    "used to look up movie and TV show metadata.",
+                    "Required. Get a free API Key or Read Access Token at "
+                    "themoviedb.org/settings/api — used to look up movie and "
+                    "TV show metadata.",
                     size=11,
                     color=ft.Colors.GREY_600,
                 ),

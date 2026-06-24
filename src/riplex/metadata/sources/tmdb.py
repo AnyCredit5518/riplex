@@ -28,22 +28,44 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 _TMDB_TTL_DAYS = 7
 
 
+def _looks_like_read_access_token(key: str) -> bool:
+    """Return ``True`` when *key* looks like a TMDb v4 Read Access Token.
+
+    TMDb's settings page offers two credentials: a v3 ``API Key`` (a 32-char
+    hex string used as the ``api_key`` query parameter) and a v4 ``API Read
+    Access Token`` (a JWT used as an ``Authorization: Bearer`` header). The
+    v4 token is a JWT, so it starts with ``eyJ`` and contains exactly two
+    dots; a v3 key never does.
+    """
+    return key.startswith("eyJ") and key.count(".") == 2
+
+
 class TmdbProvider(MetadataProvider):
     """Metadata provider backed by TMDb API v3."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self._api_key = api_key or os.environ.get("TMDB_API_KEY", "")
+        self._api_key = (api_key or os.environ.get("TMDB_API_KEY", "")).strip()
         if not self._api_key:
             raise ValueError(
                 "TMDb API key is required. Pass --api-key, set the "
                 "TMDB_API_KEY environment variable, or add tmdb_api_key "
                 "to your config file."
             )
-        self._client = httpx.AsyncClient(
-            base_url=TMDB_BASE_URL,
-            params={"api_key": self._api_key},
-            timeout=30.0,
-        )
+        # TMDb accepts either a v3 API Key (query parameter) or a v4 Read
+        # Access Token (Authorization header) against the v3 endpoints. Pick
+        # the matching auth scheme so both credential types work.
+        if _looks_like_read_access_token(self._api_key):
+            self._client = httpx.AsyncClient(
+                base_url=TMDB_BASE_URL,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                timeout=30.0,
+            )
+        else:
+            self._client = httpx.AsyncClient(
+                base_url=TMDB_BASE_URL,
+                params={"api_key": self._api_key},
+                timeout=30.0,
+            )
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -61,6 +83,13 @@ class TmdbProvider(MetadataProvider):
             if cached is not None:
                 return cached
         resp = await self._client.get(path, params=params)
+        if resp.status_code == 401:
+            raise ValueError(
+                "TMDb rejected the credential (401 Unauthorized). Check that "
+                "your TMDb API Key (v3) or API Read Access Token (v4) is "
+                "correct. Both are available at "
+                "https://www.themoviedb.org/settings/api."
+            )
         resp.raise_for_status()
         data = resp.json()
         if cache_ns and cache_key:
