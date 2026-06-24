@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from riplex.models import ScannedFile
-from riplex.scanner import _probe_file, scan_folder
+from riplex.scanner import _probe_file, find_ffprobe, scan_folder
 
 
 @pytest.fixture
@@ -103,3 +103,62 @@ class TestScanFolder:
         for disc in discs:
             for f in disc.files:
                 assert Path(f.path).is_absolute()
+
+
+class TestFindFfprobe:
+    def test_returns_path_when_on_path(self):
+        with patch("riplex.scanner.shutil.which", return_value="/usr/bin/ffprobe"):
+            assert find_ffprobe() == "/usr/bin/ffprobe"
+
+    def test_returns_none_when_not_found(self, monkeypatch):
+        monkeypatch.setattr("riplex.scanner.shutil.which", lambda _: None)
+        monkeypatch.setattr("riplex.scanner.platform.system", lambda: "Linux")
+        monkeypatch.setattr("riplex.scanner._FFPROBE_SEARCH_PATHS", [])
+        assert find_ffprobe() is None
+
+    def test_finds_winget_links_shim_on_windows(self, tmp_path, monkeypatch):
+        local_appdata = tmp_path / "AppData" / "Local"
+        links = local_appdata / "Microsoft" / "WinGet" / "Links"
+        links.mkdir(parents=True)
+        shim = links / "ffprobe.exe"
+        shim.write_text("", encoding="utf-8")
+
+        monkeypatch.setattr("riplex.scanner.shutil.which", lambda _: None)
+        monkeypatch.setattr("riplex.scanner.platform.system", lambda: "Windows")
+        monkeypatch.setattr("riplex.scanner._FFPROBE_SEARCH_PATHS", [])
+        monkeypatch.setenv("LOCALAPPDATA", str(local_appdata))
+
+        assert find_ffprobe() == str(shim)
+
+    def test_finds_winget_package_payload_on_windows(self, tmp_path, monkeypatch):
+        local_appdata = tmp_path / "AppData" / "Local"
+        bin_dir = (
+            local_appdata / "Microsoft" / "WinGet" / "Packages"
+            / "Gyan.FFmpeg_Microsoft.Winget.Source_abc"
+            / "ffmpeg-7.0-full_build" / "bin"
+        )
+        bin_dir.mkdir(parents=True)
+        exe = bin_dir / "ffprobe.exe"
+        exe.write_text("", encoding="utf-8")
+
+        monkeypatch.setattr("riplex.scanner.shutil.which", lambda _: None)
+        monkeypatch.setattr("riplex.scanner.platform.system", lambda: "Windows")
+        monkeypatch.setattr("riplex.scanner._FFPROBE_SEARCH_PATHS", [])
+        monkeypatch.setenv("LOCALAPPDATA", str(local_appdata))
+
+        assert find_ffprobe() == str(exe)
+
+    def test_windows_candidates_skipped_on_non_windows(self, monkeypatch):
+        monkeypatch.setattr("riplex.scanner.shutil.which", lambda _: None)
+        monkeypatch.setattr("riplex.scanner.platform.system", lambda: "Linux")
+        monkeypatch.setattr("riplex.scanner._FFPROBE_SEARCH_PATHS", [])
+        called = {"hit": False}
+
+        def _should_not_run():
+            called["hit"] = True
+            return []
+
+        monkeypatch.setattr("riplex.scanner._windows_ffprobe_candidates", _should_not_run)
+        assert find_ffprobe() is None
+        assert called["hit"] is False
+

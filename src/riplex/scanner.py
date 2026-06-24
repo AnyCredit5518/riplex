@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -30,16 +31,44 @@ _FFPROBE_SEARCH_PATHS = [
 ]
 
 
+def _windows_ffprobe_candidates() -> list[Path]:
+    """Return likely ``ffprobe.exe`` locations from winget and manual installs.
+
+    riplex installs FFmpeg via ``winget install Gyan.FFmpeg``, which is a
+    portable package: winget drops a shim under ``WinGet\\Links`` and unpacks
+    the payload under ``WinGet\\Packages\\Gyan.FFmpeg*\\...\\bin``. Neither is on
+    PATH in the current process right after install, so check them directly.
+    """
+    candidates: list[Path] = []
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        winget = Path(local_appdata) / "Microsoft" / "WinGet"
+        candidates.append(winget / "Links" / "ffprobe.exe")
+        packages = winget / "Packages"
+        if packages.is_dir():
+            candidates.extend(packages.glob("Gyan.FFmpeg*/**/bin/ffprobe.exe"))
+    # Common manual install spots
+    candidates.append(Path(r"C:\ffmpeg\bin\ffprobe.exe"))
+    candidates.append(Path(r"C:\Program Files\ffmpeg\bin\ffprobe.exe"))
+    return candidates
+
+
 def find_ffprobe() -> str | None:
     """Locate the ffprobe executable.
 
     Checks PATH first, then ``~/.riplex/bin/``, ``/usr/local/bin/``,
-    and ``/opt/homebrew/bin/``.  Returns the path string or *None*.
+    and ``/opt/homebrew/bin/``.  On Windows, also checks the winget
+    portable install locations (the ``WinGet\\Links`` shim and the
+    ``WinGet\\Packages\\Gyan.FFmpeg*`` payload) and common manual install
+    folders.  Returns the path string or *None*.
     """
     path = shutil.which("ffprobe")
     if path:
         return path
-    for candidate in _FFPROBE_SEARCH_PATHS:
+    candidates = list(_FFPROBE_SEARCH_PATHS)
+    if platform.system() == "Windows":
+        candidates.extend(_windows_ffprobe_candidates())
+    for candidate in candidates:
         if candidate.is_file():
             return str(candidate)
     return None
