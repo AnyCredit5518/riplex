@@ -34,6 +34,9 @@ class DiscOverviewScreen:
         year = tmdb_match.year or 0 if tmdb_match else 0
         release_name = release.name if release else ""
 
+        if not dvdcompare_discs:
+            return self._build_empty_state(match_label=self._match_label(canonical, year))
+
         # Detect currently inserted disc
         from riplex.disc.provider import detect_disc_number
         inserted_disc = None
@@ -123,9 +126,7 @@ class DiscOverviewScreen:
         for cb in self.checkboxes:
             cb.on_change = self._update_summary
 
-        # Title display
-        year_str = f" ({year})" if year else ""
-        match_label = f"{canonical}{year_str}"
+        match_label = self._match_label(canonical, year)
 
         # Resume info
         resume_info = ft.Container()
@@ -181,6 +182,46 @@ class DiscOverviewScreen:
             spacing=10,
             expand=True,
         )
+
+    def _match_label(self, canonical: str, year: int) -> str:
+        year_str = f" ({year})" if year else ""
+        return f"{canonical}{year_str}"
+
+    def _build_empty_state(self, *, match_label: str) -> ft.Control:
+        """Show a recoverable state when orchestrate has no disc structure."""
+        return ft.Column(
+            [
+                ft.Text("Disc Overview", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(match_label, size=14, color=ft.Colors.GREY_400),
+                ft.Text(
+                    "No usable dvdcompare disc structure is selected for this title. "
+                    "Pick a different dvdcompare result, or continue with duration-only "
+                    "single-disc selection.",
+                    size=13,
+                    color=ft.Colors.ORANGE,
+                ),
+                ft.Container(expand=True),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
+                    ft.ElevatedButton(
+                        "Continue without",
+                        icon=ft.Icons.ARROW_FORWARD,
+                        on_click=self._continue_without_dvdcompare,
+                    ),
+                ]),
+            ],
+            spacing=10,
+            expand=True,
+        )
+
+    def _continue_without_dvdcompare(self, _e):
+        """Proceed with a single-disc duration-only rip when no release data exists."""
+        self.app.state["dvdcompare_discs"] = []
+        self.app.state["_orchestrate_disc_number"] = 1
+        self.app.state["disc_queue"] = [1]
+        self.app.state["current_disc_idx"] = 0
+        self.app.state["all_rip_results"] = {}
+        self.app.navigate("selection")
 
     def _update_summary(self, e):
         """Update summary when checkboxes change."""

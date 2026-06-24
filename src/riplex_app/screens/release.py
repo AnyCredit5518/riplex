@@ -514,12 +514,29 @@ class ReleaseScreen:
 
     def _use_release(self, release):
         """Convert a dvdcompare release to PlannedDiscs and navigate."""
-        self.app.state["release"] = release
         try:
             discs = _convert_release(release)
-            self.app.state["dvdcompare_discs"] = discs
-        except Exception:
+        except Exception as exc:
+            self.app.state["release"] = None
             self.app.state["dvdcompare_discs"] = []
+            self.app.state["_dvdcompare_error"] = (
+                f"Could not read disc data from the selected dvdcompare release: {exc}"
+            )
+            self.app.navigate("release")
+            return
+
+        if not discs:
+            self.app.state["release"] = None
+            self.app.state["dvdcompare_discs"] = []
+            self.app.state["_dvdcompare_error"] = (
+                "The selected dvdcompare release did not contain usable disc data. "
+                "Try a different search title or continue without disc structure data."
+            )
+            self.app.navigate("release")
+            return
+
+        self.app.state["release"] = release
+        self.app.state["dvdcompare_discs"] = discs
         self.app.navigate(self._next_screen)
 
     def _score_releases(self, releases) -> int:

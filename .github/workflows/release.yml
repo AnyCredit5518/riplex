@@ -25,6 +25,10 @@ jobs:
           pip install -e ".[gui]"
           pip install flet-desktop pyinstaller
 
+      - name: Cache Flet desktop runtime
+        run: |
+          python -c "import flet_desktop; flet_desktop.ensure_client_cached()"
+
       - name: Build CLI executable
         run: |
           pyinstaller --name riplex --onefile --console ^
@@ -33,12 +37,15 @@ jobs:
             --hidden-import riplex_cli.commands.organize ^
             --hidden-import riplex_cli.commands.lookup ^
             --hidden-import riplex_cli.commands.setup ^
+            --hidden-import certifi ^
+            --collect-data certifi ^
             --collect-data dvdcompare_scraper ^
             src/riplex_cli/main.py
         shell: cmd
 
       - name: Build GUI executable
         run: |
+          for /f "delims=" %%i in ('python -c "import flet_desktop; print(flet_desktop.ensure_client_cached())"') do set FLET_CLIENT_CACHE=%%i
           pyinstaller --name riplex-ui --onefile --windowed ^
             --hidden-import riplex_app.screens.welcome ^
             --hidden-import riplex_app.screens.disc_detection ^
@@ -54,9 +61,12 @@ jobs:
             --hidden-import riplex_app.screens.disc_overview ^
             --hidden-import riplex_app.screens.disc_swap ^
             --hidden-import riplex_app.screens.update ^
+            --hidden-import certifi ^
             --collect-all flet ^
             --collect-all flet_desktop ^
+            --collect-data certifi ^
             --collect-data dvdcompare_scraper ^
+            --add-data "%FLET_CLIENT_CACHE%\flet;flet_client" ^
             src/riplex_app/main.py
         shell: cmd
 
@@ -88,6 +98,10 @@ jobs:
           pip install -e ".[gui]"
           pip install flet-desktop pyinstaller
 
+      - name: Cache Flet desktop runtime
+        run: |
+          python -c "import flet_desktop; flet_desktop.ensure_client_cached()"
+
       - name: Build CLI executable
         run: |
           pyinstaller --name riplex --onefile --console \
@@ -96,11 +110,14 @@ jobs:
             --hidden-import riplex_cli.commands.organize \
             --hidden-import riplex_cli.commands.lookup \
             --hidden-import riplex_cli.commands.setup \
+            --hidden-import certifi \
+            --collect-data certifi \
             --collect-data dvdcompare_scraper \
             src/riplex_cli/main.py
 
       - name: Build GUI app bundle
         run: |
+          FLET_CLIENT_CACHE="$(python -c 'import flet_desktop; print(flet_desktop.ensure_client_cached())')"
           pyinstaller --name riplex-ui --onedir --windowed \
             --hidden-import riplex_app.screens.welcome \
             --hidden-import riplex_app.screens.disc_detection \
@@ -116,9 +133,12 @@ jobs:
             --hidden-import riplex_app.screens.disc_overview \
             --hidden-import riplex_app.screens.disc_swap \
             --hidden-import riplex_app.screens.update \
+            --hidden-import certifi \
             --collect-all flet \
             --collect-all flet_desktop \
+            --collect-data certifi \
             --collect-data dvdcompare_scraper \
+            --add-data "$FLET_CLIENT_CACHE:flet_client" \
             src/riplex_app/main.py
 
       - name: Package macOS artifacts

@@ -1,6 +1,7 @@
 """Riplex GUI - Flet-based companion app for riplex."""
 
 import logging
+import os
 import sys
 import threading
 import traceback as tb_module
@@ -310,7 +311,55 @@ def _parse_exception_summary(traceback_text: str) -> tuple[str, str]:
     return last_line or "Exception", ""
 
 
+def _configure_tls_certificates(env=None):
+    """Point urllib/ssl at certifi before Flet's first-launch download."""
+    if env is None:
+        env = os.environ
+    try:
+        import certifi
+    except Exception:  # pragma: no cover - certifi is an explicit dependency.
+        return None
+
+    cert_path = certifi.where()
+    env.setdefault("SSL_CERT_FILE", cert_path)
+    env.setdefault("REQUESTS_CA_BUNDLE", cert_path)
+    return cert_path
+
+
+def _configure_flet_view_path(env=None, bundle_root=None, platform=None):
+    """Point Flet at a bundled desktop client when one is packaged."""
+    if env is None:
+        env = os.environ
+    if env.get("FLET_VIEW_PATH"):
+        return env["FLET_VIEW_PATH"]
+
+    if bundle_root is None:
+        bundle_root = getattr(sys, "_MEIPASS", None)
+    if not bundle_root:
+        return None
+
+    if platform is None:
+        platform = sys.platform
+
+    client_dir = Path(bundle_root) / "flet_client"
+    if platform.startswith("win"):
+        ready = (client_dir / "flet.exe").is_file()
+    elif platform == "darwin":
+        ready = any(client_dir.glob("*.app"))
+    else:
+        ready = (client_dir / "flet").is_file()
+
+    if not ready:
+        return None
+
+    env["FLET_VIEW_PATH"] = str(client_dir)
+    return str(client_dir)
+
+
 def main():
+    _configure_tls_certificates()
+    _configure_flet_view_path()
+
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",

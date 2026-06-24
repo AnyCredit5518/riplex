@@ -34,7 +34,7 @@ https://github.com/AnyCredit5518/riplex/issues/new?template=bug_report.yml
 Files you may find here:
   riplex-rip.snapshot.json   - Disc info, metadata, and title classifications
   riplex-scan.snapshot.json  - Scanned file metadata (durations, streams, etc.)
-  riplex-rip.manifest.json   - Map of ripped title indexes to output filenames
+    riplex-rip.manifest.json   - Map of selected/ripped title indexes to output filenames
   riplex.log                 - Debug log from the most recent session
 """
 
@@ -121,6 +121,8 @@ def save_rip_snapshot(
     discs: list | None = None,
     ripped_titles: list[int] | None = None,
     selected_titles: list[int] | None = None,
+    rippable_titles: list[int] | None = None,
+    classifications: dict[int, str] | None = None,
     phase: str = "complete",
 ) -> Path | None:
     """Write ``riplex-rip.snapshot.json`` into *debug_dir*.
@@ -132,16 +134,31 @@ def save_rip_snapshot(
     Returns the path on success, or ``None`` on failure.
     """
     try:
+        selected_set = set(selected_titles or [])
+        rippable_set = set(rippable_titles or [])
+        classifications = classifications or {}
         data = {
             "disc_name": disc_info.disc_name,
             "title_count": len(disc_info.titles),
             "titles": [
                 {
                     "index": t.index,
+                    "name": getattr(t, "name", ""),
                     "duration_seconds": t.duration_seconds,
                     "resolution": t.resolution,
                     "size_bytes": t.size_bytes,
                     "chapters": getattr(t, "chapter_count", t.chapters if hasattr(t, "chapters") else None),
+                    "filename": getattr(t, "filename", ""),
+                    "playlist": getattr(t, "playlist", ""),
+                    "video_codec": getattr(t, "video_codec", ""),
+                    "audio_tracks": list(getattr(t, "audio_tracks", []) or []),
+                    "subtitle_tracks": list(getattr(t, "subtitle_tracks", []) or []),
+                    "stream_count": getattr(t, "stream_count", 0),
+                    "segment_count": getattr(t, "segment_count", 1),
+                    "segment_map": getattr(t, "segment_map", ""),
+                    "classification": classifications.get(t.index, ""),
+                    "recommended": t.index in rippable_set,
+                    "selected": t.index in selected_set,
                 }
                 for t in disc_info.titles
             ],
@@ -157,14 +174,32 @@ def save_rip_snapshot(
                 "discs": [
                     {
                         "number": d.number,
+                        "format": getattr(d, "disc_format", ""),
+                        "is_film": getattr(d, "is_film", False),
                         "episode_count": len(d.episodes),
                         "extra_count": len(d.extras),
+                        "episodes": [
+                            {
+                                "title": e.title,
+                                "runtime_seconds": e.runtime_seconds,
+                            }
+                            for e in getattr(d, "episodes", [])
+                        ],
+                        "extras": [
+                            {
+                                "title": e.title,
+                                "runtime_seconds": e.runtime_seconds,
+                                "feature_type": getattr(e, "feature_type", ""),
+                            }
+                            for e in getattr(d, "extras", [])
+                        ],
                     }
                     for d in (discs or [])
                 ],
             },
             "phase": phase,
             "selected_titles": selected_titles or [],
+            "rippable_titles": rippable_titles or [],
             "ripped_titles": ripped_titles or [],
         }
         snapshot = _v2_envelope("rip", data)

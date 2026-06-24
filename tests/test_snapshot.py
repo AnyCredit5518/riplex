@@ -344,6 +344,43 @@ class TestSaveRipSnapshot:
         result = save_rip_snapshot(debug_dir, _make_disc_info())
         assert result.name == "riplex-rip.snapshot.json"
 
+    def test_includes_selection_debug_fields(self, tmp_path):
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        disc_info = _make_disc_info()
+        title = disc_info.titles[0]
+        title.filename = "title_t00.mkv"
+        title.playlist = "00800.mpls"
+        title.video_codec = "MpegH"
+        title.audio_tracks = ["English TrueHD 7.1", "English AC-3 5.1"]
+        title.subtitle_tracks = ["English", "Spanish"]
+        title.stream_count = 12
+        title.segment_count = 3
+        title.segment_map = "501,502,503"
+
+        result = save_rip_snapshot(
+            debug_dir, disc_info,
+            selected_titles=[0],
+            rippable_titles=[0, 1],
+            classifications={0: "MAIN FILM (4K)", 1: "Trailer (1080p)"},
+            phase="selection",
+        )
+
+        data = json.loads(result.read_text(encoding="utf-8"))
+        saved = data["data"]["titles"][0]
+        assert data["data"]["phase"] == "selection"
+        assert saved["filename"] == "title_t00.mkv"
+        assert saved["playlist"] == "00800.mpls"
+        assert saved["video_codec"] == "MpegH"
+        assert saved["audio_tracks"] == ["English TrueHD 7.1", "English AC-3 5.1"]
+        assert saved["subtitle_tracks"] == ["English", "Spanish"]
+        assert saved["stream_count"] == 12
+        assert saved["segment_count"] == 3
+        assert saved["segment_map"] == "501,502,503"
+        assert saved["classification"] == "MAIN FILM (4K)"
+        assert saved["recommended"] is True
+        assert saved["selected"] is True
+
 
 class TestSaveRipManifest:
     def test_writes_valid_json(self, tmp_path):

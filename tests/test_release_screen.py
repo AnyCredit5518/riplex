@@ -1,6 +1,10 @@
 from riplex_app.screens.release import ReleaseScreen
 
 
+class _Release:
+    name = "Empty Release"
+
+
 class _App:
     def __init__(self, state):
         self.state = state
@@ -38,3 +42,31 @@ class TestReleaseSkipRouting:
         assert app.state["current_disc_idx"] == 0
         assert app.state["all_rip_results"] == {}
         assert app.navigated_to == "selection"
+
+    def test_empty_converted_release_stays_on_release_screen(self, monkeypatch):
+        app = _App({"workflow": "orchestrate"})
+        screen = ReleaseScreen(app)
+        monkeypatch.setattr("riplex_app.screens.release._convert_release", lambda _release: [])
+
+        screen._use_release(_Release())
+
+        assert app.state["release"] is None
+        assert app.state["dvdcompare_discs"] == []
+        assert "did not contain usable disc data" in app.state["_dvdcompare_error"]
+        assert app.navigated_to == "release"
+
+    def test_failed_release_conversion_stays_on_release_screen(self, monkeypatch):
+        app = _App({"workflow": "orchestrate"})
+        screen = ReleaseScreen(app)
+
+        def fail(_release):
+            raise ValueError("bad release")
+
+        monkeypatch.setattr("riplex_app.screens.release._convert_release", fail)
+
+        screen._use_release(_Release())
+
+        assert app.state["release"] is None
+        assert app.state["dvdcompare_discs"] == []
+        assert "bad release" in app.state["_dvdcompare_error"]
+        assert app.navigated_to == "release"

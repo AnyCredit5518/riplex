@@ -72,6 +72,9 @@ class SelectionScreen:
                      marker, t.index, format_seconds(t.duration_seconds),
                      t.size_bytes/(1024**3), t.resolution, classifications[t.index])
 
+        recommended_titles = [t.index for t in analysis.rippable_titles]
+        debug_dir = self._save_selection_snapshot(recommended_titles, phase="selection")
+
         self.checkboxes = []
         title_rows = []
 
@@ -187,6 +190,11 @@ class SelectionScreen:
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
+                ft.Text(
+                    f"Debug files: {debug_dir}",
+                    size=12,
+                    color=ft.Colors.GREY_600,
+                ) if debug_dir else ft.Container(),
                 ft.Divider(height=20),
                 header,
                 ft.Column(title_rows, spacing=4, scroll=ft.ScrollMode.AUTO, expand=True),
@@ -220,40 +228,47 @@ class SelectionScreen:
 
         self.app.state["selected_titles"] = selected
 
-        # Build output directory
+        output_dir = self._build_output_dir()
+        self.app.state["output_dir"] = output_dir
+
+        # Save early snapshot at selection phase (before rip starts)
+        self._save_selection_snapshot(selected, phase="selection")
+
+        self.app.navigate("progress")
+
+    def _build_output_dir(self):
+        """Build the per-disc rip output directory for the current selection."""
         tmdb_match = self.app.state["tmdb_match"]
         if tmdb_match:
             from riplex.manifest import build_rip_path
 
             disc_num = self._analysis.disc_number if hasattr(self, "_analysis") else None
-            output_dir = build_rip_path(tmdb_match.title, tmdb_match.year or 0, disc_number=disc_num)
-        else:
-            from pathlib import Path
-            rip_output = get_rip_output()
-            output_dir = Path(rip_output) / self.app.state["title"]
+            return build_rip_path(tmdb_match.title, tmdb_match.year or 0, disc_number=disc_num)
 
-        self.app.state["output_dir"] = output_dir
+        from pathlib import Path
 
-        # Save early snapshot at selection phase (before rip starts)
-        self._save_selection_snapshot(selected)
+        rip_output = get_rip_output()
+        return Path(rip_output) / self.app.state["title"]
 
-        self.app.navigate("progress")
+    def _debug_root_for_output_dir(self, output_dir):
+        """Return the title-level root whose ``_riplex`` folder holds debug files."""
+        if output_dir.name.lower().startswith("disc "):
+            return output_dir.parent
+        return output_dir
 
-    def _save_selection_snapshot(self, selected_titles: list[int]):
+    def _save_selection_snapshot(self, selected_titles: list[int], *, phase: str):
         """Save snapshot with disc info and metadata before rip starts."""
         from pathlib import Path
-        from riplex.snapshot import get_debug_dir, save_rip_snapshot
-
-        output_dir = self.app.state.get("output_dir")
-        if not output_dir:
-            return
+        from riplex.snapshot import get_debug_dir, save_rip_manifest, save_rip_snapshot
 
         try:
-            debug_dir = get_debug_dir(Path(output_dir).parent)
+            output_dir = Path(self.app.state.get("output_dir") or self._build_output_dir())
+            debug_dir = get_debug_dir(self._debug_root_for_output_dir(output_dir))
             disc_info = self.app.state.get("disc_info")
             tmdb_match = self.app.state.get("tmdb_match")
             discs = self.app.state.get("dvdcompare_discs", [])
             release = self.app.state.get("release")
+            analysis = getattr(self, "_analysis", None)
 
             canonical = tmdb_match.title if tmdb_match else ""
             year = tmdb_match.year if tmdb_match else None
@@ -267,9 +282,69 @@ class SelectionScreen:
                 release_name=release.name if release else "",
                 discs=discs,
                 selected_titles=selected_titles,
-                phase="selection",
+                rippable_titles=[t.index for t in analysis.rippable_titles] if analysis else [],
+                classifications=analysis.classifications if analysis else {},
+                phase=phase,
+            )
+            save_rip_manifest(
+                debug_dir,
+                self._build_selection_manifest(
+                    disc_info=disc_info,
+                    canonical=canonical,
+                    year=year,
+                    is_movie=is_movie,
+                    release_name=release.name if release else "",
+                    selected_titles=selected_titles,
+                    analysis=analysis,
+                ),
             )
             self.app.state["debug_dir"] = str(debug_dir)
             log.info("Wrote selection snapshot to %s", debug_dir)
+            return str(debug_dir)
         except Exception as exc:
             log.warning("Failed to write selection snapshot: %s", exc)
+            return ""
+
+    def _build_selection_manifest(
+        self,
+        *,
+        disc_info,
+        canonical: str,
+        year: int | None,
+        is_movie: bool,
+        release_name: str,
+        selected_titles: list[int],
+        analysis,
+    ) -> dict:
+        """Build a debug-only manifest from the current selection table."""
+        selected_set = set(selected_titles)
+        rippable_set = {t.index for t in analysis.rippable_titles} if analysis else set()
+        classifications = analysis.classifications if analysis else {}
+        return {
+            "phase": "selection",
+            "title": canonical,
+            "year": year,
+            "type": "movie" if is_movie else "tv",
+            "disc_number": analysis.disc_number if analysis else None,
+            "disc_label": disc_info.disc_name if disc_info else "",
+            "release": release_name,
+            "files": [
+                {
+                    "filename": t.filename,
+                    "title_index": t.index,
+                    "duration": t.duration_seconds,
+                    "resolution": t.resolution,
+                    "size_bytes": t.size_bytes,
+                    "classification": classifications.get(t.index, ""),
+                    "recommended": t.index in rippable_set,
+                    "selected": t.index in selected_set,
+                    "playlist": t.playlist,
+                    "segment_count": t.segment_count,
+                    "segment_map": t.segment_map,
+                    "stream_count": t.stream_count,
+                    "audio_tracks": list(t.audio_tracks or []),
+                    "subtitle_tracks": list(t.subtitle_tracks or []),
+                }
+                for t in (disc_info.titles if disc_info else [])
+            ],
+        }
