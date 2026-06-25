@@ -107,7 +107,8 @@ jobs:
       - name: Cache and repair Flet desktop runtime
         run: |
           set -e
-          FLET_CLIENT_CACHE="$(python -c 'import flet_desktop; print(flet_desktop.ensure_client_cached())')"
+          python -c 'import flet_desktop; flet_desktop.ensure_client_cached()' >/dev/null
+          FLET_CLIENT_CACHE="$(python -c 'import flet_desktop; print(flet_desktop.ensure_client_cached())' | tail -n 1)"
           echo "FLET_CLIENT_CACHE=$FLET_CLIENT_CACHE" >> "$GITHUB_ENV"
           FLET_APP="$FLET_CLIENT_CACHE/Flet.app"
           echo "Repairing framework bundles under: $FLET_APP"
