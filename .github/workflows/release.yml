@@ -23,7 +23,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install flet-desktop pyinstaller
+          # Keep flet-desktop in lockstep with the flet pin in pyproject
+          # (==0.85.1).  The 0.85.3 macOS runtime ships a malformed
+          # objective_c.framework that breaks codesign (see issue #21).
+          pip install "flet-desktop==0.85.1" pyinstaller
 
       - name: Cache Flet desktop runtime
         run: |
@@ -96,7 +99,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install flet-desktop pyinstaller
+          # Keep flet-desktop in lockstep with the flet pin in pyproject
+          # (==0.85.1).  The 0.85.3 macOS runtime ships a malformed
+          # objective_c.framework that breaks codesign (see issue #21).
+          pip install "flet-desktop==0.85.1" pyinstaller
 
       - name: Cache Flet desktop runtime
         run: |
