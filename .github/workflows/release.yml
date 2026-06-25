@@ -86,7 +86,14 @@ jobs:
           path: release/
 
   build-macos:
-    runs-on: macos-14
+    # Build on Intel (x86_64).  The arm64 runners (macos-14) force
+    # PyInstaller to ad-hoc re-sign every collected binary, and newer
+    # codesign rejects Flet's malformed nested objective_c.framework
+    # ("bundle format unrecognized") -- breaking the build.  On x86_64
+    # PyInstaller does not force that re-signing, so the failing step is
+    # skipped.  The resulting app is x86_64 (runs via Rosetta 2 on Apple
+    # Silicon).  See issue #21.
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
         with:
