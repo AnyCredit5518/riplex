@@ -23,7 +23,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install flet-desktop pyinstaller
+          # Keep flet-desktop in lockstep with the flet pin in pyproject
+          # (==0.85.1).  The 0.85.3 macOS runtime ships a malformed
+          # objective_c.framework that breaks codesign (see issue #21).
+          pip install "flet-desktop==0.85.1" pyinstaller
 
       - name: Cache Flet desktop runtime
         run: |
@@ -96,11 +99,18 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[gui]"
-          pip install flet-desktop pyinstaller
+          # Keep flet-desktop in lockstep with the flet pin in pyproject
+          # (==0.85.1).  The 0.85.3 macOS runtime ships a malformed
+          # objective_c.framework that breaks codesign (see issue #21).
+          pip install "flet-desktop==0.85.1" pyinstaller
 
-      - name: Cache Flet desktop runtime
+      - name: Download Flet desktop runtime archive
         run: |
-          python -c "import flet_desktop; flet_desktop.ensure_client_cached()"
+          set -e
+          FLET_VERSION="$(python -c 'import flet_desktop.version; print(flet_desktop.version.version)')"
+          FLET_CLIENT_ARCHIVE="$RUNNER_TEMP/flet-macos.tar.gz"
+          curl -L "https://github.com/flet-dev/flet/releases/download/v${FLET_VERSION}/flet-macos.tar.gz" -o "$FLET_CLIENT_ARCHIVE"
+          echo "FLET_CLIENT_ARCHIVE=$FLET_CLIENT_ARCHIVE" >> "$GITHUB_ENV"
 
       - name: Build CLI executable
         run: |
@@ -117,7 +127,6 @@ jobs:
 
       - name: Build GUI app bundle
         run: |
-          FLET_CLIENT_CACHE="$(python -c 'import flet_desktop; print(flet_desktop.ensure_client_cached())')"
           pyinstaller --name riplex-ui --onedir --windowed \
             --hidden-import riplex_app.screens.welcome \
             --hidden-import riplex_app.screens.disc_detection \
@@ -138,14 +147,17 @@ jobs:
             --collect-all flet_desktop \
             --collect-data certifi \
             --collect-data dvdcompare_scraper \
-            --add-data "$FLET_CLIENT_CACHE:flet_client" \
+            --add-data "$FLET_CLIENT_ARCHIVE:flet_desktop/app" \
             src/riplex_app/main.py
 
       - name: Package macOS artifacts
         run: |
           mkdir -p release
           cp dist/riplex release/riplex-macos
-          cd dist && zip -r ../release/riplex-ui-macos.zip riplex-ui.app
+          # -y preserves symlinks (including the .framework Versions/Current
+          # links). Without it, zip flattens those symlinks into duplicate
+          # files and the unpacked .app crashes on launch (issue #21).
+          cd dist && zip -r -y ../release/riplex-ui-macos.zip riplex-ui.app
 
       - uses: actions/upload-artifact@v4
         with:

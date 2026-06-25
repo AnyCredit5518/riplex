@@ -23,13 +23,19 @@ dev = [
     "respx>=0.21",
 ]
 gui = [
-    # Pin to a tested Flet range.  We've verified 0.84 and 0.85 both work
+    # Pin Flet to an exact version.  We've verified 0.84 and 0.85 both work
     # with the GUI's current API usage (``ft.Border.all``,
     # ``page.show_dialog``).  An open upper bound risked picking up
-    # breaking renames silently (see issue #12); cap at the next minor
-    # bump so a future Flet release can't break ``pip install`` for
-    # everyone the moment it lands on PyPI.
-    "flet>=0.84,<0.86",
+    # breaking renames silently (see issue #12).
+    #
+    # We pin to ``==0.85.1`` specifically because the prebuilt macOS desktop
+    # runtime that ships with 0.85.3 (``flet-desktop-full-0.85.3``, downloaded
+    # from Flet's CDN at build time) has a malformed nested
+    # ``objective_c.framework`` whose code signature newer macOS ``codesign``
+    # rejects.  That broke the PyInstaller macOS build (release workflow) and
+    # produced a GUI bundle that crashes on launch (issue #21).  Keep
+    # ``flet`` and ``flet-desktop`` in lockstep at this version.
+    "flet==0.85.1",
     # tkinter is also required for the folder picker buttons but cannot be
     # installed via pip — it is part of Python's standard library and must be
     # installed at the OS level:
