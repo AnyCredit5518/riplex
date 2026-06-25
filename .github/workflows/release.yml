@@ -86,14 +86,7 @@ jobs:
           path: release/
 
   build-macos:
-    # Build on Intel (x86_64).  The arm64 runners (macos-14) force
-    # PyInstaller to ad-hoc re-sign every collected binary, and newer
-    # codesign rejects Flet's malformed nested objective_c.framework
-    # ("bundle format unrecognized") -- breaking the build.  On x86_64
-    # PyInstaller does not force that re-signing, so the failing step is
-    # skipped.  The resulting app is x86_64 (runs via Rosetta 2 on Apple
-    # Silicon).  See issue #21.
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,9 +104,41 @@ jobs:
           # objective_c.framework that breaks codesign (see issue #21).
           pip install "flet-desktop==0.85.1" pyinstaller
 
-      - name: Cache Flet desktop runtime
+      - name: Cache and repair Flet desktop runtime
         run: |
-          python -c "import flet_desktop; flet_desktop.ensure_client_cached()"
+          set -e
+          FLET_CLIENT_CACHE="$(python -c 'import flet_desktop; print(flet_desktop.ensure_client_cached())')"
+          echo "FLET_CLIENT_CACHE=$FLET_CLIENT_CACHE" >> "$GITHUB_ENV"
+          FLET_APP="$FLET_CLIENT_CACHE/Flet.app"
+          echo "Repairing framework bundles under: $FLET_APP"
+          # The cached Flet desktop runtime ships .framework bundles whose
+          # Versions/Current (and top-level) symlinks are missing/broken.
+          # Newer macOS codesign rejects such bundles ("bundle format
+          # unrecognized, invalid, or unsuitable"), which makes PyInstaller's
+          # forced ad-hoc signing on arm64 fail at the COLLECT stage (the
+          # objective_c.framework subcomponent).  Recreate the required
+          # framework symlinks before the build so codesign accepts them.
+          # This mirrors Flet's own "clean up loose frameworks" fix that
+          # lives in `flet pack`/`flet build` but not in raw PyInstaller use.
+          repair_fw() {
+            fw="$1"
+            name="$(basename "$fw" .framework)"
+            vers="$fw/Versions"
+            [ -d "$vers" ] || return 0
+            verdir="$(ls -1 "$vers" | grep -v '^Current$' | head -n1)"
+            [ -n "$verdir" ] || return 0
+            ( cd "$vers" && ln -sfh "$verdir" Current )
+            [ -e "$vers/Current/$name" ] && ( cd "$fw" && ln -sfh "Versions/Current/$name" "$name" )
+            [ -e "$vers/Current/Resources" ] && ( cd "$fw" && ln -sfh "Versions/Current/Resources" Resources )
+            return 0
+          }
+          while IFS= read -r fw; do repair_fw "$fw"; done < <(find "$FLET_APP" -name '*.framework' -type d)
+          # Clear extended attributes and junk files that also upset codesign.
+          xattr -cr "$FLET_APP" || true
+          find "$FLET_APP" -name '.DS_Store' -delete || true
+          # Re-sign each repaired framework ad-hoc so the structure is proven
+          # valid before PyInstaller collects and re-signs it.
+          find "$FLET_APP" -name '*.framework' -type d -exec codesign --force --sign - {} + || true
 
       - name: Build CLI executable
         run: |
@@ -158,7 +183,10 @@ jobs:
         run: |
           mkdir -p release
           cp dist/riplex release/riplex-macos
-          cd dist && zip -r ../release/riplex-ui-macos.zip riplex-ui.app
+          # -y preserves symlinks (including the .framework Versions/Current
+          # links). Without it, zip flattens those symlinks into duplicate
+          # files and the unpacked .app crashes on launch (issue #21).
+          cd dist && zip -r -y ../release/riplex-ui-macos.zip riplex-ui.app
 
       - uses: actions/upload-artifact@v4
         with:
