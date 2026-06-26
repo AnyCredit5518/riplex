@@ -21,54 +21,83 @@ riplex eliminates the manual work after MakeMKV dumps raw MKV files from a physi
 ```
 src/
   riplex/              # Shared library (all business logic)
-    cli.py             # Backward-compatible shim (re-exports from riplex_cli.main)
-    config.py          # Config loading (~/.config/riplex/config.toml or platform equivalent)
+    config.py          # Config loading (platform config dir via platformdirs)
     models.py          # Data models (ScannedFile, PlannedDisc, PlannedMovie, PlannedShow, etc.)
-    orchestrate.py     # Shared pipeline logic reusable by CLI and GUI
-    metadata_provider.py  # Abstract metadata provider interface
-    metadata_sources/
-      tmdb.py          # TMDb API implementation
-    disc_provider.py   # dvdcompare.net bridge (lookup_discs, find_film, _convert_release)
-    disc_analysis.py   # Live disc title classification (classify_title, is_skip_title, build_dvd_entries)
-    makemkv.py         # makemkvcon wrapper (drive scanning, disc reading, ripping, progress parsing)
-    scanner.py         # MKV folder scanner (ffprobe metadata extraction)
+    lookup.py          # Shared lookup pipeline logic reusable by CLI and GUI
+    scanner.py         # MKV folder scanner (ffprobe metadata extraction; find_ffprobe tool detection)
     matcher.py         # Runtime-based file-to-entry matching with disc constraints
     organizer.py       # Plex destination path builder and file mover
-    planner.py         # TMDb metadata planning (builds PlannedMovie/PlannedShow)
     detect.py          # Format auto-detection, title grouping, incomplete file detection
     dedup.py           # Duplicate MKV detection (metadata fingerprint + perceptual hash)
     splitter.py        # Chapter-based MKV splitting via mkvmerge
     tagger.py          # MKV tagging (marks files as organized via mkvpropedit)
+    manifest.py        # Disc manifest / debug artifact handling
     cache.py           # File-based JSON cache with TTL
     normalize.py       # Title normalization
+    title.py           # Title model / parsing helpers
     formatter.py       # Text and JSON output formatting
-    snapshot.py        # Scan result serialization
+    snapshot.py        # Scan result serialization (offline replay)
+    updater.py         # App self-update version check
     ui.py              # Interactive prompts (prompt_choice, prompt_confirm, prompt_text, prompt_multi_select)
+    disc/              # Live disc subpackage
+      analysis.py      # Title classification (classify_title, is_skip_title, build_dvd_entries)
+      makemkv.py       # makemkvcon wrapper (drive scanning, disc reading, ripping, progress parsing)
+      provider.py      # dvdcompare.net bridge (lookup_discs, find_film, _convert_release)
+    metadata/          # Metadata subpackage
+      planner.py       # TMDb metadata planning (builds PlannedMovie/PlannedShow)
+      provider.py      # Abstract metadata provider interface
+      sources/
+        tmdb.py        # TMDb API implementation
   riplex_cli/          # CLI thin wrapper (argparse, command dispatch, terminal formatting)
-    main.py            # Full CLI implementation, entry point: main()
+    main.py            # Argparse setup + command dispatch, entry point: main()
+    formatting.py      # Terminal output formatting helpers
+    commands/          # One module per subcommand
+      orchestrate.py   # Full pipeline command
+      rip.py           # Single-disc rip command
+      organize.py      # Organize existing MKV folder command
+      lookup.py        # Preview disc contents command
+      setup.py         # Interactive config wizard command
   riplex_app/          # Flet GUI (wizard-style screens)
     main.py            # App entry point, screen navigation controller
+    bug_report.py      # Bug report bundling helper
+    crash_dump.py      # Crash dump capture
+    keep_awake.py      # Prevent system sleep during long rips
     screens/
-      welcome.py       # Config and tool verification
-      disc_detection.py  # Drive scanning, disc reading
-      metadata.py      # TMDb search and selection
-      release.py       # dvdcompare release picker
-      selection.py     # Title selection with classify_title
-      progress.py      # Rip progress with makemkvcon
-      done.py          # Results summary
+      welcome.py           # Config and tool verification
+      disc_detection.py    # Drive scanning, disc reading
+      disc_overview.py     # Multi-disc overview
+      disc_swap.py         # Disc swap prompt (multi-disc sets)
+      metadata.py          # TMDb search and selection
+      release.py           # dvdcompare release picker
+      selection.py         # Title selection with classify_title
+      progress.py          # Rip progress with makemkvcon
+      organize_preview.py  # Organize plan preview
+      organize_done.py     # Organize results summary
+      orchestrate_done.py  # Orchestrate results summary
+      done.py              # Rip results summary
+      update.py            # Self-update screen
+      folder_picker.py     # Folder browse dialog (tkinter)
 tests/
-  fixtures/            # makemkvcon output samples for parsing tests
+  fixtures/            # makemkvcon output samples + disc JSON fixtures
   snapshots/           # Serialized disc scan results for offline replay
   test_*.py            # One test file per module (test_matcher.py, test_disc_analysis.py, etc.)
 docs/
   architecture.md      # System design, data flow diagrams
   naming-rules.md      # Plex naming conventions
   changelog.md         # Documentation changelog (Keep a Changelog format)
+  troubleshooting.md   # Common problems and fixes
+  index.md             # Docs landing page
   getting-started/     # Installation, configuration
-  gui-guide/           # Desktop app walkthroughs
+  gui-guide/           # Desktop app walkthrough
   cli-guide/           # Command-by-command workflow guides
   reference/           # CLI reference
 ```
+
+Note: business logic lives in the `riplex` library. `riplex/disc/` and
+`riplex/metadata/` are proper subpackages (not flat `disc_analysis.py` /
+`metadata_sources/`). The CLI's per-command logic lives in
+`riplex_cli/commands/`. There is no `src/riplex/cli.py` or
+`src/riplex/orchestrate.py`.
 
 ## Commands
 
@@ -110,8 +139,14 @@ Do NOT use `py -m riplex` (errors — riplex is a library package). Do NOT use `
 
 - Python 3.11+ (use `py` command, never `python` or `python3`)
 - Async: httpx for HTTP, asyncio.run() from sync CLI entry points
-- Dependencies: httpx, dvdcompare-scraper, platformdirs
-- GUI: Flet 0.84+ (optional `[gui]` extra)
+- Dependencies: certifi, httpx, dvdcompare-scraper, platformdirs
+- GUI: Flet, pinned to `flet==0.85.1` in the `[gui]` extra. The pin is
+  intentional: the macOS desktop runtime in 0.85.3 ships a malformed nested
+  `objective_c.framework` that newer `codesign` rejects, which broke the macOS
+  release build and crashed the packaged GUI on launch (issue #21). Keep
+  `flet` and `flet-desktop` in lockstep at the same version.
+- Versioning: `setuptools-scm` derives the version from the latest `v*` git
+  tag (no hardcoded version in `pyproject.toml`).
 - External tools: makemkvcon, ffprobe, mkvmerge, mkvpropedit
 
 ## Debugging the GUI
@@ -167,12 +202,6 @@ Docs live in `docs/` and are referenced from README.md.
 - `docs/cli-guide/`: Command-by-command workflow walkthroughs
 - `docs/reference/cli.md`: Complete CLI option reference
 
-*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\gui-walkthrough.md
-*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\workflow.md
-*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\orchestrate.md
-*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\lookup.md
-*** Delete File: c:\Users\asher\Projects\anycredit5518\riplex\docs\guide\organize.md
-
 ### Documentation rules
 
 - When making significant changes (new features, renamed modules, changed behavior), update the relevant docs
@@ -197,11 +226,52 @@ Docs live in `docs/` and are referenced from README.md.
 - Dry-run by default: never move or delete files without explicit `--execute`
 - Config is shared between CLI and GUI (`~/.config/riplex/config.toml` or platform equivalent)
 
-## Current active work
+## Release workflow
 
-The monorepo refactor is complete. The repo contains three source packages:
+Releases are built by `.github/workflows/release.yml`.
+
+- Triggers: `push` of a `v*` tag, and manual `workflow_dispatch`.
+- Jobs: `build-windows` (windows-latest), `build-macos` (macos-14, arm64),
+  and `release` (ubuntu-latest).
+- The `release` job is gated on `if: startsWith(github.ref, 'refs/tags/v')`.
+  So a `workflow_dispatch` run on a branch or `main` runs ONLY the build jobs
+  and uploads artifacts — it does NOT create a user-facing release. This is
+  the safe way to validate packaging changes before tagging.
+- To cut a real release: push an annotated `v*` tag on `main`. The tag
+  annotation becomes the release header; `setuptools-scm` picks up the
+  version from the tag.
+- macOS GUI packaging: do NOT pass Flet's extracted `Flet.app` runtime to
+  PyInstaller. PyInstaller force-signs collected binaries on arm64 and
+  `codesign` rejects Flet's nested frameworks. Instead the workflow downloads
+  Flet's upstream `flet-macos.tar.gz` and bundles it under
+  `flet_desktop/app`; `flet_desktop.ensure_client_cached()` extracts it at
+  runtime. The macOS `.app` zip uses `zip -y` to preserve framework symlinks
+  (flattened symlinks crash the app on launch).
+- Debugging CI: `gh run view <id> --json status,conclusion,jobs`; for logs of
+  a still-running run, fetch a finished job directly with
+  `gh api repos/<owner>/<repo>/actions/jobs/<jobId>/logs`
+  (the `--log`/`--log-failed` flags refuse until the whole run completes).
+
+## Dependency and packaging cautions
+
+- A Flet runtime regression can surface as a riplex GUI launch crash even
+  when riplex's own code is unchanged — check the Flet/PyInstaller packaging
+  path before assuming an app-code bug.
+- `tkinter` (used by the GUI folder picker) is an OS-level dependency, not a
+  pip package: macOS Homebrew Python needs `brew install python-tk@3.12`.
+- On Windows, close `riplex-ui` before upgrading deps — the entry-point
+  `.exe` shim is locked while the process runs and pip fails with `WinError 32`.
+
+## Issue workflow
+
+- When fixing a GitHub issue, reference it in the commit and/or tag message.
+- After a tagged release ships, draft a user-facing comment that leads with
+  the reported symptom, gives a high-level cause and the fixed version, and
+  asks the reporter to retry (and reopen if still broken) before closing.
+
+## Source packages
+
+The repo contains three source packages:
 - `riplex` — shared library (all business logic)
 - `riplex_cli` — CLI thin wrapper
 - `riplex_app` — Flet GUI
-
-See `MONOREPO_PLAN.md` for background on the refactor.

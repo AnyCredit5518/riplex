@@ -105,3 +105,31 @@ All destructive commands (`rip`, `organize`, `orchestrate`) are dry-run by defau
 ## Testing
 
 Run tests with `pytest` (or `python -m pytest`) from the project root with the venv active. All tests must pass before committing.
+
+## Debugging the GUI
+
+The GUI writes detailed logs to `riplex_app.log` in the working directory
+(project root when launched from the repo). Check this file first when
+debugging GUI behavior. Do NOT try to capture the GUI's terminal output with
+a `2>&1` redirect — it breaks Flet's Flutter-Python IPC.
+
+## Releases and packaging
+
+Releases are produced by `.github/workflows/release.yml`.
+
+- A GitHub Release is created ONLY when a `v*` tag is pushed. The `release`
+  job is gated on `refs/tags/v*`.
+- `workflow_dispatch` on a branch or `main` runs only the build jobs and
+  uploads artifacts without publishing — use it to validate packaging changes
+  before tagging.
+- To release: push an annotated `v*` tag on `main`. `setuptools-scm` derives
+  the version from that tag (there is no version string in `pyproject.toml`).
+- macOS builds run on `macos-14` (arm64). The macOS GUI bundles Flet's
+  upstream `flet-macos.tar.gz` runtime archive (extracted at runtime) rather
+  than feeding the extracted `Flet.app` to PyInstaller, and zips the `.app`
+  with `zip -y` to preserve framework symlinks. Do not revert these without
+  understanding issue #21.
+- Keep `flet` and `flet-desktop` pinned to the same version. A Flet runtime
+  regression can present as a GUI launch crash even when riplex's own code is
+  unchanged.
+
