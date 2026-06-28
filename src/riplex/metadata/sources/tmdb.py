@@ -10,6 +10,7 @@ or passed directly to the constructor.
 from __future__ import annotations
 
 import os
+import re
 from typing import Literal
 
 import httpx
@@ -26,6 +27,47 @@ from riplex.metadata.provider import (
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 _TMDB_TTL_DAYS = 7
+
+
+def _normalize_for_match(text: str) -> str:
+    """Lowercase *text* and collapse runs of non-alphanumerics to spaces.
+
+    This makes punctuation-insensitive comparisons possible so that, e.g.,
+    ``"TRON: Legacy"`` and ``"Tron Legacy"`` compare equal.
+    """
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def _title_match_tier(query: str, title: str) -> int:
+    """Rank how well *title* matches the search *query* (higher is better).
+
+    TMDb's ``/search/movie`` and ``/search/tv`` endpoints return loosely
+    fuzzy matches: a search for ``"Tron"`` surfaces wildly popular but
+    unrelated shows like ``House of the Dragon``. Sorting the merged list by
+    raw popularity therefore buries the title the user actually searched for.
+    This tier ranks literal title overlap ahead of popularity so genuine
+    matches win, with popularity only breaking ties within a tier.
+
+    Tiers (high to low):
+      4 - exact title match
+      3 - title starts with the query (e.g. ``"TRON: Legacy"`` for ``"tron"``)
+      2 - query appears as a whole word/phrase inside the title
+      1 - query is a substring of the title
+      0 - no literal overlap (TMDb fuzzy match)
+    """
+    q = _normalize_for_match(query)
+    t = _normalize_for_match(title)
+    if not q or not t:
+        return 0
+    if t == q:
+        return 4
+    if t.startswith(q + " "):
+        return 3
+    if f" {q} " in f" {t} ":
+        return 2
+    if q in t:
+        return 1
+    return 0
 
 
 def _looks_like_read_access_token(key: str) -> bool:
@@ -105,18 +147,76 @@ class TmdbProvider(MetadataProvider):
         year: int | None = None,
         media_type: Literal["movie", "tv", "auto"] = "auto",
     ) -> list[MetadataSearchResult]:
-        results: list[MetadataSearchResult] = []
+        results: list[MetadataSearchResult]
 
-        if media_type in ("movie", "auto"):
-            results.extend(await self._search_movies(query, year))
+        if media_type == "auto" and year is None:
+            # No media-type or year constraint: use TMDb's /search/multi, the
+            # same endpoint the website's search box uses. It applies a
+            # server-side relevance score across movies and TV in one ranked
+            # list, which avoids the cross-endpoint merge problem (a single
+            # "movie" + "tv" merge has no shared score to order by).
+            results = await self._search_multi(query)
+        else:
+            # Explicit media type, or a year filter (which the dedicated
+            # endpoints support server-side but /search/multi does not).
+            results = []
+            if media_type in ("movie", "auto"):
+                results.extend(await self._search_movies(query, year))
+            if media_type in ("tv", "auto"):
+                results.extend(await self._search_tv(query, year))
 
-        if media_type in ("tv", "auto"):
-            results.extend(await self._search_tv(query, year))
-
-        # Sort by descending popularity (TMDb returns popularity-ordered, but
-        # we merged two lists).
-        results.sort(key=lambda r: r.popularity, reverse=True)
+        # Rank by literal title-match quality first, then popularity. TMDb's
+        # results are fuzzy (a "Tron" search returns unrelated high-popularity
+        # shows), so this keeps the title the user searched for on top while
+        # still using popularity to order within a tier. Applying it uniformly
+        # also gives a deterministic, offline-testable final ordering.
+        results.sort(
+            key=lambda r: (_title_match_tier(query, r.title), r.popularity),
+            reverse=True,
+        )
         return results
+
+    async def _search_multi(self, query: str) -> list[MetadataSearchResult]:
+        """Search movies and TV in one ranked list via /search/multi.
+
+        /search/multi also returns ``person`` and ``collection`` entities,
+        which have no single runtime or release year to match a ripped MKV
+        against. Those are filtered out; only ``movie`` and ``tv`` survive.
+        """
+        ck = cache.hash_key(f"multi|{query}")
+        data = await self._get_json("/search/multi", params={"query": query},
+                                    cache_ns="tmdb/search", cache_key=ck)
+        out: list[MetadataSearchResult] = []
+        for item in data.get("results", []):
+            mt = item.get("media_type")
+            if mt == "movie":
+                release = item.get("release_date", "") or ""
+                item_year = int(release[:4]) if len(release) >= 4 else None
+                out.append(
+                    MetadataSearchResult(
+                        source_id=f"movie:{item['id']}",
+                        title=item.get("title", ""),
+                        year=item_year,
+                        media_type="movie",
+                        overview=item.get("overview", ""),
+                        popularity=item.get("popularity", 0.0),
+                    )
+                )
+            elif mt == "tv":
+                air_date = item.get("first_air_date", "") or ""
+                item_year = int(air_date[:4]) if len(air_date) >= 4 else None
+                out.append(
+                    MetadataSearchResult(
+                        source_id=f"tv:{item['id']}",
+                        title=item.get("name", ""),
+                        year=item_year,
+                        media_type="tv",
+                        overview=item.get("overview", ""),
+                        popularity=item.get("popularity", 0.0),
+                    )
+                )
+            # person / collection entities are intentionally skipped.
+        return out
 
     async def _search_movies(
         self, query: str, year: int | None
