@@ -872,10 +872,16 @@ def detect_disc_number(
 ) -> int | None:
     """Auto-detect which dvdcompare disc number the physical disc corresponds to.
 
-    Tries three strategies:
+    Tries three strategies in order:
     1. Parse the volume label for a disc number (e.g. "FROZEN_PLANET_II_D2" -> 2)
-    2. Match live title durations against each dvdcompare disc's episodes and extras.
-    3. For movies, match by disc format/resolution.
+    2. For multi-format releases, match by disc format/resolution (4K vs Blu-ray).
+    3. Match live title durations against each dvdcompare disc's episodes and extras.
+
+    Strategy 2 runs before duration matching because a movie released across
+    several format discs (4K + Blu-ray + 3D) carries the *same* main feature on
+    every disc, so its runtime cannot distinguish them — and duration matching
+    can actively pick the wrong disc when one disc lacks listed runtimes. The
+    resolution is the only reliable distinguishing signal in that case.
 
     Returns the disc number (1-based) or None if detection fails.
     """
@@ -885,7 +891,13 @@ def detect_disc_number(
     if match:
         return int(match.group(1))
 
-    # Strategy 2: duration matching against dvdcompare discs
+    # Strategy 2: format/resolution match (authoritative for multi-format
+    # movie releases, where every disc shares the same main feature runtime).
+    format_disc = _match_disc_by_format(disc_info, dvdcompare_discs)
+    if format_disc is not None:
+        return format_disc
+
+    # Strategy 3: duration matching against dvdcompare discs
     if not dvdcompare_discs or not disc_info.titles:
         return None
 
@@ -936,7 +948,20 @@ def detect_disc_number(
     if best_score >= 0.5:
         return best_disc
 
-    # Strategy 3: for movies, match by disc format/resolution
+    return None
+
+
+def _match_disc_by_format(disc_info, dvdcompare_discs: list) -> int | None:
+    """Match the live disc to a dvdcompare disc by format/resolution.
+
+    Only returns a result when exactly one disc matches the live disc's
+    resolution, i.e. when the format is genuinely distinguishing (e.g. a single
+    4K disc among standard Blu-rays). Same-format multi-disc sets (TV box sets)
+    yield multiple candidates and fall through to duration matching.
+    """
+    if not dvdcompare_discs:
+        return None
+
     live_resolutions = {t.resolution for t in disc_info.titles if t.resolution}
     has_4k = any("2160" in r for r in live_resolutions)
     has_1080 = any("1080" in r for r in live_resolutions)
@@ -953,6 +978,7 @@ def detect_disc_number(
         return format_candidates[0]
 
     return None
+
 
 
 # ---------------------------------------------------------------------------

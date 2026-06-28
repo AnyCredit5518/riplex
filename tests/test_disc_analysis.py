@@ -412,6 +412,65 @@ class TestDetectDiscNumber:
         info = DiscInfo(disc_name="DISC", disc_type="Blu-ray disc", titles=titles)
         assert _detect_disc_number(info, [disc1]) is None
 
+    def test_4k_disc_matched_by_format_not_duration(self):
+        """A 4K movie disc whose feature has no listed runtime must still be
+        detected as the 4K disc via resolution — not mis-detected as the
+        Blu-ray disc that happens to list the same film's runtime.
+
+        Regression for the multi-format movie release case (issue: a 4K disc
+        was detected as disc 2 because disc 1's 4K feature had no runtime and
+        the inserted disc's film matched disc 2's listed 2D/3D runtimes).
+        """
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "The Film"
+                self.runtime_seconds = runtime
+
+        class FakeDisc:
+            def __init__(self, number, fmt, ep_runtimes):
+                self.number = number
+                self.disc_format = fmt
+                self.episodes = [FakeEp(rt) for rt in ep_runtimes]
+                self.extras = []
+
+        # Disc 1 = 4K disc, but dvdcompare lists no runtime for its feature.
+        disc1 = FakeDisc(1, "Blu-ray 4K", [])
+        # Disc 2 = 3D Blu-ray, lists the 2D + 3D film runtimes (~ same length).
+        disc2 = FakeDisc(2, "3D Blu-ray", [2880, 2880])
+
+        # Inserted disc is the 4K disc: its single film title is 2160p and its
+        # runtime matches disc 2's listed film runtime.
+        titles = [_make_title(0, 2885, resolution="3840x2160")]
+        info = DiscInfo(disc_name="THE_LAST_REEF", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc2]) == 1
+
+    def test_format_match_skipped_for_same_format_set(self):
+        """A multi-disc set where every disc is the same format must not be
+        resolved by format — it falls through to duration matching."""
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "Ep"
+                self.runtime_seconds = runtime
+
+        class FakeDisc:
+            def __init__(self, number, runtimes):
+                self.number = number
+                self.disc_format = "Blu-ray 4K"
+                self.episodes = [FakeEp(rt) for rt in runtimes]
+                self.extras = []
+
+        # Both discs are 4K, so resolution can't distinguish them.
+        disc1 = FakeDisc(1, [3000, 3100, 3050])
+        disc2 = FakeDisc(2, [2800, 2900, 2950])
+        titles = [
+            _make_title(0, 2810, resolution="3840x2160"),
+            _make_title(1, 2910, resolution="3840x2160"),
+            _make_title(2, 2960, resolution="3840x2160"),
+        ]
+        info = DiscInfo(disc_name="MYSTERY_DISC", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc2]) == 2
+
+
 
 class TestAnalyzeDisc:
     """Tests for the analyze_disc() shared entry point."""
