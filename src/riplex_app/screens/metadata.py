@@ -238,8 +238,18 @@ class MetadataScreen:
         idx = int(self.radio_group.value)
         selected = self.tmdb_results[idx]
         self.app.state["tmdb_match"] = selected
-        # New TMDb match invalidates any prior dvdcompare title override.
+        # A new TMDb match invalidates any prior dvdcompare selection. The
+        # release screen reuses state["release"]/state["dvdcompare_discs"] when
+        # present (to avoid re-querying on back-navigation), so leaving stale
+        # values here would make a freshly chosen film silently reuse the
+        # previous film's disc structure — e.g. starting "The Patriot" right
+        # after ripping "The Last Reef" in the same app session showed the
+        # Last Reef discs. Clear them so the lookup re-runs for this film.
         self.app.state.pop("dvdcompare_title_override", None)
+        self.app.state["release"] = None
+        self.app.state["dvdcompare_discs"] = []
+        self.app.state.pop("_dvdcompare_film", None)
+        self.app.state.pop("_dvdcompare_error", None)
 
         # For movies, fetch full detail to get runtime before proceeding
         if selected.media_type == "movie":
