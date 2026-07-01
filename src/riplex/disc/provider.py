@@ -355,7 +355,9 @@ async def _throttled_find_film(
         try:
             if disc_format:
                 return await _find_film_prefer_format(title, disc_format, year)
-            return await find_film(title, disc_format, year=year)
+            return await find_film(
+                title, disc_format, year=year, resolve_pointers=True
+            )
         finally:
             _last_request_at = time.monotonic()
 
@@ -370,7 +372,7 @@ async def _throttled_get_film_by_url(url: str) -> FilmComparison:
             log.debug("dvdcompare throttle: waiting %.2fs before request", wait)
             await asyncio.sleep(wait)
         try:
-            return await get_film_by_url(url)
+            return await get_film_by_url(url, resolve_pointers=True)
         finally:
             _last_request_at = time.monotonic()
 
@@ -403,21 +405,21 @@ async def _find_film_prefer_format(
     for sr in results:
         if fmt_matches(sr) and year_matches(sr):
             log.debug("dvdcompare pick (format+year): %s", sr.url)
-            return await get_film_by_url(sr.url)
+            return await get_film_by_url(sr.url, resolve_pointers=True)
     # Tier 2: format only
     for sr in results:
         if fmt_matches(sr):
             log.debug("dvdcompare pick (format-only, year=%s actual=%s): %s",
                       year, sr.year, sr.url)
-            return await get_film_by_url(sr.url)
+            return await get_film_by_url(sr.url, resolve_pointers=True)
     # Tier 3: year only (no format listed on result)
     for sr in results:
         if year_matches(sr) and not sr.disc_format:
             log.debug("dvdcompare pick (year-only, no result format): %s", sr.url)
-            return await get_film_by_url(sr.url)
+            return await get_film_by_url(sr.url, resolve_pointers=True)
     # Tier 4: first result
     log.debug("dvdcompare pick (first result fallback): %s", results[0].url)
-    return await get_film_by_url(results[0].url)
+    return await get_film_by_url(results[0].url, resolve_pointers=True)
 
 
 def _clean_feature_type(raw: str) -> str:
