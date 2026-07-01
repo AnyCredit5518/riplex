@@ -205,10 +205,17 @@ class ProgressScreen:
         # Brief pause then navigate
         time.sleep(1)
 
+        # Navigation must run on the Flet event loop, not this bg thread,
+        # or the client won't receive the new screen until the next OS event
+        # (e.g. the user moving the window). See _update() note.
         if self.app.state.get("workflow") == "orchestrate":
-            self._advance_orchestrate(results)
+            async def _nav_next():
+                self._advance_orchestrate(results)
+            self.app.page.run_task(_nav_next)
         else:
-            self.app.navigate("done")
+            async def _nav_done():
+                self.app.navigate("done")
+            self.app.page.run_task(_nav_done)
 
     def _write_snapshots(self, results: list[RipResult]):
         """Write debug snapshots to _riplex/ folder after rip."""
@@ -384,8 +391,17 @@ class ProgressScreen:
         self._update()
 
     def _update(self):
-        """Safe page update."""
-        try:
+        """Push a page update from a background thread.
+
+        page.update() called directly from a non-loop thread mutates state but
+        doesn't flush to the Flutter client until something else wakes the
+        event loop (e.g. the user moves the window). Scheduling via
+        page.run_task() runs the update on Flet's own loop via
+        asyncio.run_coroutine_threadsafe, which does trigger the flush.
+        """
+        async def _do_update():
             self.app.page.update()
+        try:
+            self.app.page.run_task(_do_update)
         except Exception:
             pass
