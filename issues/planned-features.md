@@ -117,35 +117,51 @@ subtitle tracks differ, we should:
 ## Automated Contributors List Updater
 
 `CONTRIBUTORS.md` lists community members who have helped riplex by reporting
-bugs (and eventually other contribution categories). Today it's hand-edited,
-which means it goes stale fast and we forget to credit people.
+bugs (and eventually other contribution categories). The Bug Bashers table used
+to be hand-edited, which meant it went stale fast and we forgot to credit
+people.
 
-### Plan
+### Status
+
+Implemented by `scripts/update_contributors.py`,
+`.github/contributors-overrides.json`, and
+`.github/workflows/update-contributors.yml`.
+
+The updater owns only the generated Bug Bashers table between
+`<!-- BUG_BASHERS:START -->` and `<!-- BUG_BASHERS:END -->`, while the
+surrounding prose stays hand-editable.
+
+### Implemented behavior
 
 1. **Script** — `scripts/update_contributors.py` that:
-   - Uses the GitHub REST API (via `requests` or `PyGithub`) to enumerate
-     closed issues in `AnyCredit5518/riplex` labeled `bug`.
+   - Uses the GitHub REST API (via `httpx`) to enumerate closed issues in
+     `AnyCredit5518/riplex`.
    - For each issue, checks whether it was referenced by a merged commit
      on the default branch (search commit messages for `#N`, `fixes #N`,
-     `closes #N`, etc.) — only counts issues that led to an actual fix.
+     `closes #N`, etc.) and counts closed issues labeled `bug` that led to an
+     actual fix.
+   - Supports manual include/exclude overrides for valid reports that the
+     strict commit-reference signal cannot infer, such as early unlabeled
+     reports or fixes made in a sibling dependency.
    - Tallies issues per opener, excluding `AnyCredit5518` and any account
      ending in `[bot]`.
-   - Maps tally to rank: 🐛 4+, 🔍 8+, 🛡️ 15+, 💎 25+ (matches existing
-     thresholds in `CONTRIBUTORS.md`).
+   - Maps tally to rank: 🧪 1+, 🐛 4+, 🔍 8+, 🛡️ 15+, 💎 25+ (matches
+     existing thresholds in `CONTRIBUTORS.md`).
    - Renders the "Bug Bashers" table between two HTML comment markers
      (`<!-- BUG_BASHERS:START -->` / `<!-- BUG_BASHERS:END -->`) so the
      surrounding prose stays hand-editable.
    - Sorts by issue count (desc), then username (asc) for stable diffs.
    - Reads token from `GITHUB_TOKEN` env var; falls back to unauthenticated
      requests (lower rate limit) for local runs without a token.
-   - Has unit tests covering the rank-mapping, exclusion list, marker
-     replacement, and the "referenced by merged commit" detection (with
-     mocked API responses).
+   - Has unit tests covering rank mapping, exclusion rules, marker
+     replacement, overrides, dry-run behavior, issue-reference detection, and
+     mocked API responses.
 
 2. **Workflow** — `.github/workflows/update-contributors.yml`:
    - Triggers: `schedule: cron '0 12 * * 1'` (every Monday 12:00 UTC) +
      `workflow_dispatch` for on-demand runs.
-   - Runs `python scripts/update_contributors.py`, then uses
+   - Runs `pytest tests/test_update_contributors.py -v` and
+     `python scripts/update_contributors.py`, then uses
      `peter-evans/create-pull-request` to open a PR titled
      `chore: refresh CONTRIBUTORS.md` if there's a diff.
    - Uses the built-in `GITHUB_TOKEN` — no extra secrets needed.

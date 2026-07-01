@@ -1,0 +1,45 @@
+{
+  "include": [
+    {
+      "number": 1,
+      "reason": "Early unlabeled bug report that led to CLI/config handling fixes."
+    },
+    {
+      "number": 5,
+      "reason": "Bug report fixed through the dvdcompare-scraper dependency."
+    },
+    {
+      "number": 6,
+      "reason": "Bug report that led to Windows title sanitization fixes."
+    },
+    {
+      "number": 7,
+      "reason": "Bug report that led to Flet compatibility fixes."
+    },
+    {
+      "number": 8,
+      "reason": "Setup report that led to improved prerequisite documentation."
+    },
+    {
+      "number": 9,
+      "reason": "Bug report that led to dvdcompare caching and rate-limit mitigations."
+    },
+    {
+      "number": 11,
+      "reason": "Setup report that led to a friendlier missing-GUI-extra error."
+    },
+    {
+      "number": 16,
+      "reason": "Bug report that led to packaged-app SSL certificate handling improvements."
+    },
+    {
+      "number": 17,
+      "reason": "Bug report that led to clearer TMDb API credential handling."
+    },
+    {
+      "number": 20,
+      "reason": "Bug report that led to better installed-tool detection after winget installs."
+    }
+  ],
+  "exclude": []
+}
