@@ -22,15 +22,19 @@ from riplex.disc.provider import (
 )
 from riplex.lookup import lookup_metadata
 from riplex.manifest import (
+    SessionWork,
     build_rip_manifest,
     build_rip_path,
     build_scanned_from_manifests,
     build_snapshot_manifest,
+    find_existing_session,
     find_ripped_discs,
     write_manifest,
+    write_session_marker,
 )
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
+from riplex.normalize import sanitize_filename
 from riplex.title import parse_title_and_season, parse_volume_label
 from riplex.ui import is_interactive, prompt_choice, prompt_confirm, prompt_text
 
@@ -270,8 +274,29 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # Detect which disc is currently inserted
     current_disc_num = detect_disc_number(disc_info, discs)
 
-    # Resume: detect already-ripped discs from manifest files
-    ripped_discs = find_ripped_discs(rip_root)
+    # Resume: detect already-ripped discs from manifest files, aggregating
+    # across sibling work-folders when a multi-work session marker exists.
+    existing = find_existing_session(canonical)
+    if existing and existing.all_ripped_discs:
+        ripped_discs = set(existing.all_ripped_discs)
+    else:
+        ripped_discs = find_ripped_discs(rip_root)
+
+    # Write / refresh the session marker so a later resume of any sibling
+    # work-folder can rediscover the full release layout. Only relevant
+    # once we actually plan to rip (skip in dry-run).
+    if not dry_run:
+        try:
+            works = [SessionWork(
+                title=canonical,
+                year=year or 0,
+                media_type="movie" if is_movie else "tv",
+                folder=sanitize_filename(f"{canonical} ({year or 0})"),
+                disc_numbers=[d.number for d in discs],
+            )]
+            write_session_marker(works, release_name=release_name or "")
+        except Exception as exc:
+            log.warning("Failed to write session marker: %s", exc)
 
     # Show disc overview
     _print_disc_overview(discs, release_name, ripped_discs, current_disc_num)
