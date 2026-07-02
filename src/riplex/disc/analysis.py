@@ -203,6 +203,38 @@ def group_release_discs(
     return groups
 
 
+def build_season_labels(discs: list["PlannedDisc"]) -> dict[int, str]:
+    """Assign an intra-season disc index for each disc carrying a season title.
+
+    dvdcompare's placeholder syntax (``DISCS ONE - FOUR: Season 1``)
+    resolves into ``PlannedDisc.title == "Season 1"`` on every disc in
+    that range. Callers want to display ``Season 1, Disc 2`` in the UI
+    so users can cross-reference the physical case, so we walk the
+    input in order and number each run of consecutive same-title discs
+    from 1. Discs without a title map to an empty string.
+
+    The returned dict is keyed by ``PlannedDisc.number``; missing entries
+    (or empty values) mean "no season info known, render as usual".
+    """
+    labels: dict[int, str] = {}
+    current_title: str = ""
+    index_in_run = 0
+    for d in discs:
+        title = (d.title or "").strip()
+        if not title:
+            labels[d.number] = ""
+            current_title = ""
+            index_in_run = 0
+            continue
+        if title != current_title:
+            current_title = title
+            index_in_run = 1
+        else:
+            index_in_run += 1
+        labels[d.number] = f"{title}, Disc {index_in_run}"
+    return labels
+
+
 def _detect_edition_name(
     duration: int,
     dvd_entries: list[tuple[str, int, str]],

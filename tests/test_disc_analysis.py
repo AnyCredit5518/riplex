@@ -4,6 +4,7 @@ from riplex.disc.analysis import (
     _detect_edition_name,
     analyze_disc,
     build_dvd_entries,
+    build_season_labels,
     classify_title,
     detect_bonus_films,
     detect_cross_res_play_all,
@@ -970,3 +971,67 @@ class TestGroupReleaseDiscs:
         assert not g.is_complete()
         g.tmdb_match = object()
         assert g.is_complete()
+
+
+class TestBuildSeasonLabels:
+    """Tests for build_season_labels() — dvdcompare season-placeholder
+    labels turned into per-disc UI hints."""
+
+    def _disc(self, number, title=""):
+        return PlannedDisc(
+            number=number, disc_format="Blu-ray", title=title,
+        )
+
+    def test_empty_input_returns_empty(self):
+        assert build_season_labels([]) == {}
+
+    def test_no_titles_maps_all_to_empty(self):
+        # A release without any placeholder-derived titles: every entry
+        # should be present but empty so callers can skip rendering.
+        discs = [self._disc(n) for n in range(1, 4)]
+        labels = build_season_labels(discs)
+        assert labels == {1: "", 2: "", 3: ""}
+
+    def test_single_season_indexes_contiguous_run(self):
+        discs = [self._disc(n, title="Season 1") for n in range(1, 5)]
+        labels = build_season_labels(discs)
+        assert labels == {
+            1: "Season 1, Disc 1",
+            2: "Season 1, Disc 2",
+            3: "Season 1, Disc 3",
+            4: "Season 1, Disc 4",
+        }
+
+    def test_multiple_seasons_restart_index(self):
+        # Psych-shape: 4 discs per season, seasons back-to-back.
+        discs = (
+            [self._disc(n, title="Season 1") for n in range(1, 5)]
+            + [self._disc(n, title="Season 2") for n in range(5, 9)]
+        )
+        labels = build_season_labels(discs)
+        assert labels[4] == "Season 1, Disc 4"
+        assert labels[5] == "Season 2, Disc 1"
+        assert labels[8] == "Season 2, Disc 4"
+
+    def test_gap_disc_without_title_resets_run(self):
+        # A bonus disc between two labeled runs shouldn't get an amber
+        # label, and the run after it should restart from 1 even if it
+        # shares the earlier title (defensive — dvdcompare wouldn't
+        # normally produce this shape, but the helper stays honest).
+        discs = [
+            self._disc(1, title="Season 1"),
+            self._disc(2, title="Season 1"),
+            self._disc(3, title=""),
+            self._disc(4, title="Season 1"),
+        ]
+        labels = build_season_labels(discs)
+        assert labels == {
+            1: "Season 1, Disc 1",
+            2: "Season 1, Disc 2",
+            3: "",
+            4: "Season 1, Disc 1",
+        }
+
+    def test_whitespace_only_title_treated_as_missing(self):
+        discs = [self._disc(1, title="   ")]
+        assert build_season_labels(discs) == {1: ""}

@@ -14,7 +14,7 @@ import threading
 import flet as ft
 
 from riplex.config import get_api_key
-from riplex.disc.analysis import group_release_discs
+from riplex.disc.analysis import build_season_labels, group_release_discs
 from riplex.disc.provider import disc_content_summary
 from riplex.manifest import build_rip_path, find_ripped_discs
 from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
@@ -421,11 +421,22 @@ class DiscOverviewScreen:
 
         group_checkboxes: list[ft.Checkbox] = []
         rows: list[ft.Control] = []
+        # Compute per-disc season labels ("Season 1, Disc 2") once per
+        # group so the disc rows can prefix their summaries with the
+        # season info from dvdcompare placeholders.
+        group_discs = [
+            discs_by_number[n] for n in group.disc_numbers
+            if n in discs_by_number
+        ]
+        season_labels = build_season_labels(group_discs)
         for disc_num in group.disc_numbers:
             disc = discs_by_number.get(disc_num)
             if disc is None:
                 continue
-            row, cb = self._build_disc_row(disc, ripped_discs, inserted_disc)
+            row, cb = self._build_disc_row(
+                disc, ripped_discs, inserted_disc,
+                season_label=season_labels.get(disc.number, ""),
+            )
             rows.append(row)
             group_checkboxes.append(cb)
 
@@ -626,8 +637,15 @@ class DiscOverviewScreen:
             bgcolor=ft.Colors.with_opacity(0.04, ft.Colors.WHITE),
         )
 
-    def _build_disc_row(self, disc, ripped_discs, inserted_disc):
-        """Render a single disc row. Returns (row_control, checkbox)."""
+    def _build_disc_row(self, disc, ripped_discs, inserted_disc,
+                        *, season_label: str = ""):
+        """Render a single disc row. Returns (row_control, checkbox).
+
+        ``season_label`` is an optional dvdcompare-derived prefix like
+        ``"Season 1, Disc 2"``; when set it renders as a subtle amber
+        chip to the left of the content summary so users can
+        cross-reference the physical case.
+        """
         is_ripped = disc.number in ripped_discs
         is_inserted = disc.number == inserted_disc
 
@@ -656,14 +674,27 @@ class DiscOverviewScreen:
         fmt_text = f" ({fmt})" if fmt else ""
         summary = disc_content_summary(disc)
 
-        row = ft.Row(
-            [
-                cb,
-                ft.Text(f"Disc {disc.number}{fmt_text}", width=120, size=13,
+        row_controls: list[ft.Control] = [
+            cb,
+            ft.Text(f"Disc {disc.number}{fmt_text}", width=120, size=13,
+                    weight=ft.FontWeight.BOLD),
+            badge,
+        ]
+        if season_label:
+            row_controls.append(ft.Container(
+                ft.Text(season_label, size=11,
+                        color=ft.Colors.AMBER_300,
                         weight=ft.FontWeight.BOLD),
-                badge,
-                ft.Text(summary, size=12, color=ft.Colors.GREY_300, expand=True),
-            ],
+                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.AMBER_400),
+                border_radius=4,
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
+            ))
+        row_controls.append(
+            ft.Text(summary, size=12, color=ft.Colors.GREY_300, expand=True),
+        )
+
+        row = ft.Row(
+            row_controls,
             spacing=10,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )

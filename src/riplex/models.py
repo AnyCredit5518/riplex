@@ -101,6 +101,10 @@ class PlannedDisc:
     is_film: bool = False
     episodes: list[PlannedEpisode] = field(default_factory=list)
     extras: list[PlannedExtra] = field(default_factory=list)
+    # Optional label from dvdcompare (e.g. "Season 1") — set when the
+    # outer release used a placeholder like "DISCS ONE - FOUR: Season 1"
+    # that pointed at a per-season subpage. Empty when unavailable.
+    title: str = ""
 
 
 @dataclass

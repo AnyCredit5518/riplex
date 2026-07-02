@@ -606,6 +606,7 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                 is_film=dvc_disc.is_film,
                 episodes=episodes,
                 extras=extras,
+                title=getattr(dvc_disc, "title", "") or "",
             )
         )
     return discs
@@ -674,6 +675,7 @@ def _convert_box_set(releases: list, disc_offset: int = 0) -> list[PlannedDisc]:
                     is_film=dvc_disc.is_film,
                     episodes=episodes,
                     extras=extras,
+                    title=getattr(dvc_disc, "title", "") or "",
                 )
             )
         offset += len(rel.discs)

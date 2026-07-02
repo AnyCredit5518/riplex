@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **Multi-work release routing.** Releases that bundle multiple distinct works — a TV series plus standalone films on a bonus disc, for instance — now organize each work into its own Plex target. The disc overview groups discs into per-work slots (main content plus one slot per bonus film), auto-fills TMDb best guesses, and the organize preview routes each disc's MKVs to the folder for that work's assigned match.
+- **Season labels in the disc overview.** When dvdcompare's release page groups discs by season (e.g. `DISCS ONE - FOUR: Season 1`), each row now shows an amber `Season N, Disc M` chip so users of long TV boxsets can cross-reference against the physical case.
 
 ## v0.9.2 — 2026-06-24
 
