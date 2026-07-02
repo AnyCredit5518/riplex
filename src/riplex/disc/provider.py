@@ -887,20 +887,28 @@ def detect_disc_number(
 
     Returns the disc number (1-based) or None if detection fails.
     """
+    log.info("detect_disc_number: label=%r n_dvdcompare_discs=%d n_live_titles=%d",
+             disc_info.disc_name, len(dvdcompare_discs) if dvdcompare_discs else 0,
+             len(disc_info.titles) if disc_info.titles else 0)
+
     # Strategy 1: volume label
     label = disc_info.disc_name or ""
     match = re.search(r"[_\s-]D(?:isc\s*)?(\d+)\b", label, re.IGNORECASE)
     if match:
-        return int(match.group(1))
+        n = int(match.group(1))
+        log.info("detect_disc_number: strategy1 (volume label) matched disc %d", n)
+        return n
 
     # Strategy 2: format/resolution match (authoritative for multi-format
     # movie releases, where every disc shares the same main feature runtime).
     format_disc = _match_disc_by_format(disc_info, dvdcompare_discs)
     if format_disc is not None:
+        log.info("detect_disc_number: strategy2 (format) matched disc %d", format_disc)
         return format_disc
 
     # Strategy 3: duration matching against dvdcompare discs
     if not dvdcompare_discs or not disc_info.titles:
+        log.info("detect_disc_number: strategy3 skipped (no dvdcompare_discs or no titles)")
         return None
 
     # Collect substantial title durations from the live disc
@@ -908,6 +916,7 @@ def detect_disc_number(
         [t.duration_seconds for t in disc_info.titles if t.duration_seconds > 120],
         reverse=True,
     )
+    log.info("detect_disc_number: strategy3 live_durations=%s", live_durations)
     if not live_durations:
         return None
 
@@ -940,16 +949,25 @@ def detect_disc_number(
                     used.add(i)
                     break
 
-        # Score: fraction of candidates matched
-        score = matched / len(candidates) if candidates else 0
+        # Score: fraction of the smaller set matched. Using min(len) so a
+        # physical disc that only exposes one title (e.g. a bonus disc where
+        # MakeMKV surfaces just the main film) can still match a dvdcompare
+        # disc that lists several bonus films — as long as the exposed title
+        # lines up with one of them.
+        denom = min(len(candidates), len(live_durations)) or 1
+        score = matched / denom
+        log.info("detect_disc_number: disc %d candidates=%s matched=%d/%d score=%.2f",
+                 disc.number, candidates[:6], matched, denom, score)
         if score > best_score:
             best_score = score
             best_disc = disc.number
 
     # Require at least 50% of entries to match
     if best_score >= 0.5:
+        log.info("detect_disc_number: WINNER disc %d (score=%.2f)", best_disc, best_score)
         return best_disc
 
+    log.info("detect_disc_number: no winner (best_score=%.2f, need >=0.50)", best_score)
     return None
 
 

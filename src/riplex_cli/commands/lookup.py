@@ -11,6 +11,7 @@ from riplex.config import get_api_key, get_output_root, get_rip_output
 from riplex.disc.analysis import (
     build_dvd_entries,
     classify_title,
+    detect_bonus_films,
     format_seconds,
     is_skip_title,
     print_disc_analysis,
@@ -130,9 +131,18 @@ def _print_rip_guide(
                 ftype = f" [{extra.feature_type}]" if extra.feature_type else ""
                 print(f"      {extra.title} ({rt}){ftype}")
 
+        bonus_films = detect_bonus_films(disc)
+        if bonus_films:
+            print(f"    ** BONUS FILMS ({len(bonus_films)}): additional feature-length films on this disc **")
+            for film in bonus_films:
+                rt = format_seconds(film.runtime_seconds) if film.runtime_seconds else "?"
+                print(f"      {film.title} ({rt})")
+
     total_features = sum(len(d.episodes) + len(d.extras) for d in discs)
     film_discs = [d for d in discs if d.is_film]
     extras_discs = [d for d in discs if not d.is_film and (d.extras or d.episodes)]
+    multi_film_discs = [(d, detect_bonus_films(d)) for d in discs]
+    multi_film_discs = [(d, films) for d, films in multi_film_discs if films]
 
     print(f"\n{'=' * 60}")
     print("Rip tips:")
@@ -140,6 +150,14 @@ def _print_rip_guide(
     if film_discs:
         film_nums = ", ".join(str(d.number) for d in film_discs)
         print(f"  - Main film is on disc {film_nums}.")
+
+    if multi_film_discs:
+        for d, films in multi_film_discs:
+            titles = ", ".join(f.title for f in films)
+            print(
+                f"  - Disc {d.number} contains {len(films)} feature-length film(s): "
+                f"{titles}. Riplex will offer per-film matching after ripping."
+            )
 
     if play_all_tips:
         for tip in play_all_tips:

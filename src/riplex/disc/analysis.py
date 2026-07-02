@@ -8,6 +8,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from riplex.models import PlannedDisc, PlannedExtra
+    from riplex.models import DiscGroup
 
 
 # Edition patterns in dvdcompare feature titles
@@ -30,6 +35,161 @@ _FEATURETTE_PLAY_ALL_TYPES = frozenset({
 def _is_featurette_play_all(entry_type: str) -> bool:
     """Return True if the entry type indicates a featurette collection."""
     return entry_type.lower().strip() in _FEATURETTE_PLAY_ALL_TYPES
+
+
+# Feature types that clearly denote bonus content (not standalone films).
+# Used by ``detect_bonus_films`` to reject long featurettes and documentaries.
+_BONUS_CONTENT_FEATURE_TYPES = frozenset({
+    "featurette", "featurettes",
+    "documentary", "documentaries",
+    "interview", "interviews",
+    "behind the scenes", "behind-the-scenes",
+    "deleted scene", "deleted scenes",
+    "short film", "short",
+    "trailer", "trailers", "teaser", "teasers",
+    "music video", "music videos",
+    "commentary", "audio commentary",
+    "gag reel", "outtakes", "bloopers",
+})
+
+# Minimum runtime for a feature to be considered a standalone film.
+BONUS_FILM_MIN_RUNTIME_SECONDS = 60 * 60  # 60 minutes
+
+
+def detect_bonus_films(
+    disc: "PlannedDisc",
+    *,
+    min_runtime_seconds: int = BONUS_FILM_MIN_RUNTIME_SECONDS,
+) -> list["PlannedExtra"]:
+    """Return film-length top-level features on a film disc.
+
+    Recognises the case where one physical disc holds multiple full-length
+    films (e.g. box sets like *Psych* disc 31 with three TV-movie sequels,
+    or a Criterion double-feature). Only considers discs flagged
+    ``is_film=True`` by dvdcompare — episode discs are ignored to avoid
+    false positives on TV compilations.
+
+    A ``PlannedExtra`` qualifies when:
+
+    * The parent disc's ``is_film`` is True.
+    * ``runtime_seconds`` is at least ``min_runtime_seconds`` (default 60m).
+    * ``feature_type`` is not a bonus-content category (featurette,
+      documentary, interview, deleted scene, etc.). An empty
+      ``feature_type`` — the common shape for a standalone top-level
+      film — passes.
+    * The title is not a Play-All parent (suffix ``": Play All"``).
+
+    Returns an empty list when no additional films are present. On a
+    typical single-film disc dvdcompare does not list the main film as
+    a feature at all, so this correctly returns ``[]``.
+    """
+    if not disc.is_film:
+        return []
+    results: list[PlannedExtra] = []
+    for extra in disc.extras:
+        if extra.runtime_seconds < min_runtime_seconds:
+            continue
+        if extra.title.endswith(": Play All"):
+            continue
+        ft = (extra.feature_type or "").strip().lower()
+        if ft in _BONUS_CONTENT_FEATURE_TYPES:
+            continue
+        results.append(extra)
+    return results
+
+
+def group_release_discs(
+    discs: list["PlannedDisc"],
+    current_tmdb_match: object | None = None,
+) -> list["DiscGroup"]:
+    """Split a release's discs into groups that map to distinct organize targets.
+
+    Some multi-disc releases bundle multiple distinct works. The classic
+    example is *Psych: The Complete Series*, whose Blu-ray box holds the
+    eight-season TV series on discs 1-30 plus three standalone TV-movie
+    sequels on disc 31. Ripped as one release everything would land under a
+    single TMDb match — this function partitions the release so the caller
+    can attach a separate target to each group.
+
+    v1 rule: contiguous runs of discs sharing the same ``is_film`` value form
+    one group. Non-film discs become a "main content" group (typically the
+    TV series or a movie split across format discs); film discs become a
+    "feature films" group.
+
+    ``current_tmdb_match`` is the TMDb match the user selected earlier at
+    the metadata screen. It is auto-assigned to the group whose ``kind``
+    matches its ``media_type`` (movie → film group; tv → main group). Other
+    groups are returned with ``tmdb_match=None`` so the UI can prompt the
+    user to pick a target for them. When only one group exists the match is
+    always assigned to it regardless of media type.
+    """
+    from riplex.models import DiscGroup
+
+    if not discs:
+        return []
+
+    sorted_discs = sorted(discs, key=lambda d: d.number)
+    groups: list[DiscGroup] = []
+    current_run: list = []
+
+    def emit_run() -> None:
+        if not current_run:
+            return
+        is_film = current_run[0].is_film
+        numbers = [d.number for d in current_run]
+        first_n, last_n = numbers[0], numbers[-1]
+        range_str = f"disc {first_n}" if first_n == last_n else f"discs {first_n}-{last_n}"
+
+        if is_film:
+            if len(numbers) == 1:
+                bonus = detect_bonus_films(current_run[0])
+                n_films = max(1, len(bonus))
+                if n_films > 1:
+                    label = f"{n_films} feature films ({range_str})"
+                else:
+                    label = f"Feature film ({range_str})"
+                default_title = bonus[0].title if len(bonus) == 1 else ""
+            else:
+                label = f"Feature film discs ({range_str})"
+                default_title = ""
+            gid = f"film_{first_n}"
+            kind = "film"
+        else:
+            label = f"Main content ({range_str})"
+            default_title = ""
+            gid = f"main_{first_n}"
+            kind = "main"
+
+        groups.append(DiscGroup(
+            id=gid,
+            label=label,
+            disc_numbers=numbers,
+            kind=kind,
+            default_search_title=default_title,
+        ))
+
+    prev_is_film: bool | None = None
+    for d in sorted_discs:
+        if prev_is_film is None or d.is_film == prev_is_film:
+            current_run.append(d)
+        else:
+            emit_run()
+            current_run = [d]
+        prev_is_film = d.is_film
+    emit_run()
+
+    if current_tmdb_match is not None and groups:
+        want_kind = "film" if getattr(current_tmdb_match, "media_type", None) == "movie" else "main"
+        assigned = False
+        for g in groups:
+            if g.kind == want_kind:
+                g.tmdb_match = current_tmdb_match
+                assigned = True
+                break
+        if not assigned:
+            groups[0].tmdb_match = current_tmdb_match
+
+    return groups
 
 
 def _detect_edition_name(

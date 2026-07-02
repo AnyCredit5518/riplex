@@ -12,6 +12,7 @@ from riplex.config import get_api_key, get_output_root, get_rip_output
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
+    detect_bonus_films,
     format_seconds,
     print_disc_analysis,
 )
@@ -187,6 +188,30 @@ async def run_rip(args: argparse.Namespace) -> int:
         [d for d in discs if d.number == disc_number] if disc_number else discs
     )
     print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
+
+    # Detect multiple feature-length films on the same disc (e.g. box-set
+    # movie collections). Alert the user before ripping so they know each
+    # film will need its own destination folder later.
+    bonus_films: list = []
+    for d in current_disc_entries:
+        bonus_films.extend(detect_bonus_films(d))
+    if bonus_films:
+        print(
+            f"\n** Multi-film disc detected: {len(bonus_films)} feature-length "
+            f"film(s) found on this disc. **"
+        )
+        for film in bonus_films:
+            rt = format_seconds(film.runtime_seconds) if film.runtime_seconds else "?"
+            print(f"    {film.title} ({rt})")
+        print(
+            "  Riplex will rip each film's title, but per-film organization "
+            "(separate Plex folders) is not wired up yet — for now the rips "
+            "land in one disc folder and you can move them manually."
+        )
+        if not dry_run and not getattr(args, "yes", False):
+            if not prompt_confirm("Continue ripping this multi-film disc?"):
+                print("Aborted.", file=sys.stderr)
+                return 0
 
     # Determine which titles to rip
     if getattr(args, "titles", None):

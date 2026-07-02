@@ -5,7 +5,7 @@ import logging
 import flet as ft
 
 from riplex.config import get_rip_output
-from riplex.disc.analysis import analyze_disc, format_seconds
+from riplex.disc.analysis import analyze_disc, detect_bonus_films, format_seconds
 from riplex.disc.makemkv import DiscTitle
 
 log = logging.getLogger(__name__)
@@ -177,6 +177,18 @@ class SelectionScreen:
             queue_pos = disc_queue.index(orchestrate_disc_num) + 1 if orchestrate_disc_num in disc_queue else 0
             disc_label = f"Disc {orchestrate_disc_num} ({queue_pos}/{len(disc_queue)})"
 
+        # Detect multiple feature-length films on this disc (e.g. box-set
+        # movie collections like Psych disc 31 with 3 TV-movie sequels).
+        disc_num_for_films = orchestrate_disc_num or analysis.disc_number
+        current_discs = (
+            [d for d in dvdcompare_discs if d.number == disc_num_for_films]
+            if disc_num_for_films else list(dvdcompare_discs)
+        )
+        bonus_films: list = []
+        for d in current_discs:
+            bonus_films.extend(detect_bonus_films(d))
+        bonus_films_section = self._build_bonus_films_section(bonus_films)
+
         return ft.Column(
             [
                 ft.Text("Select Titles to Rip", size=24, weight=ft.FontWeight.BOLD),
@@ -190,6 +202,7 @@ class SelectionScreen:
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
+                bonus_films_section,
                 ft.Text(
                     f"Debug files: {debug_dir}",
                     size=12,
@@ -219,6 +232,55 @@ class SelectionScreen:
         )
         self.summary_text.value = f"{total_selected} titles selected ({_format_size(total_size)})"
         self.app.page.update()
+
+    def _build_bonus_films_section(self, bonus_films: list) -> ft.Control:
+        """Render an alert card listing multiple feature-length films on this disc."""
+        if not bonus_films:
+            return ft.Container()
+        rows = [
+            ft.Row(
+                [
+                    ft.Icon(ft.Icons.MOVIE, size=16, color=ft.Colors.AMBER_300),
+                    ft.Text(
+                        f"{film.title}"
+                        + (f"  ({format_seconds(film.runtime_seconds)})"
+                           if film.runtime_seconds else ""),
+                        size=13, color=ft.Colors.AMBER_100,
+                    ),
+                ],
+                spacing=6,
+            )
+            for film in bonus_films
+        ]
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.WARNING_AMBER, color=ft.Colors.AMBER_400),
+                            ft.Text(
+                                f"Multi-film disc detected — {len(bonus_films)} feature-length film(s)",
+                                size=14, weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.AMBER_300,
+                            ),
+                        ],
+                        spacing=8,
+                    ),
+                    *rows,
+                    ft.Text(
+                        "Per-film organization (separate Plex folders) is not yet "
+                        "wired up. For now all rips land in one disc folder — move them "
+                        "manually after ripping.",
+                        size=12, color=ft.Colors.GREY_400,
+                    ),
+                ],
+                spacing=4,
+            ),
+            padding=12,
+            border=ft.border.all(1, ft.Colors.AMBER_700),
+            border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.AMBER_700),
+        )
 
     def _start_rip(self, e):
         """Collect selected titles and proceed to rip."""

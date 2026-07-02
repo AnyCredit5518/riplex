@@ -104,6 +104,26 @@ class PlannedDisc:
 
 
 @dataclass
+class DiscGroup:
+    """A subset of a release's discs that maps to a single organize target.
+
+    Some multi-disc releases (e.g. Psych: The Complete Series) bundle
+    multiple distinct works — a TV show plus standalone films — that must
+    each organize into their own folder. A ``DiscGroup`` pairs a set of disc
+    numbers with the TMDb match those discs should organize under.
+    ``tmdb_match`` is typed loosely (kept as ``object``) so this pure data
+    module doesn't need to import from ``riplex.metadata``.
+    """
+
+    id: str
+    label: str
+    disc_numbers: list[int]
+    kind: Literal["main", "film"]
+    tmdb_match: object | None = None
+    default_search_title: str = ""
+
+
+@dataclass
 class ScannedFile:
     """A single MKV file found in a MakeMKV rip folder."""
 

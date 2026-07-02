@@ -369,11 +369,14 @@ def main():
     from riplex_app.crash_dump import get_log_path
 
     app_logger = logging.getLogger("riplex_app")
+    lib_logger = logging.getLogger("riplex")
     log_path = get_log_path()
     fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s [%(name)s] %(message)s", datefmt="%H:%M:%S"))
     app_logger.addHandler(fh)
+    lib_logger.addHandler(fh)
+    lib_logger.setLevel(logging.DEBUG)
     app_logger.info("Log file: %s", log_path)
     ft.app(target=RiplexApp)
 

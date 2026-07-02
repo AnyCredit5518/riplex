@@ -18,7 +18,18 @@ class MetadataScreen:
 
     @property
     def _back_screen(self) -> str:
+        if self.app.state.get("_group_match_target_id"):
+            return "disc_overview"
         return "folder_picker" if self.app.state.get("workflow") == "organize" else "disc_detection"
+
+    def _on_back(self, _e):
+        """Back handler that cleans up scoped-group state before navigating."""
+        target = self.app.state.pop("_group_match_target_id", None)
+        if target is not None:
+            saved = self.app.state.pop("_group_match_saved_title", None)
+            if saved is not None:
+                self.app.state["title"] = saved
+        self.app.navigate(self._back_screen if target is None else "disc_overview")
 
     def _build_search_bar(self, title: str, *, searching: bool) -> ft.Control:
         """Search field + button so the user can refine the query in place."""
@@ -87,7 +98,7 @@ class MetadataScreen:
                 ], spacing=10),
                 ft.Container(expand=True),
                 ft.Row([
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                    ft.TextButton("Back", on_click=self._on_back),
                     ft.TextButton("Skip", on_click=lambda _: self._continue_without_metadata(title)),
                 ]),
             ],
@@ -129,7 +140,7 @@ class MetadataScreen:
                 self.radio_group,
                 ft.Container(expand=True),
                 ft.Row([
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                    ft.TextButton("Back", on_click=self._on_back),
                     ft.ElevatedButton(
                         "Next",
                         icon=ft.Icons.ARROW_FORWARD,
@@ -165,7 +176,7 @@ class MetadataScreen:
                 ),
                 ft.Container(expand=True),
                 ft.Row([
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate(self._back_screen)),
+                    ft.TextButton("Back", on_click=self._on_back),
                     ft.ElevatedButton(
                         "Rip without metadata",
                         icon=ft.Icons.ARROW_FORWARD,
@@ -237,6 +248,20 @@ class MetadataScreen:
         """Store TMDb selection, fetch movie detail for runtime, and navigate."""
         idx = int(self.radio_group.value)
         selected = self.tmdb_results[idx]
+
+        # Scoped mode: we're picking a match for one DiscGroup within an
+        # already-resolved release. Don't touch the top-level tmdb_match or
+        # dvdcompare state — just record the per-group override and go back.
+        target_id = self.app.state.pop("_group_match_target_id", None)
+        if target_id is not None:
+            overrides = self.app.state.setdefault("group_tmdb_overrides", {})
+            overrides[target_id] = selected
+            saved = self.app.state.pop("_group_match_saved_title", None)
+            if saved is not None:
+                self.app.state["title"] = saved
+            self.app.navigate("disc_overview")
+            return
+
         self.app.state["tmdb_match"] = selected
         # A new TMDb match invalidates any prior dvdcompare selection. The
         # release screen reuses state["release"]/state["dvdcompare_discs"] when
