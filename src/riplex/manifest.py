@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -77,8 +78,106 @@ def find_ripped_discs(output_dir: Path) -> set[int]:
 
 
 @dataclass
+class SessionWork:
+    """One work-folder inside a multi-work orchestrate session.
+
+    Mirrors a DiscGroup: a work has a title, year, media_type, and the
+    disc numbers (from the shared dvdcompare release) it owns. ``folder``
+    is the leaf folder name under the rip output root (already
+    sanitized); the caller resolves it against the root.
+    """
+
+    title: str
+    year: int
+    media_type: str  # "movie" or "tv"
+    folder: str
+    disc_numbers: list[int] = field(default_factory=list)
+
+
+SESSION_MARKER_NAME = "_riplex_session.json"
+
+
+def _session_root() -> Path:
+    """Return the configured rip output root (or the legacy fallback)."""
+    from riplex.config import get_output_root, get_rip_output
+
+    rip_output = get_rip_output()
+    if rip_output:
+        return Path(rip_output)
+    return Path(get_output_root()) / "Rips"
+
+
+def write_session_marker(
+    works: list[SessionWork],
+    *,
+    release_name: str,
+) -> list[Path]:
+    """Write ``_riplex_session.json`` into each work-folder of a session.
+
+    Called once at orchestrate start, before any disc is ripped. The
+    marker lets ``find_existing_session`` discover *sibling* folders on
+    resume so a multi-work release (e.g. Psych: TV series + films disc)
+    shows a unified queue of completed vs. remaining discs. Single-work
+    releases still get a one-entry marker so resume behavior is uniform.
+
+    Idempotent: overwrites any existing marker with the same works list.
+    Missing folders are created. Returns the paths that were written.
+    """
+    root = _session_root()
+    payload = {
+        "type": "riplex_session",
+        "release_name": release_name,
+        "started_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "works": [
+            {
+                "title": w.title,
+                "year": w.year,
+                "media_type": w.media_type,
+                "folder": w.folder,
+                "disc_numbers": list(w.disc_numbers),
+            }
+            for w in works
+        ],
+    }
+    written: list[Path] = []
+    for w in works:
+        folder = root / w.folder
+        folder.mkdir(parents=True, exist_ok=True)
+        marker = folder / SESSION_MARKER_NAME
+        try:
+            marker.write_text(
+                json.dumps(payload, indent=2), encoding="utf-8",
+            )
+            written.append(marker)
+        except OSError as exc:
+            log.warning("Failed to write session marker %s: %s", marker, exc)
+    return written
+
+
+def read_session_marker(folder: Path) -> dict | None:
+    """Return the parsed session marker for ``folder`` or None."""
+    marker = folder / SESSION_MARKER_NAME
+    if not marker.exists():
+        return None
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        log.warning("Failed to read session marker %s: %s", marker, exc)
+        return None
+    if data.get("type") != "riplex_session":
+        return None
+    return data
+
+
+@dataclass
 class ExistingSession:
-    """Metadata recovered from an existing rip manifest on disk."""
+    """Metadata recovered from an existing rip manifest on disk.
+
+    ``works`` and ``all_ripped_discs`` are set when the recovered
+    session had a ``_riplex_session.json`` marker naming sibling
+    folders. ``works`` is empty and ``all_ripped_discs == ripped_discs``
+    for legacy single-work sessions that predate the marker.
+    """
 
     title: str
     year: int
@@ -87,6 +186,8 @@ class ExistingSession:
     disc_format: str | None
     rip_root: Path
     ripped_discs: set[int]
+    works: list[SessionWork] = field(default_factory=list)
+    all_ripped_discs: set[int] = field(default_factory=set)
 
 
 def find_existing_session(title: str) -> ExistingSession | None:
@@ -95,14 +196,14 @@ def find_existing_session(title: str) -> ExistingSession | None:
     Reads ``_rip_manifest.json`` files under the configured rip output
     directory and returns session data if any manifest's ``title``
     matches (case-insensitive).
-    """
-    from riplex.config import get_output_root, get_rip_output
 
-    rip_output = get_rip_output()
-    if rip_output:
-        root = Path(rip_output)
-    else:
-        root = Path(get_output_root()) / "Rips"
+    When the matched work-folder contains a ``_riplex_session.json``
+    marker (multi-work releases), the session's ``all_ripped_discs``
+    aggregates every sibling folder's ``find_ripped_discs`` output so
+    the caller can present a unified resume queue. Legacy folders
+    without a marker degrade to today's single-folder behavior.
+    """
+    root = _session_root()
 
     if not root.exists():
         return None
@@ -112,6 +213,8 @@ def find_existing_session(title: str) -> ExistingSession | None:
     for title_folder in root.iterdir():
         if not title_folder.is_dir():
             continue
+        matched = False
+        primary_manifest: dict | None = None
         for disc_folder in title_folder.iterdir():
             manifest_path = disc_folder / "_rip_manifest.json"
             if not manifest_path.exists():
@@ -121,16 +224,47 @@ def find_existing_session(title: str) -> ExistingSession | None:
             except (OSError, json.JSONDecodeError):
                 continue
             if manifest.get("title", "").strip().lower() == title_lower:
-                ripped = find_ripped_discs(title_folder)
-                return ExistingSession(
-                    title=manifest.get("title", ""),
-                    year=manifest.get("year", 0),
-                    media_type=manifest.get("type", "movie"),
-                    release_name=manifest.get("release", ""),
-                    disc_format=manifest.get("format"),
-                    rip_root=title_folder,
-                    ripped_discs=ripped,
+                primary_manifest = manifest
+                matched = True
+                break
+        if not matched or primary_manifest is None:
+            continue
+
+        ripped = find_ripped_discs(title_folder)
+
+        # Session marker: fan out to sibling work-folders so resume can
+        # skip discs that were already ripped under a different work.
+        marker = read_session_marker(title_folder)
+        works: list[SessionWork] = []
+        all_ripped: set[int] = set(ripped)
+        if marker:
+            for entry in marker.get("works", []):
+                w = SessionWork(
+                    title=entry.get("title", ""),
+                    year=entry.get("year", 0),
+                    media_type=entry.get("media_type", "movie"),
+                    folder=entry.get("folder", ""),
+                    disc_numbers=list(entry.get("disc_numbers", [])),
                 )
+                works.append(w)
+                if not w.folder:
+                    continue
+                sibling = root / w.folder
+                if sibling == title_folder:
+                    continue
+                all_ripped.update(find_ripped_discs(sibling))
+
+        return ExistingSession(
+            title=primary_manifest.get("title", ""),
+            year=primary_manifest.get("year", 0),
+            media_type=primary_manifest.get("type", "movie"),
+            release_name=primary_manifest.get("release", ""),
+            disc_format=primary_manifest.get("format"),
+            rip_root=title_folder,
+            ripped_discs=ripped,
+            works=works,
+            all_ripped_discs=all_ripped,
+        )
 
     return None
 

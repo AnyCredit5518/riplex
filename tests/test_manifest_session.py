@@ -1,0 +1,181 @@
+"""Tests for the ``_riplex_session.json`` marker + aggregated resume."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from riplex import manifest as manifest_mod
+from riplex.manifest import (
+    SESSION_MARKER_NAME,
+    ExistingSession,
+    SessionWork,
+    find_existing_session,
+    read_session_marker,
+    write_session_marker,
+)
+
+
+@pytest.fixture
+def rip_root(tmp_path, monkeypatch):
+    """Point manifest._session_root() at a scratch dir."""
+    root = tmp_path / "Rips"
+    root.mkdir()
+
+    def _fake_session_root() -> Path:
+        return root
+
+    monkeypatch.setattr(manifest_mod, "_session_root", _fake_session_root)
+    return root
+
+
+def _write_manifest(folder: Path, disc_num: int, title: str, year: int = 2000) -> None:
+    disc_dir = folder / f"Disc {disc_num}"
+    disc_dir.mkdir(parents=True, exist_ok=True)
+    (disc_dir / "_rip_manifest.json").write_text(
+        json.dumps({
+            "title": title,
+            "year": year,
+            "type": "movie",
+            "release": "Test Release",
+            "format": "DVD",
+        }),
+        encoding="utf-8",
+    )
+
+
+class TestWriteSessionMarker:
+    def test_writes_marker_into_each_work_folder(self, rip_root):
+        works = [
+            SessionWork(title="Psych", year=2006, media_type="tv",
+                        folder="Psych (2006)", disc_numbers=[1, 2]),
+            SessionWork(title="Psych: The Movie", year=2017, media_type="movie",
+                        folder="Psych The Movie (2017)", disc_numbers=[3]),
+        ]
+        written = write_session_marker(works, release_name="Psych Complete Series")
+
+        assert len(written) == 2
+        for w in works:
+            marker = rip_root / w.folder / SESSION_MARKER_NAME
+            assert marker.exists()
+            data = json.loads(marker.read_text(encoding="utf-8"))
+            assert data["type"] == "riplex_session"
+            assert data["release_name"] == "Psych Complete Series"
+            assert len(data["works"]) == 2
+            folders = {w["folder"] for w in data["works"]}
+            assert folders == {"Psych (2006)", "Psych The Movie (2017)"}
+
+    def test_creates_missing_folders(self, rip_root):
+        works = [SessionWork(title="X", year=2020, media_type="movie",
+                             folder="X (2020)", disc_numbers=[1])]
+        write_session_marker(works, release_name="rel")
+        assert (rip_root / "X (2020)" / SESSION_MARKER_NAME).exists()
+
+    def test_idempotent_overwrite(self, rip_root):
+        works = [SessionWork(title="X", year=2020, media_type="movie",
+                             folder="X (2020)", disc_numbers=[1])]
+        write_session_marker(works, release_name="rel-1")
+        write_session_marker(works, release_name="rel-2")
+        marker = rip_root / "X (2020)" / SESSION_MARKER_NAME
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        assert data["release_name"] == "rel-2"
+
+    def test_empty_works_writes_nothing(self, rip_root):
+        assert write_session_marker([], release_name="rel") == []
+
+
+class TestReadSessionMarker:
+    def test_returns_none_when_missing(self, tmp_path):
+        assert read_session_marker(tmp_path) is None
+
+    def test_returns_none_on_wrong_type(self, tmp_path):
+        (tmp_path / SESSION_MARKER_NAME).write_text(
+            json.dumps({"type": "something-else"}), encoding="utf-8",
+        )
+        assert read_session_marker(tmp_path) is None
+
+    def test_returns_none_on_bad_json(self, tmp_path):
+        (tmp_path / SESSION_MARKER_NAME).write_text("not json", encoding="utf-8")
+        assert read_session_marker(tmp_path) is None
+
+    def test_returns_payload(self, rip_root):
+        works = [SessionWork(title="X", year=2020, media_type="movie",
+                             folder="X (2020)", disc_numbers=[1])]
+        write_session_marker(works, release_name="rel")
+        data = read_session_marker(rip_root / "X (2020)")
+        assert data is not None
+        assert data["type"] == "riplex_session"
+
+
+class TestFindExistingSessionAggregation:
+    def test_legacy_single_work_returns_local_ripped(self, rip_root):
+        folder = rip_root / "Solo (2020)"
+        _write_manifest(folder, 1, "Solo", 2020)
+        _write_manifest(folder, 2, "Solo", 2020)
+
+        session = find_existing_session("Solo")
+
+        assert isinstance(session, ExistingSession)
+        assert session.ripped_discs == {1, 2}
+        assert session.works == []
+        # For legacy sessions callers may fall back to ripped_discs.
+        assert session.all_ripped_discs == {1, 2}
+
+    def test_marker_aggregates_across_siblings(self, rip_root):
+        tv_folder = rip_root / "Psych (2006)"
+        film_folder = rip_root / "Psych The Movie (2017)"
+        _write_manifest(tv_folder, 1, "Psych", 2006)
+        _write_manifest(tv_folder, 2, "Psych", 2006)
+        _write_manifest(film_folder, 3, "Psych: The Movie", 2017)
+
+        works = [
+            SessionWork(title="Psych", year=2006, media_type="tv",
+                        folder="Psych (2006)", disc_numbers=[1, 2]),
+            SessionWork(title="Psych: The Movie", year=2017, media_type="movie",
+                        folder="Psych The Movie (2017)", disc_numbers=[3]),
+        ]
+        write_session_marker(works, release_name="Psych Set")
+
+        # Look up via TV title
+        s1 = find_existing_session("Psych")
+        assert s1 is not None
+        assert s1.ripped_discs == {1, 2}
+        assert s1.all_ripped_discs == {1, 2, 3}
+        assert len(s1.works) == 2
+
+        # Look up via film title — same aggregation
+        s2 = find_existing_session("Psych: The Movie")
+        assert s2 is not None
+        assert s2.ripped_discs == {3}
+        assert s2.all_ripped_discs == {1, 2, 3}
+
+    def test_missing_sibling_folder_is_ignored(self, rip_root):
+        tv_folder = rip_root / "Psych (2006)"
+        _write_manifest(tv_folder, 1, "Psych", 2006)
+
+        works = [
+            SessionWork(title="Psych", year=2006, media_type="tv",
+                        folder="Psych (2006)", disc_numbers=[1]),
+            SessionWork(title="Psych: The Movie", year=2017, media_type="movie",
+                        folder="Psych The Movie (2017)", disc_numbers=[3]),
+        ]
+        write_session_marker(works, release_name="Psych Set")
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        # Sibling folder exists (write_session_marker created it) but has
+        # no manifest, so it contributes zero discs.
+        assert session.all_ripped_discs == {1}
+
+    def test_no_match_returns_none(self, rip_root):
+        _write_manifest(rip_root / "Solo (2020)", 1, "Solo", 2020)
+        assert find_existing_session("Unknown") is None
+
+    def test_root_missing_returns_none(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            manifest_mod, "_session_root",
+            lambda: tmp_path / "does-not-exist",
+        )
+        assert find_existing_session("anything") is None
