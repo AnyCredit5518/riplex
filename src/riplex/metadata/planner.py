@@ -23,14 +23,16 @@ from riplex.ui import is_interactive, prompt_choice
 _MAX_TMDB_CHOICES = 8
 
 
-async def plan(
+async def pick_match(
     request: SearchRequest,
     provider: MetadataProvider,
-) -> PlannedMovie | PlannedShow:
-    """Look up metadata and build a Plex-compatible plan.
+) -> MetadataSearchResult:
+    """Run the metadata search and pick the best match for ``request``.
 
-    Returns a PlannedMovie or PlannedShow depending on what the metadata
-    source identifies.
+    Split out of :func:`plan` so callers that need the picked
+    :class:`MetadataSearchResult` (e.g. the CLI's group router, which
+    passes it to ``build_multi_group_plan``) don't have to re-run the
+    search themselves.
     """
     results = await provider.search(
         request.title,
@@ -42,8 +44,19 @@ async def plan(
             f"No results found for '{request.title}'"
             + (f" ({request.year})" if request.year else "")
         )
+    return _pick_best(results, request)
 
-    best = _pick_best(results, request)
+
+async def plan(
+    request: SearchRequest,
+    provider: MetadataProvider,
+) -> PlannedMovie | PlannedShow:
+    """Look up metadata and build a Plex-compatible plan.
+
+    Returns a PlannedMovie or PlannedShow depending on what the metadata
+    source identifies.
+    """
+    best = await pick_match(request, provider)
 
     if best.media_type == "movie":
         return await _plan_movie(best, provider, request)

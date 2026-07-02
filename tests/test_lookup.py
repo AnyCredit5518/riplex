@@ -20,7 +20,13 @@ class _StubProvider(MetadataProvider):
 
 @pytest.mark.asyncio
 async def test_lookup_metadata_qualifies_dvdcompare_title_for_tv_season(monkeypatch):
-    async def _fake_plan(request, provider):
+    async def _fake_pick_match(request, provider):
+        # Only .media_type is read downstream in lookup_metadata.
+        return SimpleNamespace(
+            title="Scrubs", year=2001, media_type="tv", source_id="tv:1",
+        )
+
+    async def _fake_plan_show(match, provider, request):
         return PlannedShow(
             canonical_title="Scrubs",
             year=2001,
@@ -34,7 +40,8 @@ async def test_lookup_metadata_qualifies_dvdcompare_title_for_tv_season(monkeypa
         recorded["kwargs"] = kwargs
         return [], ""
 
-    monkeypatch.setattr("riplex.lookup.plan", _fake_plan)
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
     monkeypatch.setattr("riplex.lookup.fetch_and_select_release", _fake_fetch_and_select_release)
 
     result = await lookup_metadata(
