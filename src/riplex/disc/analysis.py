@@ -65,35 +65,41 @@ def detect_bonus_films(
 
     Recognises the case where one physical disc holds multiple full-length
     films (e.g. box sets like *Psych* disc 31 with three TV-movie sequels,
-    or a Criterion double-feature). Only considers discs flagged
-    ``is_film=True`` by dvdcompare — episode discs are ignored to avoid
-    false positives on TV compilations.
+    or a Criterion double-feature). Considers a disc when either
+    ``is_film=True`` OR any extra carries a ``pointer_fid`` — the latter
+    covers Complete Series pages where dvdcompare omits the ``* The Film``
+    marker on the bonus-films disc but hyperlinks each film's title to
+    its own dvdcompare entry.
 
     A ``PlannedExtra`` qualifies when:
 
-    * The parent disc's ``is_film`` is True.
-    * ``runtime_seconds`` is at least ``min_runtime_seconds`` (default 60m).
-    * ``feature_type`` is not a bonus-content category (featurette,
-      documentary, interview, deleted scene, etc.). An empty
-      ``feature_type`` — the common shape for a standalone top-level
-      film — passes.
+    * The parent disc is film-like (see above).
+    * Either the extra has a ``pointer_fid`` (dvdcompare has told us
+      this bonus item is the main title of a different film page —
+      trust that signal unconditionally), **or** ``runtime_seconds`` is at
+      least ``min_runtime_seconds`` (default 60m) and ``feature_type`` is
+      not a bonus-content category.
     * The title is not a Play-All parent (suffix ``": Play All"``).
 
     Returns an empty list when no additional films are present. On a
     typical single-film disc dvdcompare does not list the main film as
     a feature at all, so this correctly returns ``[]``.
     """
-    if not disc.is_film:
+    if not disc.is_film and not any(
+        getattr(e, "pointer_fid", None) for e in disc.extras
+    ):
         return []
     results: list[PlannedExtra] = []
     for extra in disc.extras:
-        if extra.runtime_seconds < min_runtime_seconds:
-            continue
+        is_linked = getattr(extra, "pointer_fid", None) is not None
         if extra.title.endswith(": Play All"):
             continue
-        ft = (extra.feature_type or "").strip().lower()
-        if ft in _BONUS_CONTENT_FEATURE_TYPES:
-            continue
+        if not is_linked:
+            if extra.runtime_seconds < min_runtime_seconds:
+                continue
+            ft = (extra.feature_type or "").strip().lower()
+            if ft in _BONUS_CONTENT_FEATURE_TYPES:
+                continue
         results.append(extra)
     return results
 
@@ -111,10 +117,14 @@ def group_release_discs(
     single TMDb match — this function partitions the release so the caller
     can attach a separate target to each group.
 
-    v1 rule: contiguous runs of discs sharing the same ``is_film`` value form
-    one group. Non-film discs become a "main content" group (typically the
-    TV series or a movie split across format discs); film discs become a
-    "feature films" group.
+    v1 rule: contiguous runs of discs sharing the same "film-like" state
+    form one group. A disc is film-like when dvdcompare marked it
+    ``is_film=True`` *or* when any of its extras carries a
+    ``pointer_fid`` (dvdcompare hyperlinks bonus titles that live on
+    another film page — see ``PlannedExtra.pointer_fid``). Non-film-like
+    discs become a "main content" group (typically the TV series or a
+    movie split across format discs); film-like discs become a "feature
+    films" group with one ``FilmSlot`` per detected film.
 
     ``current_tmdb_match`` is the TMDb match the user selected earlier at
     the metadata screen. It is auto-assigned to the group whose ``kind``
@@ -128,6 +138,15 @@ def group_release_discs(
     if not discs:
         return []
 
+    def _is_film_like(d: "PlannedDisc") -> bool:
+        if d.is_film:
+            return True
+        # Any hyperlinked extra means dvdcompare knows the item lives on
+        # a different film page — treat the disc as a bonus-films disc
+        # even though ``is_film`` wasn't set (Complete Series pages omit
+        # the ``* The Film`` marker on the bonus-films disc).
+        return any(getattr(e, "pointer_fid", None) for e in d.extras)
+
     sorted_discs = sorted(discs, key=lambda d: d.number)
     groups: list[DiscGroup] = []
     current_run: list = []
@@ -135,7 +154,7 @@ def group_release_discs(
     def emit_run() -> None:
         if not current_run:
             return
-        is_film = current_run[0].is_film
+        is_film = _is_film_like(current_run[0])
         numbers = [d.number for d in current_run]
         first_n, last_n = numbers[0], numbers[-1]
         range_str = f"disc {first_n}" if first_n == last_n else f"discs {first_n}-{last_n}"
@@ -151,11 +170,15 @@ def group_release_discs(
                     label = f"Feature film ({range_str})"
                 default_title = bonus[0].title if len(bonus) == 1 else ""
                 # Each detected bonus film becomes its own FilmSlot so the UI
-                # can assign a distinct TMDb match per film.
+                # can assign a distinct TMDb match per film. When the source
+                # feature carried a ``pointer_fid`` (dvdcompare hyperlink to
+                # a distinct film page) it's threaded onto the slot so
+                # autofill can hit that fid for a canonical title/year.
                 for f in bonus:
                     films.append(FilmSlot(
                         title=f.title,
                         runtime_seconds=int(getattr(f, "runtime_seconds", 0) or 0),
+                        dvdcompare_fid=getattr(f, "pointer_fid", None),
                     ))
             else:
                 label = f"Feature film discs ({range_str})"
@@ -179,12 +202,13 @@ def group_release_discs(
 
     prev_is_film: bool | None = None
     for d in sorted_discs:
-        if prev_is_film is None or d.is_film == prev_is_film:
+        d_is_film = _is_film_like(d)
+        if prev_is_film is None or d_is_film == prev_is_film:
             current_run.append(d)
         else:
             emit_run()
             current_run = [d]
-        prev_is_film = d.is_film
+        prev_is_film = d_is_film
     emit_run()
 
     if current_tmdb_match is not None and groups:

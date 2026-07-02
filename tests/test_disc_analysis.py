@@ -794,6 +794,52 @@ class TestDetectBonusFilms:
         disc = self._film_disc()
         assert detect_bonus_films(disc) == []
 
+    # Positive: dvdcompare hyperlinked a bonus title to a distinct film
+    # page (``pointer_fid`` set). On a Complete-Series page's bonus-films
+    # disc the ``* The Film`` marker is often absent, so ``is_film`` is
+    # False — but the pointer_fid tells us this is a bonus-films disc.
+    def test_pointer_linked_extras_on_non_film_disc(self):
+        disc = self._episode_disc(extras=[
+            PlannedExtra(
+                title="Psych: The Movie", runtime_seconds=5290,
+                pointer_fid=66239,
+            ),
+            PlannedExtra(
+                title="Psych 2: Lassie Come Home", runtime_seconds=5310,
+                pointer_fid=66240,
+            ),
+        ])
+        films = detect_bonus_films(disc)
+        assert [f.title for f in films] == [
+            "Psych: The Movie",
+            "Psych 2: Lassie Come Home",
+        ]
+        assert [f.pointer_fid for f in films] == [66239, 66240]
+
+    # Positive: a hyperlinked bonus feature bypasses the runtime and
+    # feature-type filters — dvdcompare has told us it's a real film.
+    def test_pointer_linked_short_extra_still_counts(self):
+        disc = self._film_disc(extras=[
+            PlannedExtra(
+                # 45 minutes, would normally be filtered as sub-threshold.
+                title="Companion Short Film", runtime_seconds=2700,
+                pointer_fid=99999,
+            ),
+        ])
+        assert [f.title for f in detect_bonus_films(disc)] == [
+            "Companion Short Film",
+        ]
+
+    # Negative: a non-film disc with only ordinary extras (no pointer_fid)
+    # still returns [] — the pointer signal is what admits it.
+    def test_non_film_disc_without_pointers_still_empty(self):
+        disc = self._episode_disc(extras=[
+            PlannedExtra(
+                title="Standalone Bonus", runtime_seconds=5400,
+            ),
+        ])
+        assert detect_bonus_films(disc) == []
+
 
 class TestGroupReleaseDiscs:
     """Tests for group_release_discs() — the release-splitting heuristic."""
@@ -972,6 +1018,42 @@ class TestGroupReleaseDiscs:
         assert not g.is_complete()
         g.tmdb_match = object()
         assert g.is_complete()
+
+    def test_pointer_linked_extras_split_run_even_when_is_film_false(self):
+        # Psych Season 1 entry-point shape: 30 episode discs are followed
+        # by a 31st disc whose extras hyperlink to three distinct film
+        # pages. dvdcompare doesn't set ``is_film`` on that disc (no
+        # ``* The Film`` marker), so the legacy grouping merged it with
+        # the TV series. The pointer_fid signal now splits it out.
+        discs = [self._disc(n) for n in range(1, 31)]
+        discs.append(self._disc(31, extras=[
+            PlannedExtra(
+                title="Psych: The Movie", runtime_seconds=5290,
+                pointer_fid=66239,
+            ),
+            PlannedExtra(
+                title="Psych 2: Lassie Come Home", runtime_seconds=5310,
+                pointer_fid=66240,
+            ),
+            PlannedExtra(
+                title="Psych 3: This Is Gus", runtime_seconds=5782,
+                pointer_fid=66241,
+            ),
+        ]))
+        groups = group_release_discs(discs, self._fake_match("tv", "Psych"))
+        assert len(groups) == 2
+        main = next(g for g in groups if g.kind == "main")
+        film = next(g for g in groups if g.kind == "film")
+        assert main.disc_numbers == list(range(1, 31))
+        assert film.disc_numbers == [31]
+        assert [f.title for f in film.films] == [
+            "Psych: The Movie",
+            "Psych 2: Lassie Come Home",
+            "Psych 3: This Is Gus",
+        ]
+        # Each FilmSlot carries the linked fid so autofill can hit the
+        # exact dvdcompare page for a canonical title/year.
+        assert [f.dvdcompare_fid for f in film.films] == [66239, 66240, 66241]
 
 
 class TestBuildSeasonLabels:

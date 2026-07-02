@@ -90,6 +90,14 @@ class PlannedExtra:
     runtime_seconds: int = 0
     feature_type: str = ""  # e.g. "featurette", "documentary", "behind-the-scenes montage"
     file_name: str = ""
+    # dvdcompare fid this extra's title was hyperlinked to on the source
+    # page. dvdcompare wraps a bonus title in an anchor when that item is
+    # actually the main feature of a different film page (e.g. disc-31 of
+    # a Complete Series set linking each standalone TV-movie sequel to its
+    # own dvdcompare entry). ``group_release_discs`` uses this to split a
+    # bonus-films disc into its own DiscGroup even when the source page
+    # doesn't flag the disc as a film disc.
+    pointer_fid: int | None = None
 
 
 @dataclass
@@ -123,6 +131,11 @@ class FilmSlot:
     runtime_seconds: int = 0
     tmdb_match: object | None = None
     source: Literal["user", "auto"] | None = None
+    # dvdcompare fid this film links to on the parent release page, when
+    # the slot was seeded from a hyperlinked feature. Autofill can fetch
+    # this fid to get the canonical film title/year for a high-confidence
+    # TMDb search instead of relying on the free-text bonus label.
+    dvdcompare_fid: int | None = None
 
 
 @dataclass

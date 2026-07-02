@@ -205,6 +205,63 @@ class TestConvertFilmEdgeCases:
         with pytest.raises(LookupError):
             _convert_film(film, "nonexistent")
 
+    def test_feature_pointer_fid_propagates_to_planned_extra(self):
+        # dvdcompare Complete-Series pages hyperlink each bonus film's
+        # title to its own film.php page; the scraper surfaces that as
+        # ``Feature.pointer_fid``. The converter must thread it onto
+        # ``PlannedExtra.pointer_fid`` so ``group_release_discs`` can
+        # split the bonus-films disc into its own group.
+        film = FilmComparison(
+            title="Psych: Season 1 (TV)",
+            year=2006,
+            format="Blu-ray",
+            film_id=66231,
+            releases=[
+                Release(
+                    name="Blu-ray ALL America - Universal Pictures",
+                    year=2020,
+                    discs=[
+                        Disc(
+                            number=31,
+                            format="",
+                            is_film=False,
+                            features=[
+                                Feature(
+                                    title="Psych: The Movie",
+                                    runtime_seconds=88 * 60 + 10,
+                                    pointer_fid=66239,
+                                ),
+                                Feature(
+                                    title="Psych 2: Lassie Come Home",
+                                    runtime_seconds=88 * 60 + 30,
+                                    pointer_fid=66240,
+                                ),
+                                Feature(
+                                    title="Psych 3: This Is Gus",
+                                    runtime_seconds=96 * 60 + 22,
+                                    pointer_fid=66241,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        )
+        discs = _convert_film(film)
+        assert len(discs) == 1
+        d = discs[0]
+        # Linked features must not be misclassified as episodes even
+        # though the disc lacks ``is_film`` and the runtimes exceed the
+        # 600s standalone-episode threshold.
+        assert d.episodes == []
+        assert len(d.extras) == 3
+        assert [e.pointer_fid for e in d.extras] == [66239, 66240, 66241]
+        assert [e.title for e in d.extras] == [
+            "Psych: The Movie",
+            "Psych 2: Lassie Come Home",
+            "Psych 3: This Is Gus",
+        ]
+
 
 class TestBoxsetWithQuotedTitleDiscs:
     """Boxset releases where the scraper now splits inline quoted-title

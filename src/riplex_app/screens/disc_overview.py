@@ -15,7 +15,7 @@ import flet as ft
 
 from riplex.config import get_api_key
 from riplex.disc.analysis import build_season_labels, group_release_discs
-from riplex.disc.provider import disc_content_summary
+from riplex.disc.provider import DiscProvider, disc_content_summary
 from riplex.manifest import (
     SessionWork,
     build_rip_path,
@@ -255,6 +255,7 @@ class DiscOverviewScreen:
 
         async def _do_all():
             provider = TmdbProvider(api_key)
+            disc_provider = DiscProvider()
             try:
                 for g in groups:
                     log.info("Auto-fill: entering group %s (kind=%s films=%d "
@@ -266,8 +267,32 @@ class DiscOverviewScreen:
                         for idx, film in enumerate(g.films):
                             if film.tmdb_match is not None:
                                 continue
+                            query = film.title
+                            # When dvdcompare hyperlinked this bonus title
+                            # to a distinct film page, hit that fid for the
+                            # canonical title — those cross-page links are
+                            # curated so they're a stronger signal than the
+                            # free-text bonus label.
+                            fid = getattr(film, "dvdcompare_fid", None)
+                            if fid:
+                                try:
+                                    linked = await disc_provider.fetch_film_by_id(fid)
+                                    if linked and getattr(linked, "title", ""):
+                                        query = linked.title
+                                        log.info(
+                                            "Auto-fill: %s films[%d] fid=%s "
+                                            "resolved to '%s' (%s)",
+                                            g.id, idx, fid, query,
+                                            getattr(linked, "year", None),
+                                        )
+                                except Exception as exc:
+                                    log.info(
+                                        "Auto-fill: %s films[%d] fid=%s "
+                                        "lookup failed (%s); falling back to '%s'",
+                                        g.id, idx, fid, exc, film.title,
+                                    )
                             got = await best_guess(
-                                provider, film.title, media_type="movie",
+                                provider, query, media_type="movie",
                             )
                             if got is None:
                                 continue
@@ -276,7 +301,7 @@ class DiscOverviewScreen:
                             films_map = entry.setdefault("films", {})
                             films_map[idx] = {"match": match, "source": "auto"}
                             log.info("Auto-fill: %s films[%d] '%s' -> '%s (%s)'",
-                                     g.id, idx, film.title,
+                                     g.id, idx, query,
                                      match.title, match.year)
                     else:
                         if g.tmdb_match is not None:

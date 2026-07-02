@@ -689,6 +689,7 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                 not dvc_disc.is_film
                 and not feature.feature_type
                 and (feature.runtime_seconds or 0) >= 600
+                and not getattr(feature, "pointer_fid", None)
             ):
                 log.debug("Disc %d: standalone episode '%s' (%ds)",
                           disc_offset + dvc_disc.number, feature.title,
@@ -703,15 +704,17 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                     )
                 )
             else:
-                log.debug("Disc %d: extra '%s' (%ds) type='%s'",
+                log.debug("Disc %d: extra '%s' (%ds) type='%s' pointer_fid=%s",
                           disc_offset + dvc_disc.number, feature.title,
                           feature.runtime_seconds or 0,
-                          _clean_feature_type(feature.feature_type or ""))
+                          _clean_feature_type(feature.feature_type or ""),
+                          getattr(feature, "pointer_fid", None))
                 extras.append(
                     PlannedExtra(
                         title=feature.title,
                         runtime_seconds=feature.runtime_seconds or 0,
                         feature_type=_clean_feature_type(feature.feature_type or ""),
+                        pointer_fid=getattr(feature, "pointer_fid", None),
                     )
                 )
 
@@ -772,15 +775,17 @@ def _convert_box_set(releases: list, disc_offset: int = 0) -> list[PlannedDisc]:
                             )
                         )
                 else:
-                    log.debug("Disc %d: extra '%s' (%ds) type='%s'",
+                    log.debug("Disc %d: extra '%s' (%ds) type='%s' pointer_fid=%s",
                               offset + dvc_disc.number, feature.title,
                               feature.runtime_seconds or 0,
-                              _clean_feature_type(feature.feature_type or ""))
+                              _clean_feature_type(feature.feature_type or ""),
+                              getattr(feature, "pointer_fid", None))
                     extras.append(
                         PlannedExtra(
                             title=feature.title,
                             runtime_seconds=feature.runtime_seconds or 0,
                             feature_type=_clean_feature_type(feature.feature_type or ""),
+                            pointer_fid=getattr(feature, "pointer_fid", None),
                         )
                     )
 
