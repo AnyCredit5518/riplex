@@ -16,7 +16,14 @@ import flet as ft
 from riplex.config import get_api_key
 from riplex.disc.analysis import build_season_labels, group_release_discs
 from riplex.disc.provider import disc_content_summary
-from riplex.manifest import build_rip_path, find_ripped_discs
+from riplex.manifest import (
+    SessionWork,
+    build_rip_path,
+    find_existing_session,
+    find_ripped_discs,
+    write_session_marker,
+)
+from riplex.normalize import sanitize_filename
 from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
 from riplex.metadata.sources.tmdb import TmdbProvider
 
@@ -65,9 +72,16 @@ class DiscOverviewScreen:
             inserted_disc = detect_disc_number(disc_info, dvdcompare_discs)
         self.app.state["_inserted_disc"] = inserted_disc
 
-        # Find previously ripped discs from manifests
+        # Find previously ripped discs from manifests. Aggregates across
+        # sibling work-folders when a session marker exists so resume of
+        # a multi-work release shows every completed disc regardless of
+        # which work-folder it's in.
         rip_root = build_rip_path(canonical, year)
-        ripped_discs = find_ripped_discs(rip_root)
+        existing = find_existing_session(canonical)
+        if existing and existing.all_ripped_discs:
+            ripped_discs = set(existing.all_ripped_discs)
+        else:
+            ripped_discs = find_ripped_discs(rip_root)
         self.app.state["ripped_discs"] = ripped_discs
 
         log.info("Disc overview: %d discs, inserted=%s, ripped=%s",
@@ -881,9 +895,54 @@ class DiscOverviewScreen:
         self.app.state["current_disc_idx"] = 0
         self.app.state["all_rip_results"] = {}
 
+        # Session marker: write one _riplex_session.json per work-folder
+        # so a later resume of any sibling folder can discover the full
+        # release layout and aggregate ripped-disc state across works.
+        try:
+            self._write_session_marker()
+        except Exception as exc:
+            log.warning("Failed to write session marker: %s", exc)
+
         log.info("Orchestrate: disc_queue=%s", ordered)
 
         self._begin_disc(ordered[0])
+
+    def _build_session_works(self) -> list[SessionWork]:
+        """Collapse ``disc_groups`` into per-folder SessionWork entries.
+
+        Uses the same "effective match" rule as the selection screen:
+        a group's own ``tmdb_match`` when set, otherwise the top-level
+        match. Groups that resolve to the same folder are merged so we
+        don't write two markers with disjoint disc lists.
+        """
+        top_match = self.app.state.get("tmdb_match")
+        groups = self.app.state.get("disc_groups", []) or []
+        seen: dict[str, SessionWork] = {}
+        for g in groups:
+            match = g.tmdb_match if g.tmdb_match is not None else top_match
+            if match is None:
+                continue
+            title = getattr(match, "title", "") or ""
+            year = getattr(match, "year", 0) or 0
+            media_type = getattr(match, "media_type", "movie") or "movie"
+            folder = sanitize_filename(f"{title} ({year})")
+            if folder in seen:
+                seen[folder].disc_numbers.extend(g.disc_numbers)
+            else:
+                seen[folder] = SessionWork(
+                    title=title, year=year, media_type=media_type,
+                    folder=folder, disc_numbers=list(g.disc_numbers),
+                )
+        return list(seen.values())
+
+    def _write_session_marker(self) -> None:
+        works = self._build_session_works()
+        if not works:
+            return
+        release = self.app.state.get("release")
+        release_name = release.name if release else ""
+        paths = write_session_marker(works, release_name=release_name)
+        log.info("Wrote session marker to %d work-folder(s)", len(paths))
 
     def _begin_disc(self, disc_number: int):
         inserted = self.app.state.get("_inserted_disc")
