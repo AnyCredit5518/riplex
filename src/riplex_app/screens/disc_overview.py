@@ -91,7 +91,7 @@ class DiscOverviewScreen:
         # that hasn't been attempted yet. Runs in a background thread; the
         # worker writes results into state["group_tmdb_overrides"] and
         # re-navigates so the amber "auto-filled" state is shown.
-        self._maybe_autofill(disc_groups)
+        self._maybe_autofill(disc_groups, release_name=release_name)
 
         discs_by_number = {d.number: d for d in dvdcompare_discs}
         self.checkboxes = []
@@ -205,7 +205,7 @@ class DiscOverviewScreen:
                     g.films[idx].tmdb_match = film_entry["match"]
                     g.films[idx].source = film_entry.get("source")
 
-    def _maybe_autofill(self, disc_groups) -> None:
+    def _maybe_autofill(self, disc_groups, *, release_name: str = "") -> None:
         """Start a background auto-fill for any group with unfilled slots
         that hasn't been attempted yet this session."""
         attempted = self.app.state.setdefault("_autofill_attempted", set())
@@ -218,11 +218,11 @@ class DiscOverviewScreen:
                  len(pending), [g.id for g in pending])
         threading.Thread(
             target=self._autofill_worker,
-            args=(pending,),
+            args=(pending, release_name),
             daemon=True,
         ).start()
 
-    def _autofill_worker(self, groups) -> None:
+    def _autofill_worker(self, groups, release_name: str = "") -> None:
         """Off-thread TMDb best-guess lookup for every unfilled slot in the
         given groups. Results land in ``state['group_tmdb_overrides']`` with
         ``source='auto'``; a re-navigate then redraws the screen."""
@@ -257,13 +257,25 @@ class DiscOverviewScreen:
                     else:
                         if g.tmdb_match is not None:
                             continue
-                        raw_query = (g.default_search_title
-                                     or self.app.state.get("title", "") or "")
-                        # Release titles often carry boxset noise ("Psych:
-                        # The Complete Series") that TMDb doesn't index —
-                        # strip so the top hit ("Psych") scores above the
-                        # fuzzy threshold.
+                        # Try the most specific source first, falling back
+                        # to the release title (which is what the user just
+                        # picked from dvdcompare, e.g. "Psych: The Complete
+                        # Series"). Boxset / collection markers are stripped
+                        # so the top TMDb hit scores above the fuzzy
+                        # threshold.
+                        raw_query = (
+                            g.default_search_title
+                            or self.app.state.get("title", "")
+                            or release_name
+                            or ""
+                        )
                         query = strip_boxset_suffix(raw_query)
+                        if not query.strip():
+                            log.info("Auto-fill: %s skipped (no query available; "
+                                     "default=%r state.title=%r release=%r)",
+                                     g.id, g.default_search_title,
+                                     self.app.state.get("title"), release_name)
+                            continue
                         media_type = "tv" if g.kind == "main" else "movie"
                         got = await best_guess(provider, query, media_type=media_type)
                         if got is None:
