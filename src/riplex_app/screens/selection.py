@@ -5,7 +5,13 @@ import logging
 import flet as ft
 
 from riplex.config import get_rip_output
-from riplex.disc.analysis import analyze_disc, detect_bonus_films, format_seconds
+from riplex.disc.analysis import (
+    analyze_disc,
+    build_season_labels,
+    detect_bonus_films,
+    format_seconds,
+    group_for_disc,
+)
 from riplex.disc.makemkv import DiscTitle
 
 log = logging.getLogger(__name__)
@@ -24,9 +30,24 @@ class SelectionScreen:
 
     def build(self) -> ft.Control:
         disc_info = self.app.state["disc_info"]
-        tmdb_match = self.app.state["tmdb_match"]
+        top_tmdb_match = self.app.state["tmdb_match"]
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
         titles = disc_info.titles if disc_info else []
+
+        # In orchestrate mode, use the explicit disc number from the queue
+        orchestrate_disc_num = self.app.state.get("_orchestrate_disc_number")
+
+        # Multi-work releases: swap in the per-group match so header,
+        # rip output folder, and analyze_disc all reflect the work this
+        # disc actually belongs to (Psych disc 1 → TV series match, not
+        # the film group's match).
+        disc_groups = self.app.state.get("disc_groups", []) or []
+        current_group = group_for_disc(disc_groups, orchestrate_disc_num)
+        tmdb_match = top_tmdb_match
+        if current_group and current_group.tmdb_match is not None:
+            tmdb_match = current_group.tmdb_match
+        self._effective_tmdb_match = tmdb_match
+        self._current_group = current_group
 
         # Debug: log release context
         log.info("=== Selection Screen ===")
@@ -38,13 +59,20 @@ class SelectionScreen:
             log.info("  Disc %d: %d episodes, %d extras, format=%s",
                      d.number, ep_count, ex_count, getattr(d, 'disc_format', None))
         log.info("Live disc: %d titles", len(titles))
+        if current_group:
+            log.info("Current group: %s (kind=%s) match=%s",
+                     current_group.label, current_group.kind,
+                     getattr(tmdb_match, "title", None))
 
         # Build classification data from dvdcompare
         is_movie = tmdb_match.media_type == "movie" if tmdb_match else True
-        movie_runtime = self.app.state.get("movie_runtime")
-
-        # In orchestrate mode, use the explicit disc number from the queue
-        orchestrate_disc_num = self.app.state.get("_orchestrate_disc_number")
+        # movie_runtime only applies to the top-level match; a per-group
+        # TV match should ignore it. Film-group per-slot discs also
+        # ignore it (detect_bonus_films handles those).
+        if current_group and tmdb_match is not top_tmdb_match:
+            movie_runtime = None
+        else:
+            movie_runtime = self.app.state.get("movie_runtime")
 
         # Use shared analyze_disc — same logic as CLI rip and orchestrate
         analysis = analyze_disc(
@@ -177,6 +205,35 @@ class SelectionScreen:
             queue_pos = disc_queue.index(orchestrate_disc_num) + 1 if orchestrate_disc_num in disc_queue else 0
             disc_label = f"Disc {orchestrate_disc_num} ({queue_pos}/{len(disc_queue)})"
 
+        # Season chip (e.g. "Season 1, Disc 2") when the release page
+        # groups discs by season — same chip we show on Disc Overview
+        # and Insert Next Disc.
+        season_label = ""
+        if dvdcompare_discs and orchestrate_disc_num:
+            season_label = build_season_labels(dvdcompare_discs).get(
+                orchestrate_disc_num, "",
+            )
+
+        disc_row_children: list[ft.Control] = []
+        if disc_label:
+            disc_row_children.append(
+                ft.Text(disc_label, size=13, color=ft.Colors.BLUE_400,
+                        weight=ft.FontWeight.BOLD),
+            )
+        if season_label:
+            disc_row_children.append(ft.Container(
+                ft.Text(season_label, size=11,
+                        color=ft.Colors.LIGHT_BLUE_200,
+                        weight=ft.FontWeight.BOLD),
+                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.LIGHT_BLUE_400),
+                border_radius=4,
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
+            ))
+        disc_row = ft.Row(
+            disc_row_children, spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ) if disc_row_children else ft.Container()
+
         # Detect multiple feature-length films on this disc (e.g. box-set
         # movie collections like Psych disc 31 with 3 TV-movie sequels).
         disc_num_for_films = orchestrate_disc_num or analysis.disc_number
@@ -193,8 +250,7 @@ class SelectionScreen:
             [
                 ft.Text("Select Titles to Rip", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(match_label, size=14, color=ft.Colors.GREY_400) if match_label else ft.Container(),
-                ft.Text(disc_label, size=13, color=ft.Colors.BLUE_400,
-                        weight=ft.FontWeight.BOLD) if disc_label else ft.Container(),
+                disc_row,
                 ft.Text(
                     "Titles marked RIP are recommended based on dvdcompare data and "
                     "duration matching. Uncheck any you don't want. Titles marked SKIP "
@@ -299,8 +355,14 @@ class SelectionScreen:
         self.app.navigate("progress")
 
     def _build_output_dir(self):
-        """Build the per-disc rip output directory for the current selection."""
-        tmdb_match = self.app.state["tmdb_match"]
+        """Build the per-disc rip output directory for the current selection.
+
+        Prefers the current disc's DiscGroup match over the top-level
+        state["tmdb_match"] so multi-work releases (e.g. Psych TV series
+        + bonus films disc) rip each work under its own folder.
+        """
+        tmdb_match = getattr(self, "_effective_tmdb_match", None) \
+            or self.app.state.get("tmdb_match")
         if tmdb_match:
             from riplex.manifest import build_rip_path
 
@@ -324,10 +386,11 @@ class SelectionScreen:
         from riplex.snapshot import get_debug_dir, save_rip_manifest, save_rip_snapshot
 
         try:
-            output_dir = Path(self.app.state.get("output_dir") or self._build_output_dir())
+            output_dir = Path(self._build_output_dir())
             debug_dir = get_debug_dir(self._debug_root_for_output_dir(output_dir))
             disc_info = self.app.state.get("disc_info")
-            tmdb_match = self.app.state.get("tmdb_match")
+            tmdb_match = getattr(self, "_effective_tmdb_match", None) \
+                or self.app.state.get("tmdb_match")
             discs = self.app.state.get("dvdcompare_discs", [])
             release = self.app.state.get("release")
             analysis = getattr(self, "_analysis", None)
@@ -335,7 +398,12 @@ class SelectionScreen:
             canonical = tmdb_match.title if tmdb_match else ""
             year = tmdb_match.year if tmdb_match else None
             is_movie = getattr(tmdb_match, "media_type", "movie") != "tv"
-            movie_runtime = self.app.state.get("movie_runtime")
+            if tmdb_match is not self.app.state.get("tmdb_match"):
+                # Per-group match: TV series should not carry the
+                # top-level (film) movie_runtime through.
+                movie_runtime = None if not is_movie else self.app.state.get("movie_runtime")
+            else:
+                movie_runtime = self.app.state.get("movie_runtime")
 
             save_rip_snapshot(
                 debug_dir, disc_info,

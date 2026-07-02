@@ -203,6 +203,20 @@ def group_release_discs(
     return groups
 
 
+def group_for_disc(
+    disc_groups: list["DiscGroup"],
+    disc_number: int | None,
+) -> "DiscGroup | None":
+    """Return the DiscGroup that owns ``disc_number``, or None if the
+    disc isn't in any group (or ``disc_number`` is None)."""
+    if disc_number is None:
+        return None
+    for g in disc_groups:
+        if disc_number in g.disc_numbers:
+            return g
+    return None
+
+
 def build_season_labels(discs: list["PlannedDisc"]) -> dict[int, str]:
     """Assign an intra-season disc index for each disc carrying a season title.
 

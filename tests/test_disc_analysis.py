@@ -11,6 +11,7 @@ from riplex.disc.analysis import (
     detect_play_all,
     find_duration_match,
     format_seconds,
+    group_for_disc,
     group_release_discs,
     is_skip_title,
 )
@@ -1035,3 +1036,30 @@ class TestBuildSeasonLabels:
     def test_whitespace_only_title_treated_as_missing(self):
         discs = [self._disc(1, title="   ")]
         assert build_season_labels(discs) == {1: ""}
+
+
+class TestGroupForDisc:
+    """Tests for group_for_disc() — look up which DiscGroup owns a
+    given disc number. Used by the selection screen to swap in the
+    per-group TMDb match on multi-work releases."""
+
+    def _group(self, gid, numbers, kind="main"):
+        from riplex.models import DiscGroup
+        return DiscGroup(id=gid, label=gid, disc_numbers=numbers, kind=kind)
+
+    def test_finds_group_containing_disc(self):
+        g1 = self._group("main", [1, 2, 3])
+        g2 = self._group("film", [4], kind="film")
+        assert group_for_disc([g1, g2], 2) is g1
+        assert group_for_disc([g1, g2], 4) is g2
+
+    def test_returns_none_when_disc_not_in_any_group(self):
+        g = self._group("main", [1, 2])
+        assert group_for_disc([g], 99) is None
+
+    def test_none_disc_number_returns_none(self):
+        g = self._group("main", [1])
+        assert group_for_disc([g], None) is None
+
+    def test_empty_groups_returns_none(self):
+        assert group_for_disc([], 1) is None
