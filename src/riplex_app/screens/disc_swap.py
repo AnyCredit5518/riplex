@@ -6,6 +6,7 @@ import threading
 
 import flet as ft
 
+from riplex.disc.analysis import build_season_labels
 from riplex.disc.makemkv import run_disc_info, run_drive_list, eject_disc
 from riplex.disc.provider import detect_disc_number, disc_content_summary
 from riplex.title import parse_volume_label
@@ -34,6 +35,31 @@ class DiscSwapScreen:
         summary = disc_content_summary(target_disc) if target_disc else ""
         fmt = getattr(target_disc, "disc_format", None) or ""
         fmt_str = f" ({fmt})" if fmt else ""
+
+        # Season label (e.g. "Season 1, Disc 2") when the release page
+        # groups discs by season — same chip we show on Disc Overview.
+        season_label = ""
+        if dvdcompare_discs:
+            season_label = build_season_labels(dvdcompare_discs).get(
+                disc_number, "",
+            )
+
+        header_children: list[ft.Control] = [
+            ft.Text(
+                f"Disc {disc_number}{fmt_str}",
+                size=18,
+                weight=ft.FontWeight.BOLD,
+            ),
+        ]
+        if season_label:
+            header_children.append(ft.Container(
+                ft.Text(season_label, size=11,
+                        color=ft.Colors.LIGHT_BLUE_200,
+                        weight=ft.FontWeight.BOLD),
+                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.LIGHT_BLUE_400),
+                border_radius=4,
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
+            ))
 
         self.status_text = ft.Text(
             "Insert the disc and click 'Scan' when ready.",
@@ -65,11 +91,8 @@ class DiscSwapScreen:
                 ft.Divider(height=20),
                 ft.Container(
                     ft.Column([
-                        ft.Text(
-                            f"Disc {disc_number}{fmt_str}",
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                        ),
+                        ft.Row(header_children, spacing=8,
+                               vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         ft.Text(summary, size=13, color=ft.Colors.GREY_400),
                     ], spacing=4),
                     bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
