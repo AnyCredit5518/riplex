@@ -277,7 +277,7 @@ class SelectionScreen:
                 spacing=4,
             ),
             padding=12,
-            border=ft.border.all(1, ft.Colors.AMBER_700),
+            border=ft.Border.all(1, ft.Colors.AMBER_700),
             border_radius=6,
             bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.AMBER_700),
         )

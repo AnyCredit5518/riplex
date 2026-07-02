@@ -25,6 +25,8 @@ class MetadataScreen:
     def _on_back(self, _e):
         """Back handler that cleans up scoped-group state before navigating."""
         target = self.app.state.pop("_group_match_target_id", None)
+        # Always clear the per-film index too so the next scope-open starts clean.
+        self.app.state.pop("_group_match_target_film_idx", None)
         if target is not None:
             saved = self.app.state.pop("_group_match_saved_title", None)
             if saved is not None:
@@ -249,13 +251,21 @@ class MetadataScreen:
         idx = int(self.radio_group.value)
         selected = self.tmdb_results[idx]
 
-        # Scoped mode: we're picking a match for one DiscGroup within an
-        # already-resolved release. Don't touch the top-level tmdb_match or
-        # dvdcompare state — just record the per-group override and go back.
+        # Scoped mode: we're picking a match for one DiscGroup (or one
+        # FilmSlot within it) inside an already-resolved release. Don't
+        # touch the top-level tmdb_match or dvdcompare state — just record
+        # the override with source="user" and go back.
         target_id = self.app.state.pop("_group_match_target_id", None)
+        target_film_idx = self.app.state.pop("_group_match_target_film_idx", None)
         if target_id is not None:
             overrides = self.app.state.setdefault("group_tmdb_overrides", {})
-            overrides[target_id] = selected
+            entry = overrides.setdefault(target_id, {})
+            if target_film_idx is not None:
+                films_map = entry.setdefault("films", {})
+                films_map[target_film_idx] = {"match": selected, "source": "user"}
+            else:
+                entry["match"] = selected
+                entry["source"] = "user"
             saved = self.app.state.pop("_group_match_saved_title", None)
             if saved is not None:
                 self.app.state["title"] = saved
