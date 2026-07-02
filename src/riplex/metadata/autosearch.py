@@ -111,6 +111,7 @@ async def best_guess(
     can share one HTTP connection.
     """
     if not query.strip():
+        log.info("best_guess: skipped (empty query)")
         return None
     try:
         results = await provider.search(query, media_type=media_type)
@@ -118,6 +119,7 @@ async def best_guess(
         log.warning("best_guess: TMDb search for %r failed: %s", query, exc)
         return None
     if not results:
+        log.info("best_guess: query=%r type=%s -> no results", query, media_type)
         return None
     top = results[0]
     s = score_title(query, top.title)
