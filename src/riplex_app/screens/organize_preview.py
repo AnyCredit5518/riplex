@@ -12,6 +12,7 @@ from riplex.matcher import collect_disc_targets, match_discs
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.metadata.planner import _plan_movie, _plan_show
 from riplex.models import PlannedMovie, SearchRequest
+from riplex.organize_by_group import apply_group_overrides, build_multi_group_plan
 from riplex.organizer import build_organize_plan, execute_plan
 from riplex.snapshot import save_from_scanned, save_organized_marker
 
@@ -77,51 +78,32 @@ class OrganizePreviewScreen:
         return content
 
     def _build_plan(self):
-        """Build the organize plan in a background thread."""
+        """Build the organize plan in a background thread.
+
+        Uses the pass-3 per-group router when ``state['disc_groups']``
+        is populated (multi-work releases, multi-film discs); falls
+        back to the legacy single-plan path otherwise (single-work
+        releases, organize-existing-folder without dvdcompare data)."""
         try:
             tmdb_match = self.app.state["tmdb_match"]
             scanned = self.app.state["scanned"]
             dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
+            disc_groups = self.app.state.get("disc_groups") or []
+            overrides = self.app.state.get("group_tmdb_overrides") or {}
 
             api_key = get_api_key()
-
-            async def _do_plan():
-                provider = TmdbProvider(api_key)
-                try:
-                    request = SearchRequest(
-                        title=tmdb_match.title,
-                        year=tmdb_match.year,
-                        season_number=self.app.state.get("season_number"),
-                        media_type=tmdb_match.media_type,
-                    )
-                    if tmdb_match.media_type == "movie":
-                        planned = await _plan_movie(tmdb_match, provider, request)
-                    else:
-                        planned = await _plan_show(tmdb_match, provider, request)
-                    return planned
-                finally:
-                    await provider.close()
-
-            kind = "movie" if tmdb_match.media_type == "movie" else "show"
-            self._set_progress(f"Fetching TMDb {kind} details for \"{tmdb_match.title}\"...")
-            planned = asyncio.run(_do_plan())
-
-            # Match scanned files against planned content
-            n_files = sum(len(d.files) for d in scanned)
-            self._set_progress(f"Matching {n_files} disc file(s) against {len(dvdcompare_discs) or 0} dvdcompare disc(s)...")
-            result = match_discs(scanned, dvdcompare_discs, planned)
-
-            # Build file maps
-            self._set_progress("Building target paths...")
-            file_map = {f.name: f.path for d in scanned for f in d.files}
-            scanned_map = {f.name: f for d in scanned for f in d.files}
-            targets = collect_disc_targets(dvdcompare_discs, planned) if dvdcompare_discs else None
-
             output_root = Path(get_output_root())
-            org_plan = build_organize_plan(
-                result, planned, output_root, file_map,
-                scanned_files=scanned_map, disc_targets=targets,
-            )
+
+            use_group_routing = bool(disc_groups)
+            if use_group_routing:
+                org_plan, planned = self._build_group_plan(
+                    scanned, dvdcompare_discs, disc_groups, overrides,
+                    api_key, output_root,
+                )
+            else:
+                org_plan, planned = self._build_single_plan(
+                    scanned, dvdcompare_discs, tmdb_match, api_key, output_root,
+                )
 
             # Save organize snapshot (like the CLI does)
             source_folder = self.app.state.get("source_folder")
@@ -140,12 +122,113 @@ class OrganizePreviewScreen:
             self.app.state["_organize_plan"] = (org_plan, planned)
 
         except Exception as exc:
+            log.exception("Organize plan build failed: %s", exc)
             self.app.state["_organize_plan_error"] = str(exc)
 
         async def _nav():
             self.app.navigate("organize_preview")
 
         self.app.page.run_task(_nav)
+
+    def _build_single_plan(
+        self, scanned, dvdcompare_discs, tmdb_match, api_key, output_root,
+    ):
+        """Legacy single-plan path: one TMDb match covers the whole release."""
+        async def _do_plan():
+            provider = TmdbProvider(api_key)
+            try:
+                request = SearchRequest(
+                    title=tmdb_match.title,
+                    year=tmdb_match.year,
+                    season_number=self.app.state.get("season_number"),
+                    media_type=tmdb_match.media_type,
+                )
+                if tmdb_match.media_type == "movie":
+                    planned = await _plan_movie(tmdb_match, provider, request)
+                else:
+                    planned = await _plan_show(tmdb_match, provider, request)
+                return planned
+            finally:
+                await provider.close()
+
+        kind = "movie" if tmdb_match.media_type == "movie" else "show"
+        self._set_progress(f"Fetching TMDb {kind} details for \"{tmdb_match.title}\"...")
+        planned = asyncio.run(_do_plan())
+
+        n_files = sum(len(d.files) for d in scanned)
+        self._set_progress(
+            f"Matching {n_files} disc file(s) against "
+            f"{len(dvdcompare_discs) or 0} dvdcompare disc(s)..."
+        )
+        result = match_discs(scanned, dvdcompare_discs, planned)
+
+        self._set_progress("Building target paths...")
+        file_map = {f.name: f.path for d in scanned for f in d.files}
+        scanned_map = {f.name: f for d in scanned for f in d.files}
+        targets = collect_disc_targets(dvdcompare_discs, planned) if dvdcompare_discs else None
+
+        org_plan = build_organize_plan(
+            result, planned, output_root,
+            scanned_files_by_name=file_map,
+            scanned_files=scanned_map,
+            disc_targets=targets,
+        )
+        return org_plan, planned
+
+    def _build_group_plan(
+        self, scanned, dvdcompare_discs, disc_groups, overrides,
+        api_key, output_root,
+    ):
+        """Group-aware path: each DiscGroup / FilmSlot organizes into its
+        own Plex target. The overrides dict comes straight from the disc
+        overview screen and gets layered on before routing."""
+        apply_group_overrides(disc_groups, overrides)
+        self._set_progress(
+            f"Planning {len(disc_groups)} group(s) against TMDb..."
+        )
+
+        async def _do_plan():
+            provider = TmdbProvider(api_key)
+            try:
+                request = SearchRequest(
+                    title="",
+                    year=None,
+                    season_number=self.app.state.get("season_number"),
+                    media_type="auto",
+                )
+                return await build_multi_group_plan(
+                    scanned, dvdcompare_discs, disc_groups, provider,
+                    output_root,
+                    request_defaults=request,
+                    progress=self._set_progress,
+                )
+            finally:
+                await provider.close()
+
+        org_plan, group_plans = asyncio.run(_do_plan())
+
+        # Log every group's outcome so misses are visible in the log.
+        for gp in group_plans:
+            n_moves = len(gp.plan.moves)
+            n_unmatched = len(gp.plan.unmatched)
+            n_missing = len(gp.plan.missing)
+            if gp.skipped_reason:
+                log.info("Organize group %s (%s): skipped — %s",
+                         gp.group_id, gp.label, gp.skipped_reason)
+            else:
+                log.info("Organize group %s (%s): %d move(s), %d unmatched, %d missing",
+                         gp.group_id, gp.label, n_moves, n_unmatched, n_missing)
+
+        # Pick a representative planned object for the done-screen
+        # display: prefer the first non-None (usually the main group).
+        planned = next(
+            (gp.planned for gp in group_plans if gp.planned is not None),
+            None,
+        )
+        # Stash the full per-group breakdown for the preview to render
+        # provenance chips ("belongs to: Psych 2: Lassie Come Home").
+        self.app.state["_organize_group_plans"] = group_plans
+        return org_plan, planned
 
     def _build_preview_view(self) -> ft.Control:
         """Show the dry-run plan."""
