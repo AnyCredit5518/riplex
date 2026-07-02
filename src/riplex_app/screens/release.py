@@ -150,6 +150,30 @@ class ReleaseScreen:
             spacing=4,
         )
 
+    def _build_film_link_from_id(self, film_id: int) -> ft.Control:
+        """Build the "View on dvdcompare.net" button from just a fid.
+
+        Used when ``self.film_comparison`` isn't in memory (e.g. after
+        the user backs into the release screen and we're rendering the
+        already-selected release without re-fetching).
+        """
+        url = film_url(film_id)
+
+        def _open(_e, _url=url):
+            webbrowser.open(_url)
+
+        return ft.Row(
+            [
+                ft.Icon(ft.Icons.OPEN_IN_NEW, size=16, color=ft.Colors.BLUE),
+                ft.TextButton(
+                    f"View on dvdcompare.net (fid={film_id})",
+                    on_click=_open,
+                    tooltip=url,
+                ),
+            ],
+            spacing=4,
+        )
+
     def _build_fid_override_section(self) -> ft.Control:
         """Editable manual film-id / URL override input."""
         self._fid_field = ft.TextField(
@@ -437,6 +461,11 @@ class ReleaseScreen:
                      film.film_id if film else None,
                      len(film.releases) if film else 0)
             self.app.state["_dvdcompare_film"] = film
+            # Persist film_id so the "View on dvdcompare.net" link on the
+            # current-release view survives re-navigation (film_comparison
+            # is popped out of state on each build).
+            if film and getattr(film, "film_id", None):
+                self.app.state["dvdcompare_film_id"] = film.film_id
         except Exception as exc:
             log.warning("dvdcompare lookup failed: %s", exc)
             self.app.state["_dvdcompare_error"] = str(exc)
@@ -469,16 +498,27 @@ class ReleaseScreen:
         """Show the already-picked release without re-querying dvdcompare."""
         disc_count = len(discs)
         disc_word = "disc" if disc_count == 1 else "discs"
+        film_link = self._build_film_link(self.film_comparison)
+        if film_link is None:
+            # Cross-render fallback: rebuild from the persisted film_id.
+            persisted_fid = self.app.state.get("dvdcompare_film_id")
+            if persisted_fid:
+                film_link = self._build_film_link_from_id(persisted_fid)
+        header_children = [
+            ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+            ft.Text(
+                "You've already selected a dvdcompare release for this title. "
+                "Continue, or pick a different release.",
+                size=13,
+                color=ft.Colors.GREY_500,
+            ),
+        ]
+        if film_link is not None:
+            header_children.append(film_link)
+        header_children.append(ft.Divider(height=20))
         return ft.Column(
             [
-                ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
-                ft.Text(
-                    "You've already selected a dvdcompare release for this title. "
-                    "Continue, or pick a different release.",
-                    size=13,
-                    color=ft.Colors.GREY_500,
-                ),
-                ft.Divider(height=20),
+                *header_children,
                 ft.Row([
                     ft.Icon(ft.Icons.ALBUM, color=ft.Colors.BLUE, size=20),
                     ft.Text(

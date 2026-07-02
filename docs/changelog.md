@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+
+- **dvdcompare auto-lookup no longer picks alphabetically-first film of the wrong franchise.** Searching a short common title like "Psych" against dvdcompare returns 100+ results; the previous format-only ranker picked "American Psycho (Blu-ray)" (alphabetically first Blu-ray match) instead of "Psych: Season 1 (TV) (Blu-ray)". Auto-selection now filters results to those whose leading title (before the first colon) exactly matches the query, so an unrelated franchise sharing a substring can never win over an actual title match. The format check also falls back to scanning the result title text since dvdcompare's scraper sometimes leaves the `disc_format` field unset for Blu-ray entries.
+
 ### Added
 
+- **"View on dvdcompare.net" link on the already-selected release view.** When the release screen shows the current selection (after navigating back to it), it now includes the same `fid=…` deep-link button already shown on the multi-release picker, so users can double-check the auto-pick was right before ripping.
 - **Multi-work session marker for resume.** When orchestrate starts a rip session, riplex now writes a `_riplex_session.json` marker into every work-folder of the release. On resume, `find_existing_session` reads the marker from whichever folder the user's typed title lands in and aggregates every sibling work-folder's ripped discs into a unified queue. A Psych session (TV series + bonus films disc) resumed via either "Psych" or "Psych: The Movie" now correctly skips discs already ripped under the other work-folder instead of re-queueing them.
 - **Multi-work release routing.** Releases that bundle multiple distinct works — a TV series plus standalone films on a bonus disc, for instance — now organize each work into its own Plex target. The disc overview groups discs into per-work slots (main content plus one slot per bonus film), auto-fills TMDb best guesses, and the organize preview routes each disc's MKVs to the folder for that work's assigned match.
 - **CLI parity for multi-work releases.** `riplex organize` and `riplex orchestrate` now share the GUI's Disc Overview routing: when a release splits into multiple works, each group is planned separately (TV series → episode folders; bonus films → per-film Plex movie folders) and the merged plan is executed as one preview. Interactive prompts confirm auto-filled TMDb targets; non-interactive runs accept auto-fills and surface any unresolved slots as skipped groups in the summary.
