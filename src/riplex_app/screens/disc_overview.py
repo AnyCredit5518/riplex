@@ -642,9 +642,11 @@ class DiscOverviewScreen:
         """Render a single disc row. Returns (row_control, checkbox).
 
         ``season_label`` is an optional dvdcompare-derived prefix like
-        ``"Season 1, Disc 2"``; when set it renders as a subtle amber
-        chip to the left of the content summary so users can
-        cross-reference the physical case.
+        ``"Season 1, Disc 2"``; when set it renders as a subtle light-blue
+        info chip to the left of the content summary so users can
+        cross-reference the physical case. Amber is reserved for
+        warnings elsewhere on this screen, so metadata uses a neutral
+        info color instead.
         """
         is_ripped = disc.number in ripped_discs
         is_inserted = disc.number == inserted_disc
@@ -683,9 +685,9 @@ class DiscOverviewScreen:
         if season_label:
             row_controls.append(ft.Container(
                 ft.Text(season_label, size=11,
-                        color=ft.Colors.AMBER_300,
+                        color=ft.Colors.LIGHT_BLUE_200,
                         weight=ft.FontWeight.BOLD),
-                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.AMBER_400),
+                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.LIGHT_BLUE_400),
                 border_radius=4,
                 padding=ft.Padding(left=6, top=2, right=6, bottom=2),
             ))
