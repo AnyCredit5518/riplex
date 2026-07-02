@@ -15,7 +15,7 @@ from riplex.disc.analysis import (
 )
 from riplex.disc.provider import detect_disc_number as _detect_disc_number
 from riplex.disc.makemkv import DiscInfo, DiscTitle
-from riplex.models import DiscGroup, PlannedDisc, PlannedEpisode, PlannedExtra
+from riplex.models import DiscGroup, FilmSlot, PlannedDisc, PlannedEpisode, PlannedExtra
 
 
 def _make_title(index, duration, resolution="3840x2160", chapters=6, size=20_000_000_000, segments=1):
@@ -826,17 +826,22 @@ class TestGroupReleaseDiscs:
         assert g.kind == "main"
         assert g.disc_numbers == [1, 2, 3, 4]
         assert g.tmdb_match is not None
+        assert g.source == "user"
         assert g.label == "Main content (discs 1-4)"
 
     def test_single_group_single_film_disc(self):
         # A pure single-disc movie release: one film group with one disc.
+        # No extras -> no per-film slots -> the pre-picked match goes on the
+        # group itself (source="user"), which is the legacy shape.
         discs = [self._disc(1, is_film=True)]
         groups = group_release_discs(discs, self._fake_match("movie", "Movie"))
         assert len(groups) == 1
         g = groups[0]
         assert g.kind == "film"
         assert g.disc_numbers == [1]
+        assert g.films == []
         assert g.tmdb_match is not None
+        assert g.source == "user"
         assert g.label == "Feature film (disc 1)"
 
     def test_psych_complete_series_split(self):
@@ -857,8 +862,19 @@ class TestGroupReleaseDiscs:
         film = next(g for g in groups if g.kind == "film")
         assert main.disc_numbers == list(range(1, 31))
         assert film.disc_numbers == [31]
-        # Movie match auto-assigned to the film group.
-        assert film.tmdb_match is match
+        # A multi-film disc gets one FilmSlot per detected film. The
+        # pre-picked movie match auto-fills films[0] with source="user".
+        assert len(film.films) == 3
+        assert [f.title for f in film.films] == [
+            "Psych: The Movie", "Psych 2", "Psych 3",
+        ]
+        assert film.films[0].tmdb_match is match
+        assert film.films[0].source == "user"
+        assert film.films[1].tmdb_match is None
+        assert film.films[2].tmdb_match is None
+        # Group-level tmdb_match is unused for film groups with per-film slots.
+        assert film.tmdb_match is None
+        # Main group is unfilled.
         assert main.tmdb_match is None
         # Label reflects multi-film disc.
         assert film.label == "3 feature films (disc 31)"
@@ -915,3 +931,42 @@ class TestGroupReleaseDiscs:
         assert len(ids) == len(set(ids))
         # ids should be deterministic based on kind + first disc number.
         assert ids == ["main_1", "film_2"]
+
+    def test_film_group_films_carry_runtime(self):
+        # Each per-film FilmSlot copies the extra's runtime so the UI can
+        # match ripped MKVs to films by duration later.
+        disc = self._disc(1, is_film=True, extras=[
+            PlannedExtra(title="Alpha", runtime_seconds=5000),
+            PlannedExtra(title="Beta", runtime_seconds=5200),
+        ])
+        groups = group_release_discs([disc], None)
+        assert len(groups) == 1
+        g = groups[0]
+        assert len(g.films) == 2
+        assert g.films[0].runtime_seconds == 5000
+        assert g.films[1].runtime_seconds == 5200
+
+    def test_is_complete_main_group(self):
+        # Main group: complete iff the group-level tmdb_match is set.
+        g = DiscGroup(id="main_1", label="", disc_numbers=[1], kind="main")
+        assert not g.is_complete()
+        g.tmdb_match = object()
+        assert g.is_complete()
+
+    def test_is_complete_film_group_with_slots(self):
+        # Film group with per-film slots: complete iff every slot has a match.
+        g = DiscGroup(id="film_1", label="", disc_numbers=[1], kind="film",
+                      films=[FilmSlot(title="A"), FilmSlot(title="B")])
+        assert not g.is_complete()
+        g.films[0].tmdb_match = object()
+        assert not g.is_complete()
+        g.films[1].tmdb_match = object()
+        assert g.is_complete()
+
+    def test_is_complete_film_group_without_slots(self):
+        # Film group with no per-film slots (single-film disc that couldn't
+        # be split): falls back to the group-level tmdb_match.
+        g = DiscGroup(id="film_1", label="", disc_numbers=[1], kind="film")
+        assert not g.is_complete()
+        g.tmdb_match = object()
+        assert g.is_complete()

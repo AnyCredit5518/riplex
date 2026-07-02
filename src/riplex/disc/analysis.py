@@ -123,7 +123,7 @@ def group_release_discs(
     user to pick a target for them. When only one group exists the match is
     always assigned to it regardless of media type.
     """
-    from riplex.models import DiscGroup
+    from riplex.models import DiscGroup, FilmSlot
 
     if not discs:
         return []
@@ -140,6 +140,7 @@ def group_release_discs(
         first_n, last_n = numbers[0], numbers[-1]
         range_str = f"disc {first_n}" if first_n == last_n else f"discs {first_n}-{last_n}"
 
+        films: list[FilmSlot] = []
         if is_film:
             if len(numbers) == 1:
                 bonus = detect_bonus_films(current_run[0])
@@ -149,6 +150,13 @@ def group_release_discs(
                 else:
                     label = f"Feature film ({range_str})"
                 default_title = bonus[0].title if len(bonus) == 1 else ""
+                # Each detected bonus film becomes its own FilmSlot so the UI
+                # can assign a distinct TMDb match per film.
+                for f in bonus:
+                    films.append(FilmSlot(
+                        title=f.title,
+                        runtime_seconds=int(getattr(f, "runtime_seconds", 0) or 0),
+                    ))
             else:
                 label = f"Feature film discs ({range_str})"
                 default_title = ""
@@ -166,6 +174,7 @@ def group_release_discs(
             disc_numbers=numbers,
             kind=kind,
             default_search_title=default_title,
+            films=films,
         ))
 
     prev_is_film: bool | None = None
@@ -180,14 +189,16 @@ def group_release_discs(
 
     if current_tmdb_match is not None and groups:
         want_kind = "film" if getattr(current_tmdb_match, "media_type", None) == "movie" else "main"
-        assigned = False
-        for g in groups:
-            if g.kind == want_kind:
-                g.tmdb_match = current_tmdb_match
-                assigned = True
-                break
-        if not assigned:
-            groups[0].tmdb_match = current_tmdb_match
+        target = next((g for g in groups if g.kind == want_kind), groups[0])
+        # For a film group we park the pre-picked match on the first film
+        # slot (or the whole group if there are no per-film slots yet). For
+        # a main group the match goes on the group itself.
+        if target.kind == "film" and target.films:
+            target.films[0].tmdb_match = current_tmdb_match
+            target.films[0].source = "user"
+        else:
+            target.tmdb_match = current_tmdb_match
+            target.source = "user"
 
     return groups
 

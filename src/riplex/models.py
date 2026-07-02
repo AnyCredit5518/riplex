@@ -104,6 +104,24 @@ class PlannedDisc:
 
 
 @dataclass
+class FilmSlot:
+    """One feature-length film on a bonus-films disc.
+
+    Multi-film discs (e.g. disc 31 of *Psych: The Complete Series* holding
+    three standalone TV-movies) need a separate TMDb match per film so each
+    ripped MKV can organize into its own ``Title (Year)/`` folder. A
+    ``FilmSlot`` pairs the dvdcompare-supplied film title and runtime with
+    its assigned TMDb match. ``source`` records provenance so the UI can
+    distinguish user-confirmed picks from auto-filled best guesses.
+    """
+
+    title: str
+    runtime_seconds: int = 0
+    tmdb_match: object | None = None
+    source: Literal["user", "auto"] | None = None
+
+
+@dataclass
 class DiscGroup:
     """A subset of a release's discs that maps to a single organize target.
 
@@ -111,8 +129,15 @@ class DiscGroup:
     multiple distinct works — a TV show plus standalone films — that must
     each organize into their own folder. A ``DiscGroup`` pairs a set of disc
     numbers with the TMDb match those discs should organize under.
-    ``tmdb_match`` is typed loosely (kept as ``object``) so this pure data
-    module doesn't need to import from ``riplex.metadata``.
+
+    For ``main`` groups (TV series, movie split across format discs) the
+    single ``tmdb_match`` slot is used. For ``film`` groups holding one or
+    more standalone films, ``films`` is populated with one ``FilmSlot`` per
+    film — each carrying its own TMDb match — and the top-level
+    ``tmdb_match`` is unused. ``source`` records how the top-level match got
+    there so the UI can differentiate user-confirmed picks from auto-filled
+    best guesses. ``tmdb_match`` is typed loosely (kept as ``object``) so
+    this pure data module doesn't need to import from ``riplex.metadata``.
     """
 
     id: str
@@ -120,7 +145,17 @@ class DiscGroup:
     disc_numbers: list[int]
     kind: Literal["main", "film"]
     tmdb_match: object | None = None
+    source: Literal["user", "auto"] | None = None
     default_search_title: str = ""
+    films: list[FilmSlot] = field(default_factory=list)
+
+    def is_complete(self) -> bool:
+        """Return True when every slot in the group has a confirmed (or
+        auto-filled) match. Used to gate Start Ripping and to color the
+        group's border in the Disc Overview."""
+        if self.kind == "film" and self.films:
+            return all(f.tmdb_match is not None for f in self.films)
+        return self.tmdb_match is not None
 
 
 @dataclass
