@@ -17,7 +17,7 @@ from riplex.config import get_api_key
 from riplex.disc.analysis import group_release_discs
 from riplex.disc.provider import disc_content_summary
 from riplex.manifest import build_rip_path, find_ripped_discs
-from riplex.metadata.autosearch import best_guess
+from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
 from riplex.metadata.sources.tmdb import TmdbProvider
 
 log = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ class DiscOverviewScreen:
             size=14,
             weight=ft.FontWeight.BOLD,
         )
-        self._blocker_text = ft.Text("", size=12, color=ft.Colors.AMBER_400, italic=True)
+        self._blocker_text = ft.Text("", size=12, color=ft.Colors.RED_400, italic=True)
 
         for cb in self.checkboxes:
             cb.on_change = self._update_summary
@@ -145,6 +145,8 @@ class DiscOverviewScreen:
         )
         self._refresh_start_guard()
 
+        multigroup_banner = self._build_multigroup_banner(disc_groups)
+
         return ft.Column(
             [
                 ft.Text("Disc Overview", size=24, weight=ft.FontWeight.BOLD),
@@ -161,6 +163,7 @@ class DiscOverviewScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                multigroup_banner,
                 resume_info,
                 ft.Column(group_sections, spacing=12, scroll=ft.ScrollMode.AUTO,
                           expand=True),
@@ -254,14 +257,21 @@ class DiscOverviewScreen:
                     else:
                         if g.tmdb_match is not None:
                             continue
-                        query = (g.default_search_title
-                                 or self.app.state.get("title", "") or "")
+                        raw_query = (g.default_search_title
+                                     or self.app.state.get("title", "") or "")
+                        # Release titles often carry boxset noise ("Psych:
+                        # The Complete Series") that TMDb doesn't index —
+                        # strip so the top hit ("Psych") scores above the
+                        # fuzzy threshold.
+                        query = strip_boxset_suffix(raw_query)
                         media_type = "tv" if g.kind == "main" else "movie"
                         got = await best_guess(provider, query, media_type=media_type)
                         if got is None:
                             continue
                         match, _score = got
-                        overrides[g.id] = {"match": match, "source": "auto"}
+                        entry = overrides.setdefault(g.id, {})
+                        entry["match"] = match
+                        entry["source"] = "auto"
                         log.info("Auto-fill: %s '%s' -> '%s (%s)'",
                                  g.id, query, match.title, match.year)
             finally:
@@ -287,6 +297,68 @@ class DiscOverviewScreen:
     def _match_label(self, canonical: str, year: int) -> str:
         year_str = f" ({year})" if year else ""
         return f"{canonical}{year_str}"
+
+    def _build_multigroup_banner(self, disc_groups) -> ft.Control:
+        """Info card explaining the multi-group / multi-film workflow.
+
+        Only shown when the release splits into more than one group, or
+        when any single group holds multiple per-film slots — that's the
+        case where the auto-fill / confirm workflow is non-obvious."""
+        multi_group = len(disc_groups) > 1
+        multi_film = any(len(g.films) > 1 for g in disc_groups)
+        if not (multi_group or multi_film):
+            return ft.Container()
+
+        if multi_group and multi_film:
+            headline = "This release contains multiple works and multi-film discs"
+            body = (
+                "We split the discs into groups and tried to auto-fill a "
+                "TMDb match for each work / bonus film. Confirm the amber "
+                "auto-fills or use Change… to correct them; assign any "
+                "empty slots before ripping."
+            )
+        elif multi_group:
+            headline = "This release contains multiple works"
+            body = (
+                "We split the discs into groups and tried to auto-fill a "
+                "TMDb match for each. Confirm the amber auto-fills or use "
+                "Change… to correct them; assign any empty slots before "
+                "ripping."
+            )
+        else:
+            headline = "One of these discs contains multiple feature films"
+            body = (
+                "We tried to auto-fill a TMDb match for each film. Confirm "
+                "the amber auto-fills or use Change… to correct them; "
+                "assign any empty slots before ripping."
+            )
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.Icons.INFO_OUTLINE, color=ft.Colors.BLUE_300, size=20),
+                    ft.Column(
+                        [
+                            ft.Text(
+                                headline,
+                                size=13,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.BLUE_300,
+                            ),
+                            ft.Text(body, size=12, color=ft.Colors.GREY_300),
+                        ],
+                        spacing=2,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            ),
+            padding=12,
+            border=ft.Border.all(1, ft.Colors.BLUE_800),
+            border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.06, ft.Colors.BLUE_400),
+        )
 
     def _build_group_section(
         self, group, discs_by_number, ripped_discs, inserted_disc,
@@ -698,7 +770,9 @@ class DiscOverviewScreen:
 
     def _refresh_start_guard(self) -> None:
         """Enable Start Ripping only when every selected disc's group is
-        complete. Shows a small amber caption naming the blockers."""
+        complete. Shows a red caption naming the blockers so it reads like
+        a required-field validation, and hints at the escape hatch
+        (deselecting the discs)."""
         if self._start_btn is None or self._blocker_text is None:
             return
         blockers = self._groups_blocking_start()
@@ -709,7 +783,10 @@ class DiscOverviewScreen:
         elif blockers:
             self._start_btn.disabled = True
             names = ", ".join(g.label for g in blockers)
-            self._blocker_text.value = f"Assign a match for: {names}"
+            self._blocker_text.value = (
+                f"Assign a match for: {names} "
+                "(or deselect those discs to skip them for now)."
+            )
         else:
             self._start_btn.disabled = False
             self._blocker_text.value = ""

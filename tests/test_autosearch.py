@@ -6,6 +6,7 @@ from riplex.metadata.autosearch import (
     DEFAULT_FUZZY_THRESHOLD,
     best_guess,
     score_title,
+    strip_boxset_suffix,
 )
 from riplex.metadata.provider import MetadataSearchResult
 
@@ -109,3 +110,46 @@ class TestBestGuess:
             _result("Psych"),
         ])
         assert await best_guess(provider, "Psych") is None
+
+
+class TestStripBoxsetSuffix:
+    """Trim trailing boxset / collection markers from release titles."""
+
+    def test_complete_series(self):
+        assert strip_boxset_suffix("Psych: The Complete Series") == "Psych"
+
+    def test_complete_series_no_colon(self):
+        assert strip_boxset_suffix("Psych Complete Series") == "Psych"
+
+    def test_complete_collection(self):
+        assert strip_boxset_suffix("Friends: The Complete Collection") == "Friends"
+
+    def test_trilogy(self):
+        assert strip_boxset_suffix("Back to the Future Trilogy") == "Back to the Future"
+
+    def test_boxset(self):
+        assert strip_boxset_suffix("The Wire Boxset") == "The Wire"
+
+    def test_box_set_with_space(self):
+        assert strip_boxset_suffix("Chernobyl Box Set") == "Chernobyl"
+
+    def test_dash_separator(self):
+        assert strip_boxset_suffix("Sherlock - The Complete Collection") == "Sherlock"
+
+    def test_stacked_markers(self):
+        # "Collection Boxset" should peel off entirely.
+        assert strip_boxset_suffix("Fringe Collection Boxset") == "Fringe"
+
+    def test_no_suffix_unchanged(self):
+        assert strip_boxset_suffix("Chernobyl") == "Chernobyl"
+
+    def test_empty_returns_empty(self):
+        assert strip_boxset_suffix("") == ""
+
+    def test_all_suffix_returns_original(self):
+        # If stripping would empty the string, return the original so we
+        # never hand an empty query to TMDb.
+        assert strip_boxset_suffix("Boxset") == "Boxset"
+
+    def test_disc_count(self):
+        assert strip_boxset_suffix("Frozen Planet II 4-Disc Set") == "Frozen Planet II"

@@ -9,6 +9,7 @@ hit leaves the slot empty for manual assignment.
 from __future__ import annotations
 
 import logging
+import re
 from difflib import SequenceMatcher
 from typing import Literal
 
@@ -48,6 +49,52 @@ def score_title(query: str, candidate: str) -> float:
     if not a or not b:
         return 0.0
     return SequenceMatcher(None, a, b).ratio()
+
+
+# Trailing markers used on boxset / collection releases that TMDb doesn't
+# know about. Stripping them turns queries like "Psych: The Complete Series"
+# into "Psych" so the top TMDb hit scores above the fuzzy threshold.
+_BOXSET_SUFFIX_RE = re.compile(
+    r"""
+    (?:
+        [\s:\-]+                              # separator: space, colon, or dash
+        (?:the\s+)?                           # optional "the "
+        (?:
+            complete\s+(?:series|collection|seasons?|saga)
+          | complete\s+box(?:\s*-?\s*set)?
+          | box(?:\s*-?\s*set)?
+          | (?:special\s+)?(?:collector'?s?\s+)?edition
+          | collection
+          | anthology
+          | trilogy
+          | quadrilogy
+          | pentalogy
+          | hexalogy
+          | (?:\d+)-?(?:disc|film|movie)(?:\s+set)?
+        )
+    )
+    \s*$
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def strip_boxset_suffix(title: str) -> str:
+    """Trim trailing boxset / collection markers from a release title.
+
+    ``"Psych: The Complete Series"`` -> ``"Psych"``.
+    ``"Back to the Future Trilogy"`` -> ``"Back to the Future"``.
+    Titles with no matching suffix are returned unchanged.
+    """
+    if not title:
+        return title
+    prev = None
+    out = title
+    # Loop so we peel off stacked markers like "... Collection Boxset".
+    while out != prev:
+        prev = out
+        out = _BOXSET_SUFFIX_RE.sub("", out).strip(" -:")
+    return out or title
 
 
 async def best_guess(
