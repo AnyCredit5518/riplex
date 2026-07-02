@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **Multi-work release routing.** Releases that bundle multiple distinct works — a TV series plus standalone films on a bonus disc, for instance — now organize each work into its own Plex target. The disc overview groups discs into per-work slots (main content plus one slot per bonus film), auto-fills TMDb best guesses, and the organize preview routes each disc's MKVs to the folder for that work's assigned match.
+- **CLI parity for multi-work releases.** `riplex organize` and `riplex orchestrate` now share the GUI's Disc Overview routing: when a release splits into multiple works, each group is planned separately (TV series → episode folders; bonus films → per-film Plex movie folders) and the merged plan is executed as one preview. Interactive prompts confirm auto-filled TMDb targets; non-interactive runs accept auto-fills and surface any unresolved slots as skipped groups in the summary.
 - **Season labels in the disc overview.** When dvdcompare's release page groups discs by season (e.g. `DISCS ONE - FOUR: Season 1`), each row now shows a light-blue `Season N, Disc M` info chip so users of long TV boxsets can cross-reference against the physical case.
 
 ## v0.9.2 — 2026-06-24

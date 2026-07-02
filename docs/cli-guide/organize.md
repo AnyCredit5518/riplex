@@ -34,6 +34,17 @@ riplex organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
 
 Multi-disc rips in separate folders (e.g. "Planet Earth III - Disc 1", "Planet Earth III - Disc 2") are automatically grouped into a single title.
 
+## Multi-work releases (TV series + bonus films)
+
+Some releases bundle more than one work — a classic example is *Psych: The Complete Series*, with the eight-season show on discs 1-30 and three standalone TV-movies on disc 31. `organize` detects this and splits the release into groups, planning each group against its own TMDb match:
+
+- The main-content discs organize into the TV show folder using the top-level match you searched for.
+- Each film disc's slot gets a best-guess TMDb match auto-filled from its dvdcompare title.
+- In interactive mode you'll be prompted per slot to accept the auto-fill, search for a different match, or skip the slot (its files stay unmatched).
+- In non-interactive mode (piped output, CI) auto-fills stand and any unresolved slot is reported as `SKIPPED (no TMDb match assigned)` in the group summary.
+
+The dry-run preview prints one line per group so you can verify the routing before running with `--execute`.
+
 ## Chapter splitting
 
 When the scanner detects that a file has chapter markers matching the number of TMDb Season 00 episodes, the tool automatically plans a chapter split instead of a single move. With `--execute`, this uses mkvmerge to split the file by chapters and moves each piece to the correct Season 00 location.

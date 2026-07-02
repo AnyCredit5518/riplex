@@ -10,7 +10,7 @@ from pathlib import Path
 from riplex.config import get_api_key, get_archive_root, get_output_root
 from riplex.dedup import find_all_redundant, remove_duplicates
 from riplex.detect import detect_format, detect_incomplete, detect_organize_layout, infer_media_type_from_files
-from riplex.lookup import lookup_metadata
+from riplex.lookup import lookup_metadata, resolve_disc_groups
 from riplex.manifest import build_scanned_from_manifests
 from riplex.matcher import (
     collect_disc_targets,
@@ -433,33 +433,71 @@ async def organize_with_scanned(
     discs = meta.discs
     print(f"Found {len(discs)} disc(s) on dvdcompare.", file=sys.stderr)
 
-    # Map folders to discs and match
-    if discs:
-        folder_map = map_folders_to_discs(scanned, discs, result)
-        for folder_name, disc_num in folder_map.items():
-            if disc_num is not None:
-                print(f"  {folder_name} -> Disc {disc_num}", file=sys.stderr)
-            else:
-                print(f"  {folder_name} -> (unmapped, global fallback)", file=sys.stderr)
-
-    result_obj = match_discs(scanned, discs, result)
-    print(
-        f"Matched {len(result_obj.matched)} files, "
-        f"{len(result_obj.unmatched)} unmatched, "
-        f"{len(result_obj.missing)} missing.",
-        file=sys.stderr,
-    )
-
-    # Build organize plan
-    file_map = {f.name: f.path for d in scanned for f in d.files}
-    scanned_map = {f.name: f for d in scanned for f in d.files}
-    targets = collect_disc_targets(discs, result) if discs else None
     unmatched_policy = getattr(args, "unmatched", "ignore")
-    org_plan = build_organize_plan(
-        result_obj, result, output_root, file_map,
-        scanned_files=scanned_map, disc_targets=targets,
-        unmatched_policy=unmatched_policy,
-    )
+
+    # Multi-work release: split into groups (TV series + bonus films,
+    # etc.) and route each group to its own TMDb target. Mirrors the GUI's
+    # Disc Overview flow. Returns [] for single-work releases so we fall
+    # through to the legacy single-plan path.
+    disc_groups = await resolve_disc_groups(meta, provider)
+    if disc_groups:
+        from riplex.organize_by_group import build_multi_group_plan
+
+        print(
+            f"\nRelease routes into {len(disc_groups)} group(s):",
+            file=sys.stderr,
+        )
+        org_plan, group_plans = await build_multi_group_plan(
+            scanned, discs, disc_groups, provider, output_root,
+            request_defaults=request,
+        )
+        for gp in group_plans:
+            if gp.skipped_reason:
+                print(
+                    f"  * {gp.label}: SKIPPED ({gp.skipped_reason})",
+                    file=sys.stderr,
+                )
+            else:
+                moves = len(gp.plan.moves) if gp.plan else 0
+                splits = len(gp.plan.splits) if gp.plan else 0
+                extra = f" +{splits} split" if splits else ""
+                print(
+                    f"  * {gp.label}: {moves} file(s) routed{extra}",
+                    file=sys.stderr,
+                )
+        print(
+            f"Merged plan: {len(org_plan.moves)} moves, "
+            f"{len(org_plan.unmatched)} unmatched, "
+            f"{len(org_plan.missing)} missing.",
+            file=sys.stderr,
+        )
+    else:
+        # Map folders to discs and match
+        if discs:
+            folder_map = map_folders_to_discs(scanned, discs, result)
+            for folder_name, disc_num in folder_map.items():
+                if disc_num is not None:
+                    print(f"  {folder_name} -> Disc {disc_num}", file=sys.stderr)
+                else:
+                    print(f"  {folder_name} -> (unmapped, global fallback)", file=sys.stderr)
+
+        result_obj = match_discs(scanned, discs, result)
+        print(
+            f"Matched {len(result_obj.matched)} files, "
+            f"{len(result_obj.unmatched)} unmatched, "
+            f"{len(result_obj.missing)} missing.",
+            file=sys.stderr,
+        )
+
+        # Build organize plan
+        file_map = {f.name: f.path for d in scanned for f in d.files}
+        scanned_map = {f.name: f for d in scanned for f in d.files}
+        targets = collect_disc_targets(discs, result) if discs else None
+        org_plan = build_organize_plan(
+            result_obj, result, output_root, file_map,
+            scanned_files=scanned_map, disc_targets=targets,
+            unmatched_policy=unmatched_policy,
+        )
 
     # Output
     dry_run = not getattr(args, "execute", False)
