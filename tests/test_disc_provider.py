@@ -296,3 +296,266 @@ class TestParseFilmId:
     def test_whitespace_only_returns_none(self):
         from riplex.disc.provider import parse_film_id
         assert parse_film_id("   ") is None
+
+
+class TestTitleLead:
+    """Coverage for the dvdcompare title-lead normalizer used to filter
+    search results before ranking."""
+
+    def test_bare_query(self):
+        from riplex.disc.provider import _title_lead
+        assert _title_lead("Psych") == "psych"
+
+    def test_strips_year_and_format(self):
+        from riplex.disc.provider import _title_lead
+        raw = "Psych: Season 1 (TV) (Blu-ray)\t\t\t\t(2006-2007)"
+        assert _title_lead(raw) == "psych: season 1"
+
+    def test_strips_year_range_slash(self):
+        from riplex.disc.provider import _title_lead
+        raw = "Blood of Ghastly Horror\t\t\t\t(1964/1971)"
+        assert _title_lead(raw) == "blood of ghastly horror"
+
+    def test_strips_aka_alias(self):
+        from riplex.disc.provider import _title_lead
+        raw = "Psych:9 AKA Psych 9 (Blu-ray)\t\t\t\t(2010)"
+        assert _title_lead(raw) == "psych:9"
+
+    def test_strips_multiple_annotations(self):
+        from riplex.disc.provider import _title_lead
+        raw = "American Psycho (Blu-ray 4K)\t\t\t\t(2000)"
+        assert _title_lead(raw) == "american psycho"
+
+    def test_empty(self):
+        from riplex.disc.provider import _title_lead
+        assert _title_lead("") == ""
+
+
+class TestTitleMatchesQuery:
+    """The lead-match check that filters dvdcompare search results."""
+
+    def test_exact_match(self):
+        from riplex.disc.provider import _title_matches_query
+        assert _title_matches_query("Psych\t\t(2020)", "psych")
+
+    def test_matches_before_colon(self):
+        from riplex.disc.provider import _title_matches_query
+        raw = "Psych: Season 1 (TV) (Blu-ray)\t\t(2006-2007)"
+        assert _title_matches_query(raw, "psych")
+
+    def test_rejects_superstring(self):
+        from riplex.disc.provider import _title_matches_query
+        assert not _title_matches_query("Psycho\t\t(1960)", "psych")
+        assert not _title_matches_query(
+            "American Psycho (Blu-ray)\t\t(2000)", "psych",
+        )
+
+    def test_rejects_hyphen_extension(self):
+        from riplex.disc.provider import _title_matches_query
+        assert not _title_matches_query("Psych-Out\t\t(1968)", "psych")
+
+    def test_rejects_numeric_sequel(self):
+        from riplex.disc.provider import _title_matches_query
+        raw = "Psych 2: Lassie Come Home (TV) (Blu-ray)\t\t(2020)"
+        assert not _title_matches_query(raw, "psych")
+
+    def test_empty_query_returns_false(self):
+        from riplex.disc.provider import _title_matches_query
+        assert not _title_matches_query("Psych\t\t(2020)", "")
+
+
+class TestResultHasFormat:
+    """Format matching from either sr.disc_format or the raw title text."""
+
+    class _Fake:
+        def __init__(self, title, disc_format=None):
+            self.title = title
+            self.disc_format = disc_format
+
+    def test_disc_format_field_matches(self):
+        from riplex.disc.provider import _result_has_format
+        sr = self._Fake("Something (Blu-ray)\t(2010)", disc_format="Blu-ray")
+        assert _result_has_format(sr, "blu-ray")
+
+    def test_falls_back_to_title_text(self):
+        """Scraper often leaves disc_format=None even when title says '(Blu-ray)'."""
+        from riplex.disc.provider import _result_has_format
+        sr = self._Fake(
+            "Psych: Season 1 (TV) (Blu-ray)\t(2006-2007)",
+            disc_format=None,
+        )
+        assert _result_has_format(sr, "blu-ray")
+
+    def test_blu_ray_does_not_match_blu_ray_4k(self):
+        from riplex.disc.provider import _result_has_format
+        sr = self._Fake(
+            "Something (Blu-ray 4K)\t(2020)", disc_format=None,
+        )
+        assert not _result_has_format(sr, "blu-ray")
+
+    def test_no_format_marker_returns_false(self):
+        from riplex.disc.provider import _result_has_format
+        sr = self._Fake("Something Else\t(1999)", disc_format=None)
+        assert not _result_has_format(sr, "blu-ray")
+
+    def test_empty_query_returns_false(self):
+        from riplex.disc.provider import _result_has_format
+        sr = self._Fake("Something (Blu-ray)\t(2010)", disc_format="Blu-ray")
+        assert not _result_has_format(sr, "")
+
+
+class TestFindFilmPreferFormat:
+    """End-to-end coverage of _find_film_prefer_format ranking with mocked I/O."""
+
+    @pytest.fixture
+    def patch_scraper(self, monkeypatch):
+        """Patch search / get_film_by_url in riplex.disc.provider."""
+        from dvdcompare.models import SearchResult
+        from riplex.disc import provider as prov
+
+        calls = {"picked_url": None}
+
+        async def _fake_search(_query):
+            return self._psych_search_results(SearchResult)
+
+        async def _fake_get_film_by_url(url, resolve_pointers=True):
+            calls["picked_url"] = url
+            return FilmComparison(title="mock", releases=[])
+
+        monkeypatch.setattr(prov, "search", _fake_search)
+        monkeypatch.setattr(prov, "get_film_by_url", _fake_get_film_by_url)
+        return calls
+
+    @staticmethod
+    def _psych_search_results(SearchResult):
+        """Alphabetically-ordered results matching a real dvdcompare 'Psych' search."""
+        return [
+            SearchResult(
+                title="American Psycho\t\t\t\t(2000)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=53",
+                year=2000,
+            ),
+            SearchResult(
+                title="American Psycho (Blu-ray)\t\t\t\t(2000)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=10676",
+                year=2000,
+                disc_format="Blu-ray",
+            ),
+            SearchResult(
+                title="Psych 2: Lassie Come Home (TV) (Blu-ray)\t\t\t\t(2020)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=66240",
+                year=2020,
+                disc_format="Blu-ray",
+            ),
+            SearchResult(
+                title="Psych: Season 1 (TV)\t\t\t\t(2006-2007)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=17560",
+            ),
+            SearchResult(
+                title="Psych: Season 1 (TV) (Blu-ray)\t\t\t\t(2006-2007)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=66231",
+            ),
+            SearchResult(
+                title="Psych: Season 2 (TV) (Blu-ray)\t\t\t\t(2007-2008)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=66232",
+            ),
+            SearchResult(
+                title="Psycho\t\t\t\t(1960)",
+                url="https://www.dvdcompare.net/comparisons/film.php?fid=1",
+                year=1960,
+            ),
+        ]
+
+    def test_prefers_title_match_over_alphabetical_format_match(self, patch_scraper):
+        """Regression: 'Psych' + Blu-ray must NOT pick 'American Psycho (Blu-ray)'."""
+        import asyncio
+        from riplex.disc.provider import _find_film_prefer_format
+
+        asyncio.run(_find_film_prefer_format("Psych", "Blu-ray", None))
+        picked = patch_scraper["picked_url"]
+        assert "fid=66231" in picked, f"expected Psych S1 BD, got {picked}"
+
+    def test_picks_correct_season_when_year_matches(self, patch_scraper):
+        """When a year is supplied and a title-matching result has that exact year,
+        prefer it over any earlier title-matching result."""
+        import asyncio
+        from dvdcompare.models import SearchResult
+        from riplex.disc import provider as prov
+
+        # Override search: give Season 2 a specific year so tier 1 (title+format+year) fires.
+        async def _fake_search(_q):
+            return [
+                SearchResult(
+                    title="Psych: Season 1 (TV) (Blu-ray)\t\t\t\t(2006-2007)",
+                    url="https://www.dvdcompare.net/comparisons/film.php?fid=66231",
+                    year=None,
+                ),
+                SearchResult(
+                    title="Psych: Season 2 (TV) (Blu-ray)\t\t\t\t(2007-2008)",
+                    url="https://www.dvdcompare.net/comparisons/film.php?fid=66232",
+                    year=2007,
+                    disc_format="Blu-ray",
+                ),
+            ]
+
+        import pytest as _pytest
+        monkeypatch = _pytest.MonkeyPatch()
+        monkeypatch.setattr(prov, "search", _fake_search)
+        try:
+            from riplex.disc.provider import _find_film_prefer_format
+            asyncio.run(_find_film_prefer_format("Psych", "Blu-ray", 2007))
+        finally:
+            monkeypatch.undo()
+        picked = patch_scraper["picked_url"]
+        assert "fid=66232" in picked
+
+    def test_falls_back_to_format_heuristic_when_no_title_match(
+        self, monkeypatch,
+    ):
+        """If no result title-lead matches (weird query), we still return something."""
+        import asyncio
+        from dvdcompare.models import SearchResult
+        from riplex.disc import provider as prov
+
+        calls = {"picked_url": None}
+
+        async def _fake_search(_q):
+            return [
+                SearchResult(
+                    title="Totally Different Film (DVD)\t\t\t\t(2001)",
+                    url="https://www.dvdcompare.net/comparisons/film.php?fid=999",
+                    year=2001,
+                    disc_format="DVD",
+                ),
+                SearchResult(
+                    title="Totally Different Film (Blu-ray)\t\t\t\t(2001)",
+                    url="https://www.dvdcompare.net/comparisons/film.php?fid=1000",
+                    year=2001,
+                    disc_format="Blu-ray",
+                ),
+            ]
+
+        async def _fake_get_film_by_url(url, resolve_pointers=True):
+            calls["picked_url"] = url
+            return FilmComparison(title="mock", releases=[])
+
+        monkeypatch.setattr(prov, "search", _fake_search)
+        monkeypatch.setattr(prov, "get_film_by_url", _fake_get_film_by_url)
+
+        from riplex.disc.provider import _find_film_prefer_format
+        asyncio.run(_find_film_prefer_format("Psych", "Blu-ray", None))
+        assert "fid=1000" in calls["picked_url"]
+
+    def test_raises_on_no_results(self, monkeypatch):
+        import asyncio
+        from riplex.disc import provider as prov
+
+        async def _fake_search(_q):
+            return []
+
+        monkeypatch.setattr(prov, "search", _fake_search)
+        from riplex.disc.provider import _find_film_prefer_format
+
+        with pytest.raises(LookupError):
+            asyncio.run(_find_film_prefer_format("Nonexistent", "Blu-ray", None))
+

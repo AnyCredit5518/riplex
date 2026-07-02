@@ -383,11 +383,20 @@ async def _find_film_prefer_format(
     """Search dvdcompare and pick the film page that best matches the disc
     format we have in hand, preferring format match over year match.
 
-    Ranking (highest first):
-      1. format match AND year match
-      2. format match (any year)
-      3. year match (no format on the search result)
-      4. first result
+    Ranking (highest first, considering only *title-matched* results):
+      1. title + format + year
+      2. title + format
+      3. title + year
+      4. title (any format, any year)
+
+    A "title match" means the leading text of the search result matches
+    the query (see ``_title_lead``). This avoids picking, e.g.,
+    "American Psycho (Blu-ray)" for a "Psych" query just because it's
+    alphabetically first among Blu-ray results.
+
+    If no title-matched result exists we fall back to the previous
+    format+year heuristic so we still return *something*; the user can
+    still correct via the manual fid override.
     """
     results = await search(title)
     if not results:
@@ -396,11 +405,45 @@ async def _find_film_prefer_format(
     fmt_norm = disc_format.strip().lower()
 
     def fmt_matches(sr) -> bool:
-        return (sr.disc_format or "").strip().lower() == fmt_norm
+        return _result_has_format(sr, fmt_norm)
 
     def year_matches(sr) -> bool:
         return year is not None and sr.year == year
 
+    query_lead = _title_lead(title)
+    title_matched = [
+        sr for sr in results if _title_matches_query(sr.title, query_lead)
+    ] if query_lead else []
+
+    if title_matched:
+        pool = title_matched
+        log.debug("dvdcompare title-lead filter kept %d/%d result(s) for %r",
+                  len(pool), len(results), title)
+        # Tier 1: title + format + year
+        for sr in pool:
+            if fmt_matches(sr) and year_matches(sr):
+                log.debug("dvdcompare pick (title+format+year): %s", sr.url)
+                return await get_film_by_url(sr.url, resolve_pointers=True)
+        # Tier 2: title + format
+        for sr in pool:
+            if fmt_matches(sr):
+                log.debug("dvdcompare pick (title+format): %s", sr.url)
+                return await get_film_by_url(sr.url, resolve_pointers=True)
+        # Tier 3: title + year
+        for sr in pool:
+            if year_matches(sr):
+                log.debug("dvdcompare pick (title+year): %s", sr.url)
+                return await get_film_by_url(sr.url, resolve_pointers=True)
+        # Tier 4: title only
+        log.debug("dvdcompare pick (title-only fallback): %s", pool[0].url)
+        return await get_film_by_url(pool[0].url, resolve_pointers=True)
+
+    # No title-lead match — fall back to prior format-first heuristic.
+    log.warning(
+        "dvdcompare: no title-lead match for %r among %d result(s); "
+        "falling back to format/year heuristic",
+        title, len(results),
+    )
     # Tier 1: format + year
     for sr in results:
         if fmt_matches(sr) and year_matches(sr):
@@ -420,6 +463,79 @@ async def _find_film_prefer_format(
     # Tier 4: first result
     log.debug("dvdcompare pick (first result fallback): %s", results[0].url)
     return await get_film_by_url(results[0].url, resolve_pointers=True)
+
+
+# Regex for stripping trailing dvdcompare annotations from a result title.
+# Handles the ``\t\t\t\t(YYYY)`` and ``\t\t\t\t(YYYY-YYYY)`` year suffix, and
+# parenthetical format/edition markers like ``(Blu-ray)``, ``(Blu-ray 4K)``,
+# ``(4K)``, ``(3D)``, ``(TV)``, ``(HD DVD)``, ``(DVD)``.
+_TRAILING_ANNOTATION_RE = re.compile(
+    r"\s*\((?:\d{4}(?:[-/]\d{2,4})?|Blu-ray(?:\s+[34]K)?|Blu-ray\s+3D|"
+    r"4K|3D|TV|HD\s*DVD|DVD|UHD)\)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _result_has_format(sr, fmt_norm: str) -> bool:
+    """Return True if search result ``sr`` advertises the given disc format.
+
+    dvdcompare's search parser sometimes leaves ``SearchResult.disc_format``
+    unset even when the title contains a marker like ``"(Blu-ray)"`` — so
+    we also scan the raw title text as a fallback. Only whole-word
+    parenthetical matches count so we don't confuse ``Blu-ray`` with
+    ``Blu-ray 4K`` or ``Blu-ray 3D``.
+    """
+    raw_fmt = (sr.disc_format or "").strip().lower()
+    if raw_fmt == fmt_norm:
+        return True
+    if not fmt_norm:
+        return False
+    # Case-insensitive whole-annotation match in the title text.
+    pattern = rf"\(\s*{re.escape(fmt_norm)}\s*\)"
+    return re.search(pattern, sr.title or "", re.IGNORECASE) is not None
+
+
+def _title_lead(raw: str) -> str:
+    """Normalize a dvdcompare title (or query) for lead-token comparison.
+
+    - Collapses whitespace and strips any ``AKA …`` alias tail.
+    - Repeatedly strips trailing annotations like ``(Blu-ray)``, ``(TV)``,
+      ``(YYYY)``.
+    - Returns the lowercase, whitespace-normalized remainder.
+    """
+    if not raw:
+        return ""
+    s = re.sub(r"\s+", " ", raw.replace("\t", " ")).strip()
+    # Strip AKA aliases (dvdcompare pattern: "Foo AKA Bar AKA Baz")
+    aka_idx = re.search(r"\bAKA\b", s, re.IGNORECASE)
+    if aka_idx:
+        s = s[: aka_idx.start()].rstrip()
+    # Strip trailing annotations until none remain.
+    while True:
+        new_s = _TRAILING_ANNOTATION_RE.sub("", s).rstrip()
+        if new_s == s:
+            break
+        s = new_s
+    return s.lower()
+
+
+def _title_matches_query(result_title: str, query_lead: str) -> bool:
+    """Return True if ``result_title`` matches the query's lead token.
+
+    A match holds when either:
+      * the fully-normalized result equals the query, or
+      * the text before the first ``:`` in the normalized result equals
+        the query (handles ``"Psych: Season 1"`` for query ``"Psych"``).
+    """
+    if not query_lead:
+        return False
+    result_lead = _title_lead(result_title)
+    if result_lead == query_lead:
+        return True
+    colon = result_lead.find(":")
+    if colon > 0 and result_lead[:colon].strip() == query_lead:
+        return True
+    return False
 
 
 def _clean_feature_type(raw: str) -> str:
