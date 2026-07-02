@@ -210,9 +210,10 @@ class SelectionScreen:
         # and Insert Next Disc.
         season_label = ""
         if dvdcompare_discs and orchestrate_disc_num:
-            season_label = build_season_labels(dvdcompare_discs).get(
-                orchestrate_disc_num, "",
-            )
+            season_label = build_season_labels(
+                dvdcompare_discs,
+                film_title=self.app.state.get("dvdcompare_film_title"),
+            ).get(orchestrate_disc_num, "")
 
         disc_row_children: list[ft.Control] = []
         if disc_label:

@@ -40,9 +40,10 @@ class DiscSwapScreen:
         # groups discs by season — same chip we show on Disc Overview.
         season_label = ""
         if dvdcompare_discs:
-            season_label = build_season_labels(dvdcompare_discs).get(
-                disc_number, "",
-            )
+            season_label = build_season_labels(
+                dvdcompare_discs,
+                film_title=self.app.state.get("dvdcompare_film_title"),
+            ).get(disc_number, "")
 
         header_children: list[ft.Control] = [
             ft.Text(

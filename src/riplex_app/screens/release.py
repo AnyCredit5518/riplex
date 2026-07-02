@@ -466,6 +466,8 @@ class ReleaseScreen:
             # is popped out of state on each build).
             if film and getattr(film, "film_id", None):
                 self.app.state["dvdcompare_film_id"] = film.film_id
+            if film and getattr(film, "title", None):
+                self.app.state["dvdcompare_film_title"] = film.title
         except Exception as exc:
             log.warning("dvdcompare lookup failed: %s", exc)
             self.app.state["_dvdcompare_error"] = str(exc)

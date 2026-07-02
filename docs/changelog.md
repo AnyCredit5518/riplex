@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 
 - **dvdcompare auto-lookup no longer picks alphabetically-first film of the wrong franchise.** Searching a short common title like "Psych" against dvdcompare returns 100+ results; the previous format-only ranker picked "American Psycho (Blu-ray)" (alphabetically first Blu-ray match) instead of "Psych: Season 1 (TV) (Blu-ray)". Auto-selection now filters results to those whose leading title (before the first colon) exactly matches the query, so an unrelated franchise sharing a substring can never win over an actual title match. The format check also falls back to scanning the result title text since dvdcompare's scraper sometimes leaves the `disc_format` field unset for Blu-ray entries.
+- **Season label for the leading discs of a series release now falls back to the film title.** Pages like `Psych: Season 1 (TV) (Blu-ray)` (fid=66231) use `DISC ONE ... DISC FOUR` for the release's own discs (no explicit `Season 1:` header) and `DISCS FIVE - EIGHT: Season 2` for the pointer runs. The scraper faithfully returns empty titles for discs 1–4, which left the disc overview without a season chip on those rows even though the film title itself says Season 1. `build_season_labels` now parses `Season N` out of the film title and applies it to the leading untitled run; explicit later runs (Season 2, 3, …) still win, and trailing untitled discs (bonus platters) stay unlabeled.
 
 ### Added
 

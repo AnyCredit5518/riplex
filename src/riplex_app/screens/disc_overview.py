@@ -442,7 +442,10 @@ class DiscOverviewScreen:
             discs_by_number[n] for n in group.disc_numbers
             if n in discs_by_number
         ]
-        season_labels = build_season_labels(group_discs)
+        season_labels = build_season_labels(
+            group_discs,
+            film_title=self.app.state.get("dvdcompare_film_title"),
+        )
         for disc_num in group.disc_numbers:
             disc = discs_by_number.get(disc_num)
             if disc is None:

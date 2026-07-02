@@ -1037,6 +1037,47 @@ class TestBuildSeasonLabels:
         discs = [self._disc(1, title="   ")]
         assert build_season_labels(discs) == {1: ""}
 
+    def test_film_title_backfills_leading_untitled_run(self):
+        # Psych: Season 1 (fid=66231) shape — the release's "own" discs
+        # 1-4 come back untitled because dvdcompare only puts a season
+        # header on the pointer runs (Seasons 2-8). The film title
+        # itself tells us those leading untitled discs are Season 1.
+        discs = (
+            [self._disc(n) for n in range(1, 5)]
+            + [self._disc(n, title="Season 2") for n in range(5, 9)]
+            + [self._disc(9)]  # trailing extras disc, no season info
+        )
+        labels = build_season_labels(
+            discs, film_title="Psych: Season 1 (TV) (Blu-ray)",
+        )
+        assert labels[1] == "Season 1, Disc 1"
+        assert labels[4] == "Season 1, Disc 4"
+        assert labels[5] == "Season 2, Disc 1"
+        assert labels[8] == "Season 2, Disc 4"
+        # Trailing untitled disc is not backfilled.
+        assert labels[9] == ""
+
+    def test_film_title_without_season_does_not_backfill(self):
+        discs = [self._disc(n) for n in range(1, 3)]
+        labels = build_season_labels(
+            discs, film_title="Batman Begins",
+        )
+        assert labels == {1: "", 2: ""}
+
+    def test_film_title_backfill_ignored_when_leading_run_has_title(self):
+        # If dvdcompare already labeled the leading run, don't override.
+        discs = [
+            self._disc(1, title="Season 3"),
+            self._disc(2, title="Season 3"),
+        ]
+        labels = build_season_labels(
+            discs, film_title="Show: Season 1",
+        )
+        assert labels == {
+            1: "Season 3, Disc 1",
+            2: "Season 3, Disc 2",
+        }
+
 
 class TestGroupForDisc:
     """Tests for group_for_disc() — look up which DiscGroup owns a
