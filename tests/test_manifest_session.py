@@ -179,3 +179,73 @@ class TestFindExistingSessionAggregation:
             lambda: tmp_path / "does-not-exist",
         )
         assert find_existing_session("anything") is None
+
+    def test_marker_only_match_resolves_unripped_work(self, rip_root):
+        """Real-world Psych case: disc 31 (the film work) was ripped
+        first, which wrote _riplex_session.json into every work-folder
+        including the TV folder. The TV folder itself has no rip
+        manifest yet. Inserting a TV disc later and looking up 'Psych'
+        must still resolve the session by finding the marker's
+        works[*].title entry — not just by matching a rip manifest.
+        """
+        tv_folder = rip_root / "Psych (2006)"
+        film_folder = rip_root / "Psych The Movie (2017)"
+        # Only the film work has a rip manifest.
+        _write_manifest(film_folder, 31, "Psych: The Movie", 2017)
+
+        works = [
+            SessionWork(title="Psych", year=2006, media_type="tv",
+                        folder="Psych (2006)",
+                        disc_numbers=list(range(1, 31))),
+            SessionWork(title="Psych: The Movie", year=2017,
+                        media_type="movie",
+                        folder="Psych The Movie (2017)",
+                        disc_numbers=[31]),
+        ]
+        write_session_marker(works, release_name="Psych Complete Series")
+
+        # Look up via the TV title — the TV folder has no manifest but
+        # its marker names 'Psych' as a work, so this must resolve.
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.title == "Psych"
+        assert session.year == 2006
+        assert session.media_type == "tv"
+        assert session.release_name == "Psych Complete Series"
+        assert session.rip_root == tv_folder
+        assert session.ripped_discs == set()          # nothing under TV folder yet
+        assert session.all_ripped_discs == {31}       # film sibling contributes
+        assert session.disc_format == "DVD"           # borrowed from sibling
+        assert len(session.works) == 2
+
+    def test_marker_only_match_survives_missing_own_folder(self, rip_root):
+        """If the work's own folder is gone entirely (user cleaned up),
+        the marker in a sibling folder still surfaces the session, with
+        an empty ripped_discs for the requested work.
+        """
+        film_folder = rip_root / "Psych The Movie (2017)"
+        _write_manifest(film_folder, 31, "Psych: The Movie", 2017)
+        # Write markers into every work-folder, including a TV folder
+        # that we then delete to simulate manual cleanup.
+        works = [
+            SessionWork(title="Psych", year=2006, media_type="tv",
+                        folder="Psych (2006)", disc_numbers=[1]),
+            SessionWork(title="Psych: The Movie", year=2017,
+                        media_type="movie",
+                        folder="Psych The Movie (2017)",
+                        disc_numbers=[31]),
+        ]
+        write_session_marker(works, release_name="Psych Set")
+        tv_folder = rip_root / "Psych (2006)"
+        # Remove the TV folder entirely.
+        (tv_folder / SESSION_MARKER_NAME).unlink()
+        tv_folder.rmdir()
+
+        # Marker in the film folder still names 'Psych' as a work.
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.title == "Psych"
+        # rip_root falls back to the folder holding the marker.
+        assert session.rip_root == film_folder
+        assert session.all_ripped_discs == {31}
+

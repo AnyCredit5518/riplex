@@ -193,15 +193,22 @@ class ExistingSession:
 def find_existing_session(title: str) -> ExistingSession | None:
     """Scan the rip output root for a session matching *title*.
 
-    Reads ``_rip_manifest.json`` files under the configured rip output
-    directory and returns session data if any manifest's ``title``
-    matches (case-insensitive).
+    A session matches if either:
 
-    When the matched work-folder contains a ``_riplex_session.json``
-    marker (multi-work releases), the session's ``all_ripped_discs``
-    aggregates every sibling folder's ``find_ripped_discs`` output so
-    the caller can present a unified resume queue. Legacy folders
-    without a marker degrade to today's single-folder behavior.
+    1. Some ``_rip_manifest.json`` under a work-folder has ``title`` equal
+       to the requested title (case-insensitive), or
+    2. Some ``_riplex_session.json`` marker lists a work whose ``title``
+       matches — even if that work's folder doesn't yet contain any
+       ripped discs. This lets resume work regardless of which physical
+       disc from a multi-work release the user inserts first: the first
+       disc of the first-ripped work writes markers into every sibling
+       folder, so inserting any other work's disc later still resolves
+       to the same session.
+
+    When a session marker is present, ``all_ripped_discs`` aggregates
+    every sibling folder's ``find_ripped_discs`` output so callers can
+    present a unified resume queue. Legacy folders without a marker
+    degrade to today's single-folder behavior.
     """
     root = _session_root()
 
@@ -210,10 +217,10 @@ def find_existing_session(title: str) -> ExistingSession | None:
 
     title_lower = title.strip().lower()
 
+    # --- Pass 1: match on any rip manifest's title. -------------------
     for title_folder in root.iterdir():
         if not title_folder.is_dir():
             continue
-        matched = False
         primary_manifest: dict | None = None
         for disc_folder in title_folder.iterdir():
             manifest_path = disc_folder / "_rip_manifest.json"
@@ -225,34 +232,12 @@ def find_existing_session(title: str) -> ExistingSession | None:
                 continue
             if manifest.get("title", "").strip().lower() == title_lower:
                 primary_manifest = manifest
-                matched = True
                 break
-        if not matched or primary_manifest is None:
+        if primary_manifest is None:
             continue
 
         ripped = find_ripped_discs(title_folder)
-
-        # Session marker: fan out to sibling work-folders so resume can
-        # skip discs that were already ripped under a different work.
-        marker = read_session_marker(title_folder)
-        works: list[SessionWork] = []
-        all_ripped: set[int] = set(ripped)
-        if marker:
-            for entry in marker.get("works", []):
-                w = SessionWork(
-                    title=entry.get("title", ""),
-                    year=entry.get("year", 0),
-                    media_type=entry.get("media_type", "movie"),
-                    folder=entry.get("folder", ""),
-                    disc_numbers=list(entry.get("disc_numbers", [])),
-                )
-                works.append(w)
-                if not w.folder:
-                    continue
-                sibling = root / w.folder
-                if sibling == title_folder:
-                    continue
-                all_ripped.update(find_ripped_discs(sibling))
+        works, all_ripped = _fan_out_marker(root, title_folder, ripped)
 
         return ExistingSession(
             title=primary_manifest.get("title", ""),
@@ -266,7 +251,107 @@ def find_existing_session(title: str) -> ExistingSession | None:
             all_ripped_discs=all_ripped,
         )
 
+    # --- Pass 2: match on any session marker's works[*].title. --------
+    # Handles the case where the user has ripped one work of a multi-work
+    # release (which wrote markers into every sibling) and then inserts
+    # a disc from a sibling work whose folder has no rip manifest yet.
+    for title_folder in root.iterdir():
+        if not title_folder.is_dir():
+            continue
+        marker = read_session_marker(title_folder)
+        if not marker:
+            continue
+        matching_work: dict | None = None
+        for entry in marker.get("works", []):
+            if entry.get("title", "").strip().lower() == title_lower:
+                matching_work = entry
+                break
+        if matching_work is None:
+            continue
+
+        work_folder_name = matching_work.get("folder", "")
+        work_folder = root / work_folder_name if work_folder_name else title_folder
+        if not work_folder.exists():
+            work_folder = title_folder  # marker's folder still counts as authoritative
+
+        ripped = find_ripped_discs(work_folder)
+        works, all_ripped = _fan_out_marker(root, work_folder, ripped, marker=marker)
+
+        # Try to borrow disc_format from any sibling's rip manifest.
+        # The marker itself doesn't carry it — but every work in the
+        # session shares the same physical release, so any sibling's
+        # first manifest is authoritative.
+        disc_format: str | None = None
+        for w in works:
+            if not w.folder:
+                continue
+            sibling = root / w.folder
+            if not sibling.exists():
+                continue
+            for disc_folder in sibling.iterdir():
+                manifest_path = disc_folder / "_rip_manifest.json"
+                if not manifest_path.exists():
+                    continue
+                try:
+                    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                disc_format = data.get("format")
+                break
+            if disc_format:
+                break
+
+        return ExistingSession(
+            title=matching_work.get("title", ""),
+            year=matching_work.get("year", 0),
+            media_type=matching_work.get("media_type", "movie"),
+            release_name=marker.get("release_name", ""),
+            disc_format=disc_format,
+            rip_root=work_folder,
+            ripped_discs=ripped,
+            works=works,
+            all_ripped_discs=all_ripped,
+        )
+
     return None
+
+
+def _fan_out_marker(
+    root: Path,
+    title_folder: Path,
+    ripped: set[int],
+    *,
+    marker: dict | None = None,
+) -> tuple[list[SessionWork], set[int]]:
+    """Read the session marker in ``title_folder`` (or use the provided
+    one) and aggregate every sibling work-folder's ripped discs.
+
+    Returns ``(works, all_ripped)``. Legacy folders without a marker
+    yield ``([], set(ripped))``.
+    """
+    if marker is None:
+        marker = read_session_marker(title_folder)
+    works: list[SessionWork] = []
+    all_ripped: set[int] = set(ripped)
+    if not marker:
+        return works, all_ripped
+    for entry in marker.get("works", []):
+        w = SessionWork(
+            title=entry.get("title", ""),
+            year=entry.get("year", 0),
+            media_type=entry.get("media_type", "movie"),
+            folder=entry.get("folder", ""),
+            disc_numbers=list(entry.get("disc_numbers", [])),
+        )
+        works.append(w)
+        if not w.folder:
+            continue
+        sibling = root / w.folder
+        if sibling == title_folder:
+            continue
+        all_ripped.update(find_ripped_discs(sibling))
+    return works, all_ripped
+
 
 
 def build_scanned_from_manifests(rip_root: Path) -> list[ScannedDisc]:
