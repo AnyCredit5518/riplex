@@ -279,6 +279,43 @@ class TestIsSkipTitle:
             True, 7098, 0, 0, dvd_entries,
         ) is False
 
+    def test_main_feature_not_skipped_when_extras_sum_matches(self):
+        """Independence Day 4K disc 1 pattern: the main feature runs
+        8688s; the disc's 14 short extras happen to sum to 8610s (78s
+        off, well inside detect_play_all's ~210s tolerance). Without a
+        main-feature guard the theatrical version got mis-skipped as a
+        play-all of the extras."""
+        main = _make_title(0, 8688, resolution="3840x2160")
+        extended = _make_title(1, 9213, resolution="3840x2160")
+        extra_durations = [
+            366, 377, 1208, 139, 135, 792, 505,
+            175, 495, 1193, 1555, 1295, 156, 219,
+        ]
+        assert sum(extra_durations) == 8610  # sanity: still within tolerance
+        extras = [
+            _make_title(i + 2, d, resolution="3840x2160")
+            for i, d in enumerate(extra_durations)
+        ]
+        all_titles = [main, extended] + extras
+        assert is_skip_title(
+            main, all_titles, True, 8688, 0, 0, [],
+        ) is False
+
+    def test_extended_cut_not_skipped_when_extras_sum_matches(self):
+        """Same protection extended to a plausible extended cut: extras
+        summing near an extended runtime shouldn't kill the cut."""
+        main = _make_title(0, 7200, resolution="3840x2160")
+        extended = _make_title(1, 8000, resolution="3840x2160")
+        # Ten ~800s extras — sum 8000, exactly the extended runtime.
+        extras = [
+            _make_title(i + 2, 800, resolution="3840x2160")
+            for i in range(10)
+        ]
+        all_titles = [main, extended] + extras
+        assert is_skip_title(
+            extended, all_titles, True, 7200, 0, 0, [],
+        ) is False
+
 
 class TestBuildDvdEntries:
     def test_builds_entries(self):

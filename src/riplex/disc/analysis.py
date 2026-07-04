@@ -37,6 +37,28 @@ def _is_featurette_play_all(entry_type: str) -> bool:
     return entry_type.lower().strip() in _FEATURETTE_PLAY_ALL_TYPES
 
 
+def _looks_like_main_feature_edition(
+    duration_seconds: int,
+    is_movie: bool,
+    movie_runtime: int | None,
+) -> bool:
+    """Return True if a title's runtime matches the main feature or a
+    plausible extended cut of it.
+
+    The windows here must stay in lockstep with ``classify_title``'s
+    MAIN FILM / Theatrical / Extended Cut branches so the two functions
+    never disagree about which titles are main-feature variants. Callers
+    use this to short-circuit heuristics (like play-all detection) that
+    must never fire on the feature itself.
+    """
+    if not (is_movie and movie_runtime):
+        return False
+    if abs(duration_seconds - movie_runtime) < 60:
+        return True
+    extra = duration_seconds - movie_runtime
+    return 300 <= extra <= 3600
+
+
 def detect_bonus_films(disc: "PlannedDisc") -> list["PlannedExtra"]:
     """Return the disc's pointer-linked bonus items in source order.
 
@@ -621,13 +643,22 @@ def is_skip_title(
         if len(same_res_individuals) >= episode_count:
             return True
 
-    # Skip disc-internal play-all (same resolution)
-    if detect_play_all(title, all_titles):
-        return True
+    # Guard the play-all detectors from matching the movie itself.
+    # On movie discs packed with many small extras, the extras' durations
+    # can accidentally sum to within tolerance of the main feature and
+    # trigger a false-positive skip. Independence Day 4K disc 1: 14 extras
+    # summed to 8610s of the 8688s theatrical. Sharing the check with
+    # classify_title (via _looks_like_main_feature_edition) ensures the
+    # two functions can never disagree about which titles are main-feature
+    # variants.
+    if not _looks_like_main_feature_edition(dur, is_movie, movie_runtime):
+        # Skip disc-internal play-all (same resolution)
+        if detect_play_all(title, all_titles):
+            return True
 
-    # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
-    if detect_cross_res_play_all(title, all_titles):
-        return True
+        # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
+        if detect_cross_res_play_all(title, all_titles):
+            return True
 
     # Skip unmatched short titles when dvdcompare data is available
     # If we have episode metadata and this title is much shorter than episodes
