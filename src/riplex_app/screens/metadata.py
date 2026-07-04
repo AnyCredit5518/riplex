@@ -195,6 +195,7 @@ class MetadataScreen:
         """Skip TMDb and proceed with volume label as title."""
         self.app.state["tmdb_match"] = None
         self.app.state["movie_runtime"] = None
+        self.app.state["show_detail"] = None
         self.app.state["skip_metadata"] = True
         # Go directly to selection (skip release/dvdcompare — no metadata to match against)
         self.app.navigate("selection")
@@ -285,12 +286,21 @@ class MetadataScreen:
         self.app.state["dvdcompare_discs"] = []
         self.app.state.pop("_dvdcompare_film", None)
         self.app.state.pop("_dvdcompare_error", None)
+        # Any previously-fetched show detail belongs to the prior TV
+        # match; drop it so a freshly-selected show doesn't inherit the
+        # previous show's episode list.
+        self.app.state["show_detail"] = None
 
         # For movies, fetch full detail to get runtime before proceeding
         if selected.media_type == "movie":
             threading.Thread(target=self._fetch_movie_detail, daemon=True).start()
         else:
             self.app.state["movie_runtime"] = None
+            # Fire-and-forget: the release picker and later selection
+            # screens will read show_detail whenever it lands. If the
+            # user gets to selection before the fetch completes,
+            # enrichment is skipped and dvdcompare classification stands.
+            threading.Thread(target=self._fetch_show_detail, daemon=True).start()
             self.app.navigate("release")
 
     def _fetch_movie_detail(self):
@@ -315,3 +325,31 @@ class MetadataScreen:
             self.app.navigate("release")
 
         self.app.page.run_task(_nav)
+
+    def _fetch_show_detail(self):
+        """Fetch TMDb show detail (season + episode list) in background.
+
+        The episode list is used downstream by ``analyze_disc`` to
+        cross-reference dvdcompare features and enrich labels with
+        canonical S/E numbers. Failure is non-fatal: the selection
+        screen falls back to dvdcompare-only classification. Runs
+        fire-and-forget — navigation to the release screen already
+        happened on the UI thread.
+        """
+        try:
+            api_key = get_api_key()
+            source_id = self.app.state["tmdb_match"].source_id
+
+            async def _do_fetch():
+                provider = TmdbProvider(api_key)
+                try:
+                    return await provider.get_show_detail(
+                        source_id, include_specials=True,
+                    )
+                finally:
+                    await provider.close()
+
+            detail = asyncio.run(_do_fetch())
+            self.app.state["show_detail"] = detail
+        except Exception:
+            self.app.state["show_detail"] = None

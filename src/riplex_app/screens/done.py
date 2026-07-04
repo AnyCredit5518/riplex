@@ -190,6 +190,7 @@ class DoneScreen:
         self.app.state["disc_info"] = None
         self.app.state["title"] = ""
         self.app.state["tmdb_match"] = None
+        self.app.state["show_detail"] = None
         self.app.state["release"] = None
         self.app.state["selected_titles"] = []
         self.app.state["output_dir"] = None

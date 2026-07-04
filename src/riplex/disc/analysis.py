@@ -280,6 +280,56 @@ def build_season_labels(
 _SEASON_IN_TITLE_RE = re.compile(r"\bSeason\s+(\d+)\b", re.IGNORECASE)
 
 
+def parse_season_number(label: str) -> int | None:
+    """Extract the numeric season from a label like ``Season 1, Disc 2``.
+
+    Callers use this to pick the right season's episode list out of a
+    TMDb ``ShowDetail`` when passing ``tmdb_episodes`` to
+    ``analyze_disc``.
+    """
+    if not label:
+        return None
+    m = _SEASON_IN_TITLE_RE.search(label)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
+def collect_tmdb_episodes_for_disc(
+    show_detail,
+    dvdcompare_discs: list,
+    disc_number: int | None,
+    *,
+    film_title: str | None = None,
+) -> list:
+    """Return the TMDb episode list to cross-reference against a disc.
+
+    Prefers the season identified by the disc's own season label
+    (parsed from ``build_season_labels``). Falls back to concatenating
+    every episode from every season on the show when the label doesn't
+    resolve — the enricher only consumes each entry once, so a
+    superset is safe. Returns an empty list when no ``ShowDetail`` is
+    available.
+    """
+    if show_detail is None:
+        return []
+    seasons = getattr(show_detail, "seasons", []) or []
+    if not seasons:
+        return []
+    season_num: int | None = None
+    if dvdcompare_discs and disc_number is not None:
+        labels = build_season_labels(dvdcompare_discs, film_title=film_title)
+        season_num = parse_season_number(labels.get(disc_number, ""))
+    if season_num is not None:
+        for sm in seasons:
+            if getattr(sm, "season_number", None) == season_num:
+                return list(sm.episodes)
+    return [ep for sm in seasons for ep in sm.episodes]
+
+
 def _implied_season_label(film_title: str) -> str | None:
     """Return ``"Season N"`` if the film title contains that fragment."""
     m = _SEASON_IN_TITLE_RE.search(film_title)
@@ -428,6 +478,108 @@ def build_dvd_entries(
                 ex.title, ex.runtime_seconds, ex.feature_type or "extra",
             ))
     return dvd_entries, total_episode_runtime, episode_count
+
+
+# ---- TMDb episode cross-reference ----
+
+
+def _normalize_episode_title(s: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace for fuzzy matching."""
+    s = re.sub(r"[^\w\s]", " ", s.lower())
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _episode_name_similarity(a: str, b: str) -> float:
+    """Return 0..1 similarity between two episode titles.
+
+    dvdcompare titles are sometimes truncated or extended relative to
+    TMDb (e.g. "Woman Seeking Dead Husband" vs "Woman Seeking Dead
+    Husband: Smokers Okay, No Pets"), so a normalized-substring
+    relationship counts as a very strong match. Otherwise falls back to
+    ``difflib.SequenceMatcher`` on the normalized form.
+    """
+    from difflib import SequenceMatcher
+
+    na, nb = _normalize_episode_title(a), _normalize_episode_title(b)
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 1.0
+    if na in nb or nb in na:
+        return 0.95
+    return SequenceMatcher(None, na, nb).ratio()
+
+
+def enrich_dvd_entries_with_tmdb(
+    dvd_entries: list[tuple[str, int, str]],
+    tmdb_episodes: list,
+    *,
+    similarity_threshold: float = 0.85,
+    min_promote_seconds: int = 900,
+) -> tuple[list[tuple[str, int, str]], int, int]:
+    """Cross-reference dvdcompare features against a TMDb episode list.
+
+    dvdcompare knows *what's on this specific disc* with accurate ripped
+    runtimes; TMDb knows *what an episode actually is* with canonical
+    S/E numbers and titles. Combining the two lets us:
+
+    * **Promote** a dvdcompare feature that dvdcompare didn't flag as
+      "episode" (missing or empty ``feature_type``) into an episode when
+      its title fuzzy-matches a TMDb episode. Guarded by
+      ``min_promote_seconds`` so short deleted scenes / featurettes with
+      the same title as an episode (e.g. Psych S1 D3 has "Shawn vs. the
+      Red Phantom" as both a 43-min episode and a 52-second deleted
+      scene) don't get mis-promoted.
+    * **Enrich** matched episode names with an ``SxxEyy - `` prefix so
+      the Select Titles screen shows canonical Plex-style labels and
+      downstream organizer can pick up the S/E numbers.
+    * **Preserve** all non-matching entries verbatim (extras,
+      featurettes, deleted scenes, unlisted bonus content) so nothing
+      gets silently dropped.
+
+    Each TMDb episode is used at most once (first-come, best-similarity
+    within a single pass), preventing the same episode name from
+    landing on two features when their titles happen to be identical.
+
+    Returns ``(enriched_entries, total_episode_runtime, episode_count)``
+    with counts reflecting any promotions.
+    """
+    if not tmdb_episodes or not dvd_entries:
+        total = sum(rt for _, rt, et in dvd_entries if et == "episode")
+        count = sum(1 for _, _, et in dvd_entries if et == "episode")
+        return dvd_entries, total, count
+
+    consumed: set[int] = set()
+    enriched: list[tuple[str, int, str]] = []
+
+    for name, runtime, etype in dvd_entries:
+        best_i, best_score = -1, 0.0
+        for i, ep in enumerate(tmdb_episodes):
+            if i in consumed:
+                continue
+            score = _episode_name_similarity(name, getattr(ep, "title", ""))
+            if score > best_score:
+                best_i, best_score = i, score
+
+        can_promote = etype == "episode" or runtime >= min_promote_seconds
+        if best_score >= similarity_threshold and can_promote and best_i >= 0:
+            ep = tmdb_episodes[best_i]
+            consumed.add(best_i)
+            se = f"S{ep.season_number:02d}E{ep.episode_number:02d}"
+            # If the dvdcompare name already begins with an S/E marker
+            # (rare — some releases include it), don't double up.
+            if re.match(r"^S\d{2}E\d{2}\b", name):
+                enriched_name = name
+            else:
+                enriched_name = f"{se} - {name}"
+            enriched.append((enriched_name, runtime, "episode"))
+        else:
+            enriched.append((name, runtime, etype))
+
+    total_episode_runtime = sum(rt for _, rt, et in enriched if et == "episode")
+    episode_count = sum(1 for _, _, et in enriched if et == "episode")
+    return enriched, total_episode_runtime, episode_count
 
 
 # ---- title classification ----
@@ -997,6 +1149,7 @@ def analyze_disc(
     disc_number: int | None = None,
     is_movie: bool,
     movie_runtime: int | None = None,
+    tmdb_episodes: list | None = None,
 ) -> DiscAnalysis:
     """Analyze disc titles and determine rip recommendations.
 
@@ -1019,6 +1172,15 @@ def analyze_disc(
         Whether this is a movie (vs TV show).
     movie_runtime:
         Movie runtime in seconds (used for main-feature classification).
+    tmdb_episodes:
+        Optional list of ``EpisodeMetadata`` (or duck-typed equivalents
+        with ``.title``, ``.season_number``, ``.episode_number``) for
+        the season(s) covered by this disc. When provided on a TV
+        release, dvdcompare features are cross-referenced against these
+        entries so canonical S/E numbers land in the classification
+        labels and mis-flagged features (dvdcompare's ``feature_type``
+        empty or incorrect) can be promoted to episodes. Movie discs
+        ignore this parameter.
     """
     from riplex.disc.provider import detect_disc_number
 
@@ -1040,6 +1202,14 @@ def analyze_disc(
     dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(
         current_disc_entries
     )
+
+    # Cross-reference with TMDb episode list for TV releases so
+    # canonical S/E numbers appear in labels and features dvdcompare
+    # didn't flag as episodes can be promoted based on name matches.
+    if tmdb_episodes and not is_movie:
+        dvd_entries, total_episode_runtime, episode_count = (
+            enrich_dvd_entries_with_tmdb(dvd_entries, tmdb_episodes)
+        )
 
     # If this disc has no film/episode entries, it's a bonus disc —
     # disable movie_runtime heuristics (main film / extended cut detection)

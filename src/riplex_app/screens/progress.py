@@ -280,12 +280,22 @@ class ProgressScreen:
 
             # Get dvd_entries info from the analysis stored during selection
             dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
-            from riplex.disc.analysis import analyze_disc
+            from riplex.disc.analysis import (
+                analyze_disc,
+                collect_tmdb_episodes_for_disc,
+            )
+            tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
+                self.app.state.get("show_detail"),
+                dvdcompare_discs,
+                disc_number,
+                film_title=self.app.state.get("dvdcompare_film_title"),
+            )
             analysis = analyze_disc(
                 disc_info, dvdcompare_discs,
                 disc_number=disc_number,
                 is_movie=is_movie,
                 movie_runtime=movie_runtime,
+                tmdb_episodes=tmdb_episodes,
             )
 
             manifest = build_rip_manifest(

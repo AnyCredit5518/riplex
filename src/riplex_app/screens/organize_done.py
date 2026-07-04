@@ -203,4 +203,5 @@ class OrganizeDoneScreen:
         self.app.state["dvdcompare_discs"] = []
         self.app.state["title"] = ""
         self.app.state["movie_runtime"] = None
+        self.app.state["show_detail"] = None
         self.app.navigate("folder_picker")

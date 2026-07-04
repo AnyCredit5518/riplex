@@ -6,14 +6,17 @@ from riplex.disc.analysis import (
     build_dvd_entries,
     build_season_labels,
     classify_title,
+    collect_tmdb_episodes_for_disc,
     detect_bonus_films,
     detect_cross_res_play_all,
     detect_play_all,
+    enrich_dvd_entries_with_tmdb,
     find_duration_match,
     format_seconds,
     group_for_disc,
     group_release_discs,
     is_skip_title,
+    parse_season_number,
 )
 from riplex.disc.provider import detect_disc_number as _detect_disc_number
 from riplex.disc.makemkv import DiscInfo, DiscTitle
@@ -532,6 +535,207 @@ class TestBuildDvdEntries:
         assert ep_count == 1
         assert entries[0] == ("Ep 1", 3000, "episode")
         assert entries[1] == ("Behind the Scenes", 1200, "featurette")
+
+
+class _FakeTmdbEpisode:
+    def __init__(self, season, ep, title, runtime_seconds=0):
+        self.season_number = season
+        self.episode_number = ep
+        self.title = title
+        self.runtime_seconds = runtime_seconds
+
+
+class _FakeSeason:
+    def __init__(self, season_number, episodes):
+        self.season_number = season_number
+        self.episodes = episodes
+
+
+class _FakeShowDetail:
+    def __init__(self, seasons):
+        self.seasons = seasons
+
+
+class TestEnrichDvdEntriesWithTmdb:
+    def test_prepends_se_prefix_to_matched_episodes(self):
+        """Psych S1 D2 pattern: dvdcompare titles get canonical S01E0N
+        prefixes when they match TMDb episode names."""
+        entries = [
+            ("Spellingg Bee", 2588, "episode"),
+            ("Speak Now or Forever Hold Your Piece", 2566, "episode"),
+        ]
+        tmdb = [
+            _FakeTmdbEpisode(1, 1, "Spellingg Bee"),
+            _FakeTmdbEpisode(1, 2, "Speak Now or Forever Hold Your Piece"),
+        ]
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert count == 2
+        assert enriched[0][0].startswith("S01E01 - Spellingg Bee")
+        assert enriched[1][0].startswith("S01E02 - Speak Now")
+
+    def test_substring_match_still_matches(self):
+        """dvdcompare frequently truncates or extends episode titles
+        relative to TMDb — normalized substring should still match."""
+        entries = [("Woman Seeking Dead Husband", 2542, "episode")]
+        tmdb = [_FakeTmdbEpisode(
+            1, 3, "Woman Seeking Dead Husband: Smokers Okay, No Pets",
+        )]
+        enriched, _, _ = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert enriched[0][0].startswith("S01E03 - ")
+
+    def test_promotes_untyped_feature_matching_episode_name(self):
+        """An entry dvdcompare didn't flag as ``episode`` (empty
+        feature_type) that fuzzy-matches a TMDb episode by name AND
+        exceeds the runtime floor gets promoted to ``episode`` so the
+        sequential walker will consider it."""
+        entries = [("Pilot", 2600, "")]  # no feature_type
+        tmdb = [_FakeTmdbEpisode(1, 1, "Pilot")]
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert enriched[0][2] == "episode"
+        assert count == 1
+        assert total == 2600
+
+    def test_short_extra_with_matching_name_not_promoted(self):
+        """Psych S1 D3 gotcha: the disc has both a 43-min episode
+        ("Shawn vs. the Red Phantom") and a 52-second deleted scene of
+        the same name. The deleted scene must NOT be promoted to an
+        episode just because the name matches."""
+        entries = [
+            ("Shawn vs. the Red Phantom", 2592, "episode"),
+            ("Shawn vs. the Red Phantom", 52, "extra"),  # deleted scene
+        ]
+        tmdb = [_FakeTmdbEpisode(1, 8, "Shawn vs. the Red Phantom")]
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        # Long entry claims the TMDb match; short one keeps "extra".
+        assert enriched[0][2] == "episode"
+        assert enriched[0][0].startswith("S01E08 - ")
+        assert enriched[1][2] == "extra"
+        assert enriched[1][0] == "Shawn vs. the Red Phantom"
+        assert count == 1
+
+    def test_each_tmdb_episode_matched_at_most_once(self):
+        """If dvdcompare lists a title twice (rare — bad scrape or
+        genuine duplicate), only the first match consumes the TMDb
+        episode; the second falls through unmatched."""
+        entries = [
+            ("Pilot", 2600, "episode"),
+            ("Pilot", 2600, "episode"),
+        ]
+        tmdb = [_FakeTmdbEpisode(1, 1, "Pilot")]
+        enriched, _, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert enriched[0][0].startswith("S01E01 - ")
+        assert enriched[1][0] == "Pilot"  # no prefix — unmatched
+        # Both still typed "episode" because the input said so; the
+        # walker will only enrich the label.
+        assert count == 2
+
+    def test_no_match_leaves_entries_untouched(self):
+        entries = [
+            ("Behind the Scenes", 900, "featurette"),
+            ("Bloopers", 300, "extra"),
+        ]
+        tmdb = [_FakeTmdbEpisode(1, 1, "Pilot")]
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert enriched == entries
+        assert count == 0
+        assert total == 0
+
+    def test_empty_inputs_return_unchanged(self):
+        assert enrich_dvd_entries_with_tmdb([], []) == ([], 0, 0)
+        assert enrich_dvd_entries_with_tmdb(
+            [("Foo", 100, "extra")], []
+        ) == ([("Foo", 100, "extra")], 0, 0)
+
+    def test_analyze_disc_wires_tmdb_enrichment(self):
+        """End-to-end via analyze_disc: TV show, TMDb episodes passed
+        in, classification labels come back with S/E prefixes."""
+        t0 = _make_title(0, 2588, size=6_100_000_000, resolution="720x480")
+        t1 = _make_title(1, 2566, size=6_050_000_000, resolution="720x480")
+
+        class _Ep:
+            def __init__(self, title, rt):
+                self.title = title
+                self.runtime_seconds = rt
+
+        class _Disc:
+            number = 1
+            is_film = False
+            title = ""
+            episodes = [
+                _Ep("Spellingg Bee", 2588),
+                _Ep("Speak Now or Forever Hold Your Piece", 2566),
+            ]
+            extras = []
+
+        class _DiscInfo:
+            disc_name = "PSYCH_S1_D1"
+            titles = [t0, t1]
+
+        tmdb = [
+            _FakeTmdbEpisode(1, 1, "Spellingg Bee"),
+            _FakeTmdbEpisode(1, 2, "Speak Now or Forever Hold Your Piece"),
+        ]
+        analysis = analyze_disc(
+            _DiscInfo(), [_Disc()],
+            disc_number=1, is_movie=False, movie_runtime=None,
+            tmdb_episodes=tmdb,
+        )
+        assert "S01E01" in analysis.classifications[0]
+        assert "S01E02" in analysis.classifications[1]
+
+
+class TestParseSeasonNumber:
+    def test_typical_label(self):
+        assert parse_season_number("Season 1, Disc 2") == 1
+
+    def test_multi_digit(self):
+        assert parse_season_number("Season 12, Disc 3") == 12
+
+    def test_empty(self):
+        assert parse_season_number("") is None
+
+    def test_no_season_word(self):
+        assert parse_season_number("Disc 3") is None
+
+
+class TestCollectTmdbEpisodesForDisc:
+    def _make_show(self):
+        return _FakeShowDetail([
+            _FakeSeason(1, [_FakeTmdbEpisode(1, 1, "Pilot")]),
+            _FakeSeason(2, [_FakeTmdbEpisode(2, 1, "Return")]),
+        ])
+
+    def _make_discs(self, labels):
+        class _D:
+            def __init__(self, number, title):
+                self.number = number
+                self.title = title
+        return [_D(i + 1, t) for i, t in enumerate(labels)]
+
+    def test_no_show_detail_returns_empty(self):
+        assert collect_tmdb_episodes_for_disc(None, [], 1) == []
+
+    def test_matching_season_label_returns_that_season(self):
+        show = self._make_show()
+        discs = self._make_discs(["Season 2", "Season 2"])
+        eps = collect_tmdb_episodes_for_disc(show, discs, 1)
+        assert len(eps) == 1
+        assert eps[0].title == "Return"
+
+    def test_no_matching_label_falls_back_to_all_seasons(self):
+        show = self._make_show()
+        discs = self._make_discs(["", ""])
+        eps = collect_tmdb_episodes_for_disc(show, discs, 1)
+        assert len(eps) == 2
+
+    def test_film_title_backfills_leading_untitled_run(self):
+        show = self._make_show()
+        discs = self._make_discs(["", ""])
+        eps = collect_tmdb_episodes_for_disc(
+            show, discs, 1, film_title="Psych: Season 1 (Blu-ray)",
+        )
+        assert len(eps) == 1
+        assert eps[0].title == "Pilot"
 
 
 class TestDetectDiscNumber:

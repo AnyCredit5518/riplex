@@ -64,6 +64,7 @@ class RiplexApp:
             "title": "",          # detected/overridden title
             "tmdb_match": None,   # selected TMDb result
             "movie_runtime": None,# TMDb movie runtime in seconds
+            "show_detail": None,  # TMDb ShowDetail (for TV): full season/episode lists
             "release": None,      # selected dvdcompare release
             "selected_discs": [], # disc numbers to rip
             "selected_titles": [],# title indices to rip

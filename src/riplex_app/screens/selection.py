@@ -8,6 +8,7 @@ from riplex.config import get_rip_output
 from riplex.disc.analysis import (
     analyze_disc,
     build_season_labels,
+    collect_tmdb_episodes_for_disc,
     detect_bonus_films,
     format_seconds,
     group_for_disc,
@@ -75,11 +76,18 @@ class SelectionScreen:
             movie_runtime = self.app.state.get("movie_runtime")
 
         # Use shared analyze_disc — same logic as CLI rip and orchestrate
+        tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
+            self.app.state.get("show_detail"),
+            dvdcompare_discs,
+            orchestrate_disc_num,
+            film_title=self.app.state.get("dvdcompare_film_title"),
+        )
         analysis = analyze_disc(
             disc_info, dvdcompare_discs,
             disc_number=orchestrate_disc_num,
             is_movie=is_movie,
             movie_runtime=movie_runtime,
+            tmdb_episodes=tmdb_episodes,
         )
         self._analysis = analysis  # store for _start_rip
         rippable_indices = {t.index for t in analysis.rippable_titles}
