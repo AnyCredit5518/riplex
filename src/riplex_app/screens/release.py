@@ -129,6 +129,36 @@ class ReleaseScreen:
 
     # -- film URL / manual fid override UI --------------------------------
 
+    def _film_display_title(self, film=None) -> str | None:
+        """Best-effort human title of the currently-loaded dvdcompare film.
+
+        Prefers the in-memory ``FilmComparison`` (fresh lookup), falling
+        back to the ``dvdcompare_film_title`` stashed in app state (used
+        when we've navigated back to an already-selected release without
+        re-fetching). Returns ``None`` when neither is available.
+        """
+        if film is None:
+            film = self.film_comparison
+        title = getattr(film, "title", None) if film is not None else None
+        if not title:
+            title = self.app.state.get("dvdcompare_film_title")
+        return title or None
+
+    def _build_film_heading(self, film=None) -> list[ft.Control]:
+        """Header block for release-picker views: film title + 'Disc Release'.
+
+        The film title is the visual anchor because every release on the
+        page is a variant of that dvdcompare film; the small ``Disc
+        Release`` line above it keeps the screen's role labeled.
+        """
+        display = self._film_display_title(film)
+        if not display:
+            return [ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD)]
+        return [
+            ft.Text("Disc Release", size=13, color=ft.Colors.GREY_500),
+            ft.Text(display, size=24, weight=ft.FontWeight.BOLD),
+        ]
+
     def _build_film_link(self, film) -> ft.Control | None:
         """Build a "View on dvdcompare.net" button for the current film."""
         if film is None or not getattr(film, "film_id", None):
@@ -290,7 +320,7 @@ class ReleaseScreen:
         # Loading state
         content = ft.Column(
             [
-                ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+                *self._build_film_heading(),
                 ft.Text(
                     "Looking up per-disc content breakdowns from dvdcompare.net "
                     "to help identify featurettes, extras, and duplicates.",
@@ -354,7 +384,7 @@ class ReleaseScreen:
 
         film_link = self._build_film_link(self.film_comparison)
         header_children = [
-            ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+            *self._build_film_heading(),
             ft.Text(
                 "Multiple releases were found on dvdcompare.net. Pick the one "
                 "that matches your physical disc (region, edition, distributor).",
@@ -396,7 +426,7 @@ class ReleaseScreen:
             title = self._current_search_title()
         return ft.Column(
             [
-                ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+                *self._build_film_heading(),
                 ft.Text(
                     "dvdcompare.net provides per-disc content breakdowns that help "
                     "identify featurettes, extras, and play-all titles. Without it, "
@@ -507,7 +537,7 @@ class ReleaseScreen:
             if persisted_fid:
                 film_link = self._build_film_link_from_id(persisted_fid)
         header_children = [
-            ft.Text("Disc Release", size=24, weight=ft.FontWeight.BOLD),
+            *self._build_film_heading(),
             ft.Text(
                 "You've already selected a dvdcompare release for this title. "
                 "Continue, or pick a different release.",

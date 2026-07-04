@@ -70,3 +70,53 @@ class TestReleaseSkipRouting:
         assert app.state["dvdcompare_discs"] == []
         assert "bad release" in app.state["_dvdcompare_error"]
         assert app.navigated_to == "release"
+
+
+class _Film:
+    def __init__(self, title, film_id=42):
+        self.title = title
+        self.film_id = film_id
+
+
+class TestReleaseFilmHeading:
+    def test_uses_film_comparison_title(self):
+        app = _App({})
+        screen = ReleaseScreen(app)
+        screen.film_comparison = _Film("Psych: Season 1 (TV) (Blu-ray)")
+
+        controls = screen._build_film_heading()
+
+        texts = [c.value for c in controls]
+        assert "Psych: Season 1 (TV) (Blu-ray)" in texts
+        assert "Disc Release" in texts  # kept as smaller label
+
+    def test_falls_back_to_state_stashed_title(self):
+        app = _App({"dvdcompare_film_title": "Psych: Complete Series"})
+        screen = ReleaseScreen(app)
+        screen.film_comparison = None
+
+        controls = screen._build_film_heading()
+
+        texts = [c.value for c in controls]
+        assert "Psych: Complete Series" in texts
+
+    def test_no_film_falls_back_to_plain_heading(self):
+        app = _App({})
+        screen = ReleaseScreen(app)
+        screen.film_comparison = None
+
+        controls = screen._build_film_heading()
+
+        assert len(controls) == 1
+        assert controls[0].value == "Disc Release"
+
+    def test_prefers_in_memory_film_over_stashed_title(self):
+        app = _App({"dvdcompare_film_title": "stale stashed"})
+        screen = ReleaseScreen(app)
+        screen.film_comparison = _Film("fresh in-memory")
+
+        controls = screen._build_film_heading()
+
+        texts = [c.value for c in controls]
+        assert "fresh in-memory" in texts
+        assert "stale stashed" not in texts
