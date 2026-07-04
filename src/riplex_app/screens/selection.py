@@ -60,8 +60,8 @@ class SelectionScreen:
                      d.number, ep_count, ex_count, getattr(d, 'disc_format', None))
         log.info("Live disc: %d titles", len(titles))
         if current_group:
-            log.info("Current group: %s (kind=%s) match=%s",
-                     current_group.label, current_group.kind,
+            log.info("Current group: %s match=%s",
+                     current_group.label,
                      getattr(tmdb_match, "title", None))
 
         # Build classification data from dvdcompare

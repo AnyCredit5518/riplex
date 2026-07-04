@@ -37,69 +37,32 @@ def _is_featurette_play_all(entry_type: str) -> bool:
     return entry_type.lower().strip() in _FEATURETTE_PLAY_ALL_TYPES
 
 
-# Feature types that clearly denote bonus content (not standalone films).
-# Used by ``detect_bonus_films`` to reject long featurettes and documentaries.
-_BONUS_CONTENT_FEATURE_TYPES = frozenset({
-    "featurette", "featurettes",
-    "documentary", "documentaries",
-    "interview", "interviews",
-    "behind the scenes", "behind-the-scenes",
-    "deleted scene", "deleted scenes",
-    "short film", "short",
-    "trailer", "trailers", "teaser", "teasers",
-    "music video", "music videos",
-    "commentary", "audio commentary",
-    "gag reel", "outtakes", "bloopers",
-})
+def detect_bonus_films(disc: "PlannedDisc") -> list["PlannedExtra"]:
+    """Return the disc's pointer-linked bonus items in source order.
 
-# Minimum runtime for a feature to be considered a standalone film.
-BONUS_FILM_MIN_RUNTIME_SECONDS = 60 * 60  # 60 minutes
+    dvdcompare hyperlinks a bonus title to another film page when that
+    item is actually the main feature of a distinct work — e.g. disc 31
+    of a *Complete Series* boxset links each standalone TV-movie sequel
+    to its own dvdcompare entry. Those hyperlinks are the only reliable
+    signal that a bonus item is a separate work; runtime and
+    feature_type heuristics misfire on things like long featurettes and
+    Making-Of docs that happen to run 60+ minutes.
 
-
-def detect_bonus_films(
-    disc: "PlannedDisc",
-    *,
-    min_runtime_seconds: int = BONUS_FILM_MIN_RUNTIME_SECONDS,
-) -> list["PlannedExtra"]:
-    """Return film-length top-level features on a film disc.
-
-    Recognises the case where one physical disc holds multiple full-length
-    films (e.g. box sets like *Psych* disc 31 with three TV-movie sequels,
-    or a Criterion double-feature). Considers a disc when either
-    ``is_film=True`` OR any extra carries a ``pointer_fid`` — the latter
-    covers Complete Series pages where dvdcompare omits the ``* The Film``
-    marker on the bonus-films disc but hyperlinks each film's title to
-    its own dvdcompare entry.
-
-    A ``PlannedExtra`` qualifies when:
-
-    * The parent disc is film-like (see above).
-    * Either the extra has a ``pointer_fid`` (dvdcompare has told us
-      this bonus item is the main title of a different film page —
-      trust that signal unconditionally), **or** ``runtime_seconds`` is at
-      least ``min_runtime_seconds`` (default 60m) and ``feature_type`` is
-      not a bonus-content category.
-    * The title is not a Play-All parent (suffix ``": Play All"``).
-
-    Returns an empty list when no additional films are present. On a
-    typical single-film disc dvdcompare does not list the main film as
-    a feature at all, so this correctly returns ``[]``.
+    Duplicate pointer_fids are collapsed (a Making-Of platter that
+    hyperlinks every featurette to the same movie page produces one
+    entry, not N). Play-All parents are excluded.
     """
-    if not disc.is_film and not any(
-        getattr(e, "pointer_fid", None) for e in disc.extras
-    ):
-        return []
     results: list[PlannedExtra] = []
+    seen: set[int] = set()
     for extra in disc.extras:
-        is_linked = getattr(extra, "pointer_fid", None) is not None
+        fid = getattr(extra, "pointer_fid", None)
+        if fid is None:
+            continue
         if extra.title.endswith(": Play All"):
             continue
-        if not is_linked:
-            if extra.runtime_seconds < min_runtime_seconds:
-                continue
-            ft = (extra.feature_type or "").strip().lower()
-            if ft in _BONUS_CONTENT_FEATURE_TYPES:
-                continue
+        if fid in seen:
+            continue
+        seen.add(fid)
         results.append(extra)
     return results
 
@@ -117,35 +80,35 @@ def group_release_discs(
     single TMDb match — this function partitions the release so the caller
     can attach a separate target to each group.
 
-    v1 rule: contiguous runs of discs sharing the same "film-like" state
-    form one group. A disc is film-like when dvdcompare marked it
-    ``is_film=True`` *or* when any of its extras carries a
-    ``pointer_fid`` (dvdcompare hyperlinks bonus titles that live on
-    another film page — see ``PlannedExtra.pointer_fid``). Non-film-like
-    discs become a "main content" group (typically the TV series or a
-    movie split across format discs); film-like discs become a "feature
-    films" group with one ``FilmSlot`` per detected film.
+    Split rule: each disc's set of ``PlannedExtra.pointer_fid`` values
+    (excluding ``None``) forms a *split key*. Contiguous runs of discs
+    sharing the same key form one group. A disc with no pointered extras
+    (empty key) is treated as belonging to the primary work; a disc
+    whose extras hyperlink to distinct film pages is treated as a
+    bonus-films disc and produces one ``FilmSlot`` per distinct fid.
+    ``is_film`` is intentionally ignored here — dvdcompare's ``* The
+    Film`` marker is inconsistent (a bonus-content platter can be
+    ``is_film=True`` on one release and ``False`` on another), whereas
+    hyperlinks are curated and mean the item genuinely lives on a
+    different film page.
 
     ``current_tmdb_match`` is the TMDb match the user selected earlier at
-    the metadata screen. It is auto-assigned to the group whose ``kind``
-    matches its ``media_type`` (movie → film group; tv → main group). Other
-    groups are returned with ``tmdb_match=None`` so the UI can prompt the
-    user to pick a target for them. When only one group exists the match is
-    always assigned to it regardless of media type.
+    the metadata screen. It's auto-assigned to the first group without
+    per-film slots (the group whose title matches whatever the user
+    searched for). Groups with per-film slots always autofill from each
+    slot's ``dvdcompare_fid`` instead — the user's search can't be
+    pre-routed to N distinct linked works.
     """
     from riplex.models import DiscGroup, FilmSlot
 
     if not discs:
         return []
 
-    def _is_film_like(d: "PlannedDisc") -> bool:
-        if d.is_film:
-            return True
-        # Any hyperlinked extra means dvdcompare knows the item lives on
-        # a different film page — treat the disc as a bonus-films disc
-        # even though ``is_film`` wasn't set (Complete Series pages omit
-        # the ``* The Film`` marker on the bonus-films disc).
-        return any(getattr(e, "pointer_fid", None) for e in d.extras)
+    def _split_key(d: "PlannedDisc") -> frozenset[int]:
+        return frozenset(
+            fid for fid in (getattr(e, "pointer_fid", None) for e in d.extras)
+            if fid is not None
+        )
 
     sorted_discs = sorted(discs, key=lambda d: d.number)
     groups: list[DiscGroup] = []
@@ -154,75 +117,72 @@ def group_release_discs(
     def emit_run() -> None:
         if not current_run:
             return
-        is_film = _is_film_like(current_run[0])
+        key = _split_key(current_run[0])
         numbers = [d.number for d in current_run]
         first_n, last_n = numbers[0], numbers[-1]
-        range_str = f"disc {first_n}" if first_n == last_n else f"discs {first_n}-{last_n}"
+        range_str = f"Disc {first_n}" if first_n == last_n else f"Discs {first_n}-{last_n}"
+        gid = f"disc_{first_n}" if first_n == last_n else f"discs_{first_n}_{last_n}"
 
         films: list[FilmSlot] = []
-        if is_film:
-            if len(numbers) == 1:
-                bonus = detect_bonus_films(current_run[0])
-                n_films = max(1, len(bonus))
-                if n_films > 1:
-                    label = f"{n_films} feature films ({range_str})"
-                else:
-                    label = f"Feature film ({range_str})"
-                default_title = bonus[0].title if len(bonus) == 1 else ""
-                # Each detected bonus film becomes its own FilmSlot so the UI
-                # can assign a distinct TMDb match per film. When the source
-                # feature carried a ``pointer_fid`` (dvdcompare hyperlink to
-                # a distinct film page) it's threaded onto the slot so
-                # autofill can hit that fid for a canonical title/year.
-                for f in bonus:
-                    films.append(FilmSlot(
-                        title=f.title,
-                        runtime_seconds=int(getattr(f, "runtime_seconds", 0) or 0),
-                        dvdcompare_fid=getattr(f, "pointer_fid", None),
-                    ))
-            else:
-                label = f"Feature film discs ({range_str})"
-                default_title = ""
-            gid = f"film_{first_n}"
-            kind = "film"
-        else:
-            label = f"Main content ({range_str})"
-            default_title = ""
-            gid = f"main_{first_n}"
-            kind = "main"
+        default_title = ""
+        label = range_str
+        if key:
+            # A bonus-films disc: one FilmSlot per distinct linked work.
+            # detect_bonus_films dedupes pointer_fids per-disc, but a
+            # multi-disc run sharing the same key means the same works
+            # appear on every disc — dedupe across the run too.
+            bonus_by_fid: dict[int, "PlannedExtra"] = {}
+            for d in current_run:
+                for extra in detect_bonus_films(d):
+                    fid = getattr(extra, "pointer_fid", None)
+                    if fid is not None and fid not in bonus_by_fid:
+                        bonus_by_fid[fid] = extra
+            bonus = list(bonus_by_fid.values())
+            n_films = len(bonus)
+            if n_films == 1:
+                default_title = bonus[0].title
+                label = f"{range_str}: {bonus[0].title}"
+            elif n_films > 1:
+                label = f"{range_str}: {n_films} linked works"
+            for extra in bonus:
+                films.append(FilmSlot(
+                    title=extra.title,
+                    runtime_seconds=int(getattr(extra, "runtime_seconds", 0) or 0),
+                    dvdcompare_fid=getattr(extra, "pointer_fid", None),
+                ))
 
         groups.append(DiscGroup(
             id=gid,
             label=label,
             disc_numbers=numbers,
-            kind=kind,
             default_search_title=default_title,
             films=films,
         ))
 
-    prev_is_film: bool | None = None
+    prev_key: frozenset[int] | None = None
     for d in sorted_discs:
-        d_is_film = _is_film_like(d)
-        if prev_is_film is None or d_is_film == prev_is_film:
+        k = _split_key(d)
+        if prev_key is None or k == prev_key:
             current_run.append(d)
         else:
             emit_run()
             current_run = [d]
-        prev_is_film = d_is_film
+        prev_key = k
     emit_run()
 
     if current_tmdb_match is not None and groups:
-        want_kind = "film" if getattr(current_tmdb_match, "media_type", None) == "movie" else "main"
-        target = next((g for g in groups if g.kind == want_kind), groups[0])
-        # For a film group we park the pre-picked match on the first film
-        # slot (or the whole group if there are no per-film slots yet). For
-        # a main group the match goes on the group itself.
-        if target.kind == "film" and target.films:
-            target.films[0].tmdb_match = current_tmdb_match
-            target.films[0].source = "user"
-        else:
+        # The user's search always refers to the primary work; seat it
+        # on the first group without per-film slots. If every group has
+        # pointered slots (exotic — a release consisting entirely of
+        # sibling linked works), fall back to the first slot of the
+        # first group so the match isn't dropped.
+        target = next((g for g in groups if not g.films), None)
+        if target is not None:
             target.tmdb_match = current_tmdb_match
             target.source = "user"
+        elif groups[0].films:
+            groups[0].films[0].tmdb_match = current_tmdb_match
+            groups[0].films[0].source = "user"
 
     return groups
 

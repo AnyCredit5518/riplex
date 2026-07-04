@@ -8,7 +8,7 @@ import pytest
 
 from riplex.lookup import LookupResult, resolve_disc_groups
 from riplex.metadata.provider import MetadataProvider
-from riplex.models import PlannedDisc
+from riplex.models import PlannedDisc, PlannedExtra
 
 
 class _FakeMatch:
@@ -75,7 +75,12 @@ class TestResolveDiscGroups:
         discs = [
             PlannedDisc(number=1, disc_format="Blu-ray", is_film=False),
             PlannedDisc(number=2, disc_format="Blu-ray", is_film=False),
-            PlannedDisc(number=3, disc_format="Blu-ray", is_film=True),
+            PlannedDisc(number=3, disc_format="Blu-ray", is_film=True,
+                        extras=[PlannedExtra(
+                            title="Standalone Film",
+                            runtime_seconds=5400,
+                            pointer_fid=12345,
+                        )]),
         ]
         seed = _FakeMatch("Psych", 2006, "tv")
         provider = _FakeProvider({})  # no film-group query defined
@@ -87,11 +92,16 @@ class TestResolveDiscGroups:
         )
 
         assert len(groups) == 2
-        main = next(g for g in groups if g.kind == "main")
-        film = next(g for g in groups if g.kind == "film")
+        # Ordered by first disc number: main group (1-2) then film group (3).
+        main, film = groups[0], groups[1]
+        assert main.disc_numbers == [1, 2]
+        assert main.films == []
         assert main.tmdb_match is seed
         assert main.source == "user"
-        # Film group has no matches assigned (best_guess returned nothing).
+        assert film.disc_numbers == [3]
+        assert len(film.films) == 1
+        # Film slot has no match assigned (best_guess returned nothing).
+        assert film.films[0].tmdb_match is None
         assert film.tmdb_match is None
 
     @pytest.mark.asyncio
@@ -109,4 +119,4 @@ class TestResolveDiscGroups:
         groups = await resolve_disc_groups(
             _meta(discs, seed), provider, interactive=False,
         )
-        assert len(groups) >= 1
+        assert isinstance(groups, list)

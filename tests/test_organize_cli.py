@@ -91,12 +91,12 @@ async def test_organize_routes_multi_work_release_through_group_planner(
         # film group with one slot assigned to film_match.
         main = DiscGroup(
             id="main_1", label="TV series (disc 1)",
-            disc_numbers=[1], kind="main",
+            disc_numbers=[1],
             tmdb_match=tv_match, source="user",
         )
         film = DiscGroup(
             id="film_2", label="Feature film (disc 2)",
-            disc_numbers=[2], kind="film",
+            disc_numbers=[2],
             films=[FilmSlot(title="The Movie", runtime_seconds=5280,
                             tmdb_match=film_match, source="auto")],
         )

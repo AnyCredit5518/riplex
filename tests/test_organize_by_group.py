@@ -58,7 +58,7 @@ class _FakeMatch:
 
 class TestApplyGroupOverrides:
     def test_group_level_match_written(self):
-        g = DiscGroup(id="main_1", label="Main", disc_numbers=[1], kind="main")
+        g = DiscGroup(id="main_1", label="Main", disc_numbers=[1])
         m = _FakeMatch("Psych", 2006, "tv")
         apply_group_overrides([g], {"main_1": {"match": m, "source": "user"}})
         assert g.tmdb_match is m
@@ -68,7 +68,7 @@ class TestApplyGroupOverrides:
         slot = FilmSlot(title="Psych 2", runtime_seconds=5300)
         g = DiscGroup(
             id="film_31", label="Films", disc_numbers=[31],
-            kind="film", films=[slot],
+            films=[slot],
         )
         m = _FakeMatch("Psych 2: Lassie Come Home", 2020)
         apply_group_overrides([g], {
@@ -78,7 +78,7 @@ class TestApplyGroupOverrides:
         assert g.films[0].source == "auto"
 
     def test_no_override_leaves_group_untouched(self):
-        g = DiscGroup(id="main_1", label="Main", disc_numbers=[1], kind="main")
+        g = DiscGroup(id="main_1", label="Main", disc_numbers=[1])
         apply_group_overrides([g], {})
         assert g.tmdb_match is None
         assert g.source is None
@@ -86,7 +86,7 @@ class TestApplyGroupOverrides:
     def test_out_of_range_film_idx_ignored(self):
         g = DiscGroup(
             id="film_31", label="Films", disc_numbers=[31],
-            kind="film", films=[FilmSlot(title="Only", runtime_seconds=5000)],
+            films=[FilmSlot(title="Only", runtime_seconds=5000)],
         )
         m = _FakeMatch("Bogus", 2020)
         # idx 5 doesn't exist — must not raise, must not touch slot 0.
@@ -105,9 +105,9 @@ class TestPartitionScannedByGroup:
     def test_folders_route_by_disc_number(self):
         groups = [
             DiscGroup(id="main_1", label="Main",
-                      disc_numbers=[1, 2, 3], kind="main"),
+                      disc_numbers=[1, 2, 3]),
             DiscGroup(id="film_31", label="Films",
-                      disc_numbers=[31], kind="film"),
+                      disc_numbers=[31]),
         ]
         scanned = [
             _make_scanned_disc(1, _make_file("t1.mkv", 2500)),
@@ -120,7 +120,7 @@ class TestPartitionScannedByGroup:
         assert orphans == []
 
     def test_unmapped_folder_becomes_orphan(self):
-        groups = [DiscGroup(id="main_1", label="Main", disc_numbers=[1], kind="main")]
+        groups = [DiscGroup(id="main_1", label="Main", disc_numbers=[1])]
         scanned = [
             _make_scanned_disc(1, _make_file("t1.mkv", 2500)),
             ScannedDisc(folder_name="Bonus", files=[_make_file("x.mkv", 500)]),
@@ -130,7 +130,7 @@ class TestPartitionScannedByGroup:
         assert [sd.folder_name for sd in orphans] == ["Bonus"]
 
     def test_disc_number_not_in_any_group_is_orphan(self):
-        groups = [DiscGroup(id="main_1", label="Main", disc_numbers=[1], kind="main")]
+        groups = [DiscGroup(id="main_1", label="Main", disc_numbers=[1])]
         scanned = [_make_scanned_disc(99, _make_file("t.mkv", 500))]
         by_group, orphans = _partition_scanned_by_group(scanned, groups)
         assert by_group["main_1"] == []
@@ -273,7 +273,7 @@ class TestBuildMultiGroupPlanFilmSlots:
         m3 = _FakeMatch("Psych 3: This Is Gus", 2021)
         group = DiscGroup(
             id="film_31", label="3 feature films (disc 31)",
-            disc_numbers=[31], kind="film",
+            disc_numbers=[31],
             films=[
                 FilmSlot(title="The Film", runtime_seconds=5280, tmdb_match=m1),
                 FilmSlot(title="Psych 2", runtime_seconds=5300, tmdb_match=m2),
@@ -311,7 +311,7 @@ class TestBuildMultiGroupPlanFilmSlots:
     @pytest.mark.asyncio
     async def test_slot_without_match_becomes_missing(self, tmp_path):
         group = DiscGroup(
-            id="film_31", label="Films", disc_numbers=[31], kind="film",
+            id="film_31", label="Films", disc_numbers=[31],
             films=[
                 FilmSlot(title="Assigned", runtime_seconds=5280,
                          tmdb_match=_FakeMatch("Assigned", 2020)),
@@ -337,7 +337,7 @@ class TestBuildMultiGroupPlanFilmSlots:
     @pytest.mark.asyncio
     async def test_group_with_no_scanned_files_is_skipped(self, tmp_path):
         group = DiscGroup(
-            id="film_31", label="Films", disc_numbers=[31], kind="film",
+            id="film_31", label="Films", disc_numbers=[31],
             films=[FilmSlot(title="F", runtime_seconds=5280,
                             tmdb_match=_FakeMatch("F", 2020))],
         )
@@ -354,7 +354,7 @@ class TestBuildMultiGroupPlanFilmSlots:
         # Film group with slots but none of the slots got a match — the
         # entire branch is skipped (no planner fallback for this case).
         group = DiscGroup(
-            id="film_31", label="Films", disc_numbers=[31], kind="film",
+            id="film_31", label="Films", disc_numbers=[31],
             films=[FilmSlot(title="F", runtime_seconds=5280)],
         )
         scanned = [_make_scanned_disc(31, _make_file("t.mkv", 5280))]

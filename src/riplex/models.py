@@ -147,20 +147,22 @@ class DiscGroup:
     each organize into their own folder. A ``DiscGroup`` pairs a set of disc
     numbers with the TMDb match those discs should organize under.
 
-    For ``main`` groups (TV series, movie split across format discs) the
-    single ``tmdb_match`` slot is used. For ``film`` groups holding one or
-    more standalone films, ``films`` is populated with one ``FilmSlot`` per
-    film — each carrying its own TMDb match — and the top-level
-    ``tmdb_match`` is unused. ``source`` records how the top-level match got
-    there so the UI can differentiate user-confirmed picks from auto-filled
-    best guesses. ``tmdb_match`` is typed loosely (kept as ``object``) so
-    this pure data module doesn't need to import from ``riplex.metadata``.
+    When ``films`` is empty the group represents a single work — a movie
+    (possibly spread across format discs), a TV series, or a movie with
+    its bonus platter — and the group-level ``tmdb_match`` slot is used.
+    When ``films`` is non-empty the group holds one ``FilmSlot`` per
+    distinct linked work (dvdcompare hyperlinked each item to its own
+    film page), each carrying its own TMDb match; the top-level
+    ``tmdb_match`` is unused. ``source`` records how the top-level match
+    got there so the UI can differentiate user-confirmed picks from
+    auto-filled best guesses. ``tmdb_match`` is typed loosely (kept as
+    ``object``) so this pure data module doesn't need to import from
+    ``riplex.metadata``.
     """
 
     id: str
     label: str
     disc_numbers: list[int]
-    kind: Literal["main", "film"]
     tmdb_match: object | None = None
     source: Literal["user", "auto"] | None = None
     default_search_title: str = ""
@@ -170,7 +172,7 @@ class DiscGroup:
         """Return True when every slot in the group has a confirmed (or
         auto-filled) match. Used to gate Start Ripping and to color the
         group's border in the Disc Overview."""
-        if self.kind == "film" and self.films:
+        if self.films:
             return all(f.tmdb_match is not None for f in self.films)
         return self.tmdb_match is not None
 

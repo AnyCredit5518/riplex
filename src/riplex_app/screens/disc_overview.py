@@ -97,7 +97,8 @@ class DiscOverviewScreen:
             "Disc overview: %d group(s): %s",
             len(disc_groups),
             [
-                (g.id, g.kind, g.disc_numbers,
+                (g.id, g.disc_numbers,
+                 f"{len(g.films)} film slot(s)" if g.films else "single-work",
                  "complete" if g.is_complete() else "incomplete")
                 for g in disc_groups
             ],
@@ -258,12 +259,12 @@ class DiscOverviewScreen:
             disc_provider = DiscProvider()
             try:
                 for g in groups:
-                    log.info("Auto-fill: entering group %s (kind=%s films=%d "
+                    log.info("Auto-fill: entering group %s (films=%d "
                              "tmdb_match=%s default_title=%r)",
-                             g.id, g.kind, len(g.films),
+                             g.id, len(g.films),
                              getattr(g.tmdb_match, "title", None),
                              g.default_search_title)
-                    if g.kind == "film" and g.films:
+                    if g.films:
                         for idx, film in enumerate(g.films):
                             if film.tmdb_match is not None:
                                 continue
@@ -341,7 +342,7 @@ class DiscOverviewScreen:
                         if not query.strip():
                             log.info("Auto-fill: %s skipped (empty query)", g.id)
                             continue
-                        media_type = "tv" if g.kind == "main" else "movie"
+                        media_type = "auto"
                         got = await best_guess(provider, query, media_type=media_type)
                         if got is None:
                             log.info("Auto-fill: %s no confident guess for %r",
@@ -452,7 +453,7 @@ class DiscOverviewScreen:
                     color=border_color),
         ]
 
-        if group.kind == "film" and group.films:
+        if group.films:
             for idx, film in enumerate(group.films):
                 header_children.append(self._build_film_row(group, idx, film))
         else:
@@ -514,7 +515,7 @@ class DiscOverviewScreen:
         any slot is auto-filled or empty."""
         if not group.is_complete():
             return ft.Colors.AMBER_400
-        if group.kind == "film" and group.films:
+        if group.films:
             return (ft.Colors.GREEN_400
                     if all(f.source == "user" for f in group.films)
                     else ft.Colors.AMBER_400)
@@ -522,16 +523,22 @@ class DiscOverviewScreen:
                 else ft.Colors.AMBER_400)
 
     def _build_group_match_row(self, group) -> ft.Control:
-        """Match line + buttons for a main group (or filmless film group)."""
+        """Match line + buttons for a group without per-film slots."""
         match = group.tmdb_match
         source = group.source
-        icon_for_kind = ft.Icons.MOVIE if group.kind == "film" else ft.Icons.TV
+        # Icon reflects the assigned match's media_type when present;
+        # generic disc icon when nothing is assigned yet.
+        if match is not None:
+            match_icon = (ft.Icons.TV if getattr(match, "media_type", None) == "tv"
+                          else ft.Icons.MOVIE)
+        else:
+            match_icon = ft.Icons.ALBUM
 
         if match is not None and source == "user":
             return ft.Row(
                 [
                     ft.Row([
-                        ft.Icon(icon_for_kind, size=16, color=ft.Colors.GREEN_400),
+                        ft.Icon(match_icon, size=16, color=ft.Colors.GREEN_400),
                         ft.Text(self._match_label(match.title, match.year or 0),
                                 size=14, weight=ft.FontWeight.BOLD,
                                 color=ft.Colors.GREEN_400),

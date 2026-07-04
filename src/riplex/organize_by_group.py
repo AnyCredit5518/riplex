@@ -274,7 +274,7 @@ async def build_multi_group_plan(
 
         # Film group with per-film slots: route each MKV to its slot,
         # build direct Plex movie destinations.
-        if group.kind == "film" and group.films and any(
+        if group.films and any(
             f.tmdb_match is not None for f in group.films
         ):
             _log(f"Organize: routing '{group.label}' by per-film slots")

@@ -174,7 +174,7 @@ async def _autofill_groups(
     bare title.
     """
     for g in groups:
-        if g.kind == "film" and g.films:
+        if g.films:
             for idx, film in enumerate(g.films):
                 if film.tmdb_match is not None:
                     continue
@@ -198,8 +198,7 @@ async def _autofill_groups(
             if not query.strip():
                 log.info("Auto-fill: %s skipped (empty query)", g.id)
                 continue
-            media_type = "tv" if g.kind == "main" else "movie"
-            got = await best_guess(provider, query, media_type=media_type)
+            got = await best_guess(provider, query, media_type="auto")
             if got is None:
                 log.info("Auto-fill: %s no confident guess for %r",
                          g.id, query)
@@ -222,7 +221,7 @@ def _print_group_overview(groups: list[DiscGroup]) -> None:
           file=sys.stderr)
     for g in groups:
         print(f"  * {g.label}", file=sys.stderr)
-        if g.kind == "film" and g.films:
+        if g.films:
             for idx, f in enumerate(g.films, 1):
                 match_str = _format_match(f.tmdb_match, f.source)
                 print(f"      Film {idx}: {f.title!r} -> {match_str}",
@@ -263,7 +262,7 @@ async def _interactive_confirm(
     single prompt per slot with three choices: accept, search, or skip.
     """
     for g in groups:
-        if g.kind == "film" and g.films:
+        if g.films:
             for idx, film in enumerate(g.films):
                 if film.source == "user":
                     continue
@@ -287,7 +286,7 @@ async def _interactive_confirm(
                 current_match=g.tmdb_match,
                 current_source=g.source,
                 default_query=g.default_search_title,
-                media_type="tv" if g.kind == "main" else "movie",
+                media_type="auto",
             )
             if new_match is not None:
                 g.tmdb_match = new_match

@@ -650,35 +650,38 @@ class TestAnalyzeDisc:
 
 
 class TestDetectBonusFilms:
-    """Tests for detect_bonus_films() — the multi-film-per-disc heuristic."""
+    """Tests for detect_bonus_films() — pointer-linked bonus extras."""
 
-    def _extra(self, title, runtime, feature_type=""):
-        return PlannedExtra(title=title, runtime_seconds=runtime, feature_type=feature_type)
-
-    def _episode(self, ep_num, title, runtime):
-        return PlannedEpisode(
-            season_number=1, episode_number=ep_num, title=title,
-            runtime="", runtime_seconds=runtime,
-        )
-
-    def _film_disc(self, extras=None, episodes=None):
+    def _disc(self, extras=None):
         return PlannedDisc(
-            number=1, disc_format="Blu-ray", is_film=True,
-            episodes=episodes or [], extras=extras or [],
+            number=1, disc_format="Blu-ray",
+            episodes=[], extras=extras or [],
         )
 
-    def _episode_disc(self, extras=None, episodes=None):
-        return PlannedDisc(
-            number=1, disc_format="Blu-ray", is_film=False,
-            episodes=episodes or [], extras=extras or [],
-        )
+    def test_empty_disc(self):
+        assert detect_bonus_films(self._disc()) == []
 
-    # Positive: Psych disc 31 - three ~90-minute films with no feature_type.
-    def test_psych_disc_31_three_tv_movies(self):
-        disc = self._film_disc(extras=[
-            self._extra("Psych: The Movie", 5400),
-            self._extra("Psych 2: Lassie Come Home", 5580),
-            self._extra("Psych 3: This Is Gus", 5340),
+    def test_extras_without_pointers_ignored(self):
+        # Ordinary bonus content (no hyperlink) returns nothing regardless
+        # of runtime or feature_type — those heuristics are gone.
+        disc = self._disc(extras=[
+            PlannedExtra(title="Making Of", runtime_seconds=4500,
+                         feature_type="documentary"),
+            PlannedExtra(title="Standalone Bonus", runtime_seconds=6000),
+            PlannedExtra(title="Trailer", runtime_seconds=150,
+                         feature_type="trailer"),
+        ])
+        assert detect_bonus_films(disc) == []
+
+    def test_pointer_linked_extras_returned_in_source_order(self):
+        # Psych disc 31 shape: each film hyperlinks to its own film page.
+        disc = self._disc(extras=[
+            PlannedExtra(title="Psych: The Movie", runtime_seconds=5290,
+                         pointer_fid=66239),
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5310, pointer_fid=66240),
+            PlannedExtra(title="Psych 3: This Is Gus",
+                         runtime_seconds=5782, pointer_fid=66241),
         ])
         films = detect_bonus_films(disc)
         assert [f.title for f in films] == [
@@ -686,159 +689,43 @@ class TestDetectBonusFilms:
             "Psych 2: Lassie Come Home",
             "Psych 3: This Is Gus",
         ]
+        assert [f.pointer_fid for f in films] == [66239, 66240, 66241]
 
-    # Negative: BttF-style trilogy - each film on its own disc.
-    # The film disc only lists bonus content (main film is implicit).
-    def test_back_to_the_future_part_iii_bonus_only(self):
-        disc = self._film_disc(extras=[
-            self._extra("Q&A Commentary by director Robert Zemeckis (2002)", 0),
-            self._extra("Deleted Scene (with optional commentary)", 78),
-            self._extra("Tales from the Future: Third Time's the Charm", 1027, "featurette"),
-            self._extra("Tales from the Future: The Test of Time", 1019, "featurette"),
-            self._extra("The Making of Back to the Future Part III", 451, "featurette"),
-            self._extra("Making the Trilogy: Chapter Three", 979, "featurette"),
-            self._extra("The Secrets of the Back to the Future Trilogy", 1240, "featurette"),
-            self._extra("Outtakes", 95),
-        ])
-        assert detect_bonus_films(disc) == []
-
-    # Negative: TV season disc - is_film=False, episodes not extras.
-    def test_season_disc_episodes_ignored(self):
-        disc = self._episode_disc(
-            episodes=[
-                self._episode(1, "Pilot", 2580),
-                self._episode(2, "Spellingg Bee", 2520),
-                self._episode(3, "Speak Now or Forever Hold Your Piece", 2500),
-                self._episode(4, "Woman Seeking Dead Husband", 2610),
-            ],
-            extras=[self._extra("Blooper Reel", 300, "bloopers")],
-        )
-        assert detect_bonus_films(disc) == []
-
-    # Negative: TV season disc with a long documentary extra should not count.
-    def test_season_disc_with_long_documentary_ignored(self):
-        disc = self._episode_disc(
-            episodes=[self._episode(1, "Pilot", 2580)],
-            extras=[
-                self._extra("Making of the Season", 4200, "documentary"),
-            ],
-        )
-        assert detect_bonus_films(disc) == []
-
-    # Negative: film disc where all extras are short.
-    def test_typical_film_disc_short_extras(self):
-        disc = self._film_disc(extras=[
-            self._extra("Deleted Scene 1", 240),
-            self._extra("Deleted Scene 2", 180),
-            self._extra("Behind the Scenes", 720, "featurette"),
-            self._extra("Trailer", 150, "trailer"),
-        ])
-        assert detect_bonus_films(disc) == []
-
-    # Negative: long featurette should not qualify.
-    def test_long_featurette_rejected(self):
-        disc = self._film_disc(extras=[
-            self._extra("Making of the Trilogy", 4500, "featurette"),
-            self._extra("Cast Interviews", 3900, "interview"),
-        ])
-        assert detect_bonus_films(disc) == []
-
-    # Negative: long documentary rejected.
-    def test_long_documentary_rejected(self):
-        disc = self._film_disc(extras=[
-            self._extra("The Making of the Film", 4200, "documentary"),
-        ])
-        assert detect_bonus_films(disc) == []
-
-    # Positive: mixed disc with one bonus film plus regular extras.
-    def test_bonus_film_with_regular_extras(self):
-        disc = self._film_disc(extras=[
-            self._extra("Bonus Feature: Alternative Cut", 4800),
-            self._extra("Making Of", 1200, "featurette"),
-            self._extra("Trailer", 150, "trailer"),
-        ])
-        films = detect_bonus_films(disc)
-        assert len(films) == 1
-        assert films[0].title == "Bonus Feature: Alternative Cut"
-
-    # Play-All parent extras should be skipped (they duplicate the group).
-    def test_play_all_parent_skipped(self):
-        disc = self._film_disc(extras=[
-            self._extra("Trilogy Collection: Play All", 16200),
-            self._extra("Film One", 5400),
-            self._extra("Film Two", 5400),
-            self._extra("Film Three", 5400),
-        ])
-        films = detect_bonus_films(disc)
-        assert [f.title for f in films] == ["Film One", "Film Two", "Film Three"]
-
-    # Boundary: 59:59 should be rejected; 60:00 accepted.
-    def test_runtime_threshold(self):
-        just_under = self._film_disc(extras=[self._extra("Almost a Film", 3599)])
-        just_over = self._film_disc(extras=[self._extra("Barely a Film", 3600)])
-        assert detect_bonus_films(just_under) == []
-        assert [f.title for f in detect_bonus_films(just_over)] == ["Barely a Film"]
-
-    # Custom threshold override.
-    def test_custom_threshold(self):
-        disc = self._film_disc(extras=[
-            self._extra("70-minute short film", 4200),
-            self._extra("50-minute doc", 3000),
-        ])
-        # Default threshold accepts both if untyped; custom raises the bar.
-        films = detect_bonus_films(disc, min_runtime_seconds=75 * 60)
-        assert films == []
-
-    # Empty disc returns empty list.
-    def test_empty_disc(self):
-        disc = self._film_disc()
-        assert detect_bonus_films(disc) == []
-
-    # Positive: dvdcompare hyperlinked a bonus title to a distinct film
-    # page (``pointer_fid`` set). On a Complete-Series page's bonus-films
-    # disc the ``* The Film`` marker is often absent, so ``is_film`` is
-    # False — but the pointer_fid tells us this is a bonus-films disc.
-    def test_pointer_linked_extras_on_non_film_disc(self):
-        disc = self._episode_disc(extras=[
-            PlannedExtra(
-                title="Psych: The Movie", runtime_seconds=5290,
-                pointer_fid=66239,
-            ),
-            PlannedExtra(
-                title="Psych 2: Lassie Come Home", runtime_seconds=5310,
-                pointer_fid=66240,
-            ),
-        ])
-        films = detect_bonus_films(disc)
-        assert [f.title for f in films] == [
-            "Psych: The Movie",
-            "Psych 2: Lassie Come Home",
-        ]
-        assert [f.pointer_fid for f in films] == [66239, 66240]
-
-    # Positive: a hyperlinked bonus feature bypasses the runtime and
-    # feature-type filters — dvdcompare has told us it's a real film.
-    def test_pointer_linked_short_extra_still_counts(self):
-        disc = self._film_disc(extras=[
-            PlannedExtra(
-                # 45 minutes, would normally be filtered as sub-threshold.
-                title="Companion Short Film", runtime_seconds=2700,
-                pointer_fid=99999,
-            ),
+    def test_short_pointered_extra_still_counts(self):
+        # dvdcompare hyperlinks are curated: if it's linked, it's a real
+        # work. Runtime/feature_type filters no longer apply.
+        disc = self._disc(extras=[
+            PlannedExtra(title="Companion Short Film", runtime_seconds=2700,
+                         pointer_fid=99999),
         ])
         assert [f.title for f in detect_bonus_films(disc)] == [
             "Companion Short Film",
         ]
 
-    # Negative: a non-film disc with only ordinary extras (no pointer_fid)
-    # still returns [] — the pointer signal is what admits it.
-    def test_non_film_disc_without_pointers_still_empty(self):
-        disc = self._episode_disc(extras=[
-            PlannedExtra(
-                title="Standalone Bonus", runtime_seconds=5400,
-            ),
+    def test_duplicate_pointer_fids_deduped(self):
+        # A Making-Of platter that hyperlinks every featurette to the
+        # same movie page should produce one entry, not N.
+        disc = self._disc(extras=[
+            PlannedExtra(title="Featurette One", runtime_seconds=600,
+                         pointer_fid=42),
+            PlannedExtra(title="Featurette Two", runtime_seconds=900,
+                         pointer_fid=42),
+            PlannedExtra(title="Featurette Three", runtime_seconds=1200,
+                         pointer_fid=42),
         ])
-        assert detect_bonus_films(disc) == []
+        films = detect_bonus_films(disc)
+        assert len(films) == 1
+        assert films[0].title == "Featurette One"
+
+    def test_play_all_parent_skipped(self):
+        disc = self._disc(extras=[
+            PlannedExtra(title="Collection: Play All",
+                         runtime_seconds=16000, pointer_fid=77),
+            PlannedExtra(title="Real Film", runtime_seconds=5400,
+                         pointer_fid=78),
+        ])
+        films = detect_bonus_films(disc)
+        assert [f.title for f in films] == ["Real Film"]
 
 
 class TestGroupReleaseDiscs:
@@ -865,106 +752,142 @@ class TestGroupReleaseDiscs:
     def test_empty_discs_returns_empty(self):
         assert group_release_discs([], None) == []
 
-    def test_single_group_all_episodes(self):
-        # A pure TV release: one non-film group covering all discs.
+    def test_single_group_tv_release(self):
+        # A pure TV release: one group covering all discs.
         discs = [self._disc(n) for n in range(1, 5)]
         groups = group_release_discs(discs, self._fake_match("tv"))
         assert len(groups) == 1
         g = groups[0]
-        assert g.kind == "main"
+        assert g.films == []
         assert g.disc_numbers == [1, 2, 3, 4]
         assert g.tmdb_match is not None
         assert g.source == "user"
-        assert g.label == "Main content (discs 1-4)"
+        assert g.label == "Discs 1-4"
 
-    def test_single_group_single_film_disc(self):
-        # A pure single-disc movie release: one film group with one disc.
-        # No extras -> no per-film slots -> the pre-picked match goes on the
-        # group itself (source="user"), which is the legacy shape.
+    def test_single_group_single_movie_disc(self):
+        # A single-disc movie release: one group with the pre-picked
+        # match on the group itself (no per-film slots).
         discs = [self._disc(1, is_film=True)]
         groups = group_release_discs(discs, self._fake_match("movie", "Movie"))
         assert len(groups) == 1
         g = groups[0]
-        assert g.kind == "film"
         assert g.disc_numbers == [1]
         assert g.films == []
         assert g.tmdb_match is not None
         assert g.source == "user"
-        assert g.label == "Feature film (disc 1)"
+        assert g.label == "Disc 1"
 
-    def test_psych_complete_series_split(self):
-        # Psych disc layout: 30 episode discs + 1 movie disc.
-        discs = [self._disc(n) for n in range(1, 31)]
-        movie_disc = self._disc(31, is_film=True, extras=[
-            PlannedExtra(title="Psych: The Movie", runtime_seconds=5290),
-            PlannedExtra(title="Psych 2", runtime_seconds=5310),
-            PlannedExtra(title="Psych 3", runtime_seconds=5782),
-        ])
-        discs.append(movie_disc)
-        # User initially searched for the movie, so tmdb_match.media_type=movie.
-        match = self._fake_match("movie", "Psych: The Movie")
-        groups = group_release_discs(discs, match)
-
-        assert len(groups) == 2
-        main = next(g for g in groups if g.kind == "main")
-        film = next(g for g in groups if g.kind == "film")
-        assert main.disc_numbers == list(range(1, 31))
-        assert film.disc_numbers == [31]
-        # A multi-film disc gets one FilmSlot per detected film. The
-        # pre-picked movie match auto-fills films[0] with source="user".
-        assert len(film.films) == 3
-        assert [f.title for f in film.films] == [
-            "Psych: The Movie", "Psych 2", "Psych 3",
+    def test_movie_with_bonus_disc_not_split(self):
+        # Independence Day 4K shape: 4K + Blu-ray + bonus disc, no
+        # pointer_fid on any extra. Must stay as one group.
+        discs = [
+            self._disc(1, is_film=True),  # 4K
+            self._disc(2, is_film=True),  # Blu-ray
+            self._disc(3, is_film=False, extras=[
+                PlannedExtra(title="A Legacy Surging Forward",
+                             runtime_seconds=5400),
+                PlannedExtra(title="Gag Reel", runtime_seconds=300),
+            ]),
         ]
-        assert film.films[0].tmdb_match is match
-        assert film.films[0].source == "user"
-        assert film.films[1].tmdb_match is None
-        assert film.films[2].tmdb_match is None
-        # Group-level tmdb_match is unused for film groups with per-film slots.
-        assert film.tmdb_match is None
-        # Main group is unfilled.
-        assert main.tmdb_match is None
-        # Label reflects multi-film disc.
-        assert film.label == "3 feature films (disc 31)"
+        match = self._fake_match("movie", "Independence Day")
+        groups = group_release_discs(discs, match)
+        assert len(groups) == 1
+        g = groups[0]
+        assert g.disc_numbers == [1, 2, 3]
+        assert g.films == []
+        assert g.tmdb_match is match
+        assert g.source == "user"
 
-    def test_tv_match_prefers_main_group(self):
-        # Same box but user searched for the TV show instead.
-        discs = [self._disc(n) for n in range(1, 4)]
-        discs.append(self._disc(4, is_film=True))
+    def test_pointer_split_psych_complete_series(self):
+        # 30 episode discs + 1 bonus-films disc with three linked
+        # standalone TV-movies. The pointered disc splits off.
+        discs = [self._disc(n) for n in range(1, 31)]
+        discs.append(self._disc(31, extras=[
+            PlannedExtra(title="Psych: The Movie", runtime_seconds=5290,
+                         pointer_fid=66239),
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5310, pointer_fid=66240),
+            PlannedExtra(title="Psych 3: This Is Gus",
+                         runtime_seconds=5782, pointer_fid=66241),
+        ]))
         match = self._fake_match("tv", "Psych")
         groups = group_release_discs(discs, match)
         assert len(groups) == 2
-        main = next(g for g in groups if g.kind == "main")
-        film = next(g for g in groups if g.kind == "film")
+        main, film = groups[0], groups[1]
+        assert main.disc_numbers == list(range(1, 31))
+        assert main.films == []
         assert main.tmdb_match is match
+        assert main.source == "user"
+        assert film.disc_numbers == [31]
+        assert [f.title for f in film.films] == [
+            "Psych: The Movie",
+            "Psych 2: Lassie Come Home",
+            "Psych 3: This Is Gus",
+        ]
+        assert [f.dvdcompare_fid for f in film.films] == [66239, 66240, 66241]
+        # Match is never pre-routed to a film group's slots; each slot
+        # autofills from its own dvdcompare_fid.
         assert film.tmdb_match is None
+        assert all(f.tmdb_match is None for f in film.films)
 
-    def test_match_with_no_matching_kind_falls_back_to_first(self):
-        # All discs are films; user's match is a TV entry (unusual but possible).
-        discs = [self._disc(1, is_film=True), self._disc(2, is_film=True)]
-        match = self._fake_match("tv", "Something")
-        groups = group_release_discs(discs, match)
+    def test_double_feature_single_disc(self):
+        # One disc, two distinct linked works — two FilmSlots in one
+        # group. The main-work seat has no candidates, so the user's
+        # match lands on the first slot as a fallback.
+        disc = self._disc(1, is_film=True, extras=[
+            PlannedExtra(title="Film A", runtime_seconds=5000,
+                         pointer_fid=101),
+            PlannedExtra(title="Film B", runtime_seconds=5200,
+                         pointer_fid=102),
+        ])
+        match = self._fake_match("movie", "Film A")
+        groups = group_release_discs([disc], match)
         assert len(groups) == 1
-        assert groups[0].kind == "film"
-        assert groups[0].tmdb_match is match
+        g = groups[0]
+        assert [f.title for f in g.films] == ["Film A", "Film B"]
+        assert [f.dvdcompare_fid for f in g.films] == [101, 102]
+        assert [f.runtime_seconds for f in g.films] == [5000, 5200]
+        assert g.films[0].tmdb_match is match
+        assert g.films[0].source == "user"
+        assert g.films[1].tmdb_match is None
+        assert g.label == "Disc 1: 2 linked works"
 
-    def test_no_match_leaves_all_groups_unassigned(self):
+    def test_making_of_disc_with_same_fid_across_extras(self):
+        # A Making-Of Blu-ray whose 12 featurettes all hyperlink to the
+        # same movie page — deduped to one slot, not fragmented.
+        disc = self._disc(2, extras=[
+            PlannedExtra(title=f"Featurette {i}", runtime_seconds=600,
+                         pointer_fid=555)
+            for i in range(1, 13)
+        ])
+        groups = group_release_discs([disc], None)
+        assert len(groups) == 1
+        g = groups[0]
+        assert len(g.films) == 1
+        assert g.films[0].dvdcompare_fid == 555
+        assert g.label == "Disc 2: Featurette 1"
+
+    def test_no_match_leaves_group_unassigned(self):
         discs = [self._disc(1), self._disc(2, is_film=True)]
         groups = group_release_discs(discs, None)
-        assert len(groups) == 2
-        assert all(g.tmdb_match is None for g in groups)
+        assert len(groups) == 1
+        assert groups[0].tmdb_match is None
 
-    def test_alternating_film_boundary_creates_multiple_runs(self):
-        # is_film pattern F, T, F, T should produce four groups.
+    def test_alternating_pointer_boundary_creates_multiple_runs(self):
+        # Disc keys: {} , {fid=1} , {} , {fid=1} — four runs.
         discs = [
-            self._disc(1, is_film=False),
-            self._disc(2, is_film=True),
-            self._disc(3, is_film=False),
-            self._disc(4, is_film=True),
+            self._disc(1),
+            self._disc(2, extras=[
+                PlannedExtra(title="X", runtime_seconds=5000, pointer_fid=1),
+            ]),
+            self._disc(3),
+            self._disc(4, extras=[
+                PlannedExtra(title="Y", runtime_seconds=5000, pointer_fid=1),
+            ]),
         ]
         groups = group_release_discs(discs, None)
-        assert [g.kind for g in groups] == ["main", "film", "main", "film"]
         assert [g.disc_numbers for g in groups] == [[1], [2], [3], [4]]
+        assert [bool(g.films) for g in groups] == [False, True, False, True]
 
     def test_discs_out_of_order_are_sorted(self):
         discs = [self._disc(3), self._disc(1), self._disc(2)]
@@ -972,88 +895,50 @@ class TestGroupReleaseDiscs:
         assert len(groups) == 1
         assert groups[0].disc_numbers == [1, 2, 3]
 
-    def test_group_ids_are_stable_and_unique(self):
-        discs = [self._disc(1), self._disc(2, is_film=True), self._disc(3, is_film=True)]
+    def test_group_ids_are_disc_number_based(self):
+        discs = [
+            self._disc(1),
+            self._disc(2),
+            self._disc(3, extras=[
+                PlannedExtra(title="Z", runtime_seconds=5000, pointer_fid=9),
+            ]),
+        ]
         groups = group_release_discs(discs, None)
-        ids = [g.id for g in groups]
-        assert len(ids) == len(set(ids))
-        # ids should be deterministic based on kind + first disc number.
-        assert ids == ["main_1", "film_2"]
+        assert [g.id for g in groups] == ["discs_1_2", "disc_3"]
 
-    def test_film_group_films_carry_runtime(self):
-        # Each per-film FilmSlot copies the extra's runtime so the UI can
-        # match ripped MKVs to films by duration later.
-        disc = self._disc(1, is_film=True, extras=[
-            PlannedExtra(title="Alpha", runtime_seconds=5000),
-            PlannedExtra(title="Beta", runtime_seconds=5200),
-        ])
-        groups = group_release_discs([disc], None)
-        assert len(groups) == 1
-        g = groups[0]
-        assert len(g.films) == 2
-        assert g.films[0].runtime_seconds == 5000
-        assert g.films[1].runtime_seconds == 5200
+    def test_all_groups_have_pointers_match_seats_on_first_slot(self):
+        # Exotic release: every disc has pointered extras. There's no
+        # "primary work" group to seat the user's match on; the
+        # fallback is the first slot of the first group.
+        discs = [
+            self._disc(1, extras=[
+                PlannedExtra(title="A", runtime_seconds=5000, pointer_fid=10),
+            ]),
+            self._disc(2, extras=[
+                PlannedExtra(title="B", runtime_seconds=5000, pointer_fid=20),
+            ]),
+        ]
+        match = self._fake_match("movie", "A")
+        groups = group_release_discs(discs, match)
+        assert len(groups) == 2
+        assert groups[0].films[0].tmdb_match is match
+        assert groups[0].films[0].source == "user"
+        assert groups[1].films[0].tmdb_match is None
 
-    def test_is_complete_main_group(self):
-        # Main group: complete iff the group-level tmdb_match is set.
-        g = DiscGroup(id="main_1", label="", disc_numbers=[1], kind="main")
+    def test_is_complete_group_without_slots(self):
+        g = DiscGroup(id="disc_1", label="", disc_numbers=[1])
         assert not g.is_complete()
         g.tmdb_match = object()
         assert g.is_complete()
 
-    def test_is_complete_film_group_with_slots(self):
-        # Film group with per-film slots: complete iff every slot has a match.
-        g = DiscGroup(id="film_1", label="", disc_numbers=[1], kind="film",
+    def test_is_complete_group_with_slots(self):
+        g = DiscGroup(id="disc_1", label="", disc_numbers=[1],
                       films=[FilmSlot(title="A"), FilmSlot(title="B")])
         assert not g.is_complete()
         g.films[0].tmdb_match = object()
         assert not g.is_complete()
         g.films[1].tmdb_match = object()
         assert g.is_complete()
-
-    def test_is_complete_film_group_without_slots(self):
-        # Film group with no per-film slots (single-film disc that couldn't
-        # be split): falls back to the group-level tmdb_match.
-        g = DiscGroup(id="film_1", label="", disc_numbers=[1], kind="film")
-        assert not g.is_complete()
-        g.tmdb_match = object()
-        assert g.is_complete()
-
-    def test_pointer_linked_extras_split_run_even_when_is_film_false(self):
-        # Psych Season 1 entry-point shape: 30 episode discs are followed
-        # by a 31st disc whose extras hyperlink to three distinct film
-        # pages. dvdcompare doesn't set ``is_film`` on that disc (no
-        # ``* The Film`` marker), so the legacy grouping merged it with
-        # the TV series. The pointer_fid signal now splits it out.
-        discs = [self._disc(n) for n in range(1, 31)]
-        discs.append(self._disc(31, extras=[
-            PlannedExtra(
-                title="Psych: The Movie", runtime_seconds=5290,
-                pointer_fid=66239,
-            ),
-            PlannedExtra(
-                title="Psych 2: Lassie Come Home", runtime_seconds=5310,
-                pointer_fid=66240,
-            ),
-            PlannedExtra(
-                title="Psych 3: This Is Gus", runtime_seconds=5782,
-                pointer_fid=66241,
-            ),
-        ]))
-        groups = group_release_discs(discs, self._fake_match("tv", "Psych"))
-        assert len(groups) == 2
-        main = next(g for g in groups if g.kind == "main")
-        film = next(g for g in groups if g.kind == "film")
-        assert main.disc_numbers == list(range(1, 31))
-        assert film.disc_numbers == [31]
-        assert [f.title for f in film.films] == [
-            "Psych: The Movie",
-            "Psych 2: Lassie Come Home",
-            "Psych 3: This Is Gus",
-        ]
-        # Each FilmSlot carries the linked fid so autofill can hit the
-        # exact dvdcompare page for a canonical title/year.
-        assert [f.dvdcompare_fid for f in film.films] == [66239, 66240, 66241]
 
 
 class TestBuildSeasonLabels:
@@ -1166,13 +1051,13 @@ class TestGroupForDisc:
     given disc number. Used by the selection screen to swap in the
     per-group TMDb match on multi-work releases."""
 
-    def _group(self, gid, numbers, kind="main"):
+    def _group(self, gid, numbers):
         from riplex.models import DiscGroup
-        return DiscGroup(id=gid, label=gid, disc_numbers=numbers, kind=kind)
+        return DiscGroup(id=gid, label=gid, disc_numbers=numbers)
 
     def test_finds_group_containing_disc(self):
         g1 = self._group("main", [1, 2, 3])
-        g2 = self._group("film", [4], kind="film")
+        g2 = self._group("film", [4])
         assert group_for_disc([g1, g2], 2) is g1
         assert group_for_disc([g1, g2], 4) is g2
 
