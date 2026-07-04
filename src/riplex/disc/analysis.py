@@ -552,6 +552,26 @@ def classify_title(
         avg_episode = total_episode_runtime / episode_count
         if dur < avg_episode * 0.3:
             return f"Unmatched content ({res_label}, {format_seconds(dur)})"
+        # Also unmatched when the title is meaningfully longer than the
+        # longest known episode: no single-episode entry can explain it,
+        # and it slipped past every play-all detector, so labeling it
+        # "Episode" would be misleading. Common cause: a partial-season
+        # play-all (e.g. episodes 1+2 concatenated, ~85 min) that
+        # dvdcompare only lists as "Episodes (with Play All option)"
+        # with no per-play-all duration.
+        episode_runtimes = [
+            rt for _, rt, etype in dvd_entries
+            if etype == "episode" and rt > 0
+        ]
+        if episode_runtimes:
+            max_episode = max(episode_runtimes)
+            # 1.5x the longest known episode. Loose enough that a
+            # slightly-longer episode variant (e.g. an extended finale
+            # dvdcompare hasn't listed accurately) still counts as an
+            # episode; tight enough that any 2+ episode concatenation
+            # gets flagged as unmatched.
+            if dur > max_episode * 1.5:
+                return f"Unmatched content ({res_label}, {format_seconds(dur)})"
 
     # Movie disc: any title that isn't the main film or extended cut
     # and doesn't match a dvdcompare entry is unmatched content
@@ -668,6 +688,20 @@ def is_skip_title(
         if not match:
             avg_episode = total_episode_runtime / episode_count
             if dur < avg_episode * 0.3:
+                return True
+            # Symmetric: also skip unmatched titles that are longer than
+            # any known episode. On TV discs these are almost always
+            # partial play-alls (e.g. episodes 1+2 concatenated,
+            # ~85 min) — the individual-episode titles cover the same
+            # content, and dvdcompare doesn't list this variant, so
+            # keeping it selected would rip a duplicate. Falls back to
+            # unchecked; the user can re-tick from the Select Titles
+            # screen if they actually want the play-all.
+            episode_runtimes = [
+                rt for _, rt, etype in dvd_entries
+                if etype == "episode" and rt > 0
+            ]
+            if episode_runtimes and dur > max(episode_runtimes) * 1.5:
                 return True
 
     # Movie disc: skip titles that aren't the main film or extended cut

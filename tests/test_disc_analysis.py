@@ -129,6 +129,51 @@ class TestClassifyTitle:
         result = classify_title(play_all, [t1, t2, play_all], [], False, None, 0, 0)
         assert "Play-all" in result
 
+    def test_unmatched_when_longer_than_longest_episode(self):
+        """Psych S1 D2 pattern: a ~85 min title with no dvdcompare
+        match is a partial-season play-all (2 episodes concatenated),
+        NOT a normal ~43 min episode. Must not fall through to the
+        "Episode" fallback since dvdcompare has no per-play-all
+        duration to match it against.
+        """
+        # Five ~43 min episodes on the disc.
+        episodes = [_make_title(i, 2590) for i in range(5)]
+        # The mystery ~85 min title (episodes 1+2 back-to-back).
+        partial_play_all = _make_title(5, 5103)
+        dvd_entries = [
+            ("Spellingg Bee", 2588, "episode"),
+            ("Speak Now or Forever Hold Your Piece", 2566, "episode"),
+            ("Woman Seeking Dead Husband", 2542, "episode"),
+            ("9 Lives", 2591, "episode"),
+            ("Weekend Warriors", 2587, "episode"),
+        ]
+        total = sum(rt for _, rt, _ in dvd_entries)
+        result = classify_title(
+            partial_play_all, [*episodes, partial_play_all],
+            dvd_entries, False, None, total, 5,
+        )
+        assert "Unmatched content" in result
+        assert "Episode" not in result
+
+    def test_still_labeled_episode_when_within_bounds(self):
+        """Regression guard: a title whose duration is within the
+        episode range must still fall through to the "Episode" label,
+        even when there's no direct dvdcompare match (some episodes
+        may have small runtime discrepancies that miss the 30s
+        find_duration_match window).
+        """
+        episodes = [_make_title(i, 2590) for i in range(4)]
+        # Slightly off from every entry but still within episode range.
+        odd_one = _make_title(5, 2700)
+        dvd_entries = [
+            (f"Episode {i}", 2590, "episode") for i in range(4)
+        ]
+        result = classify_title(
+            odd_one, [*episodes, odd_one],
+            dvd_entries, False, None, 4 * 2590, 4,
+        )
+        assert "Episode" in result
+
 
 class TestDetectEditionName:
     def test_theatrical_cut_from_dvdcompare(self):
@@ -314,6 +359,46 @@ class TestIsSkipTitle:
         all_titles = [main, extended] + extras
         assert is_skip_title(
             extended, all_titles, True, 7200, 0, 0, [],
+        ) is False
+
+    def test_skip_unmatched_partial_play_all_on_tv_disc(self):
+        """Psych S1 D2 pattern: 5 ~43 min episodes plus a mystery
+        ~85 min title (episodes 1+2 concatenated). The play-all has no
+        dvdcompare match and no play-all detector catches it because
+        dvdcompare only lists ``Episodes (with Play All option)``
+        without per-play-all durations. Default: skip (unchecked) so
+        the user doesn't rip a 2.9 GB duplicate of the individual
+        episodes.
+        """
+        episodes = [_make_title(i, 2590) for i in range(5)]
+        partial_play_all = _make_title(5, 5103)
+        dvd_entries = [
+            ("Spellingg Bee", 2588, "episode"),
+            ("Speak Now or Forever Hold Your Piece", 2566, "episode"),
+            ("Woman Seeking Dead Husband", 2542, "episode"),
+            ("9 Lives", 2591, "episode"),
+            ("Weekend Warriors", 2587, "episode"),
+        ]
+        total = sum(rt for _, rt, _ in dvd_entries)
+        assert is_skip_title(
+            partial_play_all, [*episodes, partial_play_all],
+            False, None, total, 5, dvd_entries,
+        ) is True
+
+    def test_keep_episode_slightly_longer_than_dvdcompare_runtime(self):
+        """Regression guard for the partial-play-all skip: an episode
+        whose MakeMKV runtime is slightly higher than every dvdcompare
+        entry (encoding differences, extended finale) must still be
+        kept, not skipped as unmatched.
+        """
+        episodes = [_make_title(i, 2590) for i in range(4)]
+        odd_one = _make_title(5, 2700)  # 110s over max
+        dvd_entries = [
+            (f"Episode {i}", 2590, "episode") for i in range(4)
+        ]
+        assert is_skip_title(
+            odd_one, [*episodes, odd_one],
+            False, None, 4 * 2590, 4, dvd_entries,
         ) is False
 
 
