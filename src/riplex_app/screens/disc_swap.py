@@ -85,10 +85,27 @@ class DiscSwapScreen:
             "Skip This Disc",
             on_click=self._skip,
         )
+        # "Back to Overview" is only safe before anything has been
+        # ripped in this session — once we're mid-queue, the disc list
+        # and per-group state may be inconsistent with a re-open of
+        # Disc Overview.
+        current_idx = self.app.state.get("current_disc_idx", 0)
+        back_controls: list[ft.Control] = []
+        if current_idx == 0:
+            back_controls.append(ft.TextButton(
+                "Back to Overview",
+                icon=ft.Icons.ARROW_BACK,
+                on_click=self._back_to_overview,
+            ))
+        quit_btn = ft.TextButton(
+            "Quit",
+            icon=ft.Icons.CLOSE,
+            on_click=self._quit,
+        )
 
         return ft.Column(
             [
-                ft.Text("Insert Next Disc", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text("Insert Disc", size=24, weight=ft.FontWeight.BOLD),
                 ft.Divider(height=20),
                 ft.Container(
                     ft.Column([
@@ -110,11 +127,26 @@ class DiscSwapScreen:
                 ft.Container(height=10),
                 ft.Row([self.spinner, self.status_text], spacing=10),
                 ft.Container(expand=True),
-                ft.Row([self.eject_btn, self.skip_btn, self.scan_btn], spacing=12),
+                ft.Row(
+                    [*back_controls, quit_btn, self.eject_btn,
+                     self.skip_btn, self.scan_btn],
+                    spacing=12,
+                ),
             ],
             spacing=10,
             expand=True,
         )
+
+    def _back_to_overview(self, e):
+        """Return to Disc Overview so the user can change which disc
+        is currently loaded before the first rip starts."""
+        self.app.navigate("disc_overview")
+
+    def _quit(self, e):
+        """Abandon the current orchestrate session and return to the
+        welcome screen. Any completed rips remain on disk and can be
+        resumed later via find_existing_session."""
+        self.app.navigate("welcome")
 
     def _eject(self, e):
         """Eject the current disc."""

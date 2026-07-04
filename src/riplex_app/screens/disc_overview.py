@@ -65,11 +65,30 @@ class DiscOverviewScreen:
         if not dvdcompare_discs:
             return self._build_empty_state(match_label=self._match_label(canonical, year))
 
-        # Detect currently inserted disc
+        # Currently-loaded disc: auto-detected from disc_info if possible,
+        # overridable via the dropdown at the top of the screen. We can't
+        # be 100% confident in detection (season TV boxsets have many
+        # discs with near-identical runtimes) so the user always has the
+        # last word. The manual override is scoped to the current
+        # ``disc_info`` — reading a fresh disc clears it.
         from riplex.disc.provider import detect_disc_number
-        inserted_disc = None
+        disc_info_id = id(disc_info) if disc_info is not None else None
+        if self.app.state.get("_inserted_disc_di_id") != disc_info_id:
+            self.app.state.pop("_inserted_disc_manual", None)
+            self.app.state["_inserted_disc_di_id"] = disc_info_id
+
+        auto_detected = None
         if disc_info and dvdcompare_discs:
-            inserted_disc = detect_disc_number(disc_info, dvdcompare_discs)
+            auto_detected = detect_disc_number(disc_info, dvdcompare_discs)
+        self.app.state["_auto_detected_disc"] = auto_detected
+
+        manual = self.app.state.get("_inserted_disc_manual")
+        if manual is not None:
+            inserted_disc = manual
+        elif auto_detected is not None:
+            inserted_disc = auto_detected
+        else:
+            inserted_disc = dvdcompare_discs[0].number
         self.app.state["_inserted_disc"] = inserted_disc
 
         # Find previously ripped discs from manifests. Aggregates across
@@ -166,6 +185,9 @@ class DiscOverviewScreen:
         self._refresh_start_guard()
 
         multigroup_banner = self._build_multigroup_banner(disc_groups)
+        loaded_selector = self._build_loaded_disc_selector(
+            dvdcompare_discs, inserted_disc, auto_detected,
+        )
 
         return ft.Column(
             [
@@ -176,13 +198,14 @@ class DiscOverviewScreen:
                     size=12, color=ft.Colors.GREY_500,
                 ),
                 ft.Text(
-                    "Select which discs to rip. The currently inserted disc will "
-                    "be ripped first, then you'll be prompted to insert each "
-                    "remaining disc.",
+                    "Select which discs to rip. The disc marked below "
+                    "will be ripped first, then you'll be prompted to "
+                    "insert each remaining disc.",
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                loaded_selector,
                 multigroup_banner,
                 resume_info,
                 ft.Column(group_sections, spacing=12, scroll=ft.ScrollMode.AUTO,
@@ -389,6 +412,58 @@ class DiscOverviewScreen:
     def _match_label(self, canonical: str, year: int) -> str:
         year_str = f" ({year})" if year else ""
         return f"{canonical}{year_str}"
+
+    def _build_loaded_disc_selector(
+        self, dvdcompare_discs, inserted_disc: int | None,
+        auto_detected: int | None,
+    ) -> ft.Control:
+        """Dropdown letting the user override which disc is loaded.
+
+        Auto-detection isn't always reliable — TV seasons in particular
+        have many discs with near-identical episode runtimes — so users
+        need the last word on which disc riplex will rip first.
+        """
+        options = [
+            ft.dropdown.Option(str(d.number), f"Disc {d.number}")
+            for d in dvdcompare_discs
+        ]
+        if auto_detected is not None:
+            hint = f"Auto-detected: Disc {auto_detected}"
+            if inserted_disc != auto_detected:
+                hint += "  (overridden)"
+            hint_color = ft.Colors.GREY_500
+        else:
+            hint = "Auto-detection inconclusive — please confirm."
+            hint_color = ft.Colors.AMBER_300
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Text("Currently loaded:", size=13,
+                            color=ft.Colors.GREY_300),
+                    ft.Dropdown(
+                        value=str(inserted_disc) if inserted_disc else None,
+                        options=options,
+                        on_select=self._on_loaded_disc_changed,
+                        width=160,
+                        dense=True,
+                    ),
+                    ft.Text(hint, size=11, color=hint_color, italic=True),
+                ],
+                spacing=12,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.Padding(top=4, bottom=4, left=0, right=0),
+        )
+
+    def _on_loaded_disc_changed(self, e) -> None:
+        val = e.control.value
+        try:
+            self.app.state["_inserted_disc_manual"] = int(val) if val else None
+        except (TypeError, ValueError):
+            self.app.state["_inserted_disc_manual"] = None
+        # Re-render so the INSERTED badge tracks the new selection.
+        self.app.navigate("disc_overview")
 
     def _build_multigroup_banner(self, disc_groups) -> ft.Control:
         """Info card explaining the multi-group / multi-film workflow.
@@ -1005,10 +1080,9 @@ class DiscOverviewScreen:
         log.info("Wrote session marker to %d work-folder(s)", len(paths))
 
     def _begin_disc(self, disc_number: int):
-        inserted = self.app.state.get("_inserted_disc")
-        if disc_number == inserted:
-            self.app.state["_orchestrate_disc_number"] = disc_number
-            self.app.navigate("selection")
-        else:
-            self.app.state["_orchestrate_disc_number"] = disc_number
-            self.app.navigate("disc_swap")
+        # Always route through disc_swap so the user confirms via Scan
+        # that the drive really contains the disc riplex is about to
+        # rip. Auto-detection isn't reliable enough to short-circuit
+        # this, especially for TV seasons where all discs look similar.
+        self.app.state["_orchestrate_disc_number"] = disc_number
+        self.app.navigate("disc_swap")

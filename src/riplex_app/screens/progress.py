@@ -331,13 +331,11 @@ class ProgressScreen:
             self.app.state["current_disc_idx"] = next_idx
             next_disc = disc_queue[next_idx]
             self.app.state["_orchestrate_disc_number"] = next_disc
-
-            # Check if this disc is already inserted
-            inserted = self.app.state.get("_inserted_disc")
-            if next_disc == inserted:
-                self.app.navigate("selection")
-            else:
-                self.app.navigate("disc_swap")
+            # Always route through disc_swap so the user confirms via
+            # Scan that the drive really contains the next disc — even
+            # if we think it's already loaded. The swap screen's scan
+            # step verifies this and warns on mismatch.
+            self.app.navigate("disc_swap")
         else:
             # All discs done
             self.app.navigate("orchestrate_done")
