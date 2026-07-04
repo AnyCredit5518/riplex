@@ -174,6 +174,115 @@ class TestClassifyTitle:
         )
         assert "Episode" in result
 
+    def test_sequential_walk_assigns_episodes_in_dvdcompare_order(self):
+        """Psych S1 D2 mis-assignment case: with pure duration matching
+        the 5 near-identical episodes get labeled by whichever
+        dvdcompare entry happens to be nearest in seconds, so the same
+        episode name can appear on two different disc titles and the
+        actual disc-order ("Spellingg Bee" first) is lost. The
+        sequential walk consumes each dvdcompare episode exactly once,
+        in dvdcompare order.
+        """
+        # Real Psych S1 D2 runtimes reported by MakeMKV.
+        # Distinct sizes to defeat the same-resolution duplicate check.
+        t0 = _make_title(0, 2586, size=6_100_000_000)  # Spellingg Bee
+        t1 = _make_title(1, 2563, size=6_050_000_000)  # Speak Now
+        t2 = _make_title(2, 2540, size=6_000_000_000)  # Woman Seeking Dead Husband
+        t3 = _make_title(3, 5103, size=12_000_000_000) # partial play-all (unmatched)
+        t4 = _make_title(4, 2588, size=6_150_000_000)  # 9 Lives
+        t5 = _make_title(5, 6374, size=15_000_000_000) # partial play-all (unmatched)
+        t6 = _make_title(6, 2586, size=6_090_000_000)  # Weekend Warriors
+        all_titles = [t0, t1, t2, t3, t4, t5, t6]
+        dvd_entries = [
+            ("Spellingg Bee", 2588, "episode"),
+            ("Speak Now or Forever Hold Your Piece", 2566, "episode"),
+            ("Woman Seeking Dead Husband", 2542, "episode"),
+            ("9 Lives", 2591, "episode"),
+            ("Weekend Warriors", 2587, "episode"),
+        ]
+        total = sum(rt for _, rt, _ in dvd_entries)
+
+        def _classify(t):
+            return classify_title(
+                t, all_titles, dvd_entries, False, None, total, 5,
+            )
+
+        # Disc titles are labeled in dvdcompare order, not
+        # nearest-neighbor order.
+        assert "Spellingg Bee" in _classify(t0)
+        assert "Speak Now" in _classify(t1)
+        assert "Woman Seeking Dead Husband" in _classify(t2)
+        assert "9 Lives" in _classify(t4)
+        assert "Weekend Warriors" in _classify(t6)
+        # No episode name appears on more than one disc title.
+        labels = [_classify(t) for t in (t0, t1, t2, t4, t6)]
+        assert len(set(labels)) == 5
+        # Partial play-alls are still labeled Unmatched (didn't
+        # consume any episode slot).
+        assert "Unmatched content" in _classify(t3)
+        assert "Unmatched content" in _classify(t5)
+
+    def test_sequential_walk_skips_missing_dvdcompare_slot(self):
+        """dvdcompare occasionally lists an episode that isn't on the
+        physical disc, or lists episodes in a different order than the
+        disc's physical layout (Chernobyl S1 D1: dvdcompare lists
+        Please Remain Calm before Open Wide, O Earth, but the disc
+        plays Open Wide first). The walk should first-fit against the
+        remaining unconsumed dvdcompare entries so a runtime that
+        doesn't fit the next-expected slot can still claim a later
+        slot without stalling the walker or double-consuming.
+        """
+        # 3 disc titles, dvdcompare lists 4 episodes with the second
+        # one absent from the disc (very different runtime).
+        t0 = _make_title(0, 2588, size=6_100_000_000)
+        t1 = _make_title(1, 2542, size=6_000_000_000)
+        t2 = _make_title(2, 2587, size=6_090_000_000)
+        all_titles = [t0, t1, t2]
+        dvd_entries = [
+            ("Ep A", 2588, "episode"),
+            ("Ep B (deleted)", 5400, "episode"),  # not on disc
+            ("Ep C", 2542, "episode"),
+            ("Ep D", 2587, "episode"),
+        ]
+
+        def _classify(t):
+            return classify_title(
+                t, all_titles, dvd_entries, False, None,
+                sum(rt for _, rt, _ in dvd_entries), 4,
+            )
+
+        assert "Ep A" in _classify(t0)
+        assert "Ep C" in _classify(t1)
+        assert "Ep D" in _classify(t2)
+
+    def test_sequential_walk_handles_disc_order_not_matching_dvdcompare(self):
+        """Chernobyl S1 D1 case: dvdcompare lists episodes as
+        [1:23:45 (3534s), Please Remain Calm (3896s), Open Wide (3707s)]
+        but the disc plays them as [1:23:45, Open Wide, Please Remain
+        Calm]. First-fit lets t3=3707 claim Open Wide (skipping the
+        out-of-tolerance Please Remain Calm) and t4=3896 then claims
+        Please Remain Calm from the still-unconsumed pool.
+        """
+        t0 = _make_title(0, 3534, size=28_672_335_052)
+        t3 = _make_title(3, 3707, size=30_278_874_521)
+        t4 = _make_title(4, 3896, size=31_784_629_658)
+        all_titles = [t0, t3, t4]
+        dvd_entries = [
+            ("1:23:45", 3534, "episode"),
+            ("Please Remain Calm", 3896, "episode"),
+            ("Open Wide, O Earth", 3707, "episode"),
+        ]
+
+        def _classify(t):
+            return classify_title(
+                t, all_titles, dvd_entries, False, None,
+                sum(rt for _, rt, _ in dvd_entries), 3,
+            )
+
+        assert "1:23:45" in _classify(t0)
+        assert "Open Wide, O Earth" in _classify(t3)
+        assert "Please Remain Calm" in _classify(t4)
+
 
 class TestDetectEditionName:
     def test_theatrical_cut_from_dvdcompare(self):

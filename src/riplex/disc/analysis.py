@@ -432,6 +432,105 @@ def build_dvd_entries(
 
 # ---- title classification ----
 
+
+def _assign_episodes_sequentially(
+    all_titles: list,
+    dvd_entries: list[tuple[str, int, str]],
+    *,
+    tolerance_seconds: int = 60,
+) -> dict[int, tuple[str, int, str]]:
+    """Walk disc titles in index order, matching them to dvdcompare episode
+    entries in dvdcompare order (first-fit over the remaining unconsumed
+    episodes).
+
+    TV episode runtimes on the same disc are often within a few seconds of
+    each other, so pure duration matching can grab the wrong entry and
+    even hand the same entry to two disc titles. Walking both lists in
+    parallel and preferring the earliest unconsumed dvdcompare entry that
+    fits within tolerance yields one-to-one assignments that duration
+    alone cannot. This handles two independent problems:
+
+    * near-identical episode runtimes: on discs where every episode is
+      within a few seconds of every other, sequential preference picks
+      the correct entry instead of whichever happened to be the tightest
+      duration match.
+    * dvdcompare listing an episode in a different physical order than
+      the disc, or listing an episode that isn't on this disc at all:
+      first-fit skips past entries whose runtimes are out of tolerance
+      and lets a later disc title claim them.
+
+    Returns a mapping of ``title.index`` → ``(name, runtime, "episode")``
+    for every title that was assigned an episode. Titles with no
+    assignment (play-alls, featurettes, unmatched content, duplicates)
+    are left out and handled by the duration-only path in
+    ``classify_title`` / ``is_skip_title``.
+    """
+    episodes = [
+        (i, name, runtime)
+        for i, (name, runtime, etype) in enumerate(dvd_entries)
+        if etype == "episode" and runtime > 0
+    ]
+    if not episodes or not all_titles:
+        return {}
+
+    consumed: set[int] = set()
+    assignments: dict[int, tuple[str, int, str]] = {}
+    ordered = sorted(all_titles, key=lambda t: t.index)
+
+    for t in ordered:
+        dur = t.duration_seconds
+        # Ignore obviously-short titles (menus, intros) so they don't
+        # burn a slot they can't possibly fill.
+        if dur < 120:
+            continue
+        for ep_i, name, runtime in episodes:
+            if ep_i in consumed:
+                continue
+            if abs(dur - runtime) <= tolerance_seconds:
+                assignments[t.index] = (name, runtime, "episode")
+                consumed.add(ep_i)
+                break
+        # No unconsumed episode within tolerance — leave this title for
+        # the downstream matcher (which will typically label it
+        # Unmatched content, a play-all, or a duplicate).
+
+    return assignments
+
+
+def _get_effective_match(
+    title,
+    all_titles: list,
+    dvd_entries: list[tuple[str, int, str]],
+) -> tuple[str, int, str] | None:
+    """Resolve the best dvdcompare match for a disc title, honoring the
+    sequential episode walk so no episode is assigned to more than one
+    title.
+
+    On TV discs with episode entries, this defers to
+    ``_assign_episodes_sequentially`` for episode matches; if this title
+    wasn't assigned an episode by the walk, only non-episode entries
+    (featurettes, play-alls, extras) are considered so an already-used
+    episode entry can't be double-claimed via duration alone.
+
+    On movie discs or when dvd_entries has no episode entries, this
+    behaves identically to ``find_duration_match``.
+    """
+    if not dvd_entries:
+        return None
+    has_episodes = any(etype == "episode" for _, _, etype in dvd_entries)
+    if not has_episodes:
+        return find_duration_match(title.duration_seconds, dvd_entries)
+    assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+    if title.index in assignments:
+        return assignments[title.index]
+    non_ep = [
+        (n, rt, et) for n, rt, et in dvd_entries if et != "episode"
+    ]
+    if not non_ep:
+        return None
+    return find_duration_match(title.duration_seconds, non_ep)
+
+
 def classify_title(
     title,
     all_titles: list,
@@ -513,8 +612,12 @@ def classify_title(
         other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
         return f"Play-all ({res_label}, individual {other_res} titles available)"
 
-    # Check if this matches a single dvdcompare entry
-    best_match = find_duration_match(dur, dvd_entries)
+    # Check if this matches a single dvdcompare entry.
+    # _get_effective_match routes episode matching through the sequential
+    # walk so each dvdcompare episode is assigned to at most one disc
+    # title, in dvdcompare order — pure duration matching mis-assigns
+    # episodes on TV discs whose runtimes cluster within seconds.
+    best_match = _get_effective_match(title, all_titles, dvd_entries)
     if best_match:
         name, _, entry_type = best_match
         # Skip if it matches a "Play All" entry from dvdcompare
@@ -682,9 +785,12 @@ def is_skip_title(
 
     # Skip unmatched short titles when dvdcompare data is available
     # If we have episode metadata and this title is much shorter than episodes
-    # with no dvdcompare match, it's likely junk or an unlisted bonus
+    # with no dvdcompare match, it's likely junk or an unlisted bonus.
+    # Uses _get_effective_match so a title that missed its sequential
+    # episode slot doesn't get spuriously matched to an already-consumed
+    # episode via duration alone.
     if dvd_entries and episode_count > 0:
-        match = find_duration_match(dur, dvd_entries)
+        match = _get_effective_match(title, all_titles, dvd_entries)
         if not match:
             avg_episode = total_episode_runtime / episode_count
             if dur < avg_episode * 0.3:
