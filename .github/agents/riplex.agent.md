@@ -151,7 +151,18 @@ Do NOT use `py -m riplex` (errors — riplex is a library package). Do NOT use `
 
 ## Debugging the GUI
 
-The GUI writes detailed logs to `riplex_app.log` in the working directory (project root when launched from the repo). This log includes screen navigation, disc analysis details, title classification decisions, and rip progress. Check this file first when debugging GUI behavior — do NOT try to capture terminal output (Flet's `2>&1` redirect breaks its Flutter-Python IPC).
+**When the user reports a bug they can reproduce locally, ALWAYS check the debug log first** — before reading code, before guessing at causes. The log will usually tell you exactly which code path ran and what state it saw. Guessing at fixes without checking the log wastes time and often lands the wrong fix.
+
+The GUI writes detailed logs including screen navigation, dvdcompare/TMDb lookups, disc analysis, title classification decisions, group routing, autofill results, and rip progress. Log locations (per `platformdirs`):
+
+- **Windows**: `%LOCALAPPDATA%\riplex\riplex\Logs\riplex_app.log`
+  (typically `C:\Users\<user>\AppData\Local\riplex\riplex\Logs\riplex_app.log`)
+- **macOS**: `~/Library/Logs/riplex/riplex_app.log`
+- **Linux**: `~/.local/state/riplex/log/riplex_app.log` (or `$XDG_STATE_HOME/riplex/log/`)
+
+The log is truncated / rotated on each GUI launch, so grab it before the user restarts the app. Use `Select-String` (PowerShell) or `grep` for keywords tied to the buggy behavior — `Season`, `dvdcompare_film`, `group`, `autofill`, `classify`, etc.
+
+Do NOT try to capture terminal output with `2>&1` — Flet's Flutter-Python IPC breaks when stderr is redirected.
 
 ## Testing
 

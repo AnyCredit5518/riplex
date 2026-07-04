@@ -108,10 +108,15 @@ Run tests with `pytest` (or `python -m pytest`) from the project root with the v
 
 ## Debugging the GUI
 
-The GUI writes detailed logs to `riplex_app.log` in the working directory
-(project root when launched from the repo). Check this file first when
-debugging GUI behavior. Do NOT try to capture the GUI's terminal output with
-a `2>&1` redirect — it breaks Flet's Flutter-Python IPC.
+**When the user reports a bug they can reproduce locally, ALWAYS check the debug log first** — before reading code, before guessing. The log usually tells you exactly which code path ran and what state it saw.
+
+Log locations (per `platformdirs`):
+
+- **Windows**: `%LOCALAPPDATA%\riplex\riplex\Logs\riplex_app.log`
+- **macOS**: `~/Library/Logs/riplex/riplex_app.log`
+- **Linux**: `~/.local/state/riplex/log/riplex_app.log`
+
+The log is rotated on each GUI launch, so grab it before the user restarts the app. Do NOT try to capture terminal output with `2>&1` — it breaks Flet's Flutter-Python IPC.
 
 ## Releases and packaging
 
