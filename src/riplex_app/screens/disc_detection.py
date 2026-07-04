@@ -696,10 +696,26 @@ class DiscDetectionScreen:
                 self.app.state["release"] = None
                 self.app.state["dvdcompare_discs"] = []
 
+            # Mirror the state that release.py sets on the non-resume
+            # path so downstream screens (disc_overview / selection /
+            # disc_swap) see the same signals. In particular
+            # ``dvdcompare_film_title`` feeds ``build_season_labels``
+            # so it can backfill the leading untitled run with the
+            # season parsed from the film title (e.g. Psych: Season 1
+            # -> leading discs get a "Season 1, Disc N" chip).
+            if film is not None:
+                self.app.state["_dvdcompare_film"] = film
+                if getattr(film, "film_id", None):
+                    self.app.state["dvdcompare_film_id"] = film.film_id
+                if getattr(film, "title", None):
+                    self.app.state["dvdcompare_film_title"] = film.title
+
             log.info(
-                "Resume: dvdcompare loaded, %d discs, release=%s",
+                "Resume: dvdcompare loaded, %d discs, release=%s, film=%r (fid=%s)",
                 len(self.app.state.get("dvdcompare_discs", [])),
                 session.release_name,
+                getattr(film, "title", None) if film is not None else None,
+                getattr(film, "film_id", None) if film is not None else None,
             )
 
         except Exception as exc:
