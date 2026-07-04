@@ -676,6 +676,176 @@ class TestMaxDeltaThreshold:
         assert "itb_t01.mkv" in unmatched_names
 
 
+class TestClassificationFirstMatching:
+    """Pass 0 in match_discs claims files whose classification names a target."""
+
+    def test_classification_locks_episode_over_runtime_tie(self):
+        """Two near-tied episodes on one disc get correct assignments
+        when classifications name each file's episode."""
+        discs = [
+            PlannedDisc(
+                number=1,
+                disc_format="Blu-ray",
+                episodes=[
+                    PlannedEpisode(
+                        season_number=1, episode_number=1,
+                        title="Weekend Warriors", runtime="", runtime_seconds=2587,
+                        ),
+                    PlannedEpisode(
+                        season_number=1, episode_number=2,
+                        title="Spellingg Bee", runtime="", runtime_seconds=2588,
+                        ),
+                ],
+            ),
+        ]
+        # Runtimes are within 1s of each other — runtime greedy would
+        # scramble the assignment. Classifications lock it.
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="a.mkv", path="/rip/Disc 1/a.mkv",
+                        duration_seconds=2588,
+                        classification="Weekend Warriors (1080p)",
+                    ),
+                    ScannedFile(
+                        name="b.mkv", path="/rip/Disc 1/b.mkv",
+                        duration_seconds=2587,
+                        classification="Spellingg Bee (1080p)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        by_name = {c.file_name: c.matched_label for c in result.matched}
+        assert "Weekend Warriors" in by_name["a.mkv"]
+        assert "Spellingg Bee" in by_name["b.mkv"]
+
+    def test_classification_respects_disc_constraint(self):
+        """A classification only matches a target on the same folder disc,
+        even when another disc's target has the same title (extras named
+        'Deleted Scenes' commonly repeat across discs)."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray",
+                extras=[
+                    PlannedExtra(title="Deleted Scenes", runtime_seconds=600),
+                ],
+            ),
+            PlannedDisc(
+                number=2, disc_format="Blu-ray",
+                extras=[
+                    PlannedExtra(title="Deleted Scenes", runtime_seconds=600),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 2",
+                files=[
+                    ScannedFile(
+                        name="ds.mkv", path="/rip/Disc 2/ds.mkv",
+                        duration_seconds=600,
+                        classification="Deleted Scenes (1080p)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        assert len(result.matched) == 1
+        assert result.matched[0].matched_label.startswith("Disc 2:")
+
+    def test_classification_populates_file_path(self):
+        """Pass 0 candidates carry file_path so downstream lookups don't
+        collide when two folders produce same-basename files."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray",
+                episodes=[
+                    PlannedEpisode(
+                        season_number=1, episode_number=1,
+                        title="Pilot", runtime="", runtime_seconds=2600,
+                        ),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="C1_t00.mkv",
+                        path="/rip/Disc 1/C1_t00.mkv",
+                        duration_seconds=2600,
+                        classification="Pilot (1080p)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        assert len(result.matched) == 1
+        assert result.matched[0].file_path == "/rip/Disc 1/C1_t00.mkv"
+
+    def test_greedy_still_carries_file_path(self):
+        """Non-classification greedy matches also carry file_path."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray",
+                episodes=[
+                    PlannedEpisode(
+                        season_number=1, episode_number=1,
+                        title="Pilot", runtime="", runtime_seconds=2600,
+                        ),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="x.mkv", path="/rip/Disc 1/x.mkv",
+                        duration_seconds=2600,
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        assert len(result.matched) == 1
+        assert result.matched[0].file_path == "/rip/Disc 1/x.mkv"
+
+    def test_unidentified_classification_falls_through_to_greedy(self):
+        """Classifications like 'Unmatched content ...' don't lock a
+        pairing (they'd match nothing), so greedy runtime still runs."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="Blu-ray",
+                episodes=[
+                    PlannedEpisode(
+                        season_number=1, episode_number=1,
+                        title="Real Episode", runtime="", runtime_seconds=2600,
+                        ),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="a.mkv", path="/rip/Disc 1/a.mkv",
+                        duration_seconds=2600,
+                        classification="Unmatched content (1080p, 43:20)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        assert len(result.matched) == 1
+        assert "Real Episode" in result.matched[0].matched_label
+
+
 class TestMissingFilteredToPresent:
     """Missing targets only include discs the user has folders for."""
 

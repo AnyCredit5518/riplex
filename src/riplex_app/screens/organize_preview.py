@@ -163,8 +163,10 @@ class OrganizePreviewScreen:
         result = match_discs(scanned, dvdcompare_discs, planned)
 
         self._set_progress("Building target paths...")
-        file_map = {f.name: f.path for d in scanned for f in d.files}
-        scanned_map = {f.name: f for d in scanned for f in d.files}
+        # Key by absolute path, not basename: makemkv can produce files
+        # with identical basenames across sibling disc folders.
+        file_map = {f.path: f.path for d in scanned for f in d.files}
+        scanned_map = {f.path: f for d in scanned for f in d.files}
         targets = collect_disc_targets(dvdcompare_discs, planned) if dvdcompare_discs else None
 
         org_plan = build_organize_plan(

@@ -350,6 +350,25 @@ def build_organize_plan(
     for name, sf in scanned_files.items():
         path_map.setdefault(name, sf.path)
 
+    # Also index ScannedFile objects by their absolute path so callers
+    # that pass basename-keyed maps still resolve correctly when two
+    # discs produce files with colliding basenames. When the caller
+    # passes a path-keyed map here, this becomes a no-op remap.
+    scanned_by_path: dict[str, ScannedFile] = {}
+    for sf in scanned_files.values():
+        if sf.path:
+            scanned_by_path[sf.path] = sf
+
+    def _resolve_scanned(candidate: MatchCandidate) -> ScannedFile | None:
+        if candidate.file_path and candidate.file_path in scanned_by_path:
+            return scanned_by_path[candidate.file_path]
+        return scanned_files.get(candidate.file_name)
+
+    def _resolve_source(candidate: MatchCandidate) -> str:
+        if candidate.file_path:
+            return candidate.file_path
+        return path_map.get(candidate.file_name, "")
+
     moves: list[FileMove] = []
     splits: list[SplitMove] = []
     unmatched = list(result.unmatched)
@@ -371,12 +390,12 @@ def build_organize_plan(
                 break
 
     for candidate in result.matched:
-        source = path_map.get(candidate.file_name, "")
+        source = _resolve_source(candidate)
 
         # Detect split candidate: TV extra with chapter count matching Season 00
         if isinstance(plan, PlannedShow) and season0_episodes:
             feature_type = _extract_feature_type(candidate.matched_label)
-            sf = scanned_files.get(candidate.file_name)
+            sf = _resolve_scanned(candidate)
             if feature_type and sf and sf.chapter_count > 1:
                 if sf.chapter_count == len(season0_episodes):
                     # Guard: file duration must be close to the sum of
@@ -417,7 +436,7 @@ def build_organize_plan(
                         )
                         continue
 
-        dest = _compute_destination(candidate, plan, base, scanned_files.get(candidate.file_name))
+        dest = _compute_destination(candidate, plan, base, _resolve_scanned(candidate))
         if dest is None:
             # Could not resolve to a valid Plex path; treat as unmatched.
             log.debug("No valid destination for '%s' (label='%s'), treating as unmatched",

@@ -195,6 +195,62 @@ _TRAILING_TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Trailing "(1080p)", "(4K, ...)", etc. attached by the rip-time
+# classifier — strip so a classification like "Weekend Warriors (1080p)"
+# reduces to the raw dvdcompare title.
+_CLASSIFICATION_RES_SUFFIX_RE = re.compile(r"\s+\([^)]*\)\s*$")
+# Leading "[featurette] ", "[documentary] " — the classifier prefixes
+# extras with their feature type in brackets.
+_CLASSIFICATION_TYPE_PREFIX_RE = re.compile(r"^\[[^\]]+\]\s*")
+
+# Classifications that don't identify a specific dvdcompare-listed
+# title. Runtime-based matching handles these downstream, so the
+# classification-first pass leaves them for the greedy sweep.
+_CLASSIFICATION_SKIP_PREFIXES = (
+    "MAIN FILM",
+    "Duplicate of",
+    "Play-all",
+    "Very short",
+    "Unmatched content",
+    "Unknown content",
+    "Theatrical Cut",
+    "Extended Cut",
+    "Director",
+    "Unrated",
+    "Ultimate",
+    "Special Edition",
+)
+
+
+def _classification_title_key(text: str) -> str | None:
+    """Extract a comparable title from a rip-time classification.
+
+    Returns ``None`` when the classification doesn't identify a
+    dvdcompare-listed title (main-film, play-all, unidentified content,
+    or a movie edition). Callers should fall back to runtime-based
+    matching for those.
+    """
+    if not text or text.startswith(_CLASSIFICATION_SKIP_PREFIXES):
+        return None
+    stripped = _CLASSIFICATION_RES_SUFFIX_RE.sub("", text)
+    stripped = _CLASSIFICATION_TYPE_PREFIX_RE.sub("", stripped).strip()
+    if not stripped:
+        return None
+    return re.sub(r"\s+", " ", stripped).casefold()
+
+
+def _target_title_key(label: str) -> str:
+    """Extract a comparable title from a match target label.
+
+    Mirrors :func:`_classification_title_key` on the target side so
+    classification-based pairing can compare keys directly.
+    """
+    key = _DISC_LABEL_PREFIX_RE.sub("", label).strip()
+    if key.endswith("(movie)"):
+        key = key[: -len("(movie)")].strip()
+    key = _TRAILING_TYPE_RE.sub("", key).strip()
+    return re.sub(r"\s+", " ", key).casefold()
+
 
 def _duplicate_content_key(label: str) -> str | None:
     """Return a cross-disc comparison key for duplicate non-movie targets."""
@@ -473,6 +529,49 @@ def match_discs(
     claimed_targets: set[int] = set()
     claimed_files: set[int] = set()
 
+    # --- Pass 0: honor rip-time classifications ---
+    # The rip-time classifier already tagged each ripped file with the
+    # dvdcompare title it belongs to. When that tag identifies a target
+    # on the same disc, claim the pairing directly. Prevents the
+    # runtime greedy sweep from shuffling near-tied episodes (S1 TV
+    # discs cluster all episodes within ~10s of each other, so pure
+    # runtime greedy assigns them essentially at random).
+    for fi, sf in enumerate(all_scanned):
+        if sf.duration_seconds <= 0:
+            continue
+        class_key = _classification_title_key(sf.classification)
+        if not class_key:
+            continue
+        f_disc = file_disc[fi]
+        for ti, (label, runtime_s, t_disc) in enumerate(targets):
+            if ti in claimed_targets or runtime_s <= 0:
+                continue
+            if f_disc is not None and t_disc is not None and f_disc != t_disc:
+                continue
+            if _target_title_key(label) != class_key:
+                continue
+            delta = abs(sf.duration_seconds - runtime_s)
+            conf = _confidence(delta)
+            log.debug(
+                "Pass 0 (classification): %s [%s] -> '%s' delta=%ds [%s]",
+                sf.name, sf.classification, label, delta, conf,
+            )
+            matched.append(
+                MatchCandidate(
+                    file_name=sf.name,
+                    file_duration_seconds=sf.duration_seconds,
+                    matched_label=label,
+                    matched_runtime_seconds=runtime_s,
+                    delta_seconds=delta,
+                    confidence=conf,
+                    classification=sf.classification,
+                    file_path=sf.path,
+                )
+            )
+            claimed_files.add(fi)
+            claimed_targets.add(ti)
+            break
+
     # Build pairings respecting disc constraints
     pairings: list[tuple[int, int, int]] = []  # (delta, file_idx, target_idx)
     for fi, sf in enumerate(all_scanned):
@@ -531,6 +630,7 @@ def match_discs(
                 delta_seconds=delta,
                 confidence=conf,
                 classification=sf.classification,
+                file_path=sf.path,
             )
         )
         claimed_files.add(fi)
@@ -602,6 +702,7 @@ def match_discs(
                         delta_seconds=0,
                         confidence="medium",
                         classification=sf.classification,
+                        file_path=sf.path,
                     )
                 )
                 claimed_files.add(fi)

@@ -75,6 +75,11 @@ class MatchCandidate:
     delta_seconds: int
     confidence: str  # "high", "medium", "low"
     classification: str = ""  # rip-time classification from manifest
+    # Absolute source path of the matched file. Preferred over
+    # file_name lookups because two rip folders can produce files that
+    # share a basename (makemkv output names collide across discs); a
+    # name-keyed path map silently loses paths in that case.
+    file_path: str = ""
 
 
 # ---------------------------------------------------------------------------

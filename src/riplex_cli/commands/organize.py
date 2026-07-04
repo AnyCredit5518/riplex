@@ -608,9 +608,11 @@ async def organize_with_scanned(
             file=sys.stderr,
         )
 
-        # Build organize plan
-        file_map = {f.name: f.path for d in scanned for f in d.files}
-        scanned_map = {f.name: f for d in scanned for f in d.files}
+        # Build organize plan. Key by absolute path so files with
+        # colliding basenames across disc folders don't overwrite each
+        # other in the lookup maps.
+        file_map = {f.path: f.path for d in scanned for f in d.files}
+        scanned_map = {f.path: f for d in scanned for f in d.files}
         targets = collect_disc_targets(discs, result) if discs else None
         org_plan = build_organize_plan(
             result_obj, result, output_root, file_map,

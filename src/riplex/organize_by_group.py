@@ -328,8 +328,12 @@ async def build_multi_group_plan(
             planned = await _plan_movie(match, provider, request)
 
         result = match_discs(group_scanned, group_dvd, planned)
-        file_map = {f.name: f.path for sd in group_scanned for f in sd.files}
-        scanned_map = {f.name: f for sd in group_scanned for f in sd.files}
+        # Key by absolute path, not basename: makemkv can produce files
+        # with identical basenames across sibling disc folders (e.g.
+        # every disc yields a "C1_t00.mkv"), and a basename-keyed map
+        # silently drops all but one path.
+        file_map = {f.path: f.path for sd in group_scanned for f in sd.files}
+        scanned_map = {f.path: f for sd in group_scanned for f in sd.files}
         targets = collect_disc_targets(group_dvd, planned) if group_dvd else None
 
         plan = build_organize_plan(
