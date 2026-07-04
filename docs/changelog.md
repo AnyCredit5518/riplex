@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Changed
+
+- **Disc Overview offers "Organize into Library" when every disc in the release is already ripped.** Resuming a completed session used to dead-end on Disc Overview: every disc showed a `RIPPED` badge, every checkbox was disabled, so Start Ripping stayed greyed out and the user had to close the app, click Organize from the welcome screen, browse to the folder, re-pick metadata, and manually re-do the routing. The screen now detects the all-ripped state, swaps the Start Ripping button for an Organize button, and shows a green banner ("Every disc in this release has already been ripped. Click Organize into Library to sort the ripped files into your Plex folder structure.") The Organize button reuses the same session-marker fan-out logic the orchestrate-done screen uses, so multi-work releases route every sibling work-folder into the organize plan without re-picking anything. Extracted to a shared `launch_organize_from_session` helper.
+
 ### Fixed
 
 - **Organize after a resumed rip no longer crashes with `not enough values to unpack (expected 2, got 1)`.** When a session was resumed via disc detection (user closes the app mid-rip, reopens, inserts a disc that matches an in-progress session), `_resume_session` reconstructed a `MetadataSearchResult` with an empty `source_id` because the session marker didn't carry the TMDb id. That worked fine for the rip flow (nothing there needs `source_id`) but blew up as soon as the user clicked Organize on the done screen: `TmdbProvider.get_show_detail` split the empty string on `":"` expecting a `tv:<id>` payload and hit `ValueError`. The session marker (`_riplex_session.json`) now persists `source_id` for every work in the release; both the CLI (`riplex orchestrate`) and the GUI's disc overview populate it from the resolved `MetadataSearchResult` at session start, and `_resume_session` feeds it back into the reconstructed match. Legacy markers written before this build lack the field — those fall back to a `best_guess` search once on resume so the user isn't stuck.

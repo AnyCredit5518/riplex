@@ -26,6 +26,7 @@ from riplex.manifest import (
 from riplex.normalize import sanitize_filename
 from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
 from riplex.metadata.sources.tmdb import TmdbProvider
+from riplex_app.screens.orchestrate_done import launch_organize_from_session
 
 log = logging.getLogger(__name__)
 
@@ -158,7 +159,26 @@ class DiscOverviewScreen:
         match_label = self._match_label(canonical, year)
 
         resume_info = ft.Container()
-        if ripped_discs:
+        all_ripped = (
+            bool(dvdcompare_discs)
+            and ripped_discs is not None
+            and {d.number for d in dvdcompare_discs}.issubset(ripped_discs)
+        )
+        if all_ripped:
+            resume_info = ft.Container(
+                ft.Row([
+                    ft.Icon(ft.Icons.CHECK_CIRCLE,
+                            color=ft.Colors.GREEN_400, size=18),
+                    ft.Text(
+                        "Every disc in this release has already been "
+                        "ripped. Click Organize into Library to sort the "
+                        "ripped files into your Plex folder structure.",
+                        size=13, color=ft.Colors.GREEN_400,
+                    ),
+                ], spacing=8),
+                padding=ft.Padding(top=8, bottom=8),
+            )
+        elif ripped_discs:
             ripped_list = ", ".join(str(n) for n in sorted(ripped_discs))
             resume_info = ft.Container(
                 ft.Row([
@@ -173,16 +193,33 @@ class DiscOverviewScreen:
             )
 
         back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("release"))
-        self._start_btn = ft.ElevatedButton(
-            "Start Ripping",
-            icon=ft.Icons.PLAY_ARROW,
-            on_click=self._start,
-            style=ft.ButtonStyle(
-                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
-                bgcolor=ft.Colors.GREEN_700,
-            ),
-        )
-        self._refresh_start_guard()
+        self._all_ripped_mode = all_ripped
+        if all_ripped:
+            # Nothing left to rip — the only useful next action is to
+            # organize. Replace Start Ripping with the same "Organize
+            # into Library" button that orchestrate_done offers.
+            self._organize_status = ft.Text("", size=12, color=ft.Colors.GREY_400)
+            self._start_btn = ft.ElevatedButton(
+                "Organize into Library",
+                icon=ft.Icons.FOLDER_SPECIAL,
+                on_click=self._organize_all_ripped,
+                style=ft.ButtonStyle(
+                    padding=ft.Padding(left=30, top=15, right=30, bottom=15),
+                    bgcolor=ft.Colors.BLUE_700,
+                ),
+            )
+        else:
+            self._organize_status = ft.Text("")
+            self._start_btn = ft.ElevatedButton(
+                "Start Ripping",
+                icon=ft.Icons.PLAY_ARROW,
+                on_click=self._start,
+                style=ft.ButtonStyle(
+                    padding=ft.Padding(left=30, top=15, right=30, bottom=15),
+                    bgcolor=ft.Colors.GREEN_700,
+                ),
+            )
+            self._refresh_start_guard()
 
         multigroup_banner = self._build_multigroup_banner(disc_groups)
         loaded_selector = self._build_loaded_disc_selector(
@@ -213,6 +250,7 @@ class DiscOverviewScreen:
                 ft.Divider(height=10),
                 self.summary_text,
                 self._blocker_text,
+                self._organize_status,
                 ft.Container(height=10),
                 ft.Row([back_btn, self._start_btn]),
             ],
@@ -984,6 +1022,10 @@ class DiscOverviewScreen:
         (deselecting the discs)."""
         if self._start_btn is None or self._blocker_text is None:
             return
+        # All-ripped mode replaces Start Ripping with Organize; don't
+        # let this method mutate the wrong button.
+        if getattr(self, "_all_ripped_mode", False):
+            return
         blockers = self._groups_blocking_start()
         selected = self._selected_disc_numbers()
         if not selected:
@@ -1000,13 +1042,42 @@ class DiscOverviewScreen:
             self._start_btn.disabled = False
             self._blocker_text.value = ""
 
+    def _organize_all_ripped(self, e):
+        """Skip ripping entirely and go straight to organize preview.
+
+        Wired to the Organize button that replaces Start Ripping when
+        every disc in the release is already on disk (post-resume of a
+        completed session). Uses the same manifest fan-out helper the
+        orchestrate-done screen uses, so multi-work releases route
+        every sibling work-folder into the organize plan.
+        """
+        e.control.disabled = True
+        e.control.text = "Scanning..."
+        self._organize_status.value = "Reading rip manifests..."
+        self._organize_status.color = ft.Colors.GREY_400
+        self.app.page.update()
+
+        def _on_status(msg: str) -> None:
+            self._organize_status.value = msg
+            self.app.page.update()
+
+        def _on_error(exc: Exception) -> None:
+            self._organize_status.value = f"Error: {exc}"
+            self._organize_status.color = ft.Colors.RED
+            e.control.disabled = False
+            e.control.text = "Organize into Library"
+            self.app.page.update()
+
+        launch_organize_from_session(
+            self.app, on_status=_on_status, on_error=_on_error,
+        )
+
     def _start(self, e):
         selected_nums = self._selected_disc_numbers()
         if not selected_nums:
             return
         if self._groups_blocking_start():
             return
-
         inserted = self.app.state.get("_inserted_disc")
         if inserted and inserted in selected_nums:
             ordered = [inserted] + sorted(n for n in selected_nums if n != inserted)

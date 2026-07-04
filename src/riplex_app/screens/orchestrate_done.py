@@ -17,6 +17,94 @@ from riplex.manifest import (
 log = logging.getLogger(__name__)
 
 
+def launch_organize_from_session(app, *, on_status=None, on_error=None):
+    """Load rip manifests for the current TMDb match's session and
+    navigate to ``organize_preview``. Runs the file scan on a
+    background thread; callers pass ``on_status`` / ``on_error``
+    callbacks to surface progress in whichever screen invoked this.
+
+    ``on_status(str)`` is called with human-readable progress lines.
+    ``on_error(Exception)`` is called if the scan fails. Both are
+    invoked on the worker thread; UI updates from within them are the
+    caller's responsibility.
+
+    Shared between the orchestrate-done screen (post-rip button) and
+    the disc overview (when resume detects every disc is already
+    ripped and there's nothing left to do but organize).
+    """
+    tmdb_match = app.state.get("tmdb_match")
+    if not tmdb_match:
+        if on_error:
+            on_error(RuntimeError("No TMDb match in state"))
+        return
+
+    def _status(msg: str) -> None:
+        log.info("Organize launcher: %s", msg)
+        if on_status:
+            on_status(msg)
+
+    def _do():
+        try:
+            season = app.state.get("season_number") \
+                if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+            rip_root = build_rip_path(
+                tmdb_match.title, tmdb_match.year or 0,
+                season_number=season,
+            )
+
+            # Session marker fan-out: multi-work releases (e.g. Psych
+            # TV series + linked films disc) name every sibling
+            # work-folder in the marker, so we aggregate manifests
+            # across all of them.
+            marker = read_session_marker(rip_root)
+            scanned = []
+            if marker and marker.get("works"):
+                from riplex.manifest import _session_root
+                root = _session_root()
+                for w in marker.get("works", []):
+                    work_folder_name = w.get("folder", "")
+                    if not work_folder_name:
+                        continue
+                    work_folder = root / work_folder_name
+                    if not work_folder.exists():
+                        log.info(
+                            "Organize: work folder missing, skipping: %s",
+                            work_folder,
+                        )
+                        continue
+                    work_scanned = build_scanned_from_manifests(work_folder)
+                    if work_scanned:
+                        log.info(
+                            "Organize: loaded %d disc(s) from %s",
+                            len(work_scanned), work_folder,
+                        )
+                        scanned.extend(work_scanned)
+            else:
+                scanned = build_scanned_from_manifests(rip_root)
+
+            if not scanned:
+                from riplex.scanner import scan_folder
+                _status("No manifests found, scanning with ffprobe...")
+                scanned = scan_folder(rip_root)
+
+            app.state["scanned"] = scanned
+            app.state["source_folder"] = str(rip_root)
+            app.state["workflow"] = "organize"
+
+            async def _nav():
+                app.navigate("organize_preview")
+
+            app.page.run_task(_nav)
+
+        except Exception as exc:
+            log.error("Organize scan failed: %s", exc)
+            if on_error:
+                on_error(exc)
+
+    _status("Reading rip manifests...")
+    threading.Thread(target=_do, daemon=True).start()
+
+
 class OrchestrateDoneScreen:
     """Shown after all discs in the orchestrate queue have been ripped.
 
@@ -185,78 +273,20 @@ class OrchestrateDoneScreen:
         self._organize_status.value = "Reading rip manifests..."
         self.app.page.update()
 
-        def _do_organize():
-            try:
-                season = self.app.state.get("season_number") \
-                    if getattr(tmdb_match, "media_type", "movie") == "tv" else None
-                rip_root = build_rip_path(
-                    tmdb_match.title, tmdb_match.year or 0,
-                    season_number=season,
-                )
+        def _on_status(msg: str) -> None:
+            self._organize_status.value = msg
+            self.app.page.update()
 
-                # Session marker fan-out: when the current rip_root sits
-                # in a multi-work release (e.g. Psych TV series + linked
-                # films disc), the marker names every sibling work-folder.
-                # Read manifests from all of them so the organize preview
-                # sees every ripped file across the whole release —
-                # ``disc_groups`` (built during disc overview) covers all
-                # discs, so routing to per-work Plex targets just works.
-                marker = read_session_marker(rip_root)
-                scanned = []
-                if marker and marker.get("works"):
-                    # ``w.folder`` in the marker is relative to the
-                    # configured rip output root (may be nested for TV,
-                    # e.g. ``Psych (2006)/Season 01``), so resolve it
-                    # against that root, not ``rip_root.parent``.
-                    from riplex.manifest import _session_root
-                    root = _session_root()
-                    for w in marker.get("works", []):
-                        work_folder_name = w.get("folder", "")
-                        if not work_folder_name:
-                            continue
-                        work_folder = root / work_folder_name
-                        if not work_folder.exists():
-                            log.info(
-                                "Organize: work folder missing, skipping: %s",
-                                work_folder,
-                            )
-                            continue
-                        work_scanned = build_scanned_from_manifests(work_folder)
-                        if work_scanned:
-                            log.info(
-                                "Organize: loaded %d disc(s) from %s",
-                                len(work_scanned), work_folder,
-                            )
-                            scanned.extend(work_scanned)
-                else:
-                    # Single-work / legacy path.
-                    scanned = build_scanned_from_manifests(rip_root)
+        def _on_error(exc: Exception) -> None:
+            self._organize_status.value = f"Error: {exc}"
+            self._organize_status.color = ft.Colors.RED
+            e.control.disabled = False
+            e.control.text = "Organize into Library"
+            self.app.page.update()
 
-                if not scanned:
-                    # Fall back to ffprobe scan of the primary rip_root.
-                    from riplex.scanner import scan_folder
-                    self._organize_status.value = "No manifests found, scanning with ffprobe..."
-                    self.app.page.update()
-                    scanned = scan_folder(rip_root)
-
-                self.app.state["scanned"] = scanned
-                self.app.state["source_folder"] = str(rip_root)
-                self.app.state["workflow"] = "organize"
-
-                async def _nav():
-                    self.app.navigate("organize_preview")
-
-                self.app.page.run_task(_nav)
-
-            except Exception as exc:
-                log.error("Organize scan failed: %s", exc)
-                self._organize_status.value = f"Error: {exc}"
-                self._organize_status.color = ft.Colors.RED
-                e.control.disabled = False
-                e.control.text = "Organize into Library"
-                self.app.page.update()
-
-        threading.Thread(target=_do_organize, daemon=True).start()
+        launch_organize_from_session(
+            self.app, on_status=_on_status, on_error=_on_error,
+        )
 
     def _quit(self, e):
         """Close the application."""
