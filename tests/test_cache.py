@@ -101,3 +101,53 @@ class TestHashKey:
 
     def test_length(self):
         assert len(cache.hash_key("anything")) == 16
+
+
+class TestEnsureNsVersion:
+    def test_writes_marker_on_first_call(self, tmp_path):
+        with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+        assert (tmp_path / "dvdcompare" / "_version.txt").read_text() == "0.1.18"
+
+    def test_matching_version_is_noop(self, tmp_path):
+        with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+            cache.cache_set("dvdcompare", "k", {"v": 1})
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+        assert (tmp_path / "dvdcompare" / "k.json").exists()
+
+    def test_first_call_wipes_pre_existing_unmarked_cache(self, tmp_path):
+        # A pre-existing cache with no marker predates this feature and
+        # may have been written by an older scraper — treat it as stale.
+        with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+            cache.cache_set("dvdcompare", "k", {"v": 1})
+            # No prior ensure_ns_version call, so no marker exists.
+            assert (tmp_path / "dvdcompare" / "k.json").exists()
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+        assert not (tmp_path / "dvdcompare" / "k.json").exists()
+        assert (tmp_path / "dvdcompare" / "_version.txt").read_text() == "0.1.18"
+
+    def test_mismatched_version_wipes_namespace(self, tmp_path):
+        with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+            cache.ensure_ns_version("dvdcompare", "0.1.17")
+            cache.cache_set("dvdcompare", "k", {"v": 1})
+            assert (tmp_path / "dvdcompare" / "k.json").exists()
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+        assert not (tmp_path / "dvdcompare" / "k.json").exists()
+        assert (tmp_path / "dvdcompare" / "_version.txt").read_text() == "0.1.18"
+
+    def test_leaves_other_namespaces_untouched(self, tmp_path):
+        with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+            cache.ensure_ns_version("dvdcompare", "0.1.17")
+            cache.cache_set("tmdb", "movie", {"v": 1})
+            cache.ensure_ns_version("dvdcompare", "0.1.18")
+        assert (tmp_path / "tmdb" / "movie.json").exists()
+
+    def test_disabled_is_noop(self, tmp_path):
+        try:
+            cache._disabled = True
+            with patch.object(cache, "get_cache_dir", return_value=tmp_path):
+                cache.ensure_ns_version("dvdcompare", "0.1.18")
+        finally:
+            cache._disabled = False
+        assert not (tmp_path / "dvdcompare").exists()

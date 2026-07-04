@@ -109,3 +109,54 @@ def clear(namespace: str | None = None) -> int:
                 child.unlink(missing_ok=True)
     log.debug("Cache cleared: %s (%d files)", target, count)
     return count
+
+
+_VERSION_MARKER = "_version.txt"
+
+
+def ensure_ns_version(namespace: str, version: str) -> None:
+    """Invalidate ``namespace`` when the recorded version differs from ``version``.
+
+    Writes ``version`` into a ``_version.txt`` marker inside the namespace
+    directory. On subsequent calls, if the marker's contents don't match
+    the caller-supplied ``version`` the entire namespace directory is
+    wiped and the fresh marker is written.
+
+    Callers should pass the version of whichever external component
+    produced the cache payloads (e.g. ``dvdcompare-scraper`` for the
+    ``dvdcompare`` namespace). This lets a scraper upgrade that changes
+    the serialized shape auto-invalidate the disk cache without users
+    having to run ``riplex cache clear`` by hand.
+
+    No-op when the cache is disabled.
+    """
+    if _disabled:
+        return
+    ns_dir = get_cache_dir() / namespace
+    marker = ns_dir / _VERSION_MARKER
+    recorded: str | None
+    if marker.exists():
+        try:
+            recorded = marker.read_text(encoding="utf-8").strip()
+        except OSError:
+            recorded = None
+    else:
+        recorded = None
+    if recorded == version:
+        return
+    # A pre-existing cache without a marker predates this feature and
+    # may have been written by an older scraper whose serialized shape
+    # is missing fields the current code expects — treat it as stale
+    # and wipe alongside genuine version mismatches.
+    if ns_dir.exists():
+        log.info(
+            "Cache invalidation: %s version changed (%r -> %r); clearing",
+            namespace, recorded, version,
+        )
+        shutil.rmtree(ns_dir, ignore_errors=True)
+    ns_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        marker.write_text(version, encoding="utf-8")
+    except OSError as exc:
+        log.warning("Cache: failed to write version marker for %s: %s",
+                    namespace, exc)

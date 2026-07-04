@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import time
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 import httpx
 
@@ -36,6 +37,14 @@ _CACHE_NS = "dvdcompare"
 _MIN_INTERVAL_S = float(os.environ.get("RIPLEX_DVDCOMPARE_MIN_INTERVAL_S", "3.0"))
 _request_lock = asyncio.Lock()
 _last_request_at: float = 0.0
+
+
+def _scraper_version() -> str:
+    """Return the installed ``dvdcompare-scraper`` version, or ``unknown``."""
+    try:
+        return _pkg_version("dvdcompare-scraper")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def _parse_retry_after(response: httpx.Response | None) -> int | None:
@@ -75,6 +84,7 @@ class DiscProvider:
         self.cache_ns = cache_ns
         self.ttl_days = ttl_days
         self.neg_ttl_days = neg_ttl_days
+        cache.ensure_ns_version(self.cache_ns, _scraper_version())
 
     # -- lookup -----------------------------------------------------------
 
