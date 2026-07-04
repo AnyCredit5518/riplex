@@ -147,6 +147,23 @@ async def run_organize(args: argparse.Namespace) -> int:
         return 1
 
     try:
+        # Session marker takes priority over layout detection: a
+        # ``_riplex_session.json`` in the folder means this was produced
+        # by an orchestrate run and may span multiple work-folders. Fan
+        # out to each work so a Psych-style release (TV series + linked
+        # films on the same physical release) organizes into every
+        # per-work Plex target in one pass.
+        from riplex.manifest import SESSION_MARKER_NAME, read_session_marker
+
+        marker = read_session_marker(folder)
+        if marker is None and (folder / SESSION_MARKER_NAME).exists():
+            log.warning("Session marker in %s is malformed; falling back to single-folder organize.", folder)
+
+        if marker is not None:
+            return await _organize_session_works(
+                folder, marker, args, output_root, provider,
+            )
+
         layout = detect_organize_layout(folder)
 
         if layout.mode == "single":
@@ -168,6 +185,108 @@ async def run_organize(args: argparse.Namespace) -> int:
             return 1
     finally:
         await provider.close()
+
+
+async def _organize_session_works(
+    folder: Path,
+    marker: dict,
+    args: argparse.Namespace,
+    output_root: Path,
+    provider: TmdbProvider,
+) -> int:
+    """Fan out organize across every work-folder in a session marker.
+
+    The marker sitting in *folder* names every work-folder produced by a
+    single orchestrate session (e.g. TV series + bonus-films disc from
+    Psych: Complete Series). Each work is organized sequentially with
+    its own title / year / media_type; missing sibling folders are
+    logged and skipped so a partial rip can still land what's present.
+
+    Returns the worst exit code across all works. Sibling archive and
+    organized-marker writes happen inside each ``_organize_single``
+    call (via ``organize_with_scanned``), so nothing extra is needed
+    here.
+    """
+    import copy
+
+    root = folder.parent
+    release_name = marker.get("release_name", "")
+    works_data = marker.get("works", [])
+
+    if not works_data:
+        print(
+            f"Session marker in {folder} has no works. "
+            "Falling back to single-folder organize.",
+            file=sys.stderr,
+        )
+        title, inferred_year = strip_year_from_title(folder.name)
+        if inferred_year and not getattr(args, "year", None):
+            args.year = inferred_year
+        return await _organize_single(folder, title, args, output_root, provider)
+
+    print(
+        f"\nSession marker in {folder.name}: {len(works_data)} work(s) "
+        f"from release {release_name!r}",
+        file=sys.stderr,
+    )
+    for w in works_data:
+        print(
+            f"  * {w.get('title', '?')} ({w.get('year', '?')}) "
+            f"-> {w.get('folder', '?')}",
+            file=sys.stderr,
+        )
+
+    overall_rc = 0
+    for idx, w in enumerate(works_data, 1):
+        work_title = w.get("title", "")
+        work_year = w.get("year") or None
+        work_media_type = w.get("media_type", "movie")
+        work_folder_name = w.get("folder", "")
+
+        if not work_folder_name or not work_title:
+            print(
+                f"  [{idx}/{len(works_data)}] SKIPPED: marker entry "
+                f"missing title or folder.",
+                file=sys.stderr,
+            )
+            overall_rc = max(overall_rc, 1)
+            continue
+
+        work_folder = root / work_folder_name
+        print(f"\n{'=' * 60}", file=sys.stderr)
+        print(
+            f"[{idx}/{len(works_data)}] Organizing {work_title} "
+            f"({work_year or '?'}) — {work_folder_name}",
+            file=sys.stderr,
+        )
+        print(f"{'=' * 60}", file=sys.stderr)
+
+        if not work_folder.exists():
+            print(
+                f"  Work folder does not exist: {work_folder}",
+                file=sys.stderr,
+            )
+            print(
+                f"  Skipping this work — nothing to organize.",
+                file=sys.stderr,
+            )
+            continue
+
+        # Per-work args: override title/year/media_type without mutating
+        # the caller's Namespace.
+        work_args = copy.copy(args)
+        work_args.title = work_title
+        work_args.year = work_year
+        work_args.media_type = work_media_type
+
+        rc = await _organize_single(
+            work_folder, work_title, work_args, output_root, provider,
+        )
+        if rc != 0:
+            overall_rc = max(overall_rc, rc)
+
+    return overall_rc
+
 
 
 async def _organize_batch(

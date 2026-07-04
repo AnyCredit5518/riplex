@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output
+from riplex.config import get_api_key, get_output_root, get_rip_output
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
@@ -25,7 +25,6 @@ from riplex.manifest import (
     SessionWork,
     build_rip_manifest,
     build_rip_path,
-    build_scanned_from_manifests,
     build_snapshot_manifest,
     find_existing_session,
     find_ripped_discs,
@@ -574,8 +573,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     print("Organize phase")
     print(f"{'=' * 60}")
 
-    from riplex_cli.commands.organize import run_organize, organize_with_scanned
+    from riplex_cli.commands.organize import run_organize
 
+    # ``run_organize`` handles all the branching:
+    # - session marker present -> fan out organize across every work-folder
+    #   in the release (e.g. Psych TV series + linked-films disc).
+    # - single work-folder -> scan + plan + move as normal.
+    # It also archives each work-folder (via ``organize_with_scanned``)
+    # when ``auto=True`` and an archive root is configured. That covers
+    # the multi-work case too — every work archives to its own sibling.
     organize_args = argparse.Namespace(
         folder=str(rip_root),
         title=canonical,
@@ -594,45 +600,9 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         snapshot=None,
         auto=True,
     )
-
-    # Optimization: build ScannedDisc objects from manifest data (avoids ffprobe)
-    scanned_from_manifest = build_scanned_from_manifests(rip_root)
-    if scanned_from_manifest:
-        log.info(
-            "Using manifest data for organize (%d discs, skip ffprobe scan)",
-            len(scanned_from_manifest),
-        )
-        print("Using rip manifest data (skipping ffprobe scan).", file=sys.stderr)
-        api_key = get_api_key(getattr(args, "api_key", None))
-        provider = TmdbProvider(api_key=api_key)
-        try:
-            org_result = await organize_with_scanned(
-                scanned_from_manifest, canonical, organize_args,
-                Path(output_val), provider,
-            )
-        finally:
-            await provider.close()
-    else:
-        org_result = await run_organize(organize_args)
+    org_result = await run_organize(organize_args)
 
     if dry_run:
         print(f"\nRe-run with --execute to rip and organize:\n  {build_execute_command()}")
-
-    # ---- Archive phase ----
-    if not dry_run and org_result == 0:
-        archive_root = get_archive_root()
-        if archive_root and rip_root.exists():
-            from riplex.organizer import archive_source_folder
-            archive_dest = Path(archive_root) / folder_base
-            if is_interactive():
-                print(f"\nArchive rip folder to: {archive_dest}", file=sys.stderr)
-                if prompt_confirm("Move rip folder to archive?"):
-                    result = archive_source_folder(rip_root, archive_root)
-                    if result:
-                        print(f"Archived: {rip_root} -> {result}", file=sys.stderr)
-            else:
-                result = archive_source_folder(rip_root, archive_root)
-                if result:
-                    print(f"Archived: {rip_root} -> {result}", file=sys.stderr)
 
     return org_result if not any_failed else 1

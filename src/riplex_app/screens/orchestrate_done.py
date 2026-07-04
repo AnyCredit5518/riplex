@@ -8,7 +8,11 @@ import threading
 
 import flet as ft
 
-from riplex.manifest import build_rip_path, build_scanned_from_manifests
+from riplex.manifest import (
+    build_rip_path,
+    build_scanned_from_manifests,
+    read_session_marker,
+)
 
 log = logging.getLogger(__name__)
 
@@ -179,10 +183,41 @@ class OrchestrateDoneScreen:
             try:
                 rip_root = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
 
-                # Try manifest-based scan first (faster, no ffprobe)
-                scanned = build_scanned_from_manifests(rip_root)
+                # Session marker fan-out: when the current rip_root sits
+                # in a multi-work release (e.g. Psych TV series + linked
+                # films disc), the marker names every sibling work-folder.
+                # Read manifests from all of them so the organize preview
+                # sees every ripped file across the whole release —
+                # ``disc_groups`` (built during disc overview) covers all
+                # discs, so routing to per-work Plex targets just works.
+                marker = read_session_marker(rip_root)
+                scanned = []
+                if marker and marker.get("works"):
+                    root = rip_root.parent
+                    for w in marker.get("works", []):
+                        work_folder_name = w.get("folder", "")
+                        if not work_folder_name:
+                            continue
+                        work_folder = root / work_folder_name
+                        if not work_folder.exists():
+                            log.info(
+                                "Organize: work folder missing, skipping: %s",
+                                work_folder,
+                            )
+                            continue
+                        work_scanned = build_scanned_from_manifests(work_folder)
+                        if work_scanned:
+                            log.info(
+                                "Organize: loaded %d disc(s) from %s",
+                                len(work_scanned), work_folder,
+                            )
+                            scanned.extend(work_scanned)
+                else:
+                    # Single-work / legacy path.
+                    scanned = build_scanned_from_manifests(rip_root)
+
                 if not scanned:
-                    # Fall back to ffprobe scan
+                    # Fall back to ffprobe scan of the primary rip_root.
                     from riplex.scanner import scan_folder
                     self._organize_status.value = "No manifests found, scanning with ffprobe..."
                     self.app.page.update()
