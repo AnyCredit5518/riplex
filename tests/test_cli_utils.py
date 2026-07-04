@@ -214,13 +214,34 @@ class TestDetectDiscFormat:
         info = self._make_disc_info(["1920x1080", "1920x1080"])
         assert detect_disc_format(info) == "Blu-ray"
 
+    def test_bluray_720p(self):
+        info = self._make_disc_info(["1280x720"])
+        assert detect_disc_format(info) == "Blu-ray"
+
+    def test_dvd_ntsc(self):
+        info = self._make_disc_info(["720x480", "720x480"])
+        assert detect_disc_format(info) == "DVD"
+
+    def test_dvd_pal(self):
+        info = self._make_disc_info(["720x576"])
+        assert detect_disc_format(info) == "DVD"
+
     def test_no_titles(self):
         info = self._make_disc_info([])
+        assert detect_disc_format(info) is None
+
+    def test_titles_without_resolution_return_none(self):
+        info = self._make_disc_info(["", ""])
         assert detect_disc_format(info) is None
 
     def test_single_4k_title(self):
         info = self._make_disc_info(["3840x2160"])
         assert detect_disc_format(info) == "Blu-ray 4K"
+
+    def test_max_wins_across_titles(self):
+        # Mixed SD/HD disc (menu SD, feature HD) should classify as Blu-ray.
+        info = self._make_disc_info(["720x480", "1920x1080"])
+        assert detect_disc_format(info) == "Blu-ray"
 
 
 # ---------------------------------------------------------------------------

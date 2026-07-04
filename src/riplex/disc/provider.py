@@ -1007,14 +1007,39 @@ async def fetch_and_select_release(
 def detect_disc_format(disc_info) -> str | None:
     """Auto-detect dvdcompare format string from disc title resolutions.
 
-    Returns "Blu-ray 4K" if any title is 3840-wide, else "Blu-ray".
+    Uses the same width/height thresholds as ``riplex.detect.detect_format``
+    so that live disc reads and post-rip scans classify identically:
+
+    * >= 3840 wide (or >= 2160 tall) -> ``"Blu-ray 4K"``
+    * >= 1280 wide (or >=  720 tall) -> ``"Blu-ray"``
+    * anything smaller with a known resolution -> ``"DVD"``
+
+    Returns ``None`` when no title advertises a resolution at all.
     """
     if not disc_info.titles:
         return None
+    max_w = 0
+    max_h = 0
     for t in disc_info.titles:
-        if t.resolution and "3840" in t.resolution:
-            return "Blu-ray 4K"
-    return "Blu-ray"
+        if not t.resolution or "x" not in t.resolution:
+            continue
+        w_str, _, h_str = t.resolution.partition("x")
+        try:
+            w = int(w_str)
+            h = int(h_str)
+        except ValueError:
+            continue
+        if w > max_w:
+            max_w = w
+        if h > max_h:
+            max_h = h
+    if max_w == 0 and max_h == 0:
+        return None
+    if max_w >= 3840 or max_h >= 2160:
+        return "Blu-ray 4K"
+    if max_w >= 1280 or max_h >= 720:
+        return "Blu-ray"
+    return "DVD"
 
 
 # ---------------------------------------------------------------------------
