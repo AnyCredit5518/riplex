@@ -15,7 +15,7 @@ import flet as ft
 
 from riplex.config import get_api_key
 from riplex.disc.analysis import build_season_labels, group_release_discs
-from riplex.disc.provider import DiscProvider, disc_content_summary
+from riplex.disc.provider import DiscProvider, disc_content_summary, strip_dvdcompare_annotations
 from riplex.manifest import (
     SessionWork,
     build_rip_path,
@@ -279,11 +279,21 @@ class DiscOverviewScreen:
                                 try:
                                     linked = await disc_provider.fetch_film_by_id(fid)
                                     if linked and getattr(linked, "title", ""):
-                                        query = linked.title
+                                        # dvdcompare film titles bake in
+                                        # format markers like "(TV)" and
+                                        # "(Blu-ray)"; strip them before
+                                        # searching TMDb — those markers
+                                        # never appear in TMDb entries and
+                                        # otherwise drive the search to
+                                        # zero results.
+                                        query = strip_dvdcompare_annotations(
+                                            linked.title,
+                                        )
                                         log.info(
                                             "Auto-fill: %s films[%d] fid=%s "
-                                            "resolved to '%s' (%s)",
-                                            g.id, idx, fid, query,
+                                            "resolved to %r -> query %r (%s)",
+                                            g.id, idx, fid, linked.title,
+                                            query,
                                             getattr(linked, "year", None),
                                         )
                                 except Exception as exc:

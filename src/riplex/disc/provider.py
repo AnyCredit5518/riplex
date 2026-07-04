@@ -486,6 +486,27 @@ _TRAILING_ANNOTATION_RE = re.compile(
 )
 
 
+def strip_dvdcompare_annotations(title: str) -> str:
+    """Strip trailing dvdcompare format/year annotations from a title.
+
+    dvdcompare stores film titles with parenthetical format markers baked
+    in — ``"Psych: The Movie (TV)"``, ``"Blade Runner (Blu-ray 4K)"``,
+    ``"Something (2020)"``. Those markers aren't part of the canonical
+    title and confuse an external metadata search (a TMDb query for
+    ``"Psych: The Movie (TV)"`` returns zero hits, whereas
+    ``"Psych: The Movie"`` matches). This strips every trailing marker
+    while preserving the original casing.
+    """
+    if not title:
+        return ""
+    s = title
+    while True:
+        new_s = _TRAILING_ANNOTATION_RE.sub("", s).rstrip()
+        if new_s == s:
+            return s
+        s = new_s
+
+
 def _result_has_format(sr, fmt_norm: str) -> bool:
     """Return True if search result ``sr`` advertises the given disc format.
 

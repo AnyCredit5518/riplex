@@ -616,3 +616,47 @@ class TestFindFilmPreferFormat:
         with pytest.raises(LookupError):
             asyncio.run(_find_film_prefer_format("Nonexistent", "Blu-ray", None))
 
+
+class TestStripDvdcompareAnnotations:
+    """``strip_dvdcompare_annotations`` trims trailing format / year markers.
+
+    The helper is used by the Disc Overview auto-fill worker before it
+    queries TMDb — dvdcompare film titles include markers like ``(TV)``
+    or ``(Blu-ray)`` which TMDb titles never carry, so leaving them in
+    forces zero-result searches.
+    """
+
+    def test_strips_tv_marker(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Psych: The Movie (TV)") == "Psych: The Movie"
+
+    def test_strips_blu_ray_marker(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Blade Runner (Blu-ray)") == "Blade Runner"
+
+    def test_strips_blu_ray_4k_marker(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Blade Runner (Blu-ray 4K)") == "Blade Runner"
+
+    def test_strips_year_marker(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Something (2020)") == "Something"
+
+    def test_strips_stacked_markers(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Psych: Season 1 (TV) (Blu-ray)") == "Psych: Season 1"
+
+    def test_preserves_case(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("MacGyver (TV)") == "MacGyver"
+
+    def test_no_marker_unchanged(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("Just A Title") == "Just A Title"
+
+    def test_empty_returns_empty(self):
+        from riplex.disc.provider import strip_dvdcompare_annotations
+        assert strip_dvdcompare_annotations("") == ""
+
+
+
