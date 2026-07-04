@@ -211,7 +211,12 @@ class DoneScreen:
         # If the GUI ripped into a disc subfolder, go up to the root.
         # Otherwise use output_dir directly.
         if tmdb_match:
-            scan_path = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+            season = self.app.state.get("season_number") \
+                if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+            scan_path = build_rip_path(
+                tmdb_match.title, tmdb_match.year or 0,
+                season_number=season,
+            )
         else:
             scan_path = Path(output_dir)
 

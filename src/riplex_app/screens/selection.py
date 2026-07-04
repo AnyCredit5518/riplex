@@ -360,7 +360,9 @@ class SelectionScreen:
 
         Prefers the current disc's DiscGroup match over the top-level
         state["tmdb_match"] so multi-work releases (e.g. Psych TV series
-        + bonus films disc) rip each work under its own folder.
+        + bonus films disc) rip each work under its own folder. TV works
+        are nested under ``Season NN`` so multiple seasons of the same
+        show don't collide on ``Disc N``.
         """
         tmdb_match = getattr(self, "_effective_tmdb_match", None) \
             or self.app.state.get("tmdb_match")
@@ -368,7 +370,13 @@ class SelectionScreen:
             from riplex.manifest import build_rip_path
 
             disc_num = self._analysis.disc_number if hasattr(self, "_analysis") else None
-            return build_rip_path(tmdb_match.title, tmdb_match.year or 0, disc_number=disc_num)
+            season = self.app.state.get("season_number") \
+                if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+            return build_rip_path(
+                tmdb_match.title, tmdb_match.year or 0,
+                disc_number=disc_num,
+                season_number=season,
+            )
 
         from pathlib import Path
 

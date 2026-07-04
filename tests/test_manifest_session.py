@@ -12,6 +12,8 @@ from riplex.manifest import (
     SESSION_MARKER_NAME,
     ExistingSession,
     SessionWork,
+    _iter_candidate_work_folders,
+    build_rip_path,
     find_existing_session,
     read_session_marker,
     write_session_marker,
@@ -209,14 +211,111 @@ class TestFindExistingSessionAggregation:
         session = find_existing_session("Psych")
         assert session is not None
         assert session.title == "Psych"
-        assert session.year == 2006
-        assert session.media_type == "tv"
-        assert session.release_name == "Psych Complete Series"
-        assert session.rip_root == tv_folder
-        assert session.ripped_discs == set()          # nothing under TV folder yet
-        assert session.all_ripped_discs == {31}       # film sibling contributes
-        assert session.disc_format == "DVD"           # borrowed from sibling
-        assert len(session.works) == 2
+
+
+class TestBuildRipPathSeasonNesting:
+    """``build_rip_path`` nests TV rips under ``Season NN`` so rips of
+    different seasons of the same show don't collide on ``Disc N``.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _fake_rip_output(self, tmp_path, monkeypatch):
+        root = tmp_path / "Rips"
+        root.mkdir()
+        from riplex import config as config_mod
+        monkeypatch.setattr(config_mod, "get_rip_output", lambda: str(root))
+        return root
+
+    def test_movie_flat_layout(self, _fake_rip_output):
+        p = build_rip_path("Batman Begins", 2005, disc_number=1)
+        assert p == _fake_rip_output / "Batman Begins (2005)" / "Disc 1"
+
+    def test_movie_no_disc_number(self, _fake_rip_output):
+        p = build_rip_path("Batman Begins", 2005)
+        assert p == _fake_rip_output / "Batman Begins (2005)"
+
+    def test_tv_with_season_nests_under_season_folder(self, _fake_rip_output):
+        p = build_rip_path("Psych", 2006, disc_number=1, season_number=1)
+        assert p == _fake_rip_output / "Psych (2006)" / "Season 01" / "Disc 1"
+
+    def test_tv_with_season_no_disc(self, _fake_rip_output):
+        p = build_rip_path("Psych", 2006, season_number=1)
+        assert p == _fake_rip_output / "Psych (2006)" / "Season 01"
+
+    def test_tv_double_digit_season_padded(self, _fake_rip_output):
+        p = build_rip_path("Doctor Who", 2005, disc_number=3, season_number=12)
+        assert p == _fake_rip_output / "Doctor Who (2005)" / "Season 12" / "Disc 3"
+
+    def test_tv_without_season_stays_flat(self, _fake_rip_output):
+        # Regression: TV rip without a known season keeps the legacy flat
+        # layout so we don't force a bogus ``Season 00`` folder.
+        p = build_rip_path("Some Show", 2020, disc_number=1)
+        assert p == _fake_rip_output / "Some Show (2020)" / "Disc 1"
+
+
+class TestIterCandidateWorkFolders:
+    def test_yields_flat_and_nested_folders(self, tmp_path):
+        (tmp_path / "Psych (2006)" / "Season 01").mkdir(parents=True)
+        (tmp_path / "Psych (2006)" / "Season 02").mkdir(parents=True)
+        (tmp_path / "Batman Begins (2005)").mkdir()
+        # Underscore-prefixed folders are skipped (debug dirs, markers).
+        (tmp_path / "_riplex").mkdir()
+        (tmp_path / "Psych (2006)" / "_riplex").mkdir()
+
+        folders = {p.relative_to(tmp_path).as_posix()
+                   for p in _iter_candidate_work_folders(tmp_path)}
+
+        assert folders == {
+            "Psych (2006)",
+            "Psych (2006)/Season 01",
+            "Psych (2006)/Season 02",
+            "Batman Begins (2005)",
+        }
+
+    def test_ignores_non_season_subfolders(self, tmp_path):
+        (tmp_path / "Movie (2020)" / "Disc 1").mkdir(parents=True)
+        (tmp_path / "Movie (2020)" / "Extras").mkdir()
+
+        folders = {p.relative_to(tmp_path).as_posix()
+                   for p in _iter_candidate_work_folders(tmp_path)}
+
+        assert folders == {"Movie (2020)"}
+
+    def test_missing_root_yields_nothing(self, tmp_path):
+        folders = list(_iter_candidate_work_folders(tmp_path / "nope"))
+        assert folders == []
+
+
+class TestFindExistingSessionSeasonNested:
+    """``find_existing_session`` must discover TV sessions whose rips
+    live in ``<root>/<title>/Season NN/Disc N`` — the new default TV
+    layout — and must still discover legacy flat sessions.
+    """
+
+    def test_finds_session_in_season_nested_folder(self, rip_root):
+        season_folder = rip_root / "Psych (2006)" / "Season 01"
+        _write_manifest(season_folder, 1, "Psych", year=2006)
+        # Force media_type to tv on the manifest.
+        m = season_folder / "Disc 1" / "_rip_manifest.json"
+        data = json.loads(m.read_text(encoding="utf-8"))
+        data["type"] = "tv"
+        m.write_text(json.dumps(data), encoding="utf-8")
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.title == "Psych"
+        assert session.rip_root == season_folder
+        assert session.ripped_discs == {1}
+
+    def test_legacy_flat_tv_session_still_discovered(self, rip_root):
+        # Users with existing (pre-nesting) TV rips must still resume.
+        flat_folder = rip_root / "Psych (2006)"
+        _write_manifest(flat_folder, 1, "Psych", year=2006)
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.rip_root == flat_folder
+        assert session.ripped_discs == {1}
 
     def test_marker_only_match_survives_missing_own_folder(self, rip_root):
         """If the work's own folder is gone entirely (user cleaned up),

@@ -245,7 +245,10 @@ async def run_rip(args: argparse.Namespace) -> int:
             print(f"\nWarning: could not auto-detect disc number. Defaulting to 'Disc 1'.", file=sys.stderr)
             print("  Use --titles and manually organize if this is wrong.", file=sys.stderr)
 
-    output_dir = build_rip_path(canonical, year, disc_number)
+    output_dir = build_rip_path(
+        canonical, year, disc_number,
+        season_number=getattr(args, "season_number", None) if not is_movie else None,
+    )
 
     # Confirmation
     total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)

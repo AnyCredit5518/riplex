@@ -124,7 +124,11 @@ def _find_debug_paths(state: dict) -> list[str]:
     if tmdb_match and tmdb_match.title:
         try:
             from riplex.manifest import build_rip_path
-            rip_root = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+            season = state.get("season_number") \
+                if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+            rip_root = build_rip_path(
+                tmdb_match.title, tmdb_match.year or 0, season_number=season,
+            )
             debug_dir = rip_root / "_riplex"
             if debug_dir.exists():
                 paths.append(str(debug_dir))

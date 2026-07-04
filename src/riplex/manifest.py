@@ -27,23 +27,35 @@ def build_rip_path(
     canonical: str,
     year: int,
     disc_number: int | None = None,
+    *,
+    season_number: int | None = None,
 ) -> Path:
     """Build the output path for a rip, using config to resolve the base.
 
-    Returns e.g. ``E:/Media/Rips/Batman Begins (2005)/Disc 1``.
-    Falls back to ``{output_root}/Rips/{folder_base}`` if rip_output
-    is not configured.
+    Returns e.g. ``E:/Media/Rips/Batman Begins (2005)/Disc 1``, or for a
+    TV rip with a known season number, ``E:/Media/Rips/Psych (2006)/
+    Season 01/Disc 1``. Falls back to ``{output_root}/Rips/{folder_base}``
+    if rip_output is not configured.
+
+    Nesting TV rips under ``Season NN`` keeps rip folders for different
+    seasons of the same show from colliding on the ``Disc N`` name.
+    Movies (and TV rips without a known season) keep the flat layout.
     """
     from riplex.config import get_output_root, get_rip_output
-    from riplex.normalize import sanitize_filename
+    from riplex.normalize import sanitize_filename, season_folder_name
 
     folder_base = sanitize_filename(f"{canonical} ({year})")
     rip_output = get_rip_output()
     if rip_output:
-        rip_root = Path(rip_output) / folder_base
+        work_root = Path(rip_output) / folder_base
     else:
         output_root = get_output_root()
-        rip_root = Path(output_root) / "Rips" / folder_base
+        work_root = Path(output_root) / "Rips" / folder_base
+
+    if season_number is not None:
+        rip_root = work_root / season_folder_name(season_number)
+    else:
+        rip_root = work_root
 
     if disc_number:
         return rip_root / f"Disc {disc_number}"
@@ -190,6 +202,36 @@ class ExistingSession:
     all_ripped_discs: set[int] = field(default_factory=set)
 
 
+_SEASON_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
+
+
+def _iter_candidate_work_folders(root: Path):
+    """Yield every folder that could hold a rip session, at any supported depth.
+
+    The rip layout is either flat (``<root>/Psych (2006)/Disc N``) or
+    season-nested (``<root>/Psych (2006)/Season 01/Disc N``). Callers
+    that walk work-folders (``find_existing_session``) need to see both.
+
+    Yields, for each top-level ``<root>/title/`` directory:
+    * ``title/`` itself (for the flat layout and for legacy sessions
+      whose marker still lives at the title root), and
+    * each ``title/Season NN/`` subdirectory (for the nested TV layout).
+
+    Skips ``_``-prefixed folders on either level.
+    """
+    if not root.exists():
+        return
+    for title_folder in root.iterdir():
+        if not title_folder.is_dir() or title_folder.name.startswith("_"):
+            continue
+        yield title_folder
+        for sub in title_folder.iterdir():
+            if not sub.is_dir() or sub.name.startswith("_"):
+                continue
+            if _SEASON_FOLDER_RE.match(sub.name):
+                yield sub
+
+
 def find_existing_session(title: str) -> ExistingSession | None:
     """Scan the rip output root for a session matching *title*.
 
@@ -218,9 +260,7 @@ def find_existing_session(title: str) -> ExistingSession | None:
     title_lower = title.strip().lower()
 
     # --- Pass 1: match on any rip manifest's title. -------------------
-    for title_folder in root.iterdir():
-        if not title_folder.is_dir():
-            continue
+    for title_folder in _iter_candidate_work_folders(root):
         primary_manifest: dict | None = None
         for disc_folder in title_folder.iterdir():
             manifest_path = disc_folder / "_rip_manifest.json"
@@ -255,9 +295,7 @@ def find_existing_session(title: str) -> ExistingSession | None:
     # Handles the case where the user has ripped one work of a multi-work
     # release (which wrote markers into every sibling) and then inserts
     # a disc from a sibling work whose folder has no rip manifest yet.
-    for title_folder in root.iterdir():
-        if not title_folder.is_dir():
-            continue
+    for title_folder in _iter_candidate_work_folders(root):
         marker = read_session_marker(title_folder)
         if not marker:
             continue

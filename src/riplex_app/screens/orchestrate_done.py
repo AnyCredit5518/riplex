@@ -37,7 +37,9 @@ class OrchestrateDoneScreen:
         year = tmdb_match.year or 0 if tmdb_match else 0
         year_str = f" ({year})" if year else ""
 
-        rip_root = build_rip_path(canonical, year)
+        season = self.app.state.get("season_number") \
+            if tmdb_match and getattr(tmdb_match, "media_type", "movie") == "tv" else None
+        rip_root = build_rip_path(canonical, year, season_number=season)
 
         # Count results across all discs
         total_success = 0
@@ -158,7 +160,11 @@ class OrchestrateDoneScreen:
         tmdb_match = self.app.state.get("tmdb_match")
         if not tmdb_match:
             return
-        rip_root = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+        season = self.app.state.get("season_number") \
+            if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+        rip_root = build_rip_path(
+            tmdb_match.title, tmdb_match.year or 0, season_number=season,
+        )
         path = str(rip_root)
         system = platform.system()
         if system == "Windows":
@@ -181,7 +187,12 @@ class OrchestrateDoneScreen:
 
         def _do_organize():
             try:
-                rip_root = build_rip_path(tmdb_match.title, tmdb_match.year or 0)
+                season = self.app.state.get("season_number") \
+                    if getattr(tmdb_match, "media_type", "movie") == "tv" else None
+                rip_root = build_rip_path(
+                    tmdb_match.title, tmdb_match.year or 0,
+                    season_number=season,
+                )
 
                 # Session marker fan-out: when the current rip_root sits
                 # in a multi-work release (e.g. Psych TV series + linked
@@ -193,7 +204,12 @@ class OrchestrateDoneScreen:
                 marker = read_session_marker(rip_root)
                 scanned = []
                 if marker and marker.get("works"):
-                    root = rip_root.parent
+                    # ``w.folder`` in the marker is relative to the
+                    # configured rip output root (may be nested for TV,
+                    # e.g. ``Psych (2006)/Season 01``), so resolve it
+                    # against that root, not ``rip_root.parent``.
+                    from riplex.manifest import _session_root
+                    root = _session_root()
                     for w in marker.get("works", []):
                         work_folder_name = w.get("folder", "")
                         if not work_folder_name:

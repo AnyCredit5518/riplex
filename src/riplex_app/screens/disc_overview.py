@@ -76,7 +76,9 @@ class DiscOverviewScreen:
         # sibling work-folders when a session marker exists so resume of
         # a multi-work release shows every completed disc regardless of
         # which work-folder it's in.
-        rip_root = build_rip_path(canonical, year)
+        season_number = self.app.state.get("season_number")
+        top_season = season_number if tmdb_match and tmdb_match.media_type == "tv" else None
+        rip_root = build_rip_path(canonical, year, season_number=top_season)
         existing = find_existing_session(canonical)
         if existing and existing.all_ripped_discs:
             ripped_discs = set(existing.all_ripped_discs)
@@ -959,8 +961,17 @@ class DiscOverviewScreen:
         a group's own ``tmdb_match`` when set, otherwise the top-level
         match. Groups that resolve to the same folder are merged so we
         don't write two markers with disjoint disc lists.
+
+        TV works are nested one level deeper under ``Season NN`` so that
+        different seasons of the same show don't collide on ``Disc N``
+        folder names. The top-level ``season_number`` in app state
+        supplies the number (there is currently a single season per
+        orchestrate run); movie works stay flat.
         """
+        from riplex.normalize import season_folder_name
+
         top_match = self.app.state.get("tmdb_match")
+        top_season = self.app.state.get("season_number")
         groups = self.app.state.get("disc_groups", []) or []
         seen: dict[str, SessionWork] = {}
         for g in groups:
@@ -970,7 +981,11 @@ class DiscOverviewScreen:
             title = getattr(match, "title", "") or ""
             year = getattr(match, "year", 0) or 0
             media_type = getattr(match, "media_type", "movie") or "movie"
-            folder = sanitize_filename(f"{title} ({year})")
+            base_folder = sanitize_filename(f"{title} ({year})")
+            if media_type == "tv" and top_season is not None:
+                folder = f"{base_folder}/{season_folder_name(top_season)}"
+            else:
+                folder = base_folder
             if folder in seen:
                 seen[folder].disc_numbers.extend(g.disc_numbers)
             else:

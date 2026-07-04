@@ -268,7 +268,10 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         return 1
 
     folder_base = f"{canonical} ({year})"  # noqa: kept for display/logging
-    rip_root = build_rip_path(canonical, year)
+    # Nest TV rips under Season NN so different seasons of the same show don't
+    # collide on Disc N. Movies (and TV without a known season) stay flat.
+    season_number = getattr(args, "season_number", None) if not is_movie else None
+    rip_root = build_rip_path(canonical, year, season_number=season_number)
 
     # Detect which disc is currently inserted
     current_disc_num = detect_disc_number(disc_info, discs)
@@ -286,11 +289,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # once we actually plan to rip (skip in dry-run).
     if not dry_run:
         try:
+            work_folder = sanitize_filename(f"{canonical} ({year or 0})")
+            if season_number is not None:
+                from riplex.normalize import season_folder_name
+                work_folder = f"{work_folder}/{season_folder_name(season_number)}"
             works = [SessionWork(
                 title=canonical,
                 year=year or 0,
                 media_type="movie" if is_movie else "tv",
-                folder=sanitize_filename(f"{canonical} ({year or 0})"),
+                folder=work_folder,
                 disc_numbers=[d.number for d in discs],
             )]
             write_session_marker(works, release_name=release_name or "")
