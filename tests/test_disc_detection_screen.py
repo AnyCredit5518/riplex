@@ -71,12 +71,14 @@ class _FakeSession:
     def __init__(
         self, *, title="Psych", year=2006, media_type="tv",
         release_name="The Complete Series", disc_format="Blu-ray",
+        source_id="tv:1447",
     ):
         self.title = title
         self.year = year
         self.media_type = media_type
         self.release_name = release_name
         self.disc_format = disc_format
+        self.source_id = source_id
 
 
 class TestResumeStashesFilmMetadata:

@@ -644,8 +644,13 @@ class DiscDetectionScreen:
     def _resume_session(self, session):
         from riplex.metadata.provider import MetadataSearchResult
 
+        # source_id comes from the session marker written at
+        # orchestrate start. Legacy sessions (or sessions started before
+        # the marker carried source_id) leave it empty, which will
+        # block organize until the user re-picks metadata — the rip
+        # flow itself doesn't need source_id, only organize does.
         self.app.state["tmdb_match"] = MetadataSearchResult(
-            source_id="",
+            source_id=session.source_id,
             title=session.title,
             year=session.year,
             media_type=session.media_type,
@@ -669,6 +674,39 @@ class DiscDetectionScreen:
             disc_info = self.app.state.get("disc_info")
             if disc_info:
                 disc_format = detect_disc_format(disc_info)
+
+        # Legacy markers written before `source_id` was persisted have
+        # an empty id. Fall back to a TMDb best-guess so organize still
+        # works without forcing the user to re-pick metadata. New
+        # sessions written by this build hit the fast path (marker
+        # already has source_id).
+        if not session.source_id:
+            try:
+                from riplex.config import get_api_key
+                from riplex.metadata.autosearch import best_guess
+                from riplex.metadata.sources.tmdb import TmdbProvider
+
+                async def _rehydrate():
+                    provider = TmdbProvider(get_api_key())
+                    try:
+                        return await best_guess(
+                            provider, session.title,
+                            media_type=session.media_type or "auto",
+                        )
+                    finally:
+                        await provider.close()
+
+                got = asyncio.run(_rehydrate())
+                if got is not None:
+                    match, _score = got
+                    self.app.state["tmdb_match"] = match
+                    log.info(
+                        "Resume: legacy marker had no source_id; TMDb "
+                        "rehydrated %r -> %s",
+                        session.title, match.source_id,
+                    )
+            except Exception as exc:
+                log.warning("Resume: TMDb rehydration failed: %s", exc)
 
         try:
             provider = DiscProvider()

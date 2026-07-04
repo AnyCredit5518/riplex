@@ -97,6 +97,11 @@ class SessionWork:
     disc numbers (from the shared dvdcompare release) it owns. ``folder``
     is the leaf folder name under the rip output root (already
     sanitized); the caller resolves it against the root.
+
+    ``source_id`` is the TMDb id in ``<media_type>:<id>`` form
+    (e.g. ``tv:1447``). Persisted in the session marker so resume can
+    hydrate a real ``MetadataSearchResult`` without re-running a
+    fuzzy title search — organize needs it to fetch show/movie detail.
     """
 
     title: str
@@ -104,6 +109,7 @@ class SessionWork:
     media_type: str  # "movie" or "tv"
     folder: str
     disc_numbers: list[int] = field(default_factory=list)
+    source_id: str = ""
 
 
 SESSION_MARKER_NAME = "_riplex_session.json"
@@ -147,6 +153,7 @@ def write_session_marker(
                 "media_type": w.media_type,
                 "folder": w.folder,
                 "disc_numbers": list(w.disc_numbers),
+                "source_id": w.source_id,
             }
             for w in works
         ],
@@ -189,6 +196,12 @@ class ExistingSession:
     session had a ``_riplex_session.json`` marker naming sibling
     folders. ``works`` is empty and ``all_ripped_discs == ripped_discs``
     for legacy single-work sessions that predate the marker.
+
+    ``source_id`` is the TMDb id for the resolved work in
+    ``<media_type>:<id>`` form, read from the marker so resume can
+    rebuild a real ``MetadataSearchResult`` without a fuzzy title
+    search. Empty for legacy sessions written before the marker
+    carried this field.
     """
 
     title: str
@@ -200,6 +213,7 @@ class ExistingSession:
     ripped_discs: set[int]
     works: list[SessionWork] = field(default_factory=list)
     all_ripped_discs: set[int] = field(default_factory=set)
+    source_id: str = ""
 
 
 _SEASON_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
@@ -279,6 +293,14 @@ def find_existing_session(title: str) -> ExistingSession | None:
         ripped = find_ripped_discs(title_folder)
         works, all_ripped = _fan_out_marker(root, title_folder, ripped)
 
+        # The marker (if present) knows this work's TMDb source_id;
+        # look it up by matching the folder that we resolved from.
+        source_id = ""
+        for w in works:
+            if w.folder and (root / w.folder) == title_folder:
+                source_id = w.source_id
+                break
+
         return ExistingSession(
             title=primary_manifest.get("title", ""),
             year=primary_manifest.get("year", 0),
@@ -289,6 +311,7 @@ def find_existing_session(title: str) -> ExistingSession | None:
             ripped_discs=ripped,
             works=works,
             all_ripped_discs=all_ripped,
+            source_id=source_id,
         )
 
     # --- Pass 2: match on any session marker's works[*].title. --------
@@ -349,6 +372,7 @@ def find_existing_session(title: str) -> ExistingSession | None:
             ripped_discs=ripped,
             works=works,
             all_ripped_discs=all_ripped,
+            source_id=matching_work.get("source_id", ""),
         )
 
     return None
@@ -380,6 +404,7 @@ def _fan_out_marker(
             media_type=entry.get("media_type", "movie"),
             folder=entry.get("folder", ""),
             disc_numbers=list(entry.get("disc_numbers", [])),
+            source_id=entry.get("source_id", ""),
         )
         works.append(w)
         if not w.folder:

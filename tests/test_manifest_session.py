@@ -87,6 +87,22 @@ class TestWriteSessionMarker:
     def test_empty_works_writes_nothing(self, rip_root):
         assert write_session_marker([], release_name="rel") == []
 
+    def test_persists_source_id(self, rip_root):
+        """source_id round-trips through the marker so resume can
+        rebuild a real MetadataSearchResult without a fuzzy title
+        re-search."""
+        works = [SessionWork(
+            title="Psych", year=2006, media_type="tv",
+            folder="Psych (2006)", disc_numbers=[1],
+            source_id="tv:1447",
+        )]
+        write_session_marker(works, release_name="rel")
+        data = json.loads(
+            (rip_root / "Psych (2006)" / SESSION_MARKER_NAME)
+            .read_text(encoding="utf-8"),
+        )
+        assert data["works"][0]["source_id"] == "tv:1447"
+
 
 class TestReadSessionMarker:
     def test_returns_none_when_missing(self, tmp_path):
@@ -211,6 +227,23 @@ class TestFindExistingSessionAggregation:
         session = find_existing_session("Psych")
         assert session is not None
         assert session.title == "Psych"
+
+    def test_resume_populates_source_id_from_marker(self, rip_root):
+        """When the marker carries source_id, ExistingSession surfaces
+        it so _resume_session can build a real MetadataSearchResult
+        (not the empty-source_id placeholder that broke organize)."""
+        tv_folder = rip_root / "Psych (2006)"
+        _write_manifest(tv_folder, 1, "Psych", 2006)
+        works = [SessionWork(
+            title="Psych", year=2006, media_type="tv",
+            folder="Psych (2006)", disc_numbers=[1],
+            source_id="tv:1447",
+        )]
+        write_session_marker(works, release_name="rel")
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.source_id == "tv:1447"
 
 
 class TestBuildRipPathSeasonNesting:

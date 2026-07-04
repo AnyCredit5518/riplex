@@ -1067,6 +1067,7 @@ class DiscOverviewScreen:
                 seen[folder] = SessionWork(
                     title=title, year=year, media_type=media_type,
                     folder=folder, disc_numbers=list(g.disc_numbers),
+                    source_id=getattr(match, "source_id", "") or "",
                 )
         return list(seen.values())
 

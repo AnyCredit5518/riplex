@@ -299,6 +299,9 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 media_type="movie" if is_movie else "tv",
                 folder=work_folder,
                 disc_numbers=[d.number for d in discs],
+                source_id=(
+                    getattr(meta.tmdb_match, "source_id", "") or ""
+                ),
             )]
             write_session_marker(works, release_name=release_name or "")
         except Exception as exc:
