@@ -527,12 +527,18 @@ class FolderPickerScreen:
                     [
                         ft.Text("Season number:", size=14),
                         self.season_field,
-                        ft.Text(
-                            "Leave blank for movies.",
-                            size=12,
-                            color=ft.Colors.GREY_500,
-                        ),
                     ]
+                    + (
+                        [
+                            ft.Text(
+                                "Leave blank for movies.",
+                                size=12,
+                                color=ft.Colors.GREY_500,
+                            )
+                        ]
+                        if manifest_type is None
+                        else []
+                    )
                     if show_season_field
                     else []
                 ),
