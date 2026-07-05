@@ -747,6 +747,17 @@ class DiscDetectionScreen:
                     self.app.state["dvdcompare_film_id"] = film.film_id
                 if getattr(film, "title", None):
                     self.app.state["dvdcompare_film_title"] = film.title
+                # Backfill season_number when only the film title
+                # carries it (e.g. "Psych: Season 1 (TV) (DVD)"),
+                # matching what release.py does on the non-resume
+                # path. Without this a resume from a bare-label
+                # disc (``PSYCH``) still writes rips to the flat
+                # layout even though the film knows the season.
+                from riplex_app.screens.release import (
+                    _backfill_season_number_from_film_title,
+                )
+
+                _backfill_season_number_from_film_title(self.app.state, film)
 
             log.info(
                 "Resume: dvdcompare loaded, %d discs, release=%s, film=%r (fid=%s)",

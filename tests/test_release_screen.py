@@ -120,3 +120,73 @@ class TestReleaseFilmHeading:
         texts = [c.value for c in controls]
         assert "fresh in-memory" in texts
         assert "stale stashed" not in texts
+
+
+class _TmdbMatch:
+    def __init__(self, media_type="tv"):
+        self.media_type = media_type
+
+
+class TestBackfillSeasonNumberFromFilmTitle:
+    """When the physical disc's volume label ("PSYCH") doesn't include
+    a season, the release screen must still populate
+    ``state["season_number"]`` from the dvdcompare film title
+    ("Psych: Season 1 (TV) (DVD)") so the rip layout nests under
+    ``Season NN`` and future seasons of the same show don't collide
+    on ``Disc N``."""
+
+    def test_infers_season_from_film_title(self):
+        from riplex_app.screens.release import (
+            _backfill_season_number_from_film_title,
+        )
+
+        state = {"tmdb_match": _TmdbMatch(media_type="tv")}
+        _backfill_season_number_from_film_title(
+            state, _Film("Psych: Season 1 (TV) (DVD)"),
+        )
+        assert state["season_number"] == 1
+
+    def test_leaves_existing_season_untouched(self):
+        from riplex_app.screens.release import (
+            _backfill_season_number_from_film_title,
+        )
+
+        state = {
+            "tmdb_match": _TmdbMatch(media_type="tv"),
+            "season_number": 3,
+        }
+        _backfill_season_number_from_film_title(
+            state, _Film("Psych: Season 1 (TV) (DVD)"),
+        )
+        assert state["season_number"] == 3
+
+    def test_no_op_for_movie_match(self):
+        from riplex_app.screens.release import (
+            _backfill_season_number_from_film_title,
+        )
+
+        state = {"tmdb_match": _TmdbMatch(media_type="movie")}
+        _backfill_season_number_from_film_title(
+            state, _Film("Blade Runner Season 2 Edition"),
+        )
+        assert "season_number" not in state
+
+    def test_no_op_for_complete_series_title(self):
+        from riplex_app.screens.release import (
+            _backfill_season_number_from_film_title,
+        )
+
+        state = {"tmdb_match": _TmdbMatch(media_type="tv")}
+        _backfill_season_number_from_film_title(
+            state, _Film("Psych: Complete Series (TV) (Blu-ray)"),
+        )
+        assert "season_number" not in state
+
+    def test_no_op_when_film_is_none(self):
+        from riplex_app.screens.release import (
+            _backfill_season_number_from_film_title,
+        )
+
+        state = {"tmdb_match": _TmdbMatch(media_type="tv")}
+        _backfill_season_number_from_film_title(state, None)
+        assert "season_number" not in state

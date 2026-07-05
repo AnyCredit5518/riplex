@@ -14,6 +14,39 @@ from riplex.disc.provider import detect_disc_format, film_url, parse_film_id, sc
 _OVERRIDE_CACHE_NS = "dvdcompare_film_id_override"
 
 
+def _backfill_season_number_from_film_title(state: dict, film) -> None:
+    """Set ``state["season_number"]`` from the dvdcompare film title.
+
+    dvdcompare's per-season TV pages carry the season number in the film
+    title (``"Psych: Season 1 (TV) (Blu-ray)"``). When the app arrives
+    here without a season already resolved — the common case for a rip
+    started via a physical disc whose volume label is just ``PSYCH`` —
+    that title is our only reliable source. Without this, the rip step
+    falls back to the flat ``<title> (<year>)/Disc N/`` layout and
+    ripping a second season of the same show later collides on the
+    disc-folder names.
+
+    No-op when the season is already set (e.g. the disc label already
+    parsed as ``PSYCH_S1_D1``, or the user picked a folder whose name
+    included the season), when the top-level match isn't a TV work, or
+    when the film title doesn't advertise a season (Complete Series
+    boxsets, movies, etc.).
+    """
+    if state.get("season_number") is not None:
+        return
+    tmdb_match = state.get("tmdb_match")
+    if getattr(tmdb_match, "media_type", None) != "tv":
+        return
+    title = getattr(film, "title", "") or ""
+    if not title:
+        return
+    from riplex.title import parse_season_number
+
+    parsed = parse_season_number(title)
+    if parsed is not None:
+        state["season_number"] = parsed
+
+
 class ReleaseScreen:
     def __init__(self, app):
         self.app = app
@@ -498,6 +531,7 @@ class ReleaseScreen:
                 self.app.state["dvdcompare_film_id"] = film.film_id
             if film and getattr(film, "title", None):
                 self.app.state["dvdcompare_film_title"] = film.title
+            _backfill_season_number_from_film_title(self.app.state, film)
         except Exception as exc:
             log.warning("dvdcompare lookup failed: %s", exc)
             self.app.state["_dvdcompare_error"] = str(exc)
