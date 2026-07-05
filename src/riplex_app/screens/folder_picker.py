@@ -17,6 +17,49 @@ from riplex.snapshot import load_organized_marker
 from riplex.title import infer_title_from_scanned, parse_season_number
 
 
+_SEASON_ONLY_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
+
+
+def _read_title_and_season_from_manifests(
+    folder: Path,
+) -> tuple[str | None, int | None]:
+    """Return the title (and season, if TV) recorded in this folder's rip manifests.
+
+    Each disc subfolder's ``_rip_manifest.json`` carries the canonical
+    title and media type set at rip time; the season isn't stored
+    directly, but the enclosing folder's name is (via ``build_rip_path``).
+    Returns ``(None, None)`` for organize sources that weren't produced
+    by riplex.
+    """
+    import json as _json
+
+    for sub in sorted(folder.iterdir() if folder.exists() else []):
+        if not sub.is_dir():
+            continue
+        manifest_path = sub / "_rip_manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            data = _json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        title = (data.get("title") or "").strip() or None
+        season: int | None = None
+        if data.get("type") == "tv":
+            # Nested layout puts rips at ``<title>/Season NN/Disc N``;
+            # legacy flat layout writes to ``<title>/Disc N`` and the
+            # season isn't recoverable from the manifest alone. Try
+            # the source folder's name first, then its parent's, to
+            # cover both cases regardless of which level the user
+            # selected in the picker.
+            season = (
+                parse_season_number(folder.name)
+                or parse_season_number(folder.parent.name if folder.parent else "")
+            )
+        return title, season
+    return None, None
+
+
 class FolderPickerScreen:
     def __init__(self, app):
         self.app = app
@@ -387,20 +430,39 @@ class FolderPickerScreen:
                 ft.Text(f"  {d.folder_name}/  ({len(d.files)} files, {res_label})", size=13)
             )
 
-        # Infer title from folder name or MKV tags
-        inferred = infer_title_from_scanned(scanned)
-        if not inferred:
-            # Try extracting from folder name: "Title (Year)" -> "Title"
-            folder_name = self.app.state["source_folder"].name
-            m = re.match(r"^(.+?)\s*\(\d{4}\)$", folder_name)
-            inferred = m.group(1).strip() if m else folder_name
+        # Infer title from folder name or MKV tags. When the folder
+        # holds riplex-produced rips, the ``_rip_manifest.json`` files
+        # each carry the canonical show/movie title and (for TV) the
+        # season number — trust those over folder-name heuristics
+        # because they're what the rip step actually recorded.
+        source_folder: Path = self.app.state["source_folder"]
+        manifest_title, manifest_season = _read_title_and_season_from_manifests(source_folder)
+        if manifest_title:
+            inferred = manifest_title
+        else:
+            inferred = infer_title_from_scanned(scanned)
+            if not inferred:
+                # Walk up past a leading ``Season NN`` folder — a user
+                # who points at ``Psych (2006)/Season 01/`` should still
+                # get ``Psych`` as the detected title, not ``Season 01``.
+                folder_name = source_folder.name
+                if _SEASON_ONLY_FOLDER_RE.match(folder_name) and source_folder.parent:
+                    folder_name = source_folder.parent.name
+                m = re.match(r"^(.+?)\s*\(\d{4}\)$", folder_name)
+                inferred = m.group(1).strip() if m else folder_name
 
         self.title_field = ft.TextField(
             label="Title",
             value=inferred,
             width=500,
         )
-        inferred_season = parse_season_number(self.app.state["source_folder"].name)
+        if manifest_season is not None:
+            inferred_season = manifest_season
+        else:
+            inferred_season = (
+                parse_season_number(source_folder.name)
+                or parse_season_number(source_folder.parent.name if source_folder.parent else "")
+            )
         self.season_field = ft.TextField(
             label="Season number (TV only, optional)",
             value=str(inferred_season) if inferred_season is not None else "",
