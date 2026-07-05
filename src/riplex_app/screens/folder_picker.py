@@ -22,14 +22,15 @@ _SEASON_ONLY_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
 
 def _read_title_and_season_from_manifests(
     folder: Path,
-) -> tuple[str | None, int | None]:
-    """Return the title (and season, if TV) recorded in this folder's rip manifests.
+) -> tuple[str | None, int | None, str | None]:
+    """Return ``(title, season, media_type)`` from this folder's rip manifests.
 
     Each disc subfolder's ``_rip_manifest.json`` carries the canonical
     title and media type set at rip time; the season isn't stored
     directly, but the enclosing folder's name is (via ``build_rip_path``).
-    Returns ``(None, None)`` for organize sources that weren't produced
-    by riplex.
+    ``media_type`` is ``"tv"``, ``"movie"``, or ``None`` when unknown.
+    Returns ``(None, None, None)`` for organize sources that weren't
+    produced by riplex.
     """
     import json as _json
 
@@ -44,8 +45,9 @@ def _read_title_and_season_from_manifests(
         except (OSError, ValueError):
             continue
         title = (data.get("title") or "").strip() or None
+        media_type = data.get("type") if data.get("type") in ("tv", "movie") else None
         season: int | None = None
-        if data.get("type") == "tv":
+        if media_type == "tv":
             # Nested layout puts rips at ``<title>/Season NN/Disc N``;
             # legacy flat layout writes to ``<title>/Disc N`` and the
             # season isn't recoverable from the manifest alone. Try
@@ -56,8 +58,8 @@ def _read_title_and_season_from_manifests(
                 parse_season_number(folder.name)
                 or parse_season_number(folder.parent.name if folder.parent else "")
             )
-        return title, season
-    return None, None
+        return title, season, media_type
+    return None, None, None
 
 
 class FolderPickerScreen:
@@ -436,7 +438,7 @@ class FolderPickerScreen:
         # season number — trust those over folder-name heuristics
         # because they're what the rip step actually recorded.
         source_folder: Path = self.app.state["source_folder"]
-        manifest_title, manifest_season = _read_title_and_season_from_manifests(source_folder)
+        manifest_title, manifest_season, manifest_type = _read_title_and_season_from_manifests(source_folder)
         if manifest_title:
             inferred = manifest_title
         else:
@@ -464,11 +466,40 @@ class FolderPickerScreen:
                 or parse_season_number(source_folder.parent.name if source_folder.parent else "")
             )
         self.season_field = ft.TextField(
-            label="Season number (TV only, optional)",
+            label="Season number",
             value=str(inferred_season) if inferred_season is not None else "",
             width=240,
             hint_text="e.g. 6",
+            helper_text="Leave blank for movies.",
         )
+
+        # Source-of-truth hint for the title/season block. When the
+        # values came from a rip manifest we're confident; otherwise
+        # they're best-guess from folder/MKV heuristics.
+        if manifest_title:
+            detection_hint = ft.Row([
+                ft.Icon(ft.Icons.VERIFIED_OUTLINED, color=ft.Colors.GREEN_400, size=16),
+                ft.Text("From rip manifest", size=12, color=ft.Colors.GREEN_400),
+            ], spacing=6)
+        else:
+            detection_hint = ft.Row([
+                ft.Icon(ft.Icons.EDIT_NOTE, color=ft.Colors.AMBER_400, size=16),
+                ft.Text(
+                    "Guessed from folder name — please verify",
+                    size=12,
+                    color=ft.Colors.AMBER_400,
+                ),
+            ], spacing=6)
+
+        # Media-type badge for the disc summary. Only shown when we
+        # know it (manifest-backed rips); otherwise TMDb decides later.
+        type_label = {"tv": "TV", "movie": "Movie"}.get(manifest_type or "", "")
+        summary_suffix = f", {type_label}" if type_label else ""
+
+        # Movies never take a season — hide the field entirely when
+        # the manifest says movie. Non-manifest sources keep the field
+        # visible because we don't know the type yet.
+        show_season_field = manifest_type != "movie"
 
         return ft.Column(
             [
@@ -484,16 +515,20 @@ class FolderPickerScreen:
                 *marker_banner,
                 ft.Text(
                     f"Scanned {len(scanned)} disc{'s' if len(scanned) != 1 else ''}, "
-                    f"{total_files} files ({disc_format})",
+                    f"{total_files} files ({disc_format}{summary_suffix})",
                     size=14,
                     weight=ft.FontWeight.BOLD,
                 ),
                 ft.Column(disc_rows, spacing=2),
                 ft.Container(height=10),
+                detection_hint,
                 ft.Text("Detected title:", size=14),
                 self.title_field,
-                ft.Text("Season override:", size=14),
-                self.season_field,
+                *(
+                    [ft.Text("Season number:", size=14), self.season_field]
+                    if show_season_field
+                    else []
+                ),
                 ft.Container(expand=True),
                 ft.Row([
                     ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
