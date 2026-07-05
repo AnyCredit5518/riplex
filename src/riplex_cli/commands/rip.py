@@ -321,6 +321,9 @@ async def run_rip(args: argparse.Namespace) -> int:
             movie_runtime=movie_runtime,
             total_episode_runtime=total_episode_runtime,
             episode_count=episode_count,
+            tmdb_source_id=getattr(meta.tmdb_match, "source_id", None),
+            dvdcompare_film_id=meta.dvdcompare_film_id,
+            dvdcompare_release_name=release_name or None,
         )
         manifest_path = write_manifest(output_dir, manifest)
         log.info("Wrote rip manifest: %s", manifest_path)

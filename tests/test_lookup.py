@@ -35,14 +35,23 @@ async def test_lookup_metadata_qualifies_dvdcompare_title_for_tv_season(monkeypa
 
     recorded = {}
 
-    async def _fake_fetch_and_select_release(title, **kwargs):
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
         recorded["title"] = title
-        recorded["kwargs"] = kwargs
+        recorded["disc_format"] = disc_format
+        recorded["year"] = year
+        return SimpleNamespace(releases=[], film_id=None)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
         return [], ""
 
     monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
     monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
-    monkeypatch.setattr("riplex.lookup.fetch_and_select_release", _fake_fetch_and_select_release)
+    monkeypatch.setattr(
+        "riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film,
+    )
+    monkeypatch.setattr(
+        "riplex.lookup.select_dvdcompare_release", _fake_select_release,
+    )
 
     result = await lookup_metadata(
         SearchRequest(title="Scrubs", year=2001, season_number=6, media_type="tv"),
@@ -52,4 +61,42 @@ async def test_lookup_metadata_qualifies_dvdcompare_title_for_tv_season(monkeypa
 
     assert result.canonical == "Scrubs"
     assert recorded["title"] == "Scrubs: Season 6"
-    assert recorded["kwargs"]["disc_format"] == "Blu-ray"
+    assert recorded["disc_format"] == "Blu-ray"
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_captures_dvdcompare_film_id(monkeypatch):
+    """The film_id of the resolved dvdcompare film propagates onto the
+    ``LookupResult`` so downstream ``build_rip_manifest`` calls can
+    record it. Persisted so organize can skip the release picker."""
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Psych", year=2006, media_type="tv", source_id="tv:1447",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        return PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[PlannedSeason(season_number=1, episodes=[])],
+        )
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        return SimpleNamespace(releases=[SimpleNamespace(name="R1", discs=[])], film_id=12345)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [], "Psych: Season 1 (TV) (DVD)"
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+
+    result = await lookup_metadata(
+        SearchRequest(title="Psych", year=2006, season_number=1, media_type="tv"),
+        _StubProvider(),
+    )
+
+    assert result.dvdcompare_film_id == 12345
+    assert result.release_name == "Psych: Season 1 (TV) (DVD)"
+    assert result.tmdb_match.source_id == "tv:1447"

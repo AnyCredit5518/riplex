@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass, field
 
 from riplex.disc.analysis import group_release_discs
-from riplex.disc.provider import fetch_and_select_release
+from riplex.disc.provider import DiscProvider, select_dvdcompare_release
 from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
 from riplex.metadata.planner import _plan_movie, _plan_show, pick_match
 from riplex.metadata.provider import MetadataProvider, MetadataSearchResult
@@ -42,6 +42,10 @@ class LookupResult:
     # downstream group routing can re-plan each work in a multi-work
     # release without re-doing the top-level TMDb search.
     tmdb_match: MetadataSearchResult | None = None
+    # dvdcompare film id (``fid``) of the selected release's film.
+    # Persisted into ``_rip_manifest.json`` so the organize screen can
+    # skip the release picker on a re-visit.
+    dvdcompare_film_id: int | None = None
 
 
 async def lookup_metadata(
@@ -78,19 +82,25 @@ async def lookup_metadata(
     discs: list[PlannedDisc] = []
     release_name = ""
     dvdcompare_error: Exception | None = None
+    dvdcompare_film_id: int | None = None
 
     if not skip_dvdcompare:
         try:
             dvdcompare_title = canonical
             if not is_movie and request.season_number is not None:
                 dvdcompare_title = f"{canonical}: Season {request.season_number}"
-            discs, release_name = await fetch_and_select_release(
-                dvdcompare_title,
-                disc_format=disc_format,
-                disc_info=disc_info,
-                preferred=preferred_release,
-                year=year,
+            # Split fetch + select so we can capture film.film_id
+            # alongside the release. Kept as one code path (was one
+            # call to ``fetch_and_select_release``) but broken out to
+            # expose the film identity for downstream manifest writes.
+            provider_dc = DiscProvider()
+            film = await provider_dc.fetch_film(
+                dvdcompare_title, disc_format, year=year,
             )
+            discs, release_name = select_dvdcompare_release(
+                film, disc_info=disc_info, preferred=preferred_release,
+            )
+            dvdcompare_film_id = getattr(film, "film_id", None)
         except SystemExit:
             raise
         except Exception as exc:
@@ -106,6 +116,7 @@ async def lookup_metadata(
         release_name=release_name,
         dvdcompare_error=dvdcompare_error,
         tmdb_match=match,
+        dvdcompare_film_id=dvdcompare_film_id,
     )
 
 
