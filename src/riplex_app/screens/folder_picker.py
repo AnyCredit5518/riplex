@@ -426,8 +426,22 @@ class FolderPickerScreen:
         # Build disc summary rows
         disc_rows = []
         for d in scanned:
-            has_4k = any(f.max_width >= 3840 for f in d.files)
-            res_label = "4K" if has_4k else "1080p"
+            max_h = max((f.max_height for f in d.files), default=0)
+            max_w = max((f.max_width for f in d.files), default=0)
+            if max_h >= 2160 or max_w >= 3840:
+                res_label = "4K"
+            elif max_h >= 1080 or max_w >= 1920:
+                res_label = "1080p"
+            elif max_h >= 720 or max_w >= 1280:
+                res_label = "720p"
+            elif max_h >= 576:
+                res_label = "576p"
+            elif max_h >= 480:
+                res_label = "480p"
+            elif max_h > 0:
+                res_label = "SD"
+            else:
+                res_label = "unknown"
             disc_rows.append(
                 ft.Text(f"  {d.folder_name}/  ({len(d.files)} files, {res_label})", size=13)
             )
