@@ -175,12 +175,34 @@ def _infer_extras_folder(title: str) -> str:
 def _find_episode_by_title(
     plan: PlannedShow, title: str,
 ) -> PlannedEpisode | None:
-    """Find an episode in a PlannedShow by case-insensitive title match."""
+    """Find an episode in a PlannedShow by title.
+
+    Tries case-insensitive exact match first. If that misses, falls
+    back to fuzzy matching via :func:`_episode_name_similarity`
+    (normalized-substring at 0.95, else difflib) so dvdcompare titles
+    like ``Domestic Pilot`` still route to TMDb's ``Pilot``,
+    ``Spellingg Bee`` to ``Spelling Bee``, and punctuation-only diffs
+    (``Game, Set... Muuurder?`` vs ``Game, Set, ... Muuurder?``) don't
+    end up "unmatched" at the organize step.
+    """
+    from riplex.disc.analysis import _episode_name_similarity
+
     title_lower = title.lower().strip()
     for season in plan.seasons:
         for ep in season.episodes:
             if ep.title.lower().strip() == title_lower:
                 return ep
+
+    best_ep: PlannedEpisode | None = None
+    best_score = 0.0
+    for season in plan.seasons:
+        for ep in season.episodes:
+            score = _episode_name_similarity(title, ep.title)
+            if score > best_score:
+                best_score = score
+                best_ep = ep
+    if best_score >= 0.75:
+        return best_ep
     return None
 
 

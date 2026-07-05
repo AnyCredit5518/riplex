@@ -528,6 +528,60 @@ class TestBuildOrganizePlanShow:
         assert len(op.unmatched) == 1
         assert op.unmatched[0].name == "d1_t00.mkv"
 
+    def test_tv_episode_fuzzy_title_match(self):
+        """dvdcompare titles diverging from TMDb still route correctly.
+
+        Real-world cases from Psych S1: dvdcompare uses ``Domestic
+        Pilot`` where TMDb has ``Pilot``, and ``Spellingg Bee`` where
+        TMDb has ``Spelling Bee``. Exact match fails; fuzzy fallback
+        must pick the right episode.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="d1_t00.mkv",
+                    file_duration_seconds=3964,
+                    matched_label="Disc 1: Domestic Pilot",
+                    matched_runtime_seconds=3964,
+                    delta_seconds=0,
+                    confidence="high",
+                ),
+                MatchCandidate(
+                    file_name="d2_t00.mkv",
+                    file_duration_seconds=2588,
+                    matched_label="Disc 2: Spellingg Bee",
+                    matched_runtime_seconds=2588,
+                    delta_seconds=0,
+                    confidence="high",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[
+                PlannedSeason(
+                    season_number=1,
+                    episodes=[
+                        PlannedEpisode(
+                            season_number=1, episode_number=1,
+                            title="Pilot", runtime="66m",
+                        ),
+                        PlannedEpisode(
+                            season_number=1, episode_number=2,
+                            title="Spelling Bee", runtime="43m",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 2
+        destinations = [m.destination for m in op.moves]
+        assert any("s01e01 - Pilot" in d for d in destinations)
+        assert any("s01e02 - Spelling Bee" in d for d in destinations)
+
     def test_tv_extra_matching_season0_routes_to_season00(self):
         """A TV extra whose title matches a Season 00 episode goes to Season 00."""
         result = OrganizeResult(
