@@ -484,17 +484,21 @@ def _classify_and_strip(
     total_episode_runtime: int,
     episode_count: int,
 ) -> str:
-    """Classify a disc title and strip the action suffix."""
+    """Return :func:`classify_title`'s recommendation verbatim.
+
+    Previously stripped the trailing action suffix at the last `" - "`
+    but no code path in ``classify_title`` appends one, and doing so
+    corrupts TMDb-enriched labels like ``"S01E03 - Spellingg Bee (1080p)"``
+    down to just ``"S01E03"`` — losing the title and breaking the
+    organizer's downstream SE-first destination resolution.
+    """
     from riplex.disc.analysis import classify_title
 
-    classification = classify_title(
+    return classify_title(
         title, all_titles, dvd_entries,
         is_movie, movie_runtime,
         total_episode_runtime, episode_count,
     )
-    if " - " in classification:
-        classification = classification[:classification.rindex(" - ")]
-    return classification
 
 
 def build_rip_manifest(

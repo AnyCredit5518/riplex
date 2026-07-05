@@ -846,6 +846,64 @@ class TestClassificationFirstMatching:
         assert "Real Episode" in result.matched[0].matched_label
 
 
+class TestEnrichedClassificationTitleKey:
+    """Pass 0 must still match when classifications carry a TMDb-enriched
+    ``SxxEyy - `` prefix. The dvdcompare-side target label has no such
+    prefix, so ``_classification_title_key`` must strip it before the
+    key comparison."""
+
+    def test_enriched_classification_matches_unenriched_target(self):
+        from riplex.matcher import (
+            _classification_title_key, _target_title_key,
+        )
+        assert (
+            _classification_title_key("S01E03 - Spellingg Bee (1080p)")
+            == _target_title_key("Disc 2: Spellingg Bee")
+        )
+
+    def test_enriched_classification_end_to_end(self):
+        """Full match_discs run with enriched classifications lands on
+        the right target — the regression this fix targets."""
+        discs = [
+            PlannedDisc(
+                number=1, disc_format="DVD",
+                episodes=[
+                    PlannedEpisode(
+                        season_number=1, episode_number=2,
+                        title="Spellingg Bee",
+                        runtime="", runtime_seconds=2588,
+                    ),
+                    PlannedEpisode(
+                        season_number=1, episode_number=3,
+                        title="Speak Now or Forever Hold Your Piece",
+                        runtime="", runtime_seconds=2566,
+                    ),
+                ],
+            ),
+        ]
+        scanned = [
+            ScannedDisc(
+                folder_name="Disc 1",
+                files=[
+                    ScannedFile(
+                        name="a.mkv", path="/rip/Disc 1/a.mkv",
+                        duration_seconds=2588,
+                        classification="S01E02 - Spellingg Bee (1080p)",
+                    ),
+                    ScannedFile(
+                        name="b.mkv", path="/rip/Disc 1/b.mkv",
+                        duration_seconds=2566,
+                        classification="S01E03 - Speak Now or Forever Hold Your Piece (1080p)",
+                    ),
+                ],
+            ),
+        ]
+        result = match_discs(scanned, discs)
+        by_name = {c.file_name: c.matched_label for c in result.matched}
+        assert "Spellingg Bee" in by_name["a.mkv"]
+        assert "Speak Now" in by_name["b.mkv"]
+
+
 class TestMissingFilteredToPresent:
     """Missing targets only include discs the user has folders for."""
 

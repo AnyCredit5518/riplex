@@ -39,6 +39,45 @@ _FORMAT_EDITION_RE = re.compile(r"\b(3D|IMAX|Open Matte)\b", re.IGNORECASE)
 _VERSION_4K_RE = re.compile(r"\b(?:4K|2160p)\b", re.IGNORECASE)
 _VERSION_1080P_RE = re.compile(r"\b1080p\b", re.IGNORECASE)
 
+# Leading "S01E03 - " on a rip-time classification, produced by the
+# analysis step's TMDb enrichment. When present, the season and
+# episode were resolved at rip time and can flow straight through to
+# the destination path without a second title lookup.
+_CLASSIFICATION_SE_PREFIX_RE = re.compile(
+    r"^S(\d{2,3})E(\d{2,4})\s*-\s*", re.IGNORECASE,
+)
+
+
+def _find_episode_by_se(
+    plan: PlannedShow, season_number: int, episode_number: int,
+) -> PlannedEpisode | None:
+    """Find an episode in a PlannedShow by (season, episode) number."""
+    for season in plan.seasons:
+        if season.season_number != season_number:
+            continue
+        for ep in season.episodes:
+            if ep.episode_number == episode_number:
+                return ep
+    return None
+
+
+def _episode_from_classification_se(
+    plan: PlannedShow, classification: str,
+) -> PlannedEpisode | None:
+    """Resolve an episode from a classification's leading ``SxxEyy -`` tag.
+
+    Returns ``None`` when no tag is present, when the season/episode
+    numbers don't exist in the plan, or when the input is empty. Legacy
+    manifests (rips from before TMDb enrichment landed) hit the first
+    branch and fall through to the fuzzy title-based lookup.
+    """
+    if not classification:
+        return None
+    m = _CLASSIFICATION_SE_PREFIX_RE.match(classification)
+    if not m:
+        return None
+    return _find_episode_by_se(plan, int(m.group(1)), int(m.group(2)))
+
 
 def _extract_movie_edition(text: str) -> str:
     """Extract a Plex movie edition label from classifier/match text."""
@@ -601,6 +640,23 @@ def _compute_destination(
         else:
             # This is an episode/content item without type annotation
             if isinstance(plan, PlannedShow):
+                # SE-first: when the rip-time classification carries a
+                # TMDb-enriched "S01E03 - Title" prefix, route directly
+                # by (season, episode) — deterministic and immune to
+                # later TMDb title drift or dvdcompare↔TMDb spelling
+                # fuzziness.
+                se_ep = _episode_from_classification_se(plan, candidate.classification)
+                if se_ep is not None:
+                    fname = episode_file_name(
+                        plan.canonical_title, plan.year,
+                        se_ep.season_number, se_ep.episode_number, se_ep.title,
+                    )
+                    dest = base / season_folder_name(se_ep.season_number) / fname
+                    log.debug(
+                        "  -> episode by SE-in-classification '%s': %s",
+                        candidate.classification, dest,
+                    )
+                    return dest
                 ep = _find_episode_by_title(plan, title_part)
                 if ep:
                     fname = episode_file_name(

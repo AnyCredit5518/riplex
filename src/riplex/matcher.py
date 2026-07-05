@@ -202,6 +202,10 @@ _CLASSIFICATION_RES_SUFFIX_RE = re.compile(r"\s+\([^)]*\)\s*$")
 # Leading "[featurette] ", "[documentary] " — the classifier prefixes
 # extras with their feature type in brackets.
 _CLASSIFICATION_TYPE_PREFIX_RE = re.compile(r"^\[[^\]]+\]\s*")
+# Leading "S01E03 - " — the TMDb enrichment step prepends an SxxEyy tag
+# to episode classifications. Stripped before title comparison so the
+# key matches the un-enriched dvdcompare target label.
+_CLASSIFICATION_SE_PREFIX_RE = re.compile(r"^S\d{2,3}E\d{2,4}\s*-\s*", re.IGNORECASE)
 
 # Classifications that don't identify a specific dvdcompare-listed
 # title. Runtime-based matching handles these downstream, so the
@@ -234,6 +238,7 @@ def _classification_title_key(text: str) -> str | None:
         return None
     stripped = _CLASSIFICATION_RES_SUFFIX_RE.sub("", text)
     stripped = _CLASSIFICATION_TYPE_PREFIX_RE.sub("", stripped).strip()
+    stripped = _CLASSIFICATION_SE_PREFIX_RE.sub("", stripped).strip()
     if not stripped:
         return None
     return re.sub(r"\s+", " ", stripped).casefold()

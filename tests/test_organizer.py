@@ -582,6 +582,101 @@ class TestBuildOrganizePlanShow:
         assert any("s01e01 - Pilot" in d for d in destinations)
         assert any("s01e02 - Spelling Bee" in d for d in destinations)
 
+    def test_tv_episode_se_prefix_in_classification_routes_directly(self):
+        """Rip-time SE tag on the classification bypasses fuzzy title lookup.
+
+        The analysis step's TMDb enrichment stamps the classification
+        with the resolved ``SxxEyy`` (e.g. ``"S01E03 - Spellingg Bee
+        (1080p)"``). The organizer must trust that tag over any fuzzy
+        re-derivation from the matched_label, keeping SE-known-at-rip-time
+        routing fully deterministic even if the disc label's title
+        differs from TMDb's canonical episode title.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="d1_t03.mkv",
+                    file_duration_seconds=2588,
+                    matched_label="Disc 1: Spellingg Bee",
+                    matched_runtime_seconds=2588,
+                    delta_seconds=0,
+                    confidence="high",
+                    classification="S01E03 - Spellingg Bee (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[
+                PlannedSeason(
+                    season_number=1,
+                    episodes=[
+                        PlannedEpisode(
+                            season_number=1, episode_number=1,
+                            title="Pilot", runtime="66m",
+                        ),
+                        PlannedEpisode(
+                            season_number=1, episode_number=2,
+                            title="Spelling Bee", runtime="43m",
+                        ),
+                        PlannedEpisode(
+                            season_number=1, episode_number=3,
+                            title="Speak Now or Forever Hold Your Piece",
+                            runtime="43m",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 1
+        dest = op.moves[0].destination
+        assert "Season 01" in dest
+        # SE from classification (E03) — canonical TMDb title used for
+        # the filename, not the matched_label's dvdcompare title.
+        assert "s01e03 - Speak Now or Forever Hold Your Piece" in dest
+
+    def test_tv_episode_se_prefix_missing_season_falls_back_to_title(self):
+        """Nonexistent SE in classification falls through to fuzzy lookup.
+
+        Guards against silently misrouting when a manifest has a stale
+        SE tag that no longer matches the current TMDb plan.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="d1_t00.mkv",
+                    file_duration_seconds=2588,
+                    matched_label="Disc 1: Spellingg Bee",
+                    matched_runtime_seconds=2588,
+                    delta_seconds=0,
+                    confidence="high",
+                    classification="S09E99 - Spellingg Bee (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[
+                PlannedSeason(
+                    season_number=1,
+                    episodes=[
+                        PlannedEpisode(
+                            season_number=1, episode_number=2,
+                            title="Spelling Bee", runtime="43m",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 1
+        assert "s01e02 - Spelling Bee" in op.moves[0].destination
+
     def test_tv_extra_matching_season0_routes_to_season00(self):
         """A TV extra whose title matches a Season 00 episode goes to Season 00."""
         result = OrganizeResult(
