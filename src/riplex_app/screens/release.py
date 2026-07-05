@@ -325,6 +325,42 @@ class ReleaseScreen:
     def build(self) -> ft.Control:
         title = self._current_search_title()
 
+        # Fast path: manifest recorded the dvdcompare film_id + release
+        # name at rip time. Fetch the film directly, match the release by
+        # name, and skip the picker. One-shot flag falls back to the
+        # normal lookup on failure.
+        prefill_fid = self.app.state.get("_prefill_dvdcompare_film_id")
+        prefill_release_name = self.app.state.get("_prefill_dvdcompare_release_name")
+        prefill_failed = self.app.state.pop("_prefill_dvdcompare_failed", False)
+        if prefill_fid and prefill_release_name and not prefill_failed:
+            threading.Thread(
+                target=self._resolve_prefill_dvdcompare,
+                args=(prefill_fid, prefill_release_name),
+                daemon=True,
+            ).start()
+            return ft.Column(
+                [
+                    *self._build_film_heading(),
+                    ft.Text(
+                        "Restoring the dvdcompare release saved when this folder was ripped.",
+                        size=13,
+                        color=ft.Colors.GREY_500,
+                    ),
+                    ft.Divider(height=20),
+                    ft.Row([
+                        ft.ProgressRing(width=30, height=30),
+                        ft.Text(
+                            f"Fetching dvdcompare release for \"{prefill_release_name}\"...",
+                            size=14,
+                        ),
+                    ], spacing=10),
+                    ft.Container(expand=True),
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                ],
+                spacing=10,
+                expand=True,
+            )
+
         # Check if dvdcompare data already fetched (re-render after background lookup)
         cached_film = self.app.state.pop("_dvdcompare_film", None)
         if cached_film is not None:
@@ -427,6 +463,28 @@ class ReleaseScreen:
         ]
         if film_link is not None:
             header_children.append(film_link)
+
+        # Amber banner when the fast-path (fetch-by-saved-fid) failed
+        # and we fell back to the manual picker.
+        prefill_error = self.app.state.pop("_prefill_dvdcompare_error", None)
+        if prefill_error:
+            header_children.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.WARNING_AMBER, color=ft.Colors.AMBER_400, size=18),
+                        ft.Text(
+                            "The dvdcompare release saved when this folder was "
+                            f"ripped no longer resolves ({prefill_error}). Please pick again.",
+                            size=13,
+                            color=ft.Colors.AMBER_400,
+                            expand=True,
+                        ),
+                    ], spacing=8),
+                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.AMBER),
+                    padding=12,
+                    border_radius=8,
+                )
+            )
         header_children.append(ft.Divider(height=20))
 
         return ft.Column(
@@ -486,6 +544,59 @@ class ReleaseScreen:
             spacing=10,
             expand=True,
         )
+
+    def _resolve_prefill_dvdcompare(self, film_id: int, release_name: str):
+        """Resolve a prefilled dvdcompare film_id + release name straight
+        to the ``PlannedDisc`` list.
+
+        On success, populates ``release``/``dvdcompare_discs`` and
+        navigates to the next screen. On failure (network, film gone,
+        release name no longer matches), sets ``_prefill_dvdcompare_failed``
+        and re-navigates to the release screen, which falls back to the
+        normal title-based lookup and picker.
+        """
+        import logging
+        log = logging.getLogger(__name__)
+
+        try:
+            provider = DiscProvider()
+            film = asyncio.run(provider.fetch_film_by_id(film_id))
+            if film and getattr(film, "film_id", None):
+                self.app.state["dvdcompare_film_id"] = film.film_id
+            if film and getattr(film, "title", None):
+                self.app.state["dvdcompare_film_title"] = film.title
+            _backfill_season_number_from_film_title(self.app.state, film)
+
+            match = next(
+                (r for r in film.releases if r.name == release_name),
+                None,
+            )
+            if match is None:
+                raise LookupError(
+                    f"saved release {release_name!r} is no longer listed under "
+                    f"dvdcompare film {film_id}"
+                )
+            discs = _convert_release(match)
+            if not discs:
+                raise LookupError(
+                    f"saved release {release_name!r} contained no usable disc data"
+                )
+
+            self.app.state["release"] = match
+            self.app.state["dvdcompare_discs"] = discs
+            self.app.state.pop("_prefill_dvdcompare_film_id", None)
+            self.app.state.pop("_prefill_dvdcompare_release_name", None)
+            next_screen = self._next_screen
+        except Exception as exc:
+            log.warning("dvdcompare prefill fetch failed: %s", exc)
+            self.app.state["_prefill_dvdcompare_failed"] = True
+            self.app.state["_prefill_dvdcompare_error"] = str(exc)
+            next_screen = "release"
+
+        async def _nav():
+            self.app.navigate(next_screen)
+
+        self.app.page.run_task(_nav)
 
     def _lookup_dvdcompare(self):
         """Fetch dvdcompare releases in background."""

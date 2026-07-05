@@ -416,6 +416,37 @@ def _fan_out_marker(
     return works, all_ripped
 
 
+def read_prefill_ids_from_manifests(
+    folder: Path,
+) -> tuple[str | None, int | None, str | None]:
+    """Return ``(tmdb_source_id, dvdcompare_film_id, dvdcompare_release_name)``
+    from the first disc manifest found under ``folder``.
+
+    Any field missing from the manifest is returned as ``None``.
+    Returns ``(None, None, None)`` when no manifest is present.
+    """
+    if not folder.exists():
+        return None, None, None
+    for sub in sorted(folder.iterdir()):
+        if not sub.is_dir():
+            continue
+        manifest_path = sub / "_rip_manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        tmdb_source_id = data.get("tmdb_source_id") or None
+        raw_fid = data.get("dvdcompare_film_id")
+        try:
+            dvdcompare_film_id = int(raw_fid) if raw_fid is not None else None
+        except (TypeError, ValueError):
+            dvdcompare_film_id = None
+        dvdcompare_release_name = data.get("dvdcompare_release_name") or None
+        return tmdb_source_id, dvdcompare_film_id, dvdcompare_release_name
+    return None, None, None
+
 
 def build_scanned_from_manifests(rip_root: Path) -> list[ScannedDisc]:
     """Build ScannedDisc objects from rip manifest files (skip ffprobe).
@@ -516,11 +547,19 @@ def build_rip_manifest(
     movie_runtime: int | None,
     total_episode_runtime: int,
     episode_count: int,
+    tmdb_source_id: str | None = None,
+    dvdcompare_film_id: int | None = None,
+    dvdcompare_release_name: str | None = None,
 ) -> dict:
     """Build the rip manifest dict from rip results.
 
     This is the canonical manifest builder used after ripping a disc.
     It probes chapter durations from the ripped files.
+
+    ``tmdb_source_id``, ``dvdcompare_film_id`` and
+    ``dvdcompare_release_name`` are optional identity fields recorded at
+    rip time so a later organize run can skip the TMDb picker and the
+    dvdcompare release picker.
     """
     from riplex.disc.makemkv import build_stream_fingerprint, probe_chapter_durations
 
@@ -534,6 +573,12 @@ def build_rip_manifest(
         "release": release_name,
         "files": [],
     }
+    if tmdb_source_id:
+        manifest["tmdb_source_id"] = tmdb_source_id
+    if dvdcompare_film_id:
+        manifest["dvdcompare_film_id"] = dvdcompare_film_id
+    if dvdcompare_release_name:
+        manifest["dvdcompare_release_name"] = dvdcompare_release_name
     for r in rip_results:
         if not r.success:
             continue
@@ -578,10 +623,14 @@ def build_snapshot_manifest(
     movie_runtime: int | None,
     total_episode_runtime: int,
     episode_count: int,
+    tmdb_source_id: str | None = None,
+    dvdcompare_film_id: int | None = None,
+    dvdcompare_release_name: str | None = None,
 ) -> dict:
     """Build a manifest dict from disc info without ripping.
 
     Used in snapshot mode to capture disc metadata for later replay.
+    See :func:`build_rip_manifest` for the identity-field kwargs.
     """
     from riplex.disc.makemkv import build_stream_fingerprint
 
@@ -595,6 +644,12 @@ def build_snapshot_manifest(
         "release": release_name,
         "files": [],
     }
+    if tmdb_source_id:
+        manifest["tmdb_source_id"] = tmdb_source_id
+    if dvdcompare_film_id:
+        manifest["dvdcompare_film_id"] = dvdcompare_film_id
+    if dvdcompare_release_name:
+        manifest["dvdcompare_release_name"] = dvdcompare_release_name
     for t in titles:
         classification = _classify_and_strip(
             t, disc_info.titles, dvd_entries,

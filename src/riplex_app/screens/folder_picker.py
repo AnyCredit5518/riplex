@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 from riplex.config import get_rip_output
 from riplex.detect import TitleGroup, detect_format, detect_organize_layout
-from riplex.manifest import build_scanned_from_manifests
+from riplex.manifest import build_scanned_from_manifests, read_prefill_ids_from_manifests
 from riplex.scanner import scan_folder
 from riplex.snapshot import load_organized_marker
 from riplex.title import infer_title_from_scanned, parse_season_number
@@ -604,4 +604,24 @@ class FolderPickerScreen:
         else:
             self.app.state.pop("season_number", None)
         self.app.state["title"] = title
+
+        # If the source folder holds riplex-produced rip manifests that
+        # recorded the TMDb match and dvdcompare release at rip time,
+        # stash those identifiers so the metadata + release screens can
+        # skip their pickers entirely (fast-path).
+        source_folder: Path = self.app.state["source_folder"]
+        prefill_tmdb, prefill_fid, prefill_release = read_prefill_ids_from_manifests(source_folder)
+        if prefill_tmdb:
+            self.app.state["_prefill_tmdb_source_id"] = prefill_tmdb
+        else:
+            self.app.state.pop("_prefill_tmdb_source_id", None)
+        if prefill_fid:
+            self.app.state["_prefill_dvdcompare_film_id"] = prefill_fid
+        else:
+            self.app.state.pop("_prefill_dvdcompare_film_id", None)
+        if prefill_release:
+            self.app.state["_prefill_dvdcompare_release_name"] = prefill_release
+        else:
+            self.app.state.pop("_prefill_dvdcompare_release_name", None)
+
         self.app.navigate("metadata")

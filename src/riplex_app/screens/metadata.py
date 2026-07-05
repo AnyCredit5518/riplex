@@ -72,6 +72,39 @@ class MetadataScreen:
     def build(self) -> ft.Control:
         title = self.app.state["title"]
 
+        # Fast path: manifest recorded a stable TMDb id at rip time.
+        # Skip the picker: fetch details by id, synthesise a
+        # ``MetadataSearchResult`` from them, then navigate to release.
+        # A single-shot flag prevents re-entering the fast path if it
+        # already failed on this visit.
+        prefill_source_id = self.app.state.get("_prefill_tmdb_source_id")
+        prefill_failed = self.app.state.pop("_prefill_tmdb_failed", False)
+        if prefill_source_id and not prefill_failed:
+            threading.Thread(
+                target=self._resolve_prefill_tmdb,
+                args=(prefill_source_id,),
+                daemon=True,
+            ).start()
+            return ft.Column(
+                [
+                    ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Text(
+                        "Restoring the TMDb match saved when this folder was ripped.",
+                        size=13,
+                        color=ft.Colors.GREY_500,
+                    ),
+                    ft.Divider(height=20),
+                    ft.Row([
+                        ft.ProgressRing(width=30, height=30),
+                        ft.Text(f"Fetching TMDb details for \"{title}\"...", size=14),
+                    ], spacing=10),
+                    ft.Container(expand=True),
+                    ft.TextButton("Back", on_click=self._on_back),
+                ],
+                spacing=10,
+                expand=True,
+            )
+
         # Check if results already fetched (re-render after background search)
         cached_results = self.app.state.pop("_tmdb_results", None)
         if cached_results is not None:
@@ -126,6 +159,30 @@ class MetadataScreen:
             value="0",
         )
 
+        # Amber banner shown when the fast-path (fetch-by-saved-id) failed
+        # and we fell back to the manual picker. Explains why the picker
+        # appeared even though this folder had a rip manifest.
+        prefill_error = self.app.state.pop("_prefill_tmdb_error", None)
+        prefill_banner = []
+        if prefill_error:
+            prefill_banner = [
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.WARNING_AMBER, color=ft.Colors.AMBER_400, size=18),
+                        ft.Text(
+                            "The TMDb match saved when this folder was ripped "
+                            f"no longer resolves ({prefill_error}). Please pick again.",
+                            size=13,
+                            color=ft.Colors.AMBER_400,
+                            expand=True,
+                        ),
+                    ], spacing=8),
+                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.AMBER),
+                    padding=12,
+                    border_radius=8,
+                ),
+            ]
+
         return ft.Column(
             [
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
@@ -137,6 +194,7 @@ class MetadataScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
+                *prefill_banner,
                 self._build_search_bar(title, searching=False),
                 ft.Text("Select a match:", size=14),
                 self.radio_group,
@@ -323,6 +381,69 @@ class MetadataScreen:
 
         async def _nav():
             self.app.navigate("release")
+
+        self.app.page.run_task(_nav)
+
+    def _resolve_prefill_tmdb(self, source_id: str):
+        """Resolve a prefilled TMDb source_id straight to details.
+
+        Populates ``tmdb_match`` (as a synthesised ``MetadataSearchResult``),
+        the movie runtime or show detail, and navigates to the release
+        screen. On failure, sets ``_prefill_tmdb_failed`` so the next
+        ``build()`` falls back to the normal search picker.
+        """
+        try:
+            api_key = get_api_key()
+            media_type, _, tmdb_id = source_id.partition(":")
+            if media_type not in ("movie", "tv") or not tmdb_id:
+                raise ValueError(f"invalid source_id: {source_id!r}")
+
+            async def _do_fetch():
+                provider = TmdbProvider(api_key)
+                try:
+                    if media_type == "movie":
+                        return await provider.get_movie_detail(source_id)
+                    return await provider.get_show_detail(source_id, include_specials=True)
+                finally:
+                    await provider.close()
+
+            detail = asyncio.run(_do_fetch())
+            title = detail.title
+            year = getattr(detail, "year", None)
+            self.app.state["tmdb_match"] = MetadataSearchResult(
+                source_id=source_id,
+                title=title,
+                year=year,
+                media_type=media_type,  # type: ignore[arg-type]
+                overview=getattr(detail, "overview", ""),
+            )
+            self.app.state.pop("_prefill_tmdb_source_id", None)
+            self.app.state.pop("dvdcompare_title_override", None)
+            self.app.state["release"] = None
+            self.app.state["dvdcompare_discs"] = []
+            self.app.state.pop("_dvdcompare_film", None)
+            self.app.state.pop("_dvdcompare_error", None)
+            if media_type == "movie":
+                self.app.state["movie_runtime"] = getattr(detail, "runtime_seconds", None)
+                self.app.state["show_detail"] = None
+            else:
+                self.app.state["movie_runtime"] = None
+                self.app.state["show_detail"] = detail
+        except Exception as exc:
+            import logging as _log
+            _log.getLogger(__name__).warning(
+                "TMDb prefill fetch failed for %s: %s", source_id, exc
+            )
+            self.app.state["_prefill_tmdb_failed"] = True
+            self.app.state["_prefill_tmdb_error"] = str(exc)
+            # Also drop the film prefill: if TMDb id doesn't resolve the
+            # user needs to pick a new match, which may not correspond to
+            # the saved dvdcompare film anyway.
+            self.app.state.pop("_prefill_dvdcompare_film_id", None)
+            self.app.state.pop("_prefill_dvdcompare_release_name", None)
+
+        async def _nav():
+            self.app.navigate("metadata" if self.app.state.get("_prefill_tmdb_failed") else "release")
 
         self.app.page.run_task(_nav)
 
