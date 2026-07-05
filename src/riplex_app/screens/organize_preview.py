@@ -253,7 +253,12 @@ class OrganizePreviewScreen:
         # Move rows
         move_rows = []
         for move in plan.moves:
-            src_name = Path(move.source).name
+            src_path = Path(move.source)
+            # Prefix the basename with the disc folder so identical
+            # makemkv output names across sibling discs (e.g. every
+            # Psych disc yields a C2_t01.mkv) are visually distinct.
+            src_parent = src_path.parent.name
+            src_name = f"{src_parent}/{src_path.name}" if src_parent else src_path.name
             dest_name = Path(move.destination).name
             dest_folder = Path(move.destination).parent.name
             conf_color = {
@@ -287,7 +292,9 @@ class OrganizePreviewScreen:
 
         # Split rows
         for split in plan.splits:
-            src_name = Path(split.source).name
+            split_path = Path(split.source)
+            split_parent = split_path.parent.name
+            src_name = f"{split_parent}/{split_path.name}" if split_parent else split_path.name
             dest_count = len(split.chapter_destinations)
             move_rows.append(
                 ft.Row([
@@ -303,10 +310,15 @@ class OrganizePreviewScreen:
         for f in plan.unmatched:
             dur_m = f.duration_seconds // 60
             dur_s = f.duration_seconds % 60
+            # Prefix with disc folder for the same disambiguation
+            # reason as the matched section.
+            src_path = Path(f.path) if f.path else Path(f.name)
+            src_parent = src_path.parent.name
+            display = f"{src_parent}/{f.name}" if src_parent else f.name
             unmatched_rows.append(
                 ft.Row([
                     ft.Icon(ft.Icons.CANCEL, color=ft.Colors.RED_300, size=16),
-                    ft.Text(f"{f.name}  ({dur_m}:{dur_s:02d})", size=12),
+                    ft.Text(f"{display}  ({dur_m}:{dur_s:02d})", size=12),
                 ], spacing=6)
             )
 
