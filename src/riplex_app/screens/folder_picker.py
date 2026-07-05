@@ -470,7 +470,6 @@ class FolderPickerScreen:
             value=str(inferred_season) if inferred_season is not None else "",
             width=240,
             hint_text="e.g. 6",
-            helper_text="Leave blank for movies.",
         )
 
         # Source-of-truth hint for the title/season block. When the
@@ -525,7 +524,15 @@ class FolderPickerScreen:
                 ft.Text("Detected title:", size=14),
                 self.title_field,
                 *(
-                    [ft.Text("Season number:", size=14), self.season_field]
+                    [
+                        ft.Text("Season number:", size=14),
+                        self.season_field,
+                        ft.Text(
+                            "Leave blank for movies.",
+                            size=12,
+                            color=ft.Colors.GREY_500,
+                        ),
+                    ]
                     if show_season_field
                     else []
                 ),
