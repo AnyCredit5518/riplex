@@ -30,6 +30,7 @@ log = logging.getLogger("riplex_app")
 from riplex_app.screens.welcome import WelcomeScreen
 from riplex_app.screens.disc_detection import DiscDetectionScreen
 from riplex_app.screens.metadata import MetadataScreen
+from riplex_app.screens.season_select import SeasonSelectScreen
 from riplex_app.screens.release import ReleaseScreen
 from riplex_app.screens.selection import SelectionScreen
 from riplex_app.screens.progress import ProgressScreen
@@ -88,6 +89,7 @@ class RiplexApp:
             "welcome": WelcomeScreen(self),
             "disc_detection": DiscDetectionScreen(self),
             "metadata": MetadataScreen(self),
+            "season_select": SeasonSelectScreen(self),
             "release": ReleaseScreen(self),
             "selection": SelectionScreen(self),
             "progress": ProgressScreen(self),

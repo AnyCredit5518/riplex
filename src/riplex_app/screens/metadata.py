@@ -359,7 +359,12 @@ class MetadataScreen:
             # user gets to selection before the fetch completes,
             # enrichment is skipped and dvdcompare classification stands.
             threading.Thread(target=self._fetch_show_detail, daemon=True).start()
-            self.app.navigate("release")
+            # Route through season_select for multi-season TV so the
+            # dvdcompare query gets biased with ``: Season N`` before
+            # the release picker runs. season_select auto-skips (to
+            # release) when season_number is already set, when the show
+            # is a mini-series, or when the match isn't TV.
+            self.app.navigate("season_select")
 
     def _fetch_movie_detail(self):
         """Fetch movie runtime from TMDb in background."""
@@ -443,7 +448,10 @@ class MetadataScreen:
             self.app.state.pop("_prefill_dvdcompare_release_name", None)
 
         async def _nav():
-            self.app.navigate("metadata" if self.app.state.get("_prefill_tmdb_failed") else "release")
+            # Prefill failure -> back to metadata search picker.
+            # Success -> season_select (auto-skips for movies / when
+            # season is already known / mini-series).
+            self.app.navigate("metadata" if self.app.state.get("_prefill_tmdb_failed") else "season_select")
 
         self.app.page.run_task(_nav)
 

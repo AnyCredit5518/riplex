@@ -39,6 +39,16 @@ What you do here:
 - edit the search text if the disc label is abbreviated or noisy
 - choose the correct TMDb match if there is more than one possible result
 
+## 3a. Season picker (multi-season TV only)
+
+For TV shows with more than one season on TMDb, riplex asks which season is on the disc. The picked season biases the dvdcompare query with ``: Season N`` so it lands on the correct per-season film page (e.g. ``Psych: Season 2 (TV) (DVD)`` instead of the top-level *Psych* page). This screen is auto-skipped when:
+
+- the season is already known from the disc label (``PSYCH_S2_D1``) or the picked organize folder (``.../Psych (2006)/Season 02/``)
+- the match is a movie
+- the show is a mini-series with only one non-special season on TMDb (e.g. *Planet Earth II*) — the dvdcompare film for a mini-series is a single page, so no season bias is needed
+
+Season 0 (Specials) is never shown as a choice. Extras on the disc that match a curated TMDb special still route to ``Season 00/`` automatically at organize time — picking a season narrows the plan but keeps Season 0.
+
 ## 4. Release picker
 
 ![Release picker](../../screenshots/4_Disc_Release_BTTF.png)

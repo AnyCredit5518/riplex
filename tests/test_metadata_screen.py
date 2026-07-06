@@ -52,5 +52,6 @@ class TestMetadataNextClearsStaleDvdcompare:
         assert "_dvdcompare_error" not in app.state
         assert "dvdcompare_title_override" not in app.state
         assert app.state["tmdb_match"].title == "The Patriot"
-        # A TV match navigates straight to the release lookup.
-        assert app.navigated_to == "release"
+        # A TV match routes through season_select so the dvdcompare query
+        # can be biased with ": Season N" before the release picker runs.
+        assert app.navigated_to == "season_select"
