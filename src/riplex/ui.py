@@ -10,6 +10,7 @@ Prompts are printed to **stdout**; diagnostic messages stay on stderr.
 
 from __future__ import annotations
 
+import signal
 import sys
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,35 @@ def is_interactive() -> bool:
         return sys.stdin.isatty()
     except Exception:
         return False
+
+
+def _input(prompt: str) -> str:
+    """``input()`` that reliably raises ``KeyboardInterrupt`` on Ctrl-C.
+
+    ``asyncio.run`` (Python 3.11+) installs a SIGINT handler that
+    cooperatively cancels the running task instead of raising
+    ``KeyboardInterrupt``. During a synchronous ``input()`` call inside
+    an async flow that means the first Ctrl-C is swallowed: on Windows
+    the console returns an empty read, so the caller silently sees a
+    blank line and uses its default. Temporarily reinstalling
+    ``signal.default_int_handler`` around the read makes SIGINT raise
+    immediately, matching what the user expects at a prompt. Restored
+    afterwards so asyncio's cancellation semantics still work while
+    real async work is running.
+
+    ``signal.signal`` is only valid from the main thread; the CLI is
+    single-threaded so that is fine. In the unusual case where it's
+    called off-thread (test runners, embedding) the swap is skipped
+    and ``input()`` runs with whatever handler is active.
+    """
+    try:
+        old = signal.signal(signal.SIGINT, signal.default_int_handler)
+    except (ValueError, OSError):
+        return input(prompt)
+    try:
+        return input(prompt)
+    finally:
+        signal.signal(signal.SIGINT, old)
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +111,7 @@ def prompt_choice(
 
     while True:
         try:
-            raw = input(f"Choice [1-{len(options)}, default={default + 1}]: ").strip()
+            raw = _input(f"Choice [1-{len(options)}, default={default + 1}]: ").strip()
         except EOFError:
             print()
             return default
@@ -120,7 +150,7 @@ def prompt_confirm(
 
     hint = "Y/n" if default else "y/N"
     try:
-        raw = input(f"{message} [{hint}] ").strip().lower()
+        raw = _input(f"{message} [{hint}] ").strip().lower()
     except EOFError:
         print()
         return default
@@ -148,7 +178,7 @@ def prompt_text(
         return default
 
     try:
-        raw = input(f"{message} [{default}]: ").strip()
+        raw = _input(f"{message} [{default}]: ").strip()
     except EOFError:
         print()
         return default
@@ -194,7 +224,7 @@ def prompt_multi_select(
     print(f"\nEnter disc numbers separated by commas, 'all' for all, or 'none' to skip.")
     while True:
         try:
-            raw = input(f"Selection [default=all]: ").strip().lower()
+            raw = _input(f"Selection [default=all]: ").strip().lower()
         except EOFError:
             print()
             return defaults
@@ -258,7 +288,7 @@ def prompt_proceed_or_edit(message: str = "Proceed?") -> str:
     if not is_interactive():
         return "yes"
     try:
-        raw = input(f"{message} [Y/n/e(dit)] ").strip().lower()
+        raw = _input(f"{message} [Y/n/e(dit)] ").strip().lower()
     except EOFError:
         print()
         return "no"
@@ -322,7 +352,7 @@ def prompt_rip_selection(
             "            Enter or 'done' to accept, 'cancel' to abort."
         )
         try:
-            raw = input("  Selection: ").strip().lower()
+            raw = _input("  Selection: ").strip().lower()
         except EOFError:
             print()
             return None
