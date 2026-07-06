@@ -160,4 +160,205 @@ class TestPromptText:
 
 
 # Import prompt functions at module level for convenience
-from riplex.ui import prompt_choice, prompt_confirm, prompt_text
+from riplex.ui import (
+    _parse_index_spec,
+    prompt_choice,
+    prompt_confirm,
+    prompt_proceed_or_edit,
+    prompt_rip_selection,
+    prompt_text,
+)
+
+
+# ---------------------------------------------------------------------------
+# _parse_index_spec
+# ---------------------------------------------------------------------------
+
+class TestParseIndexSpec:
+    def test_single_index(self):
+        assert _parse_index_spec("3", [1, 2, 3, 4]) == [3]
+
+    def test_comma_list(self):
+        assert _parse_index_spec("1,3", [1, 2, 3, 4]) == [1, 3]
+
+    def test_range(self):
+        assert _parse_index_spec("2-4", [1, 2, 3, 4, 5]) == [2, 3, 4]
+
+    def test_mixed(self):
+        assert _parse_index_spec("1,3-5,7", list(range(1, 10))) == [1, 3, 4, 5, 7]
+
+    def test_reversed_range(self):
+        assert _parse_index_spec("5-3", [1, 2, 3, 4, 5]) == [3, 4, 5]
+
+    def test_range_skips_missing_valid(self):
+        # Range endpoints valid but a middle index is not on disc: skip it.
+        assert _parse_index_spec("1-4", [1, 2, 4]) == [1, 2, 4]
+
+    def test_unknown_index_raises(self):
+        with pytest.raises(ValueError, match="does not exist"):
+            _parse_index_spec("99", [1, 2, 3])
+
+    def test_non_numeric_raises(self):
+        with pytest.raises(ValueError, match="invalid index"):
+            _parse_index_spec("abc", [1, 2, 3])
+
+    def test_invalid_range_raises(self):
+        with pytest.raises(ValueError, match="invalid range"):
+            _parse_index_spec("1-x", [1, 2, 3])
+
+    def test_empty_input_raises(self):
+        with pytest.raises(ValueError, match="no valid indices"):
+            _parse_index_spec(",  ,", [1, 2, 3])
+
+
+# ---------------------------------------------------------------------------
+# prompt_proceed_or_edit
+# ---------------------------------------------------------------------------
+
+class TestPromptProceedOrEdit:
+    def test_returns_yes_when_non_interactive(self, monkeypatch):
+        _patch_interactive(monkeypatch, False)
+        assert prompt_proceed_or_edit() == "yes"
+
+    def test_empty_defaults_to_yes(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "")
+        assert prompt_proceed_or_edit() == "yes"
+
+    def test_yes_answers(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        for a in ("y", "Y", "yes", "YES"):
+            monkeypatch.setattr("builtins.input", lambda _, a=a: a)
+            assert prompt_proceed_or_edit() == "yes"
+
+    def test_no_answer(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        for a in ("n", "N", "no"):
+            monkeypatch.setattr("builtins.input", lambda _, a=a: a)
+            assert prompt_proceed_or_edit() == "no"
+
+    def test_edit_answer(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        for a in ("e", "E", "edit", "EDIT"):
+            monkeypatch.setattr("builtins.input", lambda _, a=a: a)
+            assert prompt_proceed_or_edit() == "edit"
+
+    def test_eof_returns_no(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda _: (_ for _ in ()).throw(EOFError),
+        )
+        assert prompt_proceed_or_edit() == "no"
+
+
+# ---------------------------------------------------------------------------
+# prompt_rip_selection
+# ---------------------------------------------------------------------------
+
+class _FakeTitle:
+    """Duck-typed makemkv DiscTitle for picker tests."""
+
+    def __init__(self, index, duration_seconds=1800, size_bytes=2_147_483_648):
+        self.index = index
+        self.duration_seconds = duration_seconds
+        self.size_bytes = size_bytes
+
+
+def _titles(*indices):
+    return [_FakeTitle(i) for i in indices]
+
+
+class TestPromptRipSelection:
+    def test_returns_default_when_non_interactive(self, monkeypatch):
+        _patch_interactive(monkeypatch, False)
+        result = prompt_rip_selection(_titles(1, 2, 3), [1, 3])
+        assert result == [1, 3]
+
+    def test_empty_titles_returns_default(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        assert prompt_rip_selection([], [1, 2]) == [1, 2]
+
+    def test_done_accepts_default(self, monkeypatch, capsys):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "done")
+        result = prompt_rip_selection(_titles(1, 2, 3), [1, 3])
+        assert result == [1, 3]
+
+    def test_enter_accepts_default(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "")
+        result = prompt_rip_selection(_titles(1, 2, 3), [1, 3])
+        assert result == [1, 3]
+
+    def test_toggle_adds_and_removes(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["2", "1", ""])  # add 2, remove 1, accept
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(1, 2, 3), [1, 3])
+        assert result == [2, 3]
+
+    def test_all_selects_everything(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["all", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(0, 1, 2, 5), [1])
+        assert result == [0, 1, 2, 5]
+
+    def test_none_deselects_everything(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["none", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(1, 2), [1, 2])
+        assert result == []
+
+    def test_default_restores_recommendation(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["none", "default", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(1, 2, 3), [2])
+        assert result == [2]
+
+    def test_cancel_returns_none(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "cancel")
+        assert prompt_rip_selection(_titles(1, 2), [1]) is None
+
+    def test_range_toggle(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["2-4", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(1, 2, 3, 4, 5), [1])
+        assert result == [1, 2, 3, 4]
+
+    def test_invalid_input_reprompts(self, monkeypatch, capsys):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["99", ""])  # bogus index then accept
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        result = prompt_rip_selection(_titles(1, 2), [1])
+        assert result == [1]
+        out = capsys.readouterr().out
+        assert "does not exist" in out
+
+    def test_eof_returns_none(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda _: (_ for _ in ()).throw(EOFError),
+        )
+        assert prompt_rip_selection(_titles(1, 2), [1]) is None
+
+    def test_classifications_appear_in_output(self, monkeypatch, capsys):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr("builtins.input", lambda _: "")
+        prompt_rip_selection(
+            _titles(1, 2),
+            [1],
+            classifications={1: "MAIN FILM", 2: "SKIP: junk"},
+        )
+        out = capsys.readouterr().out
+        assert "MAIN FILM" in out
+        assert "SKIP: junk" in out
+        # Selected marker
+        assert "[x]" in out
+        assert "[ ]" in out

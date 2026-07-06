@@ -32,6 +32,7 @@ In interactive mode, orchestrate presents prompts at each decision point:
 - **Season selection** (TV multi-season shows only): when the show has more than one season on TMDb, pick which season is on the disc. The picked season is used both to narrow the plan and to bias the dvdcompare query (e.g. `Psych: Season 2`) so it lands on the correct per-season film page. Season 0 (Specials) is never shown in the picker but is always retained in the plan so extras on the disc that match a curated TMDb special can still route to `Season 00/`. Mini-series (only one non-special season, e.g. *Planet Earth II*) skip this prompt entirely.
 - **dvdcompare release selection**: choose the regional release (default: America)
 - **Disc selection**: pick which discs to rip (skip standard Blu-ray copies, bonus discs, etc.)
+- **Title selection**: after the per-disc analysis, the `Proceed? [Y/n/e(dit)]` prompt accepts `e` to open an interactive picker that lets you toggle titles by index, range (`3-7`), or list (`1,4,6`); type `all`, `none`, `default` to reset, or `done` / Enter to accept. This is the CLI equivalent of the GUI selection screen.
 - **Disc swap**: after each disc, prompted to insert the next one
 - **Archive**: after organize, prompted to archive the rip folder (if `archive_root` is configured)
 

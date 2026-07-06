@@ -83,7 +83,9 @@ This will:
 5. Show a disc analysis table with rip recommendations
 6. Prompt for confirmation, then rip the selected titles
 
-Add `--yes` to skip the final rip confirmation prompt. Use `--auto` to also skip all interactive selection prompts (title, TMDb, release). Use `--titles 1,2,3` to override the auto-selection, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
+At the final `Proceed? [Y/n/e(dit)]` prompt, press `e` to open an interactive title picker. The picker shows every title on the disc with `[x]`/`[ ]` marks reflecting the current selection and lets you toggle by index (`3`), comma-separated list (`1,4`), or range (`3-7`). Type `all` or `none` to select or clear everything, `default` to restore the analyzer's recommendation, `done` (or Enter) to accept, or `cancel` to abort the edit. This is the CLI equivalent of the GUI selection screen, so you no longer need to abort and re-run with `--titles 1,3,5` to fix a wrong recommendation.
+
+Add `--yes` to skip the final rip confirmation prompt (and the edit picker with it). Use `--auto` to also skip all interactive selection prompts (title, TMDb, release, season, edit). Use `--titles 1,2,3` to override the auto-selection non-interactively, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
 
 Repeat for each disc in the set, swapping discs between runs.
 

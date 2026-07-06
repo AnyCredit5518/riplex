@@ -215,3 +215,139 @@ def prompt_multi_select(
             return selected
 
         print(f"  Numbers must be between 1 and {len(options)}.")
+
+
+def _parse_index_spec(raw: str, valid: list[int]) -> list[int]:
+    """Parse ``"3,5-7,9"`` into ``[3, 5, 6, 7, 9]``, validating against ``valid``."""
+    valid_set = set(valid)
+    result: list[int] = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo_s, hi_s = part.split("-", 1)
+            try:
+                lo, hi = int(lo_s.strip()), int(hi_s.strip())
+            except ValueError:
+                raise ValueError(f"invalid range: {part!r}")
+            if lo > hi:
+                lo, hi = hi, lo
+            for i in range(lo, hi + 1):
+                if i in valid_set:
+                    result.append(i)
+        else:
+            try:
+                i = int(part)
+            except ValueError:
+                raise ValueError(f"invalid index: {part!r}")
+            if i not in valid_set:
+                raise ValueError(f"title #{i} does not exist on disc")
+            result.append(i)
+    if not result:
+        raise ValueError("no valid indices provided")
+    return result
+
+
+def prompt_proceed_or_edit(message: str = "Proceed?") -> str:
+    """Ask ``[Y]es / [n]o / [e]dit`` and return ``"yes"``, ``"no"`` or ``"edit"``.
+
+    Non-interactive mode returns ``"yes"`` (matching the default of
+    ``prompt_confirm``). EOF/Ctrl-C returns ``"no"``.
+    """
+    if not is_interactive():
+        return "yes"
+    try:
+        raw = input(f"{message} [Y/n/e(dit)] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return "no"
+    if not raw or raw in ("y", "yes"):
+        return "yes"
+    if raw in ("e", "edit"):
+        return "edit"
+    return "no"
+
+
+def prompt_rip_selection(
+    titles: list,
+    default_indices: list[int],
+    classifications: dict[int, str] | None = None,
+) -> list[int] | None:
+    """Interactive checkbox-style picker for makemkvcon titles.
+
+    Renders a table with a ``[x]``/``[ ]`` prefix reflecting the current
+    selection and loops until the user accepts (``done``/Enter),
+    cancels (``cancel``), or clears everything. Accepted commands per line:
+
+    * ``3,5-7`` — toggle these title indices
+    * ``all`` — select every title on the disc
+    * ``none`` — deselect everything
+    * ``default`` — restore the analyzer's recommendation
+    * ``done`` / Enter — accept the current selection
+    * ``cancel`` — abort the edit (returns ``None``)
+
+    Non-interactive mode returns ``default_indices`` unchanged.
+    """
+    from riplex.disc.analysis import format_seconds
+
+    if not titles:
+        return list(default_indices)
+    if not is_interactive():
+        return list(default_indices)
+
+    classifications = classifications or {}
+    all_indices = [t.index for t in titles]
+    default_set = set(default_indices)
+    selected: set[int] = set(default_indices)
+
+    while True:
+        print()
+        print(f"  {'':<3}  {'#':>3}  {'Duration':>9}  {'Size':>8}  {'Recommendation'}")
+        print(f"  {'':-<3}  {'':->3}  {'':->9}  {'':->8}  {'':->40}")
+        for t in titles:
+            mark = "[x]" if t.index in selected else "[ ]"
+            dur = format_seconds(t.duration_seconds)
+            size = f"{t.size_bytes / (1024 ** 3):.1f} GB"
+            label = classifications.get(t.index, "")
+            print(f"  {mark:<3}  {t.index:>3}  {dur:>9}  {size:>8}  {label}")
+
+        total_size_gb = sum(
+            t.size_bytes for t in titles if t.index in selected
+        ) / (1024 ** 3)
+        print(f"\n  Selected: {len(selected)} title(s) ({total_size_gb:.1f} GB)")
+        print(
+            "\n  Commands: <indices> to toggle (e.g. '3,5-7'), "
+            "'all', 'none', 'default',\n"
+            "            Enter or 'done' to accept, 'cancel' to abort."
+        )
+        try:
+            raw = input("  Selection: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+
+        if not raw or raw == "done":
+            return sorted(selected)
+        if raw == "cancel":
+            return None
+        if raw == "all":
+            selected = set(all_indices)
+            continue
+        if raw == "none":
+            selected = set()
+            continue
+        if raw == "default":
+            selected = set(default_set)
+            continue
+
+        try:
+            toggles = _parse_index_spec(raw, all_indices)
+        except ValueError as exc:
+            print(f"  {exc}")
+            continue
+        for idx in toggles:
+            if idx in selected:
+                selected.discard(idx)
+            else:
+                selected.add(idx)

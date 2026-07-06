@@ -35,7 +35,7 @@ from riplex.snapshot import (
     save_rip_snapshot,
 )
 from riplex.title import parse_title_and_season, parse_volume_label
-from riplex.ui import prompt_confirm, prompt_text
+from riplex.ui import prompt_confirm, prompt_proceed_or_edit, prompt_rip_selection, prompt_text
 
 from riplex_cli.formatting import (
     dry_run_banner,
@@ -262,7 +262,29 @@ async def run_rip(args: argparse.Namespace) -> int:
         return 0
 
     if not getattr(args, "yes", False):
-        if not prompt_confirm("Proceed?"):
+        while True:
+            ans = prompt_proceed_or_edit("Proceed?")
+            if ans == "edit":
+                new = prompt_rip_selection(
+                    disc_info.titles,
+                    [t.index for t in rip_titles],
+                    analysis.classifications,
+                )
+                if new is None:
+                    continue
+                rip_titles = [t for t in disc_info.titles if t.index in new]
+                if not rip_titles:
+                    print("\nNo titles selected — nothing to rip.", file=sys.stderr)
+                    return 0
+                total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
+                indices_str = ", ".join(str(t.index) for t in rip_titles)
+                print(
+                    f"\nWill rip {len(rip_titles)} title(s) "
+                    f"[{indices_str}] ({total_size:.1f} GB)"
+                )
+                continue
+            if ans == "yes":
+                break
             print("Aborted.", file=sys.stderr)
             return 0
 
