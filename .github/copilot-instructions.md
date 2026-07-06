@@ -1,5 +1,24 @@
 # Copilot Instructions for riplex
 
+## Shared flow logic (CLI/GUI parity)
+
+The CLI (`src/riplex_cli/`) and the GUI (`src/riplex_app/`) must not carry
+duplicated multi-step orchestration. Any flow-level logic — anything that
+does more than "render this" or "prompt for that" — lives in `src/riplex/`
+as a plain function that takes inputs and returns a dataclass. Both surfaces
+then become thin callers: the CLI does `prompt_*` / `print(...)`, the GUI
+does `ft.Control` / `state[...] = ...`.
+
+Reference example: `src/riplex/resume.py` centralizes the resume-from-session
+adapter. `_fetch_dvdcompare_for_resume` in
+`src/riplex_app/screens/disc_detection.py` and the resume short-circuit in
+`src/riplex_cli/commands/orchestrate.py` are both callers of that one
+function; adding a new field to the resumed lookup only touches the
+adapter (and its tests), never both surfaces.
+
+When adding a new feature that both surfaces need, default to this
+pattern before writing any UI code.
+
 ## Documentation changelog
 
 When any file under `docs/` is added, modified, or removed, update `docs/changelog.md` with a dated entry describing the change. Follow the [Keep a Changelog](https://keepachangelog.com/) format with sections like Added, Changed, Removed, or Fixed under a date heading.

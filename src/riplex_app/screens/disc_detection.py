@@ -667,110 +667,54 @@ class DiscDetectionScreen:
         ).start()
 
     def _fetch_dvdcompare_for_resume(self, session):
-        from riplex.disc.provider import DiscProvider, _convert_release, detect_disc_format
+        """Rehydrate lookup state via the shared adapter and populate ``app.state``.
 
-        disc_format = session.disc_format
-        if not disc_format:
-            disc_info = self.app.state.get("disc_info")
-            if disc_info:
-                disc_format = detect_disc_format(disc_info)
+        All network / matching / backfill logic lives in
+        :func:`riplex.resume.resume_from_session`; this method's only
+        job is to translate the returned :class:`~riplex.resume.ResumedLookup`
+        into the ``app.state`` keys the downstream screens
+        (disc_overview / selection / disc_swap) already read on the
+        fresh-lookup path.
+        """
+        from riplex.resume import resume_from_session
 
-        # Legacy markers written before `source_id` was persisted have
-        # an empty id. Fall back to a TMDb best-guess so organize still
-        # works without forcing the user to re-pick metadata. New
-        # sessions written by this build hit the fast path (marker
-        # already has source_id).
-        if not session.source_id:
-            try:
-                from riplex.config import get_api_key
-                from riplex.metadata.autosearch import best_guess
-                from riplex.metadata.sources.tmdb import TmdbProvider
-
-                async def _rehydrate():
-                    provider = TmdbProvider(get_api_key())
-                    try:
-                        return await best_guess(
-                            provider, session.title,
-                            media_type=session.media_type or "auto",
-                        )
-                    finally:
-                        await provider.close()
-
-                got = asyncio.run(_rehydrate())
-                if got is not None:
-                    match, _score = got
-                    self.app.state["tmdb_match"] = match
-                    log.info(
-                        "Resume: legacy marker had no source_id; TMDb "
-                        "rehydrated %r -> %s",
-                        session.title, match.source_id,
-                    )
-            except Exception as exc:
-                log.warning("Resume: TMDb rehydration failed: %s", exc)
-
+        disc_info = self.app.state.get("disc_info")
         try:
-            provider = DiscProvider()
-            film = asyncio.run(
-                provider._fetch_film_cached(session.title, disc_format, year=session.year)
+            result = asyncio.run(
+                resume_from_session(session, disc_info=disc_info)
             )
-            release = None
-            if session.release_name and film.releases:
-                release = next(
-                    (r for r in film.releases
-                     if r.name == session.release_name),
-                    None,
-                )
-            if release is None and film.releases:
-                release = film.releases[0]
-
-            if release:
-                self.app.state["release"] = release
-                try:
-                    discs = _convert_release(release)
-                    self.app.state["dvdcompare_discs"] = discs
-                except Exception:
-                    self.app.state["dvdcompare_discs"] = []
-            else:
-                self.app.state["release"] = None
-                self.app.state["dvdcompare_discs"] = []
-
-            # Mirror the state that release.py sets on the non-resume
-            # path so downstream screens (disc_overview / selection /
-            # disc_swap) see the same signals. In particular
-            # ``dvdcompare_film_title`` feeds ``build_season_labels``
-            # so it can backfill the leading untitled run with the
-            # season parsed from the film title (e.g. Psych: Season 1
-            # -> leading discs get a "Season 1, Disc N" chip).
-            if film is not None:
-                self.app.state["_dvdcompare_film"] = film
-                if getattr(film, "film_id", None):
-                    self.app.state["dvdcompare_film_id"] = film.film_id
-                if getattr(film, "title", None):
-                    self.app.state["dvdcompare_film_title"] = film.title
-                # Backfill season_number when only the film title
-                # carries it (e.g. "Psych: Season 1 (TV) (DVD)"),
-                # matching what release.py does on the non-resume
-                # path. Without this a resume from a bare-label
-                # disc (``PSYCH``) still writes rips to the flat
-                # layout even though the film knows the season.
-                from riplex_app.screens.release import (
-                    _backfill_season_number_from_film_title,
-                )
-
-                _backfill_season_number_from_film_title(self.app.state, film)
-
-            log.info(
-                "Resume: dvdcompare loaded, %d discs, release=%s, film=%r (fid=%s)",
-                len(self.app.state.get("dvdcompare_discs", [])),
-                session.release_name,
-                getattr(film, "title", None) if film is not None else None,
-                getattr(film, "film_id", None) if film is not None else None,
-            )
-
         except Exception as exc:
-            log.warning("Resume: dvdcompare lookup failed: %s", exc)
+            log.warning("Resume: adapter failed: %s", exc)
             self.app.state["release"] = None
             self.app.state["dvdcompare_discs"] = []
+
+            async def _nav_fail():
+                self.app.navigate("disc_overview")
+
+            self.app.page.run_task(_nav_fail)
+            return
+
+        # Keep any TMDb rehydration the adapter did (legacy markers).
+        if result.tmdb_match is not None:
+            self.app.state["tmdb_match"] = result.tmdb_match
+
+        self.app.state["release"] = result.release
+        self.app.state["dvdcompare_discs"] = list(result.discs)
+
+        if result.dvdcompare_film is not None:
+            self.app.state["_dvdcompare_film"] = result.dvdcompare_film
+        if result.dvdcompare_film_id:
+            self.app.state["dvdcompare_film_id"] = result.dvdcompare_film_id
+        if result.dvdcompare_film_title:
+            self.app.state["dvdcompare_film_title"] = result.dvdcompare_film_title
+        if result.season_number is not None and self.app.state.get("season_number") is None:
+            self.app.state["season_number"] = result.season_number
+
+        if result.dvdcompare_error is not None:
+            log.warning(
+                "Resume: dvdcompare degraded (%s); user can edit release later",
+                result.dvdcompare_error,
+            )
 
         async def _nav():
             self.app.navigate("disc_overview")

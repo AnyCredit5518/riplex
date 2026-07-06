@@ -34,6 +34,7 @@ from riplex.manifest import (
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
 from riplex.normalize import sanitize_filename
+from riplex.resume import resume_from_session
 from riplex.title import parse_title_and_season, parse_volume_label
 from riplex.ui import (
     is_interactive,
@@ -216,37 +217,65 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         if media_type_arg != "auto":
             log.info("Inferred media type from disc structure: %s", media_type_arg)
 
-    # TMDb + dvdcompare lookup
-    api_key = get_api_key(getattr(args, "api_key", None))
-    try:
-        provider = TmdbProvider(api_key=api_key)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        return 1
+    # Resume short-circuit: if a session marker already exists for this
+    # title, skip the TMDb + dvdcompare lookup and rehydrate from the
+    # marker. Keeps CLI resume behavior aligned with the GUI (both
+    # surfaces call the same adapter). User-provided flags still take
+    # precedence — the resume branch never overrides an explicit
+    # --season-number / --disc-format / --release.
+    existing_resume = find_existing_session(title_arg)
+    resumed = None
+    if existing_resume is not None:
+        print(
+            f"Resuming session: {existing_resume.title} "
+            f"({existing_resume.year}) — {len(existing_resume.all_ripped_discs)} "
+            f"disc(s) already ripped",
+            file=sys.stderr,
+        )
+        try:
+            resumed = await resume_from_session(existing_resume, disc_info=disc_info)
+        except Exception as exc:
+            log.warning("Resume adapter failed, falling back to fresh lookup: %s", exc)
+            resumed = None
 
-    try:
-        request = SearchRequest(
-            title=title_arg,
-            year=getattr(args, "year", None),
-            season_number=getattr(args, "season_number", None),
-            media_type=media_type_arg,
-        )
-        release = getattr(args, "release", None)
-        print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
-        meta = await lookup_metadata(
-            request, provider,
-            disc_format=disc_format,
-            disc_info=disc_info,
-            preferred_release=release,
-        )
-    except LookupError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        return 1
-    except Exception as exc:
-        print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
-        return 1
-    finally:
-        await provider.close()
+    if resumed is not None:
+        meta = resumed
+        if resumed.disc_format and not disc_format:
+            disc_format = resumed.disc_format
+        if getattr(args, "season_number", None) is None and resumed.season_number is not None:
+            args.season_number = resumed.season_number
+    else:
+        # TMDb + dvdcompare lookup
+        api_key = get_api_key(getattr(args, "api_key", None))
+        try:
+            provider = TmdbProvider(api_key=api_key)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+
+        try:
+            request = SearchRequest(
+                title=title_arg,
+                year=getattr(args, "year", None),
+                season_number=getattr(args, "season_number", None),
+                media_type=media_type_arg,
+            )
+            release = getattr(args, "release", None)
+            print("Looking up disc metadata on dvdcompare.net ...", file=sys.stderr)
+            meta = await lookup_metadata(
+                request, provider,
+                disc_format=disc_format,
+                disc_info=disc_info,
+                preferred_release=release,
+            )
+        except LookupError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        except Exception as exc:
+            print(f"Error fetching TMDb metadata: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await provider.close()
 
     canonical = meta.canonical
     year = meta.year
