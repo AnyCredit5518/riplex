@@ -82,7 +82,7 @@ def prompt_choice(
     while True:
         try:
             raw = input(f"Choice [1-{len(options)}, default={default + 1}]: ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
             print()
             return default
 
@@ -121,7 +121,7 @@ def prompt_confirm(
     hint = "Y/n" if default else "y/N"
     try:
         raw = input(f"{message} [{hint}] ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
         print()
         return default
 
@@ -149,7 +149,7 @@ def prompt_text(
 
     try:
         raw = input(f"{message} [{default}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
         print()
         return default
 
@@ -195,7 +195,7 @@ def prompt_multi_select(
     while True:
         try:
             raw = input(f"Selection [default=all]: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
             print()
             return defaults
 
@@ -259,7 +259,7 @@ def prompt_proceed_or_edit(message: str = "Proceed?") -> str:
         return "yes"
     try:
         raw = input(f"{message} [Y/n/e(dit)] ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
+    except EOFError:
         print()
         return "no"
     if not raw or raw in ("y", "yes"):
@@ -323,7 +323,7 @@ def prompt_rip_selection(
         )
         try:
             raw = input("  Selection: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
             print()
             return None
 

@@ -155,8 +155,18 @@ class TestPromptText:
 
     def test_eof_returns_default(self, monkeypatch):
         _patch_interactive(monkeypatch, True)
-        monkeypatch.setattr("builtins.input", lambda _: (_ for _ in ()).throw(KeyboardInterrupt))
+        monkeypatch.setattr("builtins.input", lambda _: (_ for _ in ()).throw(EOFError))
         assert prompt_text("Name:", default="Foo") == "Foo"
+
+    def test_keyboard_interrupt_propagates(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda _: (_ for _ in ()).throw(KeyboardInterrupt),
+        )
+        import pytest
+        with pytest.raises(KeyboardInterrupt):
+            prompt_text("Name:", default="Foo")
 
 
 # Import prompt functions at module level for convenience
