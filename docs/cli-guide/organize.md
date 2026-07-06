@@ -51,10 +51,11 @@ When the scanner detects that a file has chapter markers matching the number of 
 
 ## Regional release selection
 
-dvdcompare lists multiple regional releases. In interactive mode (the default when running in a terminal), you will be presented with all available releases to choose from:
+dvdcompare lists multiple regional releases. In interactive mode (the default when running in a terminal), you will be presented with all available releases to choose from. The line above the picker shows which dvdcompare film page was matched so you can spot a wrong pick (e.g. a season 1 page when the disc is season 2) before choosing a region:
 
 ```
-Select a dvdcompare release:
+Matched dvdcompare film: Oppenheimer (2023) [film #12345]
+Select a dvdcompare release for Oppenheimer:
   1. North America (4K Ultra HD) [4 discs] *
   2. United Kingdom (4K Ultra HD) [4 discs]
   3. Germany (4K Ultra HD) [3 discs]

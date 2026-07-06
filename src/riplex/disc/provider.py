@@ -937,6 +937,17 @@ def select_dvdcompare_release(
     if not film.releases:
         return [], ""
 
+    # Show which dvdcompare film page we're picking releases from so the
+    # user can spot a wrong match (e.g. season 1 page when disc is season 2)
+    # before committing to a region release.
+    film_label = film.title
+    if getattr(film, "year", None):
+        film_label = f"{film_label} ({film.year})"
+    film_id = getattr(film, "film_id", None)
+    if film_id:
+        film_label = f"{film_label} [film #{film_id}]"
+    print(f"Matched dvdcompare film: {film_label}", file=sys.stderr)
+
     # --- determine recommended release index ---
     rec_idx = 0  # 0-based index into film.releases
 
@@ -970,7 +981,9 @@ def select_dvdcompare_release(
             disc_word = "disc" if disc_count == 1 else "discs"
             options.append(f"{rel.name} [{disc_count} {disc_word}]")
         chosen_idx = prompt_choice(
-            "Select a dvdcompare release:", options, default=0,
+            f"Select a dvdcompare release for {film.title}:",
+            options,
+            default=0,
         )
     else:
         chosen_idx = 0
