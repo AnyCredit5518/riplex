@@ -411,7 +411,14 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             # Verify disc number
             detected = detect_disc_number(disc_info, discs)
             if detected and detected != disc.number:
-                print(f"Warning: expected Disc {disc.number} but detected Disc {detected}.", file=sys.stderr)
+                print(
+                    f"Note: this disc's title runtimes look more like "
+                    f"Disc {detected} than Disc {disc.number}. Auto-detection "
+                    f"is unreliable when episode lengths are similar between "
+                    f"discs (common for TV shows) — if you inserted the "
+                    f"correct disc, continue.",
+                    file=sys.stderr,
+                )
                 if not prompt_confirm("Continue anyway?"):
                     continue
 

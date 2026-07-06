@@ -230,12 +230,14 @@ class DiscSwapScreen:
             detected = detect_disc_number(disc_info, dvdcompare_discs)
             if detected and detected != disc_number:
                 self.status_text.value = (
-                    f"Warning: expected Disc {disc_number} but detected Disc {detected}. "
-                    "Proceeding anyway."
+                    f"Note: runtimes look more like Disc {detected} than "
+                    f"Disc {disc_number} (auto-detection is unreliable on "
+                    f"TV discs with similar episode lengths). Proceeding "
+                    f"with Disc {disc_number}."
                 )
                 self.status_text.color = ft.Colors.ORANGE
                 self.app.page.update()
-                log.warning("Expected disc %d but detected %d", disc_number, detected)
+                log.warning("Runtime match suggests disc %d, but expected %d", detected, disc_number)
 
             # Update inserted disc tracking
             self.app.state["_inserted_disc"] = detected or disc_number
