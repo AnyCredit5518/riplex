@@ -334,4 +334,8 @@ class TmdbProvider(MetadataProvider):
                     overview=ep.get("overview", ""),
                 )
             )
-        return SeasonMetadata(season_number=season_number, episodes=episodes)
+        return SeasonMetadata(
+            season_number=season_number,
+            episodes=episodes,
+            name=data.get("name", "") or "",
+        )

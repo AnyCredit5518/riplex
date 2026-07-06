@@ -3,7 +3,11 @@ from types import SimpleNamespace
 import pytest
 
 from riplex.lookup import lookup_metadata
-from riplex.metadata.provider import MetadataProvider
+from riplex.metadata.provider import (
+    MetadataProvider,
+    SeasonMetadata,
+    ShowDetail,
+)
 from riplex.models import PlannedSeason, PlannedShow, SearchRequest
 
 
@@ -100,3 +104,188 @@ async def test_lookup_metadata_captures_dvdcompare_film_id(monkeypatch):
     assert result.dvdcompare_film_id == 12345
     assert result.release_name == "Psych: Season 1 (TV) (DVD)"
     assert result.tmdb_match.source_id == "tv:1447"
+
+
+class _StubProviderWithShow(MetadataProvider):
+    """Like _StubProvider but returns a caller-supplied ShowDetail so the
+    season-prompt code path can exercise it."""
+
+    def __init__(self, show_detail: ShowDetail):
+        self._detail = show_detail
+
+    async def search(self, query, *, year=None, media_type="auto"):
+        return []
+
+    async def get_movie_detail(self, source_id):
+        raise AssertionError("movie detail should not be called")
+
+    async def get_show_detail(self, source_id, *, include_specials=True):
+        return self._detail
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_prompts_for_season_on_multi_season_tv(monkeypatch):
+    """Interactive + TV + no season_number set -> prompt user, use their
+    pick for both _plan_show and the dvdcompare title bias."""
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Psych", year=2006, media_type="tv", source_id="tv:1447",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        return PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[PlannedSeason(season_number=request.season_number or 0, episodes=[])],
+        )
+
+    recorded: dict = {}
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        recorded["title"] = title
+        return SimpleNamespace(releases=[], film_id=None)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [], ""
+
+    def _fake_prompt_choice(header, options, *, default=0):
+        recorded["prompt_options"] = list(options)
+        recorded["prompt_header"] = header
+        return 1  # user picks Season 2 (index 1 in the non-special list)
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+    monkeypatch.setattr("riplex.lookup.is_interactive", lambda: True)
+    monkeypatch.setattr("riplex.lookup.prompt_choice", _fake_prompt_choice)
+
+    show = ShowDetail(
+        source_id="tv:1447",
+        title="Psych",
+        year=2006,
+        seasons=[
+            SeasonMetadata(season_number=0, episodes=[], name="Specials"),
+            SeasonMetadata(season_number=1, episodes=[], name="Season 1"),
+            SeasonMetadata(season_number=2, episodes=[], name="Season 2"),
+            SeasonMetadata(season_number=3, episodes=[], name="Season 3"),
+        ],
+    )
+    result = await lookup_metadata(
+        SearchRequest(title="Psych", media_type="tv"),
+        _StubProviderWithShow(show),
+    )
+
+    # Season 0 must NOT appear in the prompt list.
+    assert len(recorded["prompt_options"]) == 3
+    assert not any("Season 0" in o for o in recorded["prompt_options"])
+    # Prompt header carries the show title for context.
+    assert "Psych" in recorded["prompt_header"]
+    # dvdcompare query was biased with the picked season.
+    assert recorded["title"] == "Psych: Season 2"
+    assert result.canonical == "Psych"
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_skips_season_prompt_for_miniseries(monkeypatch):
+    """When the show only has one non-special season (mini-series), we
+    do NOT prompt and we do NOT set season_number -- the dvdcompare
+    query stays as the bare title so mini-series films (which are not
+    listed per-season on dvdcompare) match correctly. Season 0 extras
+    on the disc still route correctly at organize time because
+    _plan_show returns the full plan."""
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Planet Earth II", year=2016, media_type="tv",
+            source_id="tv:68595",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        assert request.season_number is None, (
+            "mini-series must not have season_number set"
+        )
+        return PlannedShow(
+            canonical_title="Planet Earth II",
+            year=2016,
+            seasons=[PlannedSeason(season_number=1, episodes=[])],
+        )
+
+    recorded: dict = {}
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        recorded["title"] = title
+        return SimpleNamespace(releases=[], film_id=None)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [], ""
+
+    def _fake_prompt_choice(header, options, *, default=0):
+        raise AssertionError("prompt_choice must not be called for mini-series")
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+    monkeypatch.setattr("riplex.lookup.is_interactive", lambda: True)
+    monkeypatch.setattr("riplex.lookup.prompt_choice", _fake_prompt_choice)
+
+    show = ShowDetail(
+        source_id="tv:68595",
+        title="Planet Earth II",
+        year=2016,
+        seasons=[
+            SeasonMetadata(season_number=0, episodes=[], name="Specials"),
+            SeasonMetadata(season_number=1, episodes=[], name="Miniseries"),
+        ],
+    )
+    result = await lookup_metadata(
+        SearchRequest(title="Planet Earth II", media_type="tv"),
+        _StubProviderWithShow(show),
+    )
+
+    # dvdcompare gets the bare title (no "Season 1" suffix).
+    assert recorded["title"] == "Planet Earth II"
+    assert result.canonical == "Planet Earth II"
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_season_prompt_skipped_when_non_interactive(monkeypatch):
+    """CI/pipe runs must not block on a prompt. When not interactive we
+    fall through with season_number=None regardless of season count."""
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Psych", year=2006, media_type="tv", source_id="tv:1447",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        assert request.season_number is None
+        return PlannedShow(canonical_title="Psych", year=2006, seasons=[])
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        return SimpleNamespace(releases=[], film_id=None)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [], ""
+
+    def _boom_get_show_detail(*a, **kw):
+        raise AssertionError(
+            "get_show_detail must not be called when non-interactive "
+            "-- the prompt path should be skipped entirely"
+        )
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+    monkeypatch.setattr("riplex.lookup.is_interactive", lambda: False)
+
+    class _Provider(MetadataProvider):
+        async def search(self, *a, **kw): return []
+        async def get_movie_detail(self, *a, **kw): raise AssertionError()
+        async def get_show_detail(self, *a, **kw):
+            _boom_get_show_detail()
+
+    await lookup_metadata(
+        SearchRequest(title="Psych", media_type="tv"),
+        _Provider(),
+    )

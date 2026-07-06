@@ -250,3 +250,72 @@ async def test_plan_tv_show_filters_to_requested_season():
     )
     assert "\\TV Shows\\Scrubs (2001)\\Season 06\\" in result.relative_paths
     assert "\\TV Shows\\Scrubs (2001)\\Season 01\\" not in result.relative_paths
+
+
+@pytest.mark.asyncio
+async def test_plan_tv_show_with_season_number_keeps_specials():
+    """Season 0 (Specials) survives the season filter so extras on the
+    disc that match a curated Special can still route to Season 00 at
+    organize time. Non-matching seasons are still stripped."""
+    provider = FakeProvider(
+        search_results=[
+            MetadataSearchResult(
+                source_id="tv:1447",
+                title="Psych",
+                year=2006,
+                media_type="tv",
+            )
+        ],
+        show_detail=ShowDetail(
+            source_id="tv:1447",
+            title="Psych",
+            year=2006,
+            seasons=[
+                SeasonMetadata(
+                    season_number=0,
+                    episodes=[
+                        EpisodeMetadata(
+                            season_number=0,
+                            episode_number=1,
+                            title="Backstage Pass",
+                            runtime_seconds=1200,
+                        )
+                    ],
+                ),
+                SeasonMetadata(
+                    season_number=1,
+                    episodes=[
+                        EpisodeMetadata(
+                            season_number=1,
+                            episode_number=1,
+                            title="Pilot",
+                            runtime_seconds=2500,
+                        )
+                    ],
+                ),
+                SeasonMetadata(
+                    season_number=2,
+                    episodes=[
+                        EpisodeMetadata(
+                            season_number=2,
+                            episode_number=1,
+                            title="American Duos",
+                            runtime_seconds=2500,
+                        )
+                    ],
+                ),
+            ],
+        ),
+    )
+    request = SearchRequest(title="Psych", year=2006, season_number=2)
+    result = await plan(request, provider)
+
+    assert isinstance(result, PlannedShow)
+    season_nums = sorted(s.season_number for s in result.seasons)
+    assert season_nums == [0, 2], (
+        "Season 0 must survive the season filter (needed for Season 00 "
+        "extras routing); Season 1 should be filtered out."
+    )
+    assert "\\TV Shows\\Psych (2006)\\Season 02\\" in result.relative_paths
+    assert "\\TV Shows\\Psych (2006)\\Season 00\\" in result.relative_paths
+    assert "\\TV Shows\\Psych (2006)\\Season 01\\" not in result.relative_paths

@@ -11,6 +11,7 @@ GUI's Disc Overview auto-fill loop for multi-work releases.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import sys
 from dataclasses import dataclass, field
@@ -48,6 +49,60 @@ class LookupResult:
     dvdcompare_film_id: int | None = None
 
 
+async def _maybe_prompt_for_season(
+    request: SearchRequest,
+    match: MetadataSearchResult,
+    provider: MetadataProvider,
+) -> SearchRequest:
+    """Prompt the user to pick which season is on the disc.
+
+    Called only when the seed match is TV, no season is set, and the
+    session is interactive. Fetches ``ShowDetail`` (cached, so the
+    subsequent ``_plan_show`` call reuses it), filters out Season 0
+    (Specials are always kept in the plan regardless), and either
+    auto-picks (mini-series) or shows a menu. Returns a possibly
+    updated ``SearchRequest`` (via ``dataclasses.replace``; the input
+    is never mutated).
+    """
+    try:
+        detail = await provider.get_show_detail(
+            match.source_id, include_specials=request.include_specials,
+        )
+    except Exception as exc:
+        log.debug(
+            "Season prompt: get_show_detail(%s) failed (%s); "
+            "skipping prompt and letting _plan_show handle the error later",
+            match.source_id, exc,
+        )
+        return request
+
+    non_special = [s for s in detail.seasons if s.season_number != 0]
+    if len(non_special) <= 1:
+        # Mini-series or empty season list -- season is implicit.
+        # Don't set request.season_number so the dvdcompare query stays
+        # as the bare title (which matches how mini-series films are
+        # listed on dvdcompare).
+        return request
+
+    options: list[str] = []
+    for s in non_special:
+        label = f"Season {s.season_number}"
+        name = (s.name or "").strip()
+        if name and name.lower() != label.lower():
+            label = f"{label} ({name})"
+        ep_count = len(s.episodes)
+        ep_word = "episode" if ep_count == 1 else "episodes"
+        options.append(f"{label} \u2014 {ep_count} {ep_word}")
+
+    chosen = prompt_choice(
+        f"Which season is on this disc? ({match.title})",
+        options,
+        default=0,
+    )
+    picked = non_special[chosen]
+    return dataclasses.replace(request, season_number=picked.season_number)
+
+
 async def lookup_metadata(
     request: SearchRequest,
     provider: MetadataProvider,
@@ -69,6 +124,25 @@ async def lookup_metadata(
     a dvdcompare failure as a warning or a fatal error.
     """
     match = await pick_match(request, provider)
+
+    # For TV shows: if the user didn't specify a season, ask which one
+    # is on the disc. Setting request.season_number here has two knock-on
+    # effects: (1) the dvdcompare query below becomes
+    # ``"<title>: Season N"`` which drastically improves film selection
+    # on shows with per-season dvdcompare pages (e.g. picking
+    # "Psych: Season 2 (TV) (DVD)" instead of the top-level Psych page),
+    # and (2) ``_plan_show`` narrows the plan to that season plus
+    # Season 0 (Specials are always kept -- extras on the disc that
+    # match a curated Special still route to Season 00). Mini-series (a
+    # single non-special season on TMDb) are handled implicitly: no
+    # prompt, no season_number set, dvdcompare gets the bare title.
+    if (
+        match.media_type == "tv"
+        and request.season_number is None
+        and is_interactive()
+    ):
+        request = await _maybe_prompt_for_season(request, match, provider)
+
     if match.media_type == "movie":
         result = await _plan_movie(match, provider, request)
     else:

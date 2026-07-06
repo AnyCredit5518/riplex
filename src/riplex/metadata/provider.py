@@ -36,6 +36,7 @@ class SeasonMetadata:
 
     season_number: int
     episodes: list[EpisodeMetadata] = field(default_factory=list)
+    name: str = ""
 
 
 @dataclass

@@ -152,7 +152,16 @@ async def _plan_show(
 
     seasons: list[PlannedSeason] = []
     for sm in detail.seasons:
-        if request.season_number is not None and sm.season_number != request.season_number:
+        # When the user picked a specific season, keep only that season
+        # *plus* Season 0 (Specials). Specials are needed at organize time
+        # so extras on the disc that match a curated TMDb special can be
+        # routed to Season 00/S00Exx; extras without a match still fall
+        # through to Featurettes/ etc.
+        if (
+            request.season_number is not None
+            and sm.season_number != request.season_number
+            and sm.season_number != 0
+        ):
             continue
         episodes: list[PlannedEpisode] = []
         for em in sm.episodes:
