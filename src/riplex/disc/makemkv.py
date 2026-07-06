@@ -640,7 +640,10 @@ class MakeMKV:
                     progress_callback(progress)
 
             proc.wait()
-        except Exception:
+        except (Exception, KeyboardInterrupt):
+            # KeyboardInterrupt has to be caught explicitly here (it's
+            # BaseException, not Exception) so we don't orphan makemkvcon
+            # when the user aborts a rip.
             proc.kill()
             proc.wait()
             raise

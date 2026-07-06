@@ -420,7 +420,16 @@ def main() -> None:
         print()
 
     set_auto_mode(getattr(args, "auto", False))
-    exit_code = asyncio.run(_run(args))
+    try:
+        exit_code = asyncio.run(_run(args))
+    except KeyboardInterrupt:
+        # asyncio.run's default SIGINT handler cancels the running task on
+        # the first Ctrl-C and re-raises KeyboardInterrupt on the second.
+        # By the time we get here the user has confirmed they want to abort
+        # — print a friendly line to stderr and exit 130 (the conventional
+        # code for SIGINT termination) instead of dumping a traceback.
+        print("\nAborted (Ctrl-C).", file=sys.stderr)
+        sys.exit(130)
     _print_update_notice_if_available(args)
     sys.exit(exit_code)
 

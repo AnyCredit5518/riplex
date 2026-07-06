@@ -173,3 +173,15 @@ ls ~/.riplex/bin/ffprobe        # auto-downloaded
 ```
 
 If the tool exists but riplex can't find it, you can add it to your PATH manually in your shell profile (`~/.zshrc`).
+
+---
+
+## CLI: Ctrl-C takes multiple presses to abort a rip
+
+**Symptom:** During a `riplex rip` or `riplex orchestrate` run, pressing Ctrl-C once has no visible effect. You have to press it several times before the CLI exits, and even then it sometimes only exits at natural break points (between titles, after the rip finishes).
+
+**Cause:** This is a limitation of Python's Ctrl-C handling combined with how `makemkvcon` streams output. While a rip is in progress, riplex is blocked reading the subprocess's stdout at the C level, and Python's SIGINT can only fire between bytecode instructions — so the interrupt is queued but doesn't fire until stdout returns something. In addition, `asyncio.run` (Python 3.11+) intentionally requires **two** Ctrl-C presses: the first cancels the running task cooperatively, and only the second raises `KeyboardInterrupt`.
+
+**What to expect:** Press Ctrl-C once, wait a moment for `makemkvcon` to yield, then press it again if it hasn't exited. On a rip in progress you may need to wait until the current title finishes writing — riplex catches the interrupt at that point and terminates the subprocess. The CLI now exits with a clean `Aborted (Ctrl-C).` message instead of a Python traceback.
+
+**If you need to force-quit immediately:** close the terminal window or use Task Manager (Windows) / `kill -9` (Linux/macOS). Any partial `.mkv` file written by makemkvcon so far will be left in the rip folder — it's safe to delete.
