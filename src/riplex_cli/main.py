@@ -420,14 +420,21 @@ def main() -> None:
         print()
 
     set_auto_mode(getattr(args, "auto", False))
+    # Drive the loop manually instead of ``asyncio.run`` — ``asyncio.run``
+    # in Python 3.11+ installs its own SIGINT handler that cooperatively
+    # cancels the running task on the first Ctrl-C, which swallows the
+    # signal during blocking ``input()`` calls and makes prompts behave
+    # as if the user pressed Enter. Using the loop directly leaves
+    # Python's default SIGINT behavior in place: Ctrl-C raises
+    # ``KeyboardInterrupt`` in the main thread immediately, at prompts
+    # or during ``await``s alike.
+    loop = asyncio.new_event_loop()
     try:
-        exit_code = asyncio.run(_run(args))
+        try:
+            exit_code = loop.run_until_complete(_run(args))
+        finally:
+            loop.close()
     except KeyboardInterrupt:
-        # asyncio.run's default SIGINT handler cancels the running task on
-        # the first Ctrl-C and re-raises KeyboardInterrupt on the second.
-        # By the time we get here the user has confirmed they want to abort
-        # — print a friendly line to stderr and exit 130 (the conventional
-        # code for SIGINT termination) instead of dumping a traceback.
         print("\nAborted (Ctrl-C).", file=sys.stderr)
         sys.exit(130)
     _print_update_notice_if_available(args)
