@@ -633,13 +633,72 @@ class DiscDetectionScreen:
             session = find_existing_session(title)
             if session:
                 log.info(
-                    "Found existing session for '%s' (%d) — resuming",
-                    session.title, session.year,
+                    "Found existing session for '%s' (%d) — media_type=%s",
+                    session.title, session.year, session.media_type,
                 )
+                if session.media_type == "tv":
+                    # Route TV titles through season_select even on
+                    # resume so the user can pick a different season
+                    # (e.g. inserted a Season 4 disc while a Season 1
+                    # rip is still in progress). If they pick the same
+                    # season, season_select will find_existing_session
+                    # again with that season and start a full resume.
+                    self._prepare_tv_season_pick(session)
+                    return
                 self._resume_session(session)
                 return
 
         self.app.navigate("metadata")
+
+    def _prepare_tv_season_pick(self, session):
+        """Preload just enough state for season_select to render, then
+        navigate there. Full resume (dvdcompare film + discs) is
+        deferred until the user picks a season on that screen.
+        """
+        from riplex.metadata.provider import MetadataSearchResult
+
+        self.app.state["tmdb_match"] = MetadataSearchResult(
+            source_id=session.source_id,
+            title=session.title,
+            year=session.year,
+            media_type=session.media_type,
+        )
+        # season_number stays unset — season_select will prompt.
+        self.app.state.pop("season_number", None)
+        self.app.state.pop("release", None)
+        self.app.state.pop("dvdcompare_discs", None)
+
+        self.search_btn.disabled = True
+        self.search_btn.text = "Loading seasons..."
+        self.app.page.update()
+
+        threading.Thread(
+            target=self._fetch_show_detail_for_season_pick,
+            args=(session,),
+            daemon=True,
+        ).start()
+
+    def _fetch_show_detail_for_season_pick(self, session):
+        """Fetch TMDb show_detail so season_select can list seasons,
+        then navigate. show_detail is the same data the metadata
+        screen fetches on the fresh flow (in background before nav to
+        season_select); here we mirror that pattern for the resume
+        entry point."""
+        from riplex.resume import _fetch_show_detail
+
+        source_id = session.source_id
+        if source_id:
+            try:
+                detail = asyncio.run(_fetch_show_detail(source_id))
+                if detail is not None:
+                    self.app.state["show_detail"] = detail
+            except Exception as exc:
+                log.warning("Resume: show_detail prefetch failed: %s", exc)
+
+        async def _nav():
+            self.app.navigate("season_select")
+
+        self.app.page.run_task(_nav)
 
     def _resume_session(self, session):
         from riplex.metadata.provider import MetadataSearchResult
@@ -669,54 +728,75 @@ class DiscDetectionScreen:
     def _fetch_dvdcompare_for_resume(self, session):
         """Rehydrate lookup state via the shared adapter and populate ``app.state``.
 
-        All network / matching / backfill logic lives in
-        :func:`riplex.resume.resume_from_session`; this method's only
-        job is to translate the returned :class:`~riplex.resume.ResumedLookup`
-        into the ``app.state`` keys the downstream screens
-        (disc_overview / selection / disc_swap) already read on the
-        fresh-lookup path.
+        Thin wrapper around :func:`perform_resume_fetch` so the resume
+        thread has a consistent target across GUI screens (both this
+        screen and ``season_select`` can start a resume without
+        duplicating the adapter-to-state translation).
         """
-        from riplex.resume import resume_from_session
+        perform_resume_fetch(self.app, session)
 
-        disc_info = self.app.state.get("disc_info")
-        try:
-            result = asyncio.run(
-                resume_from_session(session, disc_info=disc_info)
-            )
-        except Exception as exc:
-            log.warning("Resume: adapter failed: %s", exc)
-            self.app.state["release"] = None
-            self.app.state["dvdcompare_discs"] = []
 
-            async def _nav_fail():
-                self.app.navigate("disc_overview")
+def perform_resume_fetch(app, session) -> None:
+    """Rehydrate lookup state via the shared adapter and populate ``app.state``.
 
-            self.app.page.run_task(_nav_fail)
-            return
+    All network / matching / backfill logic lives in
+    :func:`riplex.resume.resume_from_session`; this function's only
+    job is to translate the returned :class:`~riplex.resume.ResumedLookup`
+    into the ``app.state`` keys the downstream screens
+    (disc_overview / selection / disc_swap) already read on the
+    fresh-lookup path, then navigate to ``disc_overview``.
 
-        # Keep any TMDb rehydration the adapter did (legacy markers).
-        if result.tmdb_match is not None:
-            self.app.state["tmdb_match"] = result.tmdb_match
+    Designed to be called from a background thread. Kept at module
+    scope (not a screen method) so ``season_select`` can also start a
+    resume when the user picks a season with an in-progress session.
+    """
+    from riplex.resume import resume_from_session
 
-        self.app.state["release"] = result.release
-        self.app.state["dvdcompare_discs"] = list(result.discs)
+    disc_info = app.state.get("disc_info")
+    try:
+        result = asyncio.run(
+            resume_from_session(session, disc_info=disc_info)
+        )
+    except Exception as exc:
+        log.warning("Resume: adapter failed: %s", exc)
+        app.state["release"] = None
+        app.state["dvdcompare_discs"] = []
 
-        if result.dvdcompare_film is not None:
-            self.app.state["_dvdcompare_film"] = result.dvdcompare_film
-        if result.dvdcompare_film_id:
-            self.app.state["dvdcompare_film_id"] = result.dvdcompare_film_id
-        if result.dvdcompare_film_title:
-            self.app.state["dvdcompare_film_title"] = result.dvdcompare_film_title
-        if result.season_number is not None and self.app.state.get("season_number") is None:
-            self.app.state["season_number"] = result.season_number
+        async def _nav_fail():
+            app.navigate("disc_overview")
 
-        if result.dvdcompare_error is not None:
-            log.warning(
-                "Resume: dvdcompare degraded (%s); user can edit release later",
-                result.dvdcompare_error,
-            )
+        app.page.run_task(_nav_fail)
+        return
 
-        async def _nav():
-            self.app.navigate("disc_overview")
+    # Keep any TMDb rehydration the adapter did (legacy markers).
+    if result.tmdb_match is not None:
+        app.state["tmdb_match"] = result.tmdb_match
 
-        self.app.page.run_task(_nav)
+    app.state["release"] = result.release
+    app.state["dvdcompare_discs"] = list(result.discs)
+
+    if result.dvdcompare_film is not None:
+        app.state["_dvdcompare_film"] = result.dvdcompare_film
+    if result.dvdcompare_film_id:
+        app.state["dvdcompare_film_id"] = result.dvdcompare_film_id
+    if result.dvdcompare_film_title:
+        app.state["dvdcompare_film_title"] = result.dvdcompare_film_title
+    if result.season_number is not None and app.state.get("season_number") is None:
+        app.state["season_number"] = result.season_number
+    # ShowDetail lets the selection screen enrich rip-guide labels
+    # with canonical S/E numbers. On fresh (non-resume) flows the
+    # metadata screen fetches this in the background; resumes get
+    # it via the adapter so both paths converge.
+    if result.show_detail is not None:
+        app.state["show_detail"] = result.show_detail
+
+    if result.dvdcompare_error is not None:
+        log.warning(
+            "Resume: dvdcompare degraded (%s); user can edit release later",
+            result.dvdcompare_error,
+        )
+
+    async def _nav():
+        app.navigate("disc_overview")
+
+    app.page.run_task(_nav)

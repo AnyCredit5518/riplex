@@ -298,6 +298,45 @@ def parse_season_number(label: str) -> int | None:
         return None
 
 
+def filter_discs_to_season(
+    discs: list["PlannedDisc"],
+    season_number: int,
+    *,
+    film_title: str | None = None,
+) -> list["PlannedDisc"]:
+    """Drop discs that don't belong to *season_number* from *discs*.
+
+    Enforces the "one season at a time" invariant for TV rips: even if
+    the user picked a Complete-Series-style boxset release, the rest of
+    the rip pipeline only ever sees discs for the picked season. Uses
+    the same season-label resolution as
+    :func:`collect_tmdb_episodes_for_disc` so a disc's season here
+    matches the season used when enriching its episodes.
+
+    If ``build_season_labels`` can't identify *any* disc's season (the
+    common single-season release case where the outer film page IS the
+    season and no disc has a season title), the input is returned
+    unchanged — filtering would incorrectly drop the entire release.
+
+    ``film_title`` mirrors ``build_season_labels``: pass the outer
+    dvdcompare film title so a leading run of untitled discs can be
+    inferred as belonging to the film-implied season.
+    """
+    if not discs or season_number is None:
+        return list(discs)
+    labels = build_season_labels(discs, film_title=film_title)
+    seasons_seen = {parse_season_number(labels.get(d.number, "")) for d in discs}
+    known_seasons = seasons_seen - {None}
+    if not known_seasons:
+        # No per-disc season info; nothing to filter against. Assume the
+        # entire release IS the picked season (typical single-season page).
+        return list(discs)
+    return [
+        d for d in discs
+        if parse_season_number(labels.get(d.number, "")) == season_number
+    ]
+
+
 def collect_tmdb_episodes_for_disc(
     show_detail,
     dvdcompare_discs: list,
@@ -550,30 +589,60 @@ def enrich_dvd_entries_with_tmdb(
         count = sum(1 for _, _, et in dvd_entries if et == "episode")
         return dvd_entries, total, count
 
-    consumed: set[int] = set()
-    enriched: list[tuple[str, int, str]] = []
-
-    for name, runtime, etype in dvd_entries:
-        best_i, best_score = -1, 0.0
-        for i, ep in enumerate(tmdb_episodes):
-            if i in consumed:
-                continue
-            score = _episode_name_similarity(name, getattr(ep, "title", ""))
-            if score > best_score:
-                best_i, best_score = i, score
-
+    # Pass 1 — score every promotable dvd_entry against every TMDb
+    # episode. Track both the winning entry per TMDb episode (highest
+    # similarity, break ties by longest runtime) and whether each entry
+    # had a strong match somewhere. The two-pass structure is what
+    # lets us detect dvdcompare duplicates independently of listing
+    # order: when the same episode is listed twice (once as the real
+    # 43-min broadcast and once as a shorter re-edit), both entries
+    # score 1.0 against the same TMDb episode; the longer entry wins
+    # the SE prefix and the shorter one gets downgraded.
+    # tmdb_i -> list of (entry_idx, score, runtime)
+    match_candidates: dict[int, list[tuple[int, float, int]]] = {}
+    entry_strong_match: set[int] = set()
+    for entry_idx, (name, runtime, etype) in enumerate(dvd_entries):
         can_promote = etype == "episode" or runtime >= min_promote_seconds
-        if best_score >= similarity_threshold and can_promote and best_i >= 0:
-            ep = tmdb_episodes[best_i]
-            consumed.add(best_i)
+        if not can_promote:
+            continue
+        for tmdb_i, ep in enumerate(tmdb_episodes):
+            score = _episode_name_similarity(name, getattr(ep, "title", ""))
+            if score >= similarity_threshold:
+                match_candidates.setdefault(tmdb_i, []).append(
+                    (entry_idx, score, runtime),
+                )
+                entry_strong_match.add(entry_idx)
+
+    # Award each TMDb episode to a single dvd_entry.
+    entry_to_tmdb: dict[int, int] = {}
+    for tmdb_i, cands in match_candidates.items():
+        cands.sort(key=lambda c: (-c[1], -c[2]))
+        winner_entry_idx = cands[0][0]
+        # First-write wins if an earlier TMDb ep already claimed this
+        # entry (extremely rare — would need two TMDb episodes with
+        # near-identical titles).
+        if winner_entry_idx not in entry_to_tmdb:
+            entry_to_tmdb[winner_entry_idx] = tmdb_i
+
+    # Pass 2 — emit enriched entries.
+    enriched: list[tuple[str, int, str]] = []
+    for entry_idx, (name, runtime, etype) in enumerate(dvd_entries):
+        if entry_idx in entry_to_tmdb:
+            ep = tmdb_episodes[entry_to_tmdb[entry_idx]]
             se = f"S{ep.season_number:02d}E{ep.episode_number:02d}"
-            # If the dvdcompare name already begins with an S/E marker
-            # (rare — some releases include it), don't double up.
             if re.match(r"^S\d{2}E\d{2}\b", name):
                 enriched_name = name
             else:
                 enriched_name = f"{se} - {name}"
             enriched.append((enriched_name, runtime, "episode"))
+        elif etype == "episode" and entry_idx in entry_strong_match:
+            # dvdcompare said "episode" and the name matches a TMDb
+            # episode, but a longer entry already claimed that episode.
+            # Almost always a bonus re-edit / shortened version — mark
+            # it "extra" so the sequential walker won't hand it a
+            # spurious SE assignment and the rip guide labels it
+            # ``[extra] Title`` instead of an ambiguous bare title.
+            enriched.append((name, runtime, "extra"))
         else:
             enriched.append((name, runtime, etype))
 
@@ -647,6 +716,24 @@ def _assign_episodes_sequentially(
         # Unmatched content, a play-all, or a duplicate).
 
     return assignments
+
+
+def _is_claimed_episode(
+    title,
+    all_titles: list,
+    dvd_entries: list[tuple[str, int, str]],
+) -> bool:
+    """True when the sequential walk assigns this title to a
+    dvdcompare episode entry. Used to suppress disc-internal play-all
+    detection for real episodes whose runtime coincidentally matches
+    the sum of unrelated extras on the same disc (Psych S3 D3: seven
+    disc extras summing to ~2552s vs 2579s episodes)."""
+    if not dvd_entries:
+        return False
+    if not any(etype == "episode" for _, _, etype in dvd_entries):
+        return False
+    assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+    return title.index in assignments
 
 
 def _get_effective_match(
@@ -751,18 +838,23 @@ def classify_title(
         return f"Play-all ({res_label})"
 
     # Disc-internal play-all detection: check if duration matches sum of other
-    # titles at the same resolution (when no dvdcompare data available)
-    play_all_match = detect_play_all(title, all_titles)
-    if play_all_match:
-        parts = play_all_match
-        part_indices = ", ".join(f"#{t.index}" for t in parts)
-        return f"Play-all of {part_indices} ({res_label})"
+    # titles at the same resolution (when no dvdcompare data available).
+    # Suppressed for titles the sequential walk already claims as a
+    # dvdcompare episode, since a real episode's runtime can
+    # coincidentally equal the sum of unrelated extras on the same disc.
+    claimed_episode = _is_claimed_episode(title, all_titles, dvd_entries)
+    if not claimed_episode:
+        play_all_match = detect_play_all(title, all_titles)
+        if play_all_match:
+            parts = play_all_match
+            part_indices = ", ".join(f"#{t.index}" for t in parts)
+            return f"Play-all of {part_indices} ({res_label})"
 
-    # Check if this is a lower-resolution play-all (e.g. 1080p play-all of 4K episodes)
-    cross_res_match = detect_cross_res_play_all(title, all_titles)
-    if cross_res_match:
-        other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
-        return f"Play-all ({res_label}, individual {other_res} titles available)"
+        # Check if this is a lower-resolution play-all (e.g. 1080p play-all of 4K episodes)
+        cross_res_match = detect_cross_res_play_all(title, all_titles)
+        if cross_res_match:
+            other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
+            return f"Play-all ({res_label}, individual {other_res} titles available)"
 
     # Check if this matches a single dvdcompare entry.
     # _get_effective_match routes episode matching through the sequential
@@ -841,6 +933,16 @@ def classify_title(
         and t.resolution == title.resolution
     ]
     if other_substantial:
+        # On a TV disc where every dvdcompare episode entry has already
+        # been assigned to another disc title, calling this leftover
+        # title "Episode" is misleading — it's almost always a
+        # play-all fragment, bonus content, or a menu chapter. Only
+        # emit "Episode" when there's an unclaimed episode slot this
+        # title could plausibly represent.
+        if episode_count > 0 and dvd_entries:
+            assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+            if len(assignments) >= episode_count and title.index not in assignments:
+                return f"Unmatched content ({res_label}, {format_seconds(dur)})"
         return f"Episode ({res_label})"
 
     return f"Unknown content ({res_label}, {format_seconds(dur)})"
@@ -927,13 +1029,18 @@ def is_skip_title(
     # two functions can never disagree about which titles are main-feature
     # variants.
     if not _looks_like_main_feature_edition(dur, is_movie, movie_runtime):
-        # Skip disc-internal play-all (same resolution)
-        if detect_play_all(title, all_titles):
-            return True
+        # Suppress disc-internal play-all detection for real episodes
+        # (see ``classify_title``): otherwise a real episode whose
+        # runtime happens to equal the sum of unrelated extras gets
+        # skipped, hiding actual episode content from the user.
+        if not _is_claimed_episode(title, all_titles, dvd_entries or []):
+            # Skip disc-internal play-all (same resolution)
+            if detect_play_all(title, all_titles):
+                return True
 
-        # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
-        if detect_cross_res_play_all(title, all_titles):
-            return True
+            # Skip cross-resolution play-all (e.g. 1080p play-all of 4K episodes)
+            if detect_cross_res_play_all(title, all_titles):
+                return True
 
     # Skip unmatched short titles when dvdcompare data is available
     # If we have episode metadata and this title is much shorter than episodes
@@ -960,6 +1067,16 @@ def is_skip_title(
                 if etype == "episode" and rt > 0
             ]
             if episode_runtimes and dur > max(episode_runtimes) * 1.5:
+                return True
+            # Mirror ``classify_title``'s all-slots-claimed guard: if
+            # every dvdcompare episode slot is already assigned to an
+            # earlier disc title, an unmatched title in the middle of
+            # the episode-runtime range is a bonus/play-all fragment,
+            # not a missing episode. Without this, the two functions
+            # disagree — classify_title labels the title "Unmatched
+            # content" while is_skip_title leaves it selected.
+            assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+            if len(assignments) >= episode_count and title.index not in assignments:
                 return True
 
     # Movie disc: skip titles that aren't the main film or extended cut

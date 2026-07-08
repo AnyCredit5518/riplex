@@ -248,3 +248,181 @@ class TestResumeFromSession:
         assert result.release is None
         assert result.release_name == "Whatever"
         assert result.discs == []
+
+
+class TestResumeUsesSavedSeason:
+    """When the marker recorded ``season_number``, the resume adapter
+    must bias the dvdcompare film lookup with ``"<title>: Season N"``
+    and return the saved season directly (skip film-title parsing).
+    """
+
+    def test_biases_lookup_with_season(self, monkeypatch):
+        release = _FakeRelease("Season 2")
+        # Return a film whose title says Season 1 so we can prove the
+        # returned season came from the marker, not the film title.
+        film = _FakeFilm(
+            title="Psych: Season 1 (TV) (Blu-ray)",
+            releases=[release],
+        )
+        provider = _FakeProvider(film=film)
+
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        result = _run(resume_from_session(
+            _session(season_number=2, release_name="Season 2"),
+        ))
+
+        # The lookup title carries the season bias.
+        assert provider.calls == [("Psych: Season 2", "Blu-ray", 2006)]
+        # Saved season wins over parsed film title.
+        assert result.season_number == 2
+
+    def test_legacy_no_season_falls_back_to_film_title(self, monkeypatch):
+        release = _FakeRelease("The Complete Series")
+        film = _FakeFilm(
+            title="Psych: Season 3 (TV) (Blu-ray)",
+            releases=[release],
+        )
+        provider = _FakeProvider(film=film)
+
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        # Legacy marker: season_number is None (its default).
+        result = _run(resume_from_session(_session()))
+
+        # No season bias applied to the film lookup.
+        assert provider.calls == [("Psych", "Blu-ray", 2006)]
+        # Falls back to parsing the film title.
+        assert result.season_number == 3
+
+    def test_movie_never_biases_with_season(self, monkeypatch):
+        # Even if season_number somehow leaked into a movie session
+        # (shouldn't happen with build_session_work, but be defensive),
+        # movies must never send "Season N" to dvdcompare.
+        release = _FakeRelease("Ultimate Edition")
+        film = _FakeFilm(title="Some Movie (Blu-ray)", releases=[release])
+        provider = _FakeProvider(film=film)
+
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        result = _run(resume_from_session(_session(
+            title="Some Movie",
+            media_type="movie",
+            season_number=5,   # bogus, must be ignored for movies
+        )))
+
+        assert provider.calls == [("Some Movie", "Blu-ray", 2006)]
+        assert result.season_number == 5  # returned as-is; movies just ignore it
+
+
+class TestResumeFetchesShowDetail:
+    """The GUI selection screen and the CLI rip guide both cross-
+    reference TMDb ShowDetail against dvdcompare to enrich labels and
+    demote duplicate-episode entries (e.g. Psych S3 D1 lists a bonus
+    re-edit alongside the real episode). The resume adapter is the
+    single place that fetch lives so both surfaces stay in sync."""
+
+    def test_fetches_show_detail_for_tv_resume(self, monkeypatch):
+        film = _FakeFilm(releases=[_FakeRelease("The Complete Series")])
+        provider = _FakeProvider(film=film)
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        sentinel_detail = object()
+        called = {}
+
+        async def _fake_fetch(source_id):
+            called["source_id"] = source_id
+            return sentinel_detail
+
+        import riplex.resume as resume_mod
+        monkeypatch.setattr(resume_mod, "_fetch_show_detail", _fake_fetch)
+
+        result = _run(resume_from_session(_session()))
+
+        assert called == {"source_id": "tv:1447"}
+        assert result.show_detail is sentinel_detail
+
+    def test_skips_show_detail_for_movie_resume(self, monkeypatch):
+        film = _FakeFilm(title="Some Movie (Blu-ray)", releases=[_FakeRelease("Ultimate")])
+        provider = _FakeProvider(film=film)
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        called = {"count": 0}
+
+        async def _fake_fetch(source_id):
+            called["count"] += 1
+            return object()
+
+        import riplex.resume as resume_mod
+        monkeypatch.setattr(resume_mod, "_fetch_show_detail", _fake_fetch)
+
+        result = _run(resume_from_session(_session(
+            title="Some Movie", media_type="movie",
+        )))
+
+        assert called["count"] == 0
+        assert result.show_detail is None
+
+    def test_skips_show_detail_when_source_id_missing(self, monkeypatch):
+        """Legacy TV markers without a source_id (pre-source_id
+        sessions) can't fetch ShowDetail — skip cleanly rather than
+        letting a bad TMDb call raise."""
+        film = _FakeFilm(releases=[_FakeRelease("The Complete Series")])
+        provider = _FakeProvider(film=film)
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: [],
+        )
+
+        async def _stub_rehydrate(session):
+            # ``_rehydrate_tmdb_match`` normally hits the network for
+            # legacy markers; stub it out so this test stays pure-unit.
+            from riplex.metadata.provider import MetadataSearchResult
+            return MetadataSearchResult(
+                source_id="", title=session.title, year=session.year,
+                media_type=session.media_type,
+            )
+
+        import riplex.resume as resume_mod
+        monkeypatch.setattr(resume_mod, "_rehydrate_tmdb_match", _stub_rehydrate)
+
+        called = {"count": 0}
+
+        async def _fake_fetch(source_id):
+            called["count"] += 1
+            return object()
+
+        monkeypatch.setattr(resume_mod, "_fetch_show_detail", _fake_fetch)
+
+        result = _run(resume_from_session(_session(source_id="")))
+
+        assert called["count"] == 0
+        assert result.show_detail is None
+

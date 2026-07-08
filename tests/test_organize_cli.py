@@ -159,3 +159,145 @@ async def test_organize_routes_multi_work_release_through_group_planner(
     # capfd here; we simply verify the code path completed without falling
     # back to the single-plan branch, which would crash on the film disc
     # because there's no film episode in the (nonexistent) planned show.)
+
+
+class _RecordingProvider(MetadataProvider):
+    async def search(self, *a, **kw): return []
+    async def get_movie_detail(self, *a, **kw): raise AssertionError
+    async def get_show_detail(self, *a, **kw): raise AssertionError
+    async def close(self): pass
+
+
+@pytest.mark.asyncio
+async def test_session_organize_finds_season_nested_work_folder(
+    monkeypatch, tmp_path,
+):
+    """Regression: when the session marker sits at
+    ``<root>/<title>/Season NN/_riplex_session.json`` (a nested TV rip),
+    ``_organize_session_works`` must resolve the work folder to that
+    same ``<root>/<title>/Season NN`` path — not double the title
+    segment by naive ``folder.parent`` joining.
+    """
+    from riplex_cli.commands.organize import _organize_session_works
+
+    rip_root = tmp_path / "Rips"
+    work_folder = rip_root / "Psych (2006)" / "Season 02"
+    work_folder.mkdir(parents=True)
+    (work_folder / "Disc 1").mkdir()
+
+    marker = {
+        "type": "riplex_session",
+        "release_name": "R1 America - Universal Pictures",
+        "works": [{
+            "title": "Psych",
+            "year": 2006,
+            "media_type": "tv",
+            "folder": "Psych (2006)/Season 02",
+            "disc_numbers": [1, 2, 3, 4],
+            "source_id": "tv:1447",
+            "season_number": 2,
+        }],
+    }
+
+    called_with: dict = {}
+
+    async def _fake_organize_single(folder, title, args, output_root, provider):
+        called_with["folder"] = folder
+        called_with["title"] = title
+        return 0
+
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize._organize_single",
+        _fake_organize_single,
+    )
+
+    args = argparse.Namespace(
+        title=None, year=None, media_type="tv", execute=True,
+        api_key=None, output=str(rip_root), release="1",
+        json=False, unmatched="extras", verbose=False, no_cache=False,
+        force=False, snapshot=None, auto=True,
+    )
+    rc = await _organize_session_works(
+        work_folder, marker, args, rip_root, _RecordingProvider(),
+    )
+
+    assert rc == 0
+    assert called_with["title"] == "Psych"
+    # The work folder must resolve to the actual nested rip path,
+    # NOT ``<rip_root>/Psych (2006)/Psych (2006)/Season 02``.
+    assert called_with["folder"] == work_folder
+    assert called_with["folder"].exists()
+
+
+@pytest.mark.asyncio
+async def test_organize_prompts_before_executing_and_cancel_aborts(
+    monkeypatch, tmp_path,
+):
+    """``organize_with_scanned`` must show a confirmation prompt before
+    touching the filesystem when ``execute=True``; if the user declines,
+    no files are moved and the function returns 0."""
+    from riplex.models import PlannedMovie
+    from riplex_cli.commands import organize as organize_mod
+
+    async def _fake_lookup(request, provider, **kwargs):
+        return LookupResult(
+            planned=PlannedMovie(
+                canonical_title="Test Movie", year=2023,
+                runtime="1h 30m", runtime_seconds=5400,
+            ),
+            canonical="Test Movie", year=2023, is_movie=True,
+            movie_runtime=5400, discs=[
+                PlannedDisc(number=1, disc_format="Blu-ray", is_film=True),
+            ],
+            release_name="Test Movie",
+            tmdb_match=_FakeMatch("Test Movie", 2023, "movie"),
+        )
+
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.lookup_metadata", _fake_lookup,
+    )
+
+    # Create a real source file so we can check it isn't moved.
+    rip_dir = tmp_path / "rip"
+    rip_dir.mkdir()
+    disc_dir = rip_dir / "Disc 1"
+    disc_dir.mkdir()
+    src_file = disc_dir / "t00.mkv"
+    src_file.write_text("data")
+
+    scanned = [ScannedDisc(
+        folder_name="Disc 1",
+        files=[ScannedFile(
+            name="t00.mkv", path=str(src_file),
+            duration_seconds=5400, stream_count=2,
+            stream_fingerprint="h264:1920x1080|ac3:eng:6ch",
+        )],
+    )]
+
+    prompt_calls: list[str] = []
+
+    def _fake_confirm(msg, *, default=True):
+        prompt_calls.append(msg)
+        return False  # user declines
+
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.prompt_confirm", _fake_confirm,
+    )
+
+    args = argparse.Namespace(
+        title="Test Movie", year=2023, season_number=None,
+        media_type="movie", disc_format="Blu-ray", release="1",
+        execute=True, force=True, unmatched="ignore",
+        verbose=False, no_cache=True, snapshot=None, auto=False,
+    )
+
+    rc = await organize_mod.organize_with_scanned(
+        scanned, "Test Movie", args, tmp_path / "out", _NullProvider(),
+    )
+
+    assert rc == 0
+    assert prompt_calls, "expected a confirmation prompt"
+    assert any("Proceed with organize" in c for c in prompt_calls)
+    # Source file must still exist — declined confirm means no moves.
+    assert src_file.exists()
+

@@ -47,6 +47,12 @@ class LookupResult:
     # Persisted into ``_rip_manifest.json`` so the organize screen can
     # skip the release picker on a re-visit.
     dvdcompare_film_id: int | None = None
+    # Effective season chosen for this lookup (either passed in on the
+    # request or picked by the interactive season prompt). ``None`` for
+    # movies and for TV mini-series where season is implicit. Callers
+    # persist this into the session marker + rip manifest so a later
+    # resume knows which per-season dvdcompare page to fetch.
+    season_number: int | None = None
 
 
 async def _maybe_prompt_for_season(
@@ -84,6 +90,22 @@ async def _maybe_prompt_for_season(
         # listed on dvdcompare).
         return request
 
+    # Bias the default toward any season already mid-rip: if the user
+    # inserts a fresh disc while a previous season is only partially
+    # done, that unfinished season is the far more likely target.
+    # ``scan_in_progress_seasons`` is a shared helper — the GUI season
+    # picker uses it too, so both surfaces agree on hint wording and
+    # default-selection bias.
+    from riplex.manifest import scan_in_progress_seasons
+    in_progress = scan_in_progress_seasons(
+        match.title, (s.season_number for s in non_special),
+    )
+    default_index = 0
+    for i, s in enumerate(non_special):
+        if s.season_number in in_progress:
+            default_index = i
+            break
+
     options: list[str] = []
     for s in non_special:
         label = f"Season {s.season_number}"
@@ -92,12 +114,16 @@ async def _maybe_prompt_for_season(
             label = f"{label} ({name})"
         ep_count = len(s.episodes)
         ep_word = "episode" if ep_count == 1 else "episodes"
-        options.append(f"{label} \u2014 {ep_count} {ep_word}")
+        opt = f"{label} \u2014 {ep_count} {ep_word}"
+        hint = in_progress.get(s.season_number)
+        if hint:
+            opt += f"  \u2022 {hint}"
+        options.append(opt)
 
     chosen = prompt_choice(
         f"Which season is on this disc? ({match.title})",
         options,
-        default=0,
+        default=default_index,
     )
     picked = non_special[chosen]
     return dataclasses.replace(request, season_number=picked.season_number)
@@ -175,6 +201,23 @@ async def lookup_metadata(
                 film, disc_info=disc_info, preferred=preferred_release,
             )
             dvdcompare_film_id = getattr(film, "film_id", None)
+            # Enforce the "one season at a time" invariant: if the user
+            # picked a boxset release covering multiple seasons, drop
+            # the discs that don't belong to the requested season so
+            # the rest of the pipeline (session marker, disc overview,
+            # resume) only sees the season the user is actually ripping.
+            if (
+                not is_movie
+                and request.season_number is not None
+                and discs
+            ):
+                from riplex.disc.analysis import filter_discs_to_season
+                filtered = filter_discs_to_season(
+                    discs, request.season_number,
+                    film_title=getattr(film, "title", None),
+                )
+                if filtered:
+                    discs = filtered
         except SystemExit:
             raise
         except Exception as exc:
@@ -191,6 +234,7 @@ async def lookup_metadata(
         dvdcompare_error=dvdcompare_error,
         tmdb_match=match,
         dvdcompare_film_id=dvdcompare_film_id,
+        season_number=(request.season_number if not is_movie else None),
     )
 
 

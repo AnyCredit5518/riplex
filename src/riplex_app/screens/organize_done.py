@@ -8,7 +8,7 @@ from pathlib import Path
 
 import flet as ft
 
-from riplex.config import get_archive_root, get_output_root
+from riplex.config import get_archive_root, get_output_root, get_rip_output
 from riplex.models import PlannedMovie
 from riplex.normalize import movie_folder_name, show_folder_name
 from riplex.organizer import archive_source_folder
@@ -115,7 +115,11 @@ class OrganizeDoneScreen:
             source_folder = Path(source_folder)
         archive_root = get_archive_root()
         if source_folder and archive_root and source_folder.exists():
-            archive_dest = archive_source_folder(source_folder, archive_root)
+            rip_output = get_rip_output()
+            prune_stop = Path(rip_output) if rip_output else None
+            archive_dest = archive_source_folder(
+                source_folder, archive_root, prune_stop=prune_stop,
+            )
             if archive_dest:
                 sections.append(ft.Container(height=4))
                 sections.append(

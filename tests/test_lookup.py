@@ -159,6 +159,13 @@ async def test_lookup_metadata_prompts_for_season_on_multi_season_tv(monkeypatch
     monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
     monkeypatch.setattr("riplex.lookup.is_interactive", lambda: True)
     monkeypatch.setattr("riplex.lookup.prompt_choice", _fake_prompt_choice)
+    # Isolate from any real Psych rips that may live under the dev
+    # machine's configured output root -- we're testing the prompt
+    # plumbing, not the in-progress scan.
+    monkeypatch.setattr(
+        "riplex.manifest.scan_in_progress_seasons",
+        lambda *_a, **_kw: {},
+    )
 
     show = ShowDetail(
         source_id="tv:1447",
@@ -184,6 +191,9 @@ async def test_lookup_metadata_prompts_for_season_on_multi_season_tv(monkeypatch
     # dvdcompare query was biased with the picked season.
     assert recorded["title"] == "Psych: Season 2"
     assert result.canonical == "Psych"
+    # LookupResult surfaces the picked season so callers can persist
+    # it into the session marker / rip manifest.
+    assert result.season_number == 2
 
 
 @pytest.mark.asyncio
@@ -289,3 +299,170 @@ async def test_lookup_metadata_season_prompt_skipped_when_non_interactive(monkey
         SearchRequest(title="Psych", media_type="tv"),
         _Provider(),
     )
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_season_prompt_biases_default_to_in_progress(
+    monkeypatch,
+):
+    """When Season 2 has an in-progress rip and Season 1 doesn't, the
+    prompt's default index shifts to Season 2 so the user can just hit
+    Enter to resume the season they're mid-way through. Hint text also
+    appears next to that season in the options list."""
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Psych", year=2006, media_type="tv", source_id="tv:1447",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        return PlannedShow(
+            canonical_title="Psych", year=2006,
+            seasons=[PlannedSeason(
+                season_number=request.season_number or 0, episodes=[],
+            )],
+        )
+
+    recorded: dict = {}
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        return SimpleNamespace(releases=[], film_id=None)
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [], ""
+
+    def _fake_prompt_choice(header, options, *, default=0):
+        recorded["options"] = list(options)
+        recorded["default"] = default
+        return default  # accept the default (simulating "hit Enter")
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+    monkeypatch.setattr("riplex.lookup.is_interactive", lambda: True)
+    monkeypatch.setattr("riplex.lookup.prompt_choice", _fake_prompt_choice)
+    monkeypatch.setattr(
+        "riplex.manifest.scan_in_progress_seasons",
+        lambda _title, _seasons: {2: "in progress (2/4 discs ripped)"},
+    )
+
+    show = ShowDetail(
+        source_id="tv:1447", title="Psych", year=2006,
+        seasons=[
+            SeasonMetadata(season_number=0, episodes=[], name="Specials"),
+            SeasonMetadata(season_number=1, episodes=[], name="Season 1"),
+            SeasonMetadata(season_number=2, episodes=[], name="Season 2"),
+            SeasonMetadata(season_number=3, episodes=[], name="Season 3"),
+        ],
+    )
+    result = await lookup_metadata(
+        SearchRequest(title="Psych", media_type="tv"),
+        _StubProviderWithShow(show),
+    )
+
+    # Season 2 is index 1 in the non-special list -- default shifts to it.
+    assert recorded["default"] == 1
+    # Only Season 2's option carries the hint text.
+    assert "in progress" in recorded["options"][1]
+    assert "2/4 discs ripped" in recorded["options"][1]
+    assert "in progress" not in recorded["options"][0]
+    assert "in progress" not in recorded["options"][2]
+    # And the returned lookup honors the biased default.
+    assert result.season_number == 2
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_filters_boxset_release_to_picked_season(monkeypatch):
+    """The "one season at a time" invariant: when the resolved
+    dvdcompare release is a multi-season boxset, ``LookupResult.discs``
+    only contains discs for the season the request asked for."""
+    from riplex.models import PlannedDisc
+
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Psych", year=2006, media_type="tv", source_id="tv:1447",
+        )
+
+    async def _fake_plan_show(match, provider, request):
+        return PlannedShow(
+            canonical_title="Psych", year=2006,
+            seasons=[PlannedSeason(season_number=2, episodes=[])],
+        )
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        # dvdcompare returns a boxset film titled generically -- the
+        # per-disc "Season N" titles do the split work.
+        return SimpleNamespace(
+            releases=[SimpleNamespace(name="Complete Series", discs=[])],
+            film_id=99999,
+            title="Psych: The Complete Series (TV) (Blu-ray)",
+        )
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        boxset = (
+            [PlannedDisc(number=n, disc_format="Blu-ray", title="Season 1")
+             for n in range(1, 5)]
+            + [PlannedDisc(number=n, disc_format="Blu-ray", title="Season 2")
+               for n in range(5, 9)]
+            + [PlannedDisc(number=n, disc_format="Blu-ray", title="Season 3")
+               for n in range(9, 13)]
+        )
+        return boxset, "Complete Series"
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_show", _fake_plan_show)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+
+    result = await lookup_metadata(
+        SearchRequest(
+            title="Psych", year=2006, media_type="tv", season_number=2,
+        ),
+        _StubProvider(),
+    )
+
+    assert [d.number for d in result.discs] == [5, 6, 7, 8]
+    assert result.season_number == 2
+
+
+@pytest.mark.asyncio
+async def test_lookup_metadata_movie_release_not_filtered(monkeypatch):
+    """Movie rips never hit the season filter -- ``season_number`` is
+    None on the request so the whole release passes through."""
+    from riplex.models import PlannedDisc, PlannedMovie
+
+    async def _fake_pick_match(request, provider):
+        return SimpleNamespace(
+            title="Batman Begins", year=2005, media_type="movie",
+            source_id="movie:272",
+        )
+
+    async def _fake_plan_movie(match, provider, request):
+        return PlannedMovie(
+            canonical_title="Batman Begins", year=2005,
+            runtime="2h20m", runtime_seconds=8400,
+        )
+
+    async def _fake_fetch_film(self, title, disc_format=None, year=None):
+        return SimpleNamespace(
+            releases=[SimpleNamespace(name="R1", discs=[])],
+            film_id=1, title="Batman Begins",
+        )
+
+    def _fake_select_release(film, disc_info=None, preferred=None):
+        return [PlannedDisc(number=1, disc_format="Blu-ray")], "R1"
+
+    monkeypatch.setattr("riplex.lookup.pick_match", _fake_pick_match)
+    monkeypatch.setattr("riplex.lookup._plan_movie", _fake_plan_movie)
+    monkeypatch.setattr("riplex.disc.provider.DiscProvider.fetch_film", _fake_fetch_film)
+    monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
+
+    result = await lookup_metadata(
+        SearchRequest(title="Batman Begins", media_type="movie"),
+        _StubProvider(),
+    )
+
+    assert len(result.discs) == 1
+    assert result.season_number is None
+
+

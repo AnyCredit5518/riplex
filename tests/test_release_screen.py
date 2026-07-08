@@ -190,3 +190,84 @@ class TestBackfillSeasonNumberFromFilmTitle:
         state = {"tmdb_match": _TmdbMatch(media_type="tv")}
         _backfill_season_number_from_film_title(state, None)
         assert "season_number" not in state
+
+
+class TestUseReleaseSeasonFilter:
+    """The release picker must enforce the "one season at a time"
+    invariant: even if the user picks a boxset release covering
+    multiple seasons, ``dvdcompare_discs`` gets filtered down to the
+    picked season before disc_overview sees it."""
+
+    def _boxset_discs(self):
+        from riplex.models import PlannedDisc
+
+        def _d(n, title=""):
+            return PlannedDisc(number=n, disc_format="Blu-ray", title=title)
+
+        return (
+            [_d(n, title="Season 1") for n in range(1, 5)]
+            + [_d(n, title="Season 2") for n in range(5, 9)]
+            + [_d(9)]  # bonus disc, untitled
+        )
+
+    def test_tv_boxset_filters_to_picked_season(self, monkeypatch):
+        discs = self._boxset_discs()
+        monkeypatch.setattr(
+            "riplex_app.screens.release._convert_release",
+            lambda _release: discs,
+        )
+
+        app = _App({
+            "workflow": "orchestrate",
+            "tmdb_match": _TmdbMatch(media_type="tv"),
+            "season_number": 2,
+            "_dvdcompare_film": _Film("Psych (TV) (Blu-ray)"),
+        })
+        screen = ReleaseScreen(app)
+        screen._use_release(_Release())
+
+        got = app.state["dvdcompare_discs"]
+        assert [d.number for d in got] == [5, 6, 7, 8]
+
+    def test_movie_release_bypasses_filter(self, monkeypatch):
+        # Even with a season_number lingering in state (shouldn't
+        # happen for movies but be defensive), a movie tmdb_match
+        # skips the filter entirely.
+        from riplex.models import PlannedDisc
+        movie_discs = [PlannedDisc(number=1, disc_format="Blu-ray")]
+        monkeypatch.setattr(
+            "riplex_app.screens.release._convert_release",
+            lambda _release: movie_discs,
+        )
+
+        app = _App({
+            "workflow": "orchestrate",
+            "tmdb_match": _TmdbMatch(media_type="movie"),
+            "season_number": 2,  # bogus, must not cause filtering
+            "_dvdcompare_film": _Film("Batman Begins"),
+        })
+        screen = ReleaseScreen(app)
+        screen._use_release(_Release())
+
+        assert app.state["dvdcompare_discs"] == movie_discs
+
+    def test_no_season_number_bypasses_filter(self, monkeypatch):
+        # TV rip where the season is genuinely unknown (mini-series
+        # style): filter is a no-op, whole release passes through.
+        discs = self._boxset_discs()
+        monkeypatch.setattr(
+            "riplex_app.screens.release._convert_release",
+            lambda _release: discs,
+        )
+
+        app = _App({
+            "workflow": "orchestrate",
+            "tmdb_match": _TmdbMatch(media_type="tv"),
+            # season_number deliberately unset
+            "_dvdcompare_film": _Film("Planet Earth II"),
+        })
+        screen = ReleaseScreen(app)
+        screen._use_release(_Release())
+
+        assert app.state["dvdcompare_discs"] == discs
+

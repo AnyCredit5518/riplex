@@ -315,6 +315,7 @@ class ProgressScreen:
                 tmdb_source_id=getattr(tmdb_match, "source_id", None),
                 dvdcompare_film_id=self.app.state.get("dvdcompare_film_id"),
                 dvdcompare_release_name=(release.name if release else None),
+                season_number=self.app.state.get("season_number"),
             )
             manifest_path = write_manifest(Path(output_dir), manifest)
             log.info("Wrote rip manifest: %s", manifest_path)

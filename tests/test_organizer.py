@@ -528,6 +528,64 @@ class TestBuildOrganizePlanShow:
         assert len(op.unmatched) == 1
         assert op.unmatched[0].name == "d1_t00.mkv"
 
+    def test_tv_extra_without_feature_type_suffix_routes_via_classification(self):
+        """dvdcompare extra with blank ``feature_type`` still routes.
+
+        Some dvdcompare listings leave ``feature_type`` empty on
+        extras (e.g. Psych S3 D1 "Start-up Trailers"), which strips
+        the ``(type)`` suffix from the target label so the disc-label
+        branch of ``_compute_destination`` can't tell it's an extra.
+        Without the classification-prefix fallback the file gets
+        dropped as unmatched even though the rip-time classifier
+        already tagged it ``[extra] Start-up Trailers``.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="A1_t11.mkv",
+                    file_duration_seconds=267,
+                    matched_label="Disc 1: Start-up Trailers",
+                    matched_runtime_seconds=267,
+                    delta_seconds=0,
+                    confidence="high",
+                    classification="[extra] Start-up Trailers (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(canonical_title="Psych", year=2006)
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.unmatched) == 0
+        assert len(op.moves) == 1
+        dest = op.moves[0].destination
+        # "extra" maps to "Other" -> title-based inference kicks in;
+        # "Start-up Trailers" doesn't match the trailer pattern
+        # (leading "trailer"/"teaser"/"tv spot"/"promo") so it lands
+        # in Featurettes.
+        assert "Featurettes" in dest
+        assert dest.endswith("Start-up Trailers.mkv")
+
+    def test_tv_extra_with_trailer_classification_routes_to_trailers(self):
+        """Rip-time ``[trailer]`` prefix maps cleanly to Trailers/."""
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="d1_t01.mkv",
+                    file_duration_seconds=120,
+                    matched_label="Disc 1: Teaser Reel",
+                    matched_runtime_seconds=120,
+                    delta_seconds=0,
+                    confidence="high",
+                    classification="[trailer] Teaser Reel (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(canonical_title="Psych", year=2006)
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 1
+        assert "Trailers" in op.moves[0].destination
+
     def test_tv_episode_fuzzy_title_match(self):
         """dvdcompare titles diverging from TMDb still route correctly.
 
@@ -1494,3 +1552,86 @@ class TestUnmatchedExtrasPolicy:
         )
         assert len(op.moves) == 0
         assert len(op.unmatched) == 1
+
+
+class TestArchiveSourceFolder:
+    """Verify archive_source_folder moves the folder and prunes
+    empty parents up to (but not including) the rip output root."""
+
+    def test_prunes_empty_parent_up_to_stop(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        rip_root = tmp_path / "_MakeMKV"
+        source = rip_root / "Psych (2006)" / "Season 02"
+        source.mkdir(parents=True)
+        (source / "file.mkv").write_text("x")
+        archive_root = tmp_path / "_archive"
+
+        dest = archive_source_folder(
+            source, str(archive_root), prune_stop=rip_root,
+        )
+
+        assert dest == archive_root / "Season 02"
+        assert dest.exists()
+        # Empty ``Psych (2006)/`` shell should be pruned.
+        assert not (rip_root / "Psych (2006)").exists()
+        # Rip root itself must survive.
+        assert rip_root.exists()
+
+    def test_does_not_prune_stop_directory(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        rip_root = tmp_path / "_MakeMKV"
+        source = rip_root / "Movie (2020)"
+        source.mkdir(parents=True)
+        (source / "file.mkv").write_text("x")
+        archive_root = tmp_path / "_archive"
+
+        archive_source_folder(
+            source, str(archive_root), prune_stop=rip_root,
+        )
+
+        assert rip_root.exists()  # never removed even when empty
+
+    def test_stops_at_non_empty_ancestor(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        rip_root = tmp_path / "_MakeMKV"
+        source = rip_root / "Show" / "Season 01"
+        source.mkdir(parents=True)
+        (source / "file.mkv").write_text("x")
+        # Sibling season keeps ``Show/`` non-empty after archive.
+        (rip_root / "Show" / "Season 02").mkdir()
+        archive_root = tmp_path / "_archive"
+
+        archive_source_folder(
+            source, str(archive_root), prune_stop=rip_root,
+        )
+
+        assert (rip_root / "Show").exists()
+        assert (rip_root / "Show" / "Season 02").exists()
+        assert not (rip_root / "Show" / "Season 01").exists()
+
+    def test_no_prune_stop_still_moves(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        source = tmp_path / "Rip"
+        source.mkdir()
+        (source / "file.mkv").write_text("x")
+        archive_root = tmp_path / "_archive"
+
+        dest = archive_source_folder(source, str(archive_root))
+
+        assert dest == archive_root / "Rip"
+        assert dest.exists()
+        assert not source.exists()
+
+    def test_empty_archive_root_returns_none(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        source = tmp_path / "Rip"
+        source.mkdir()
+
+        assert archive_source_folder(source, "") is None
+        assert source.exists()
+

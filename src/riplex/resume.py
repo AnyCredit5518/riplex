@@ -56,6 +56,12 @@ class ResumedLookup:
     discs: list["PlannedDisc"] = field(default_factory=list)
     season_number: int | None = None
     disc_format: str | None = None
+    # TMDb ShowDetail for TV / movie detail for movies. Downstream
+    # rip-guide classification cross-references its episode list to
+    # enrich labels and demote dvdcompare episode-list duplicates
+    # (e.g. Psych S3 D1 lists a bonus re-edit alongside the real
+    # episode); without it those duplicates masquerade as episodes.
+    show_detail: object | None = field(default=None, repr=False)
     dvdcompare_error: Exception | None = field(default=None, repr=False)
 
 
@@ -172,8 +178,20 @@ async def resume_from_session(
 
     try:
         provider = DiscProvider()
+        # If the marker recorded a season, bias the dvdcompare film
+        # lookup to that season's page: dvdcompare has one "film" per
+        # TV season (``"Psych: Season 2 (TV) (Blu-ray)"``) and its
+        # search matches on the title string. Without the bias, resume
+        # would silently rehydrate to whatever season came back first
+        # (typically Season 1). Movies never carry a season.
+        lookup_title = session.title
+        if (
+            session.media_type == "tv"
+            and session.season_number is not None
+        ):
+            lookup_title = f"{session.title}: Season {session.season_number}"
         film = await provider._fetch_film_cached(
-            session.title, disc_format, year=session.year,
+            lookup_title, disc_format, year=session.year,
         )
     except Exception as exc:
         log.warning("Resume: dvdcompare film lookup failed: %s", exc)
@@ -205,7 +223,13 @@ async def resume_from_session(
     else:
         result.release_name = session.release_name
 
-    result.season_number = _season_from_film_title(film, tmdb_match)
+    # Prefer the season persisted in the marker (newer field). Fall
+    # back to parsing the dvdcompare film title only for legacy
+    # markers written before ``season_number`` was recorded.
+    if session.season_number is not None:
+        result.season_number = session.season_number
+    else:
+        result.season_number = _season_from_film_title(film, tmdb_match)
 
     log.info(
         "Resume: hydrated %r (%d) -> film=%r fid=%s release=%r discs=%d season=%s",
@@ -213,4 +237,28 @@ async def resume_from_session(
         result.dvdcompare_film_title, result.dvdcompare_film_id,
         result.release_name, len(result.discs), result.season_number,
     )
+
+    # Fetch TMDb ShowDetail so the rip-guide classifier can enrich
+    # dvdcompare entries with canonical S/E prefixes and downgrade
+    # duplicate-episode entries to extras. Non-fatal on failure —
+    # classification will still work, just without the enrichment.
+    if tmdb_match.source_id and session.media_type == "tv":
+        result.show_detail = await _fetch_show_detail(tmdb_match.source_id)
+
     return result
+
+
+async def _fetch_show_detail(source_id: str) -> object | None:
+    """Best-effort TMDb ShowDetail fetch. Returns ``None`` on failure."""
+    try:
+        from riplex.config import get_api_key
+        from riplex.metadata.sources.tmdb import TmdbProvider
+
+        provider = TmdbProvider(get_api_key())
+        try:
+            return await provider.get_show_detail(source_id, include_specials=True)
+        finally:
+            await provider.close()
+    except Exception as exc:
+        log.warning("Resume: TMDb show_detail fetch failed: %s", exc)
+        return None

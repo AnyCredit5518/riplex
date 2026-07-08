@@ -11,6 +11,7 @@ from riplex.disc.analysis import (
     detect_cross_res_play_all,
     detect_play_all,
     enrich_dvd_entries_with_tmdb,
+    filter_discs_to_season,
     find_duration_match,
     format_seconds,
     group_for_disc,
@@ -159,14 +160,14 @@ class TestClassifyTitle:
         assert "Episode" not in result
 
     def test_still_labeled_episode_when_within_bounds(self):
-        """Regression guard: a title whose duration is within the
-        episode range must still fall through to the "Episode" label,
-        even when there's no direct dvdcompare match (some episodes
-        may have small runtime discrepancies that miss the 30s
-        find_duration_match window).
+        """When some dvdcompare episode slots are still unclaimed, a
+        slightly-off duration title falls through to "Episode" — an
+        unclaimed slot is a real explanation for a small runtime
+        discrepancy.
         """
-        episodes = [_make_title(i, 2590) for i in range(4)]
-        # Slightly off from every entry but still within episode range.
+        # Only 3 disc titles claim dvdcompare episodes, leaving a slot
+        # open for the odd_one to plausibly fill.
+        episodes = [_make_title(i, 2590) for i in range(3)]
         odd_one = _make_title(5, 2700)
         dvd_entries = [
             (f"Episode {i}", 2590, "episode") for i in range(4)
@@ -176,6 +177,71 @@ class TestClassifyTitle:
             dvd_entries, False, None, 4 * 2590, 4,
         )
         assert "Episode" in result
+
+    def test_labeled_unmatched_when_all_episode_slots_claimed(self):
+        """Psych S3 D1 pattern: 4 dvdcompare episodes fully matched
+        by 4 disc titles, and a 5th title (bonus/play-all fragment)
+        is left over with a runtime that's neither ``< avg * 0.3`` nor
+        ``> max * 1.5``. Falling back to "Episode" would be misleading
+        because no unclaimed slot remains.
+        """
+        episodes = [_make_title(i, 2590) for i in range(4)]
+        odd_one = _make_title(5, 2100)  # 35 min — between the two guards
+        dvd_entries = [
+            (f"Episode {i}", 2590, "episode") for i in range(4)
+        ]
+        result = classify_title(
+            odd_one, [*episodes, odd_one],
+            dvd_entries, False, None, 4 * 2590, 4,
+        )
+        assert "Unmatched content" in result
+        assert "Episode" not in result
+
+    def test_episode_not_misclassified_as_play_all_of_extras(self):
+        """Psych S3 D3 pattern: four ~43 min episodes plus seven short
+        extras whose runtimes happen to sum to ~2552s (within
+        ``detect_play_all``'s 105s tolerance of the 2579s episode
+        runtime). Without the ``_is_claimed_episode`` guard, each real
+        episode gets labeled ``Play-all of #4, #5, #6, #7, #8, #9,
+        #10`` because ``detect_play_all`` runs before the dvdcompare
+        episode match. The sequential-walk claim on the episode has to
+        suppress that heuristic.
+        """
+        # Four ~2579s episodes.
+        eps = [
+            _make_title(0, 2579, size=1_500_000_000),
+            _make_title(1, 2578, size=1_500_000_000),
+            _make_title(2, 2574, size=1_500_000_000),
+            _make_title(3, 2579, size=1_500_000_000),
+        ]
+        # Seven extras summing to 2552s — within detect_play_all's
+        # max(60, 7*15)=105s tolerance of the ~2579s episodes.
+        extras = [
+            _make_title(4, 662, size=300_000_000),
+            _make_title(5, 474, size=200_000_000),
+            _make_title(6, 374, size=200_000_000),
+            _make_title(7, 315, size=200_000_000),
+            _make_title(8, 257, size=100_000_000),
+            _make_title(9, 252, size=100_000_000),
+            _make_title(10, 218, size=100_000_000),
+        ]
+        all_titles = eps + extras
+        dvd_entries = [
+            ("Christmas Joy", 2581, "episode"),
+            ("Six Feet Under the Sea", 2580, "episode"),
+            ("Lassie Did a Bad, Bad Thing", 2577, "episode"),
+            ("Earth, Wind and... Wait for It", 2581, "episode"),
+        ]
+        total = sum(rt for _, rt, _ in dvd_entries)
+
+        for ep in eps:
+            label = classify_title(
+                ep, all_titles, dvd_entries, False, None, total, 4,
+            )
+            assert "Play-all" not in label, (
+                f"Title #{ep.index} ({ep.duration_seconds}s) was "
+                f"misclassified as play-all: {label!r}"
+            )
 
     def test_sequential_walk_assigns_episodes_in_dvdcompare_order(self):
         """Psych S1 D2 mis-assignment case: with pure duration matching
@@ -501,10 +567,15 @@ class TestIsSkipTitle:
         """Regression guard for the partial-play-all skip: an episode
         whose MakeMKV runtime is slightly higher than every dvdcompare
         entry (encoding differences, extended finale) must still be
-        kept, not skipped as unmatched.
+        kept, not skipped as unmatched. The sequential walk assigns
+        the slightly-longer title to its intended dvdcompare slot, so
+        it isn't left unclaimed.
         """
-        episodes = [_make_title(i, 2590) for i in range(4)]
-        odd_one = _make_title(5, 2700)  # 110s over max
+        # 3 exact-match episodes + 1 slightly-longer episode (4 disc
+        # titles for 4 dvd entries). Sequential walk gives the longer
+        # title its own slot; no episode is left dangling.
+        episodes = [_make_title(i, 2590) for i in range(3)]
+        odd_one = _make_title(3, 2700)  # 110s over max
         dvd_entries = [
             (f"Episode {i}", 2590, "episode") for i in range(4)
         ]
@@ -512,6 +583,24 @@ class TestIsSkipTitle:
             odd_one, [*episodes, odd_one],
             False, None, 4 * 2590, 4, dvd_entries,
         ) is False
+
+    def test_skip_unmatched_when_all_episode_slots_claimed(self):
+        """Symmetric with classify_title's all-slots-claimed guard.
+        Psych S3 D1: 4 dvdcompare episodes fully matched, and a 5th
+        title with runtime ~35 min falls between the ``< avg * 0.3``
+        and ``> max * 1.5`` skip guards. classify_title labels it
+        "Unmatched content" — is_skip_title must agree, otherwise the
+        title defaults to ripped despite the label.
+        """
+        episodes = [_make_title(i, 2590) for i in range(4)]
+        odd_one = _make_title(5, 2100)  # 35 min — between the two guards
+        dvd_entries = [
+            (f"Episode {i}", 2590, "episode") for i in range(4)
+        ]
+        assert is_skip_title(
+            odd_one, [*episodes, odd_one],
+            False, None, 4 * 2590, 4, dvd_entries,
+        ) is True
 
 
 class TestBuildDvdEntries:
@@ -614,20 +703,39 @@ class TestEnrichDvdEntriesWithTmdb:
         assert count == 1
 
     def test_each_tmdb_episode_matched_at_most_once(self):
-        """If dvdcompare lists a title twice (rare — bad scrape or
-        genuine duplicate), only the first match consumes the TMDb
-        episode; the second falls through unmatched."""
+        """If dvdcompare lists an episode twice (typically the real
+        broadcast plus a shorter re-edit), the longest-runtime entry
+        wins the SE prefix and any shorter duplicate is downgraded to
+        ``extra`` so it doesn't masquerade as an episode downstream.
+        Regression: Psych S3 D1 lists "Murder? ... Bueller?" as both
+        the 43-min episode and a 26-min re-edit under ``episodes``."""
         entries = [
-            ("Pilot", 2600, "episode"),
-            ("Pilot", 2600, "episode"),
+            ("Murder? ... Bueller?", 2582, "episode"),
+            ("Murder? ... Bueller?", 1569, "episode"),
         ]
-        tmdb = [_FakeTmdbEpisode(1, 1, "Pilot")]
+        tmdb = [_FakeTmdbEpisode(3, 2, "Murder? ... Bueller?")]
         enriched, _, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
-        assert enriched[0][0].startswith("S01E01 - ")
-        assert enriched[1][0] == "Pilot"  # no prefix — unmatched
-        # Both still typed "episode" because the input said so; the
-        # walker will only enrich the label.
-        assert count == 2
+        assert enriched[0][0].startswith("S03E02 - ")
+        assert enriched[0][2] == "episode"
+        assert enriched[1][0] == "Murder? ... Bueller?"
+        assert enriched[1][2] == "extra"
+        assert count == 1
+
+    def test_duplicate_wins_by_runtime_regardless_of_order(self):
+        """When dvdcompare lists the short duplicate first, the longer
+        entry still wins the SE prefix — two-pass matching is order-
+        independent."""
+        entries = [
+            ("Murder? ... Bueller?", 1569, "episode"),
+            ("Murder? ... Bueller?", 2582, "episode"),
+        ]
+        tmdb = [_FakeTmdbEpisode(3, 2, "Murder? ... Bueller?")]
+        enriched, _, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+        assert enriched[0][2] == "extra"
+        assert enriched[0][0] == "Murder? ... Bueller?"
+        assert enriched[1][2] == "episode"
+        assert enriched[1][0].startswith("S03E02 - ")
+        assert count == 1
 
     def test_no_match_leaves_entries_untouched(self):
         entries = [
@@ -949,6 +1057,92 @@ class TestDetectDiscNumber:
         titles = [_make_title(0, 5282)]
         info = DiscInfo(disc_name="PSYCH_THE_MOVIE", disc_type="Blu-ray disc", titles=titles)
         assert _detect_disc_number(info, [disc1, disc2, disc3, disc4]) == 4
+
+    def test_ambiguous_tv_box_set_returns_none(self):
+        """When two dvdcompare discs are nearly indistinguishable by runtime
+        (typical for TV box sets where every disc holds ~4-6 episodes of
+        the same length), the detector must return None rather than silently
+        picking whichever disc happens to have fewer listed episodes.
+
+        Regression for the Psych S2 case: the physical disc was disc 3
+        (5 episodes) but detect_disc_number picked disc 4 (4 episodes)
+        because it scored 4/4 = 1.0 while disc 3 scored 4/5 = 0.80.
+        With the 0.25 margin threshold, that gap is too small to trust
+        and the caller falls back to prompting the user.
+        """
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "Ep"
+                self.runtime_seconds = runtime
+
+        class FakeDisc:
+            def __init__(self, number, runtimes):
+                self.number = number
+                self.disc_format = "Blu-ray"
+                self.episodes = [FakeEp(rt) for rt in runtimes]
+                self.extras = []
+
+        disc1 = FakeDisc(1, [3964, 2588])  # very different runtimes
+        disc2 = FakeDisc(2, [2591, 2588, 2587, 2566, 2542])
+        disc3 = FakeDisc(3, [2592, 2592, 2588, 2588, 2587])
+        disc4 = FakeDisc(4, [2589, 2589, 2588, 2587])
+
+        # Live titles from the Psych S2 debug log
+        titles = [
+            _make_title(0, 10269),
+            _make_title(1, 2578),
+            _make_title(2, 2578),
+            _make_title(3, 2575),
+            _make_title(4, 2538),
+            _make_title(5, 780),
+            _make_title(6, 329),
+        ]
+        info = DiscInfo(disc_name="PSYCH", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc2, disc3, disc4]) is None
+
+    def test_close_scores_within_margin_returns_none(self):
+        """When two discs score within 0.25 of each other, detection is
+        ambiguous and the caller must fall back to prompting."""
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "Ep"
+                self.runtime_seconds = runtime
+
+        class FakeDisc:
+            def __init__(self, number, runtimes):
+                self.number = number
+                self.disc_format = "Blu-ray"
+                self.episodes = [FakeEp(rt) for rt in runtimes]
+                self.extras = []
+
+        # Both discs have identical candidate runtimes and the same episode
+        # count → both score 1.0 → margin 0 → None.
+        disc1 = FakeDisc(1, [2600, 2610, 2620])
+        disc2 = FakeDisc(2, [2600, 2610, 2620])
+        titles = [_make_title(0, 2605), _make_title(1, 2615), _make_title(2, 2625)]
+        info = DiscInfo(disc_name="AMBIG", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc2]) is None
+
+    def test_clear_winner_beats_margin_threshold(self):
+        """A disc that matches 3/3 while its sibling matches 0/3 is a
+        confident pick (margin 1.0 easily exceeds 0.25)."""
+        class FakeEp:
+            def __init__(self, runtime):
+                self.title = "Ep"
+                self.runtime_seconds = runtime
+
+        class FakeDisc:
+            def __init__(self, number, runtimes):
+                self.number = number
+                self.disc_format = "Blu-ray"
+                self.episodes = [FakeEp(rt) for rt in runtimes]
+                self.extras = []
+
+        disc1 = FakeDisc(1, [3000, 3100, 3050])
+        disc2 = FakeDisc(2, [2600, 2610, 2620])
+        titles = [_make_title(0, 2605), _make_title(1, 2615), _make_title(2, 2625)]
+        info = DiscInfo(disc_name="CLEAR", disc_type="Blu-ray disc", titles=titles)
+        assert _detect_disc_number(info, [disc1, disc2]) == 2
 
 
 
@@ -1479,6 +1673,76 @@ class TestBuildSeasonLabels:
             1: "Season 3, Disc 1",
             2: "Season 3, Disc 2",
         }
+
+
+class TestFilterDiscsToSeason:
+    """Tests for filter_discs_to_season() — the "one season at a time"
+    invariant enforcement point where cross-season discs of a boxset
+    release are dropped before the rest of the rip pipeline sees them.
+    """
+
+    def _disc(self, number, title=""):
+        return PlannedDisc(
+            number=number, disc_format="Blu-ray", title=title,
+        )
+
+    def test_empty_discs_returns_empty(self):
+        assert filter_discs_to_season([], 1) == []
+
+    def test_boxset_filters_to_requested_season(self):
+        # Psych: Complete Series shape -- discs 1-4 = S1, 5-8 = S2.
+        discs = (
+            [self._disc(n, title="Season 1") for n in range(1, 5)]
+            + [self._disc(n, title="Season 2") for n in range(5, 9)]
+        )
+        filtered = filter_discs_to_season(discs, 2)
+        assert [d.number for d in filtered] == [5, 6, 7, 8]
+
+    def test_boxset_filters_out_bonus_disc(self):
+        # Bonus-films disc has no season label -> not in the picked
+        # season -> dropped.
+        discs = (
+            [self._disc(n, title="Season 1") for n in range(1, 5)]
+            + [self._disc(5)]  # bonus films disc, no title
+        )
+        filtered = filter_discs_to_season(discs, 1)
+        assert [d.number for d in filtered] == [1, 2, 3, 4]
+
+    def test_single_season_release_passes_through_unchanged(self):
+        # A per-season release page (no per-disc season titles). The
+        # filter has no season info to work with, so it returns the
+        # input unchanged rather than dropping the whole release.
+        discs = [self._disc(n) for n in range(1, 5)]
+        filtered = filter_discs_to_season(discs, 1)
+        assert [d.number for d in filtered] == [1, 2, 3, 4]
+
+    def test_film_title_backfill_lets_leading_run_match(self):
+        # Psych: Season 1 (fid=66231) shape -- own discs untitled but
+        # film title advertises Season 1; pointer discs 5-8 = Season 2.
+        # Picking Season 1 must keep discs 1-4 (backfilled) and drop 5-8.
+        discs = (
+            [self._disc(n) for n in range(1, 5)]
+            + [self._disc(n, title="Season 2") for n in range(5, 9)]
+        )
+        filtered = filter_discs_to_season(
+            discs, 1, film_title="Psych: Season 1 (TV) (Blu-ray)",
+        )
+        assert [d.number for d in filtered] == [1, 2, 3, 4]
+
+    def test_requested_season_not_present_returns_empty(self):
+        # Boxset with S1-S2 only; user asks for S3. Return empty list.
+        # (The caller then decides whether to fall back or error out.)
+        discs = (
+            [self._disc(n, title="Season 1") for n in range(1, 5)]
+            + [self._disc(n, title="Season 2") for n in range(5, 9)]
+        )
+        assert filter_discs_to_season(discs, 3) == []
+
+    def test_none_season_returns_input_unchanged(self):
+        # Defensive: a movie rip (season_number=None) reaches the
+        # helper via an over-broad call site -- pass through untouched.
+        discs = [self._disc(1), self._disc(2)]
+        assert filter_discs_to_season(discs, None) == discs
 
 
 class TestGroupForDisc:

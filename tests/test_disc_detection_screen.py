@@ -71,7 +71,7 @@ class _FakeSession:
     def __init__(
         self, *, title="Psych", year=2006, media_type="tv",
         release_name="The Complete Series", disc_format="Blu-ray",
-        source_id="tv:1447",
+        source_id="tv:1447", season_number=None,
     ):
         self.title = title
         self.year = year
@@ -79,6 +79,7 @@ class _FakeSession:
         self.release_name = release_name
         self.disc_format = disc_format
         self.source_id = source_id
+        self.season_number = season_number
 
 
 class TestResumeStashesFilmMetadata:
@@ -162,4 +163,133 @@ class TestResumeStashesFilmMetadata:
         assert app.state.get("_dvdcompare_film") is film
         assert "dvdcompare_film_title" not in app.state
         assert "dvdcompare_film_id" not in app.state
+
+
+class TestPrepareTvSeasonPick:
+    """TV orchestrate resumes route through season_select rather than
+    jumping straight to disc_overview. This lets the user pick a
+    different season (e.g. inserted a Season 4 disc while a Season 1
+    rip is still in progress under the same title root)."""
+
+    def test_sets_tmdb_match_without_season_and_kicks_off_show_detail(
+        self, monkeypatch,
+    ):
+        # Prevent the background thread from actually running — the
+        # start() call is enough to verify wiring, and running it would
+        # make a live TMDb call via _fetch_show_detail_for_season_pick.
+        started = {"count": 0}
+
+        class _FakeThread:
+            def __init__(self, *, target, args, daemon):
+                started["count"] += 1
+                self.target = target
+                self.args = args
+
+            def start(self):
+                pass
+
+        import riplex_app.screens.disc_detection as dd_mod
+        monkeypatch.setattr(dd_mod.threading, "Thread", _FakeThread)
+
+        app = _FakeApp()
+        # Pre-seed old state that must be cleared so the user gets a
+        # fresh season picker.
+        app.state["season_number"] = 1
+        app.state["release"] = object()
+        app.state["dvdcompare_discs"] = ["stale"]
+
+        screen = DiscDetectionScreen(app)
+        # Give the screen the widgets that _prepare_tv_season_pick
+        # updates in place.
+        screen.search_btn = MagicMock()
+        screen.search_btn.disabled = False
+        screen.search_btn.text = "Search"
+
+        session = _FakeSession(
+            title="Psych", year=2006, media_type="tv",
+            source_id="tv:1447", season_number=1,
+        )
+        screen._prepare_tv_season_pick(session)
+
+        # tmdb_match derived from the session; season_number cleared.
+        tmdb = app.state["tmdb_match"]
+        assert tmdb.source_id == "tv:1447"
+        assert tmdb.title == "Psych"
+        assert tmdb.media_type == "tv"
+        assert "season_number" not in app.state
+        assert app.state.get("release") is None
+        assert app.state.get("dvdcompare_discs") is None
+        assert started["count"] == 1
+
+    def test_search_routes_tv_session_via_season_pick(self, monkeypatch):
+        # Route the resume through _prepare_tv_season_pick rather than
+        # the movie-style _resume_session so the user can disambiguate
+        # multiple in-progress seasons.
+        import riplex_app.screens.disc_detection as dd_mod
+        session = _FakeSession(
+            title="Psych", media_type="tv", source_id="tv:1447",
+        )
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session",
+            lambda _title, **_kw: session,
+        )
+
+        app = _FakeApp()
+        app.state["workflow"] = "orchestrate"
+        screen = DiscDetectionScreen(app)
+        screen.title_field = MagicMock()
+        screen.title_field.value = "Psych"
+        screen.search_btn = MagicMock()
+
+        prep_calls: list = []
+        resume_calls: list = []
+        monkeypatch.setattr(
+            screen, "_prepare_tv_season_pick",
+            lambda s: prep_calls.append(s),
+        )
+        monkeypatch.setattr(
+            screen, "_resume_session",
+            lambda s: resume_calls.append(s),
+        )
+
+        screen._search(None)
+
+        assert prep_calls == [session]
+        assert resume_calls == []
+
+    def test_search_routes_movie_session_via_direct_resume(self, monkeypatch):
+        # Movies have no season ambiguity, so they should still jump
+        # straight to the resume flow (no extra picker screen).
+        import riplex_app.screens.disc_detection as dd_mod
+        session = _FakeSession(
+            title="Some Movie", media_type="movie",
+            source_id="movie:1", season_number=None,
+        )
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session",
+            lambda _title, **_kw: session,
+        )
+
+        app = _FakeApp()
+        app.state["workflow"] = "orchestrate"
+        screen = DiscDetectionScreen(app)
+        screen.title_field = MagicMock()
+        screen.title_field.value = "Some Movie"
+        screen.search_btn = MagicMock()
+
+        prep_calls: list = []
+        resume_calls: list = []
+        monkeypatch.setattr(
+            screen, "_prepare_tv_season_pick",
+            lambda s: prep_calls.append(s),
+        )
+        monkeypatch.setattr(
+            screen, "_resume_session",
+            lambda s: resume_calls.append(s),
+        )
+
+        screen._search(None)
+
+        assert resume_calls == [session]
+        assert prep_calls == []
 

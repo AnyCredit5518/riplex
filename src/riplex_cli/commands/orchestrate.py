@@ -22,9 +22,9 @@ from riplex.disc.provider import (
 )
 from riplex.lookup import lookup_metadata
 from riplex.manifest import (
-    SessionWork,
     build_rip_manifest,
     build_rip_path,
+    build_session_work,
     build_snapshot_manifest,
     find_existing_session,
     find_ripped_discs,
@@ -33,7 +33,6 @@ from riplex.manifest import (
 )
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
-from riplex.normalize import sanitize_filename
 from riplex.resume import resume_from_session
 from riplex.title import parse_title_and_season, parse_volume_label
 from riplex.ui import (
@@ -223,7 +222,13 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # surfaces call the same adapter). User-provided flags still take
     # precedence — the resume branch never overrides an explicit
     # --season-number / --disc-format / --release.
-    existing_resume = find_existing_session(title_arg)
+    #
+    # When ``--season-number`` was supplied (either directly or parsed
+    # from the volume label), scope the lookup so a Season 4 rip
+    # doesn't resume a stray Season 1 session under the same title.
+    existing_resume = find_existing_session(
+        title_arg, season_number=getattr(args, "season_number", None),
+    )
     resumed = None
     if existing_resume is not None:
         print(
@@ -306,7 +311,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     folder_base = f"{canonical} ({year})"  # noqa: kept for display/logging
     # Nest TV rips under Season NN so different seasons of the same show don't
     # collide on Disc N. Movies (and TV without a known season) stay flat.
-    season_number = getattr(args, "season_number", None) if not is_movie else None
+    # Prefer the season the lookup / resume adapter resolved (which may
+    # have come from the interactive season picker) over the raw CLI
+    # arg, so an on-disc season pick propagates into the folder path
+    # and downstream session marker + rip manifest.
+    season_number = (
+        (getattr(args, "season_number", None) or getattr(meta, "season_number", None))
+        if not is_movie
+        else None
+    )
     rip_root = build_rip_path(canonical, year, season_number=season_number)
 
     # Detect which disc is currently inserted
@@ -314,7 +327,8 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
 
     # Resume: detect already-ripped discs from manifest files, aggregating
     # across sibling work-folders when a multi-work session marker exists.
-    existing = find_existing_session(canonical)
+    # Season-scoped so a Season 4 rip doesn't count Season 1's discs.
+    existing = find_existing_session(canonical, season_number=season_number)
     if existing and existing.all_ripped_discs:
         ripped_discs = set(existing.all_ripped_discs)
     else:
@@ -325,19 +339,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # once we actually plan to rip (skip in dry-run).
     if not dry_run:
         try:
-            work_folder = sanitize_filename(f"{canonical} ({year or 0})")
-            if season_number is not None:
-                from riplex.normalize import season_folder_name
-                work_folder = f"{work_folder}/{season_folder_name(season_number)}"
-            works = [SessionWork(
+            works = [build_session_work(
                 title=canonical,
                 year=year or 0,
                 media_type="movie" if is_movie else "tv",
-                folder=work_folder,
                 disc_numbers=[d.number for d in discs],
                 source_id=(
                     getattr(meta.tmdb_match, "source_id", "") or ""
                 ),
+                season_number=season_number,
             )]
             write_session_marker(works, release_name=release_name or "")
         except Exception as exc:
@@ -349,6 +359,19 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     if ripped_discs:
         ripped_list = ", ".join(str(n) for n in sorted(ripped_discs))
         print(f"Previously ripped: Disc {ripped_list}", file=sys.stderr)
+
+    # Multi-disc TV releases often can't be identified by runtime alone
+    # (every disc holds ~4-6 episodes of the same length). When
+    # detect_disc_number returns None we skip the "start with the
+    # inserted disc" reordering below and rely on the user to confirm
+    # each disc as it's prompted for.
+    if current_disc_num is None and len(discs) > 1 and len(ripped_discs) < len(discs):
+        print(
+            "Note: could not identify which disc is currently inserted "
+            "(runtimes on this release are too similar to distinguish "
+            "discs). You'll be asked to confirm each disc before ripping.",
+            file=sys.stderr,
+        )
 
     # ---- Per-disc rip loop ----
     any_ripped = len(ripped_discs) > 0
@@ -625,6 +648,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 tmdb_source_id=getattr(meta.tmdb_match, "source_id", None),
                 dvdcompare_film_id=meta.dvdcompare_film_id,
                 dvdcompare_release_name=release_name or None,
+                season_number=season_number,
             )
             manifest_path = write_manifest(output_dir, manifest)
             log.info("Wrote rip manifest: %s", manifest_path)

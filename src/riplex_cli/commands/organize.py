@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-from riplex.config import get_api_key, get_archive_root, get_output_root
+from riplex.config import get_api_key, get_archive_root, get_output_root, get_rip_output
 from riplex.dedup import find_all_redundant, remove_duplicates
 from riplex.detect import detect_format, detect_incomplete, detect_organize_layout, infer_media_type_from_files
 from riplex.lookup import lookup_metadata, resolve_disc_groups
@@ -19,7 +19,12 @@ from riplex.matcher import (
 )
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
-from riplex.organizer import archive_source_folder, build_organize_plan, execute_plan
+from riplex.organizer import (
+    archive_source_folder,
+    build_organize_plan,
+    execute_plan,
+    format_organize_plan,
+)
 from riplex.scanner import scan_folder
 from riplex.snapshot import (
     load as snapshot_load,
@@ -209,9 +214,29 @@ async def _organize_session_works(
     """
     import copy
 
-    root = folder.parent
+    # The marker's ``folder`` fields are relative to the configured rip
+    # output root (e.g. ``Psych (2006)/Season 02``), so we need to walk
+    # up from *folder* by as many parts as the current work-folder has.
+    # For flat movie layouts this is one hop (== ``folder.parent``); for
+    # season-nested TV layouts it's two. Falling back to ``folder.parent``
+    # would double the ``Psych (2006)`` segment when joining.
     release_name = marker.get("release_name", "")
     works_data = marker.get("works", [])
+
+    root = folder.parent
+    for w in works_data:
+        wf = Path(w.get("folder", ""))
+        if not wf.parts:
+            continue
+        # Match this work by its trailing folder name. When it matches,
+        # walk up ``len(wf.parts)`` levels from ``folder`` to reach the
+        # rip output root the marker's paths are relative to.
+        if folder.name == wf.name:
+            candidate = folder
+            for _ in wf.parts:
+                candidate = candidate.parent
+            root = candidate
+            break
 
     if not works_data:
         print(
@@ -623,53 +648,78 @@ async def organize_with_scanned(
     # Output
     dry_run = not getattr(args, "execute", False)
     unmatched_dir = output_root / "_Unmatched" / title if unmatched_policy == "move" else None
-    actions = execute_plan(org_plan, dry_run=dry_run, unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir)
-    for line in actions:
+
+    # Print preview first (same shape regardless of dry_run) so the
+    # user can review and confirm before we touch the filesystem.
+    preview_lines = format_organize_plan(
+        org_plan, dry_run=True,
+        unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir,
+    )
+    for line in preview_lines:
         print(line)
 
     if dry_run:
         print(f"\n{execute_hint('organize')}")
+        return 0
+
+    if not prompt_confirm("\nProceed with organize?", default=True):
+        print("Organize cancelled.", file=sys.stderr)
+        return 0
+
+    execute_plan(
+        org_plan, dry_run=False,
+        unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir,
+    )
 
     # Tag organized files after successful execute
-    if not dry_run:
-        from riplex.tagger import tag_organized
-        tagged = 0
-        for move in org_plan.moves:
-            if tag_organized(move.destination, move.label):
+    from riplex.tagger import tag_organized
+    tagged = 0
+    for move in org_plan.moves:
+        if tag_organized(move.destination, move.label):
+            tagged += 1
+    for split in org_plan.splits:
+        for dest, label in zip(split.chapter_destinations, split.chapter_labels):
+            if tag_organized(dest, label):
                 tagged += 1
-        for split in org_plan.splits:
-            for dest, label in zip(split.chapter_destinations, split.chapter_labels):
-                if tag_organized(dest, label):
-                    tagged += 1
-        if tagged:
-            log.info("Tagged %d file(s) as organized", tagged)
+    if tagged:
+        log.info("Tagged %d file(s) as organized", tagged)
 
-        # Write organized marker to source folder
-        if source_folder:
-            move_count = len(org_plan.moves) + sum(
-                len(s.chapter_destinations) for s in org_plan.splits
-            )
-            save_organized_marker(
-                source_folder,
-                title=title,
-                file_count=move_count,
-                output_root=str(output_root),
-            )
+    # Write organized marker to source folder
+    if source_folder:
+        move_count = len(org_plan.moves) + sum(
+            len(s.chapter_destinations) for s in org_plan.splits
+        )
+        save_organized_marker(
+            source_folder,
+            title=title,
+            file_count=move_count,
+            output_root=str(output_root),
+        )
 
-        # Archive source folder if configured
-        if source_folder:
-            archive_root = get_archive_root()
-            if archive_root and source_folder.exists():
-                archive_dest = Path(archive_root) / source_folder.name
-                if getattr(args, "auto", False):
-                    result = archive_source_folder(source_folder, archive_root)
+    # Archive source folder if configured
+    if source_folder:
+        archive_root = get_archive_root()
+        if archive_root and source_folder.exists():
+            # Prune empty parents up to (but not including) the
+            # configured rip output root, so a nested layout like
+            # ``<rip_root>/<title>/Season NN`` doesn't leave the
+            # empty ``<title>/`` shell behind after archiving.
+            rip_output = get_rip_output()
+            prune_stop = Path(rip_output) if rip_output else None
+            archive_dest = Path(archive_root) / source_folder.name
+            if getattr(args, "auto", False):
+                result = archive_source_folder(
+                    source_folder, archive_root, prune_stop=prune_stop,
+                )
+                if result:
+                    print(f"Archived: {source_folder} -> {result}", file=sys.stderr)
+            else:
+                print(f"\nArchive rip folder to: {archive_dest}", file=sys.stderr)
+                if prompt_confirm("Move rip folder to archive?"):
+                    result = archive_source_folder(
+                        source_folder, archive_root, prune_stop=prune_stop,
+                    )
                     if result:
                         print(f"Archived: {source_folder} -> {result}", file=sys.stderr)
-                else:
-                    print(f"\nArchive rip folder to: {archive_dest}", file=sys.stderr)
-                    if prompt_confirm("Move rip folder to archive?"):
-                        result = archive_source_folder(source_folder, archive_root)
-                        if result:
-                            print(f"Archived: {source_folder} -> {result}", file=sys.stderr)
 
     return 0

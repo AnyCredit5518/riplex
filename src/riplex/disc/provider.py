@@ -1114,6 +1114,7 @@ def detect_disc_number(
 
     best_disc = None
     best_score = -1
+    runner_up_score = -1
 
     for disc in dvdcompare_discs:
         # Gather all content durations: episodes first, then extras
@@ -1151,15 +1152,34 @@ def detect_disc_number(
         log.info("detect_disc_number: disc %d candidates=%s matched=%d/%d score=%.2f",
                  disc.number, candidates[:6], matched, denom, score)
         if score > best_score:
+            runner_up_score = best_score
             best_score = score
             best_disc = disc.number
+        elif score > runner_up_score:
+            runner_up_score = score
 
-    # Require at least 50% of entries to match
-    if best_score >= 0.5:
-        log.info("detect_disc_number: WINNER disc %d (score=%.2f)", best_disc, best_score)
+    # Require at least 50% of entries to match AND a meaningful margin over
+    # the runner-up. TV box sets are the motivating case: every disc holds
+    # ~4-6 episodes of the same runtime, so a disc that lists 4 episodes
+    # trivially scores 1.0 against 4 matched live titles while a disc that
+    # lists 5 episodes scores 0.8 — even when the *5-episode* disc is the
+    # one physically inserted. Without the margin check we'd silently pick
+    # the smaller disc and re-prompt for the wrong one on resume. Requiring
+    # a 0.25 margin makes the caller fall back to prompting the user in the
+    # ambiguous case, which is the honest answer.
+    runner_up = max(runner_up_score, 0.0)
+    if best_score >= 0.5 and (best_score - runner_up) >= 0.25:
+        log.info(
+            "detect_disc_number: WINNER disc %d (score=%.2f, runner_up=%.2f)",
+            best_disc, best_score, runner_up,
+        )
         return best_disc
 
-    log.info("detect_disc_number: no winner (best_score=%.2f, need >=0.50)", best_score)
+    log.info(
+        "detect_disc_number: no confident winner "
+        "(best=%.2f runner_up=%.2f; need best>=0.50 and margin>=0.25)",
+        best_score, runner_up,
+    )
     return None
 
 

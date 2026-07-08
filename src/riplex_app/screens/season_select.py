@@ -97,59 +97,163 @@ class SeasonSelectScreen:
         if year:
             header_line = f"{title} ({year})"
 
-        radios: list[ft.Control] = []
+        in_progress = self._scan_in_progress_seasons(title)
+
+        # Default = first in-progress season (in TMDb order) if any,
+        # else the first non-special season. Rationale: if the user is
+        # mid-way through ripping any season under this show, that's
+        # the most likely target for the disc they just inserted;
+        # otherwise Season 1 is the sensible starting point.
+        default_season: int | None = None
         for s in non_special:
-            label = f"Season {s.season_number}"
+            if s.season_number in in_progress:
+                default_season = s.season_number
+                break
+        if default_season is None:
+            default_season = non_special[0].season_number
+
+        # Per-season metadata table, exposed for tests to introspect
+        # without needing to walk the rendered control tree.
+        self._season_meta: dict[int, dict] = {}
+        rows: list[ft.Control] = []
+        for s in non_special:
+            base_label = f"Season {s.season_number}"
             name = (getattr(s, "name", "") or "").strip()
-            if name and name.lower() != label.lower():
-                label = f"{label} ({name})"
+            if name and name.lower() != base_label.lower():
+                base_label = f"{base_label} ({name})"
             ep_count = len(s.episodes)
             ep_word = "episode" if ep_count == 1 else "episodes"
-            radios.append(
-                ft.Radio(
-                    value=str(s.season_number),
-                    label=f"{label} \u2014 {ep_count} {ep_word}",
-                )
-            )
+            radio_label = f"{base_label} \u2014 {ep_count} {ep_word}"
+            hint = in_progress.get(s.season_number)
+            self._season_meta[s.season_number] = {
+                "label": radio_label,
+                "hint": hint,
+            }
+            rows.append(self._season_row(s.season_number, radio_label, hint))
 
-        # Default = the first non-special season (usually season 1).
-        default_value = str(non_special[0].season_number)
         self._radio_group = ft.RadioGroup(
-            value=default_value,
-            content=ft.Column(radios, spacing=6),
+            value=str(default_season),
+            content=ft.Column(rows, spacing=4),
+        )
+
+        picker_card = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.LIVE_TV, color=ft.Colors.BLUE_300, size=20),
+                            ft.Text(
+                                header_line,
+                                size=14,
+                                weight=ft.FontWeight.W_500,
+                                color=ft.Colors.BLUE_200,
+                            ),
+                        ],
+                        spacing=8,
+                    ),
+                    ft.Container(height=6),
+                    self._radio_group,
+                ],
+                spacing=0,
+            ),
+            padding=ft.Padding(left=16, top=14, right=16, bottom=14),
+            border=ft.Border.all(1, ft.Colors.GREY_800),
+            border_radius=8,
+            bgcolor=ft.Colors.with_opacity(0.03, ft.Colors.BLUE),
+        )
+
+        specials_note = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.Icons.INFO_OUTLINE, color=ft.Colors.GREY_500, size=16),
+                    ft.Text(
+                        "Season 0 (Specials) is not shown \u2014 extras that "
+                        "match a TMDb special still route to Season 00/ "
+                        "automatically at organize time.",
+                        size=12,
+                        color=ft.Colors.GREY_500,
+                        expand=True,
+                    ),
+                ],
+                spacing=8,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            ),
+            padding=ft.Padding(left=2, top=8, right=0, bottom=0),
         )
 
         return ft.Column(
             [
                 ft.Text("Select Season", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
-                    f"Which season is on this disc? ({header_line})",
+                    "Which season is on this disc?",
                     size=14,
                     color=ft.Colors.GREY_400,
                 ),
-                ft.Text(
-                    "Season 0 (Specials) is not shown here \u2014 extras on "
-                    "the disc that match a TMDb special still route to "
-                    "Season 00/ automatically at organize time.",
-                    size=12,
-                    color=ft.Colors.GREY_500,
-                ),
-                ft.Divider(height=20),
-                ft.Container(
-                    content=self._radio_group,
-                    padding=ft.Padding(left=10, top=0, right=0, bottom=0),
-                ),
+                ft.Container(height=6),
+                picker_card,
+                specials_note,
                 ft.Container(expand=True),
                 ft.Row(
                     [
                         ft.TextButton("Back", on_click=self._on_back),
-                        ft.FilledButton("Next", on_click=self._on_next),
+                        ft.FilledButton(
+                            "Next",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=self._on_next,
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
             ],
-            spacing=10,
+            spacing=6,
             expand=True,
+        )
+
+    def _season_row(
+        self, season_number: int, radio_label: str, hint: str | None,
+    ) -> ft.Control:
+        """One selectable season row: radio + optional in-progress chip.
+
+        The radio's ``label`` carries the plain-text season summary so
+        the RadioGroup remains keyboard-navigable; the chip is a
+        sibling control that adds color/iconography without changing
+        the underlying selection semantics.
+        """
+        controls: list[ft.Control] = [
+            ft.Radio(value=str(season_number), label=radio_label),
+        ]
+        if hint:
+            controls.append(
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Icon(
+                                ft.Icons.HOURGLASS_BOTTOM,
+                                color=ft.Colors.AMBER_400,
+                                size=14,
+                            ),
+                            ft.Text(
+                                hint,
+                                size=12,
+                                color=ft.Colors.AMBER_400,
+                                weight=ft.FontWeight.W_500,
+                            ),
+                        ],
+                        spacing=4,
+                        tight=True,
+                    ),
+                    padding=ft.Padding(left=8, top=2, right=8, bottom=2),
+                    border=ft.Border.all(
+                        1, ft.Colors.with_opacity(0.5, ft.Colors.AMBER_700),
+                    ),
+                    border_radius=10,
+                    bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.AMBER),
+                )
+            )
+        return ft.Row(
+            controls,
+            spacing=10,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
     # -- actions --------------------------------------------------------------
@@ -174,7 +278,42 @@ class SeasonSelectScreen:
         self.app.state.pop("_dvdcompare_film", None)
         self.app.state.pop("_dvdcompare_error", None)
         log.info("season_select: picked season=%d", picked)
+
+        # Orchestrate resume disambiguation: if a session exists for
+        # this exact (title, season), start a full resume instead of
+        # walking the fresh release-picker flow. Handles both the
+        # "user came from disc_detection resume prep" path and the
+        # "user backtracked from a fresh pick and changed their mind"
+        # path uniformly.
+        if self.app.state.get("workflow") == "orchestrate":
+            title = self.app.state.get("title")
+            if title:
+                from riplex.manifest import find_existing_session
+                session = find_existing_session(title, season_number=picked)
+                if session:
+                    log.info(
+                        "season_select: found existing session for "
+                        "'%s' season=%d — resuming",
+                        title, picked,
+                    )
+                    self._start_resume(session)
+                    return
+
         self.app.navigate(self._next_screen())
+
+    def _start_resume(self, session):
+        """Kick off a full resume in a background thread. Reuses the
+        shared ``perform_resume_fetch`` helper that disc_detection also
+        uses so both entry points converge on the same disc_overview
+        state.
+        """
+        from riplex_app.screens.disc_detection import perform_resume_fetch
+
+        threading.Thread(
+            target=perform_resume_fetch,
+            args=(self.app, session),
+            daemon=True,
+        ).start()
 
     # -- helpers --------------------------------------------------------------
 
@@ -205,3 +344,17 @@ class SeasonSelectScreen:
                     pass
 
         threading.Timer(_POLL_INTERVAL_MS / 1000.0, _tick).start()
+
+    def _scan_in_progress_seasons(self, title: str) -> dict[int, str]:
+        """Return ``{season_number: hint_text}`` for seasons of *title*
+        that have an in-progress rip session on disk.
+
+        Thin wrapper around ``riplex.manifest.scan_in_progress_seasons``
+        that adapts the picker's ``_non_special_seasons`` list to the
+        shared helper's plain-int input. See the helper for hint-text
+        format and failure semantics.
+        """
+        from riplex.manifest import scan_in_progress_seasons
+        return scan_in_progress_seasons(
+            title, (s.season_number for s in self._non_special_seasons),
+        )

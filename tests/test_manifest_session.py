@@ -14,6 +14,7 @@ from riplex.manifest import (
     SessionWork,
     _iter_candidate_work_folders,
     build_rip_path,
+    build_session_work,
     find_existing_session,
     read_session_marker,
     write_session_marker,
@@ -380,4 +381,280 @@ class TestFindExistingSessionSeasonNested:
         # rip_root falls back to the folder holding the marker.
         assert session.rip_root == film_folder
         assert session.all_ripped_discs == {31}
+
+
+
+
+
+class TestBuildSessionWork:
+    """Shared helper used by CLI orchestrate and GUI disc_overview to
+    construct a SessionWork with the canonical folder + season logic.
+    """
+
+    def test_movie_flat_folder_ignores_season(self):
+        w = build_session_work(
+            title="Batman Begins", year=2005, media_type="movie",
+            disc_numbers=[1], source_id="movie:272", season_number=3,
+        )
+        assert w.folder == "Batman Begins (2005)"
+        # season_number is only meaningful for TV; movies drop it.
+        assert w.season_number is None
+        assert w.title == "Batman Begins"
+        assert w.year == 2005
+        assert w.media_type == "movie"
+        assert w.disc_numbers == [1]
+        assert w.source_id == "movie:272"
+
+    def test_tv_with_season_nests_folder(self):
+        w = build_session_work(
+            title="Psych", year=2006, media_type="tv",
+            disc_numbers=[1, 2, 3], source_id="tv:1447", season_number=2,
+        )
+        assert w.folder == "Psych (2006)/Season 02"
+        assert w.season_number == 2
+
+    def test_tv_without_season_stays_flat(self):
+        w = build_session_work(
+            title="Some Show", year=2020, media_type="tv",
+            disc_numbers=[1], season_number=None,
+        )
+        assert w.folder == "Some Show (2020)"
+        assert w.season_number is None
+
+    def test_defaults_year_and_media_type(self):
+        w = build_session_work(
+            title="X", year=0, media_type="", disc_numbers=[],
+        )
+        assert w.folder == "X (0)"
+        assert w.media_type == "movie"
+
+
+class TestSeasonNumberRoundTrip:
+    def test_season_number_persists_in_marker(self, rip_root):
+        works = [build_session_work(
+            title="Psych", year=2006, media_type="tv",
+            disc_numbers=[1], source_id="tv:1447", season_number=2,
+        )]
+        write_session_marker(works, release_name="rel")
+        data = json.loads(
+            (rip_root / "Psych (2006)" / "Season 02" / SESSION_MARKER_NAME)
+            .read_text(encoding="utf-8"),
+        )
+        assert data["works"][0]["season_number"] == 2
+
+    def test_find_existing_session_surfaces_season(self, rip_root):
+        season_folder = rip_root / "Psych (2006)" / "Season 02"
+        _write_manifest(season_folder, 1, "Psych", year=2006)
+        # Make it a TV manifest with season persisted.
+        m = season_folder / "Disc 1" / "_rip_manifest.json"
+        data = json.loads(m.read_text(encoding="utf-8"))
+        data["type"] = "tv"
+        data["season_number"] = 2
+        m.write_text(json.dumps(data), encoding="utf-8")
+
+        works = [build_session_work(
+            title="Psych", year=2006, media_type="tv",
+            disc_numbers=[1], source_id="tv:1447", season_number=2,
+        )]
+        write_session_marker(works, release_name="rel")
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.season_number == 2
+
+    def test_legacy_marker_without_season_returns_none(self, rip_root):
+        """Markers written before season_number was persisted must
+        still resolve; the ExistingSession's season_number is None so
+        the resume adapter falls back to film-title parsing."""
+        tv_folder = rip_root / "Psych (2006)"
+        _write_manifest(tv_folder, 1, "Psych", year=2006)
+        # Hand-write a legacy marker without season_number.
+        (tv_folder / SESSION_MARKER_NAME).write_text(
+            json.dumps({
+                "type": "riplex_session",
+                "release_name": "rel",
+                "started_at": "2024-01-01T00:00:00Z",
+                "works": [{
+                    "title": "Psych", "year": 2006, "media_type": "tv",
+                    "folder": "Psych (2006)", "disc_numbers": [1],
+                    "source_id": "tv:1447",
+                }],
+            }),
+            encoding="utf-8",
+        )
+
+        session = find_existing_session("Psych")
+        assert session is not None
+        assert session.season_number is None
+
+
+class TestFindExistingSessionSeasonFilter:
+    """Multi-season TV disambiguation: when the user has two seasons
+    of the same show partially ripped under the same title root,
+    ``find_existing_session(title, season_number=N)`` must resolve to
+    the requested season rather than whichever folder happens to be
+    first in iterdir order.
+    """
+
+    def _write_manifest_with_type(
+        self, folder: Path, disc_num: int, title: str,
+        year: int, media_type: str, season_number: int | None,
+    ) -> None:
+        disc_dir = folder / f"Disc {disc_num}"
+        disc_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "title": title, "year": year,
+            "type": media_type, "release": "rel", "format": "Blu-ray",
+        }
+        if season_number is not None:
+            payload["season_number"] = season_number
+        (disc_dir / "_rip_manifest.json").write_text(
+            json.dumps(payload), encoding="utf-8",
+        )
+
+    def test_pass1_returns_matching_season(self, rip_root):
+        # Two in-progress seasons under the same title root.
+        s1 = rip_root / "Psych (2006)" / "Season 01"
+        s3 = rip_root / "Psych (2006)" / "Season 03"
+        self._write_manifest_with_type(s1, 1, "Psych", 2006, "tv", 1)
+        self._write_manifest_with_type(s3, 1, "Psych", 2006, "tv", 3)
+
+        # Without a filter, the first-encountered folder wins (legacy behavior).
+        legacy = find_existing_session("Psych")
+        assert legacy is not None
+        assert legacy.season_number in (1, 3)  # order-dependent, both valid
+
+        # With a filter, the requested season resolves deterministically.
+        got_s1 = find_existing_session("Psych", season_number=1)
+        assert got_s1 is not None
+        assert got_s1.season_number == 1
+        assert got_s1.rip_root == s1
+
+        got_s3 = find_existing_session("Psych", season_number=3)
+        assert got_s3 is not None
+        assert got_s3.season_number == 3
+        assert got_s3.rip_root == s3
+
+    def test_pass1_filter_no_match_returns_none(self, rip_root):
+        s1 = rip_root / "Psych (2006)" / "Season 01"
+        self._write_manifest_with_type(s1, 1, "Psych", 2006, "tv", 1)
+
+        # No Season 4 rip on disk — filter yields None even though
+        # Season 1 matches by title.
+        assert find_existing_session("Psych", season_number=4) is None
+
+    def test_pass2_filter_respects_marker_season(self, rip_root):
+        # Marker-only session (no rip manifest yet in the queried
+        # sibling): the season filter still narrows correctly.
+        s1 = rip_root / "Psych (2006)" / "Season 01"
+        s3 = rip_root / "Psych (2006)" / "Season 03"
+        s1.mkdir(parents=True)
+        s3.mkdir(parents=True)
+        # Write markers with distinct season_number entries.
+        for folder, season in ((s1, 1), (s3, 3)):
+            (folder / SESSION_MARKER_NAME).write_text(
+                json.dumps({
+                    "type": "riplex_session",
+                    "release_name": "rel",
+                    "started_at": "2024-01-01T00:00:00Z",
+                    "works": [{
+                        "title": "Psych", "year": 2006, "media_type": "tv",
+                        "folder": f"Psych (2006)/Season 0{season}",
+                        "disc_numbers": [1, 2],
+                        "source_id": "tv:1447",
+                        "season_number": season,
+                    }],
+                }),
+                encoding="utf-8",
+            )
+
+        got_s3 = find_existing_session("Psych", season_number=3)
+        assert got_s3 is not None
+        assert got_s3.season_number == 3
+
+        assert find_existing_session("Psych", season_number=99) is None
+
+    def test_filter_none_matches_any_season(self, rip_root):
+        """Backward compat: no filter means match any season, same as
+        the pre-filter behavior."""
+        s2 = rip_root / "Psych (2006)" / "Season 02"
+        self._write_manifest_with_type(s2, 1, "Psych", 2006, "tv", 2)
+
+        got = find_existing_session("Psych")
+        assert got is not None
+        assert got.season_number == 2
+
+
+class TestScanInProgressSeasons:
+    """Shared helper powering the GUI season-picker chips and CLI
+    season prompt annotations."""
+
+    def _write_marker_only(
+        self, root: Path, title: str, year: int, season: int,
+        disc_numbers: list[int],
+    ) -> None:
+        """Drop a session marker (no rip manifests) advertising ``season``
+        with a specific total disc count."""
+        folder = root / f"{title} ({year})" / f"Season {season:02d}"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / SESSION_MARKER_NAME).write_text(
+            json.dumps({
+                "type": "riplex_session",
+                "release_name": "rel",
+                "started_at": "2026-01-01T00:00:00Z",
+                "works": [{
+                    "title": title, "year": year, "media_type": "tv",
+                    "folder": f"{title} ({year})/Season {season:02d}",
+                    "disc_numbers": disc_numbers,
+                    "source_id": "tv:1447",
+                    "season_number": season,
+                }],
+            }),
+            encoding="utf-8",
+        )
+
+    def _write_manifest_with_type(
+        self, folder: Path, disc_num: int, title: str,
+        year: int, media_type: str, season_number: int | None,
+    ) -> None:
+        disc_dir = folder / f"Disc {disc_num}"
+        disc_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "title": title, "year": year,
+            "type": media_type, "release": "rel", "format": "Blu-ray",
+        }
+        if season_number is not None:
+            payload["season_number"] = season_number
+        (disc_dir / "_rip_manifest.json").write_text(
+            json.dumps(payload), encoding="utf-8",
+        )
+
+    def test_returns_ripped_over_total(self, rip_root):
+        # Season 2: marker says 4 discs total, 2 discs are ripped.
+        self._write_marker_only(rip_root, "Psych", 2006, 2, [1, 2, 3, 4])
+        s2 = rip_root / "Psych (2006)" / "Season 02"
+        self._write_manifest_with_type(s2, 1, "Psych", 2006, "tv", 2)
+        self._write_manifest_with_type(s2, 2, "Psych", 2006, "tv", 2)
+
+        from riplex.manifest import scan_in_progress_seasons
+        hints = scan_in_progress_seasons("Psych", [1, 2, 3])
+        assert set(hints.keys()) == {2}
+        assert "in progress" in hints[2]
+        assert "2/4 discs ripped" in hints[2]
+
+    def test_empty_when_no_sessions(self, rip_root):
+        from riplex.manifest import scan_in_progress_seasons
+        assert scan_in_progress_seasons("Psych", [1, 2, 3]) == {}
+
+    def test_swallows_exceptions(self, rip_root, monkeypatch):
+        # Simulate a disk error mid-scan; helper must return {} rather
+        # than propagate so callers keep rendering.
+        def _boom(*_a, **_kw):
+            raise OSError("disk offline")
+
+        monkeypatch.setattr(manifest_mod, "find_existing_session", _boom)
+
+        from riplex.manifest import scan_in_progress_seasons
+        assert scan_in_progress_seasons("Psych", [1, 2, 3]) == {}
+
 

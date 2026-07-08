@@ -19,11 +19,11 @@ from riplex.disc.provider import DiscProvider, disc_content_summary, strip_dvdco
 from riplex.manifest import (
     SessionWork,
     build_rip_path,
+    build_session_work,
     find_existing_session,
     find_ripped_discs,
     write_session_marker,
 )
-from riplex.normalize import sanitize_filename
 from riplex.metadata.autosearch import best_guess, strip_boxset_suffix
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex_app.screens.orchestrate_done import launch_organize_from_session
@@ -99,7 +99,10 @@ class DiscOverviewScreen:
         season_number = self.app.state.get("season_number")
         top_season = season_number if tmdb_match and tmdb_match.media_type == "tv" else None
         rip_root = build_rip_path(canonical, year, season_number=top_season)
-        existing = find_existing_session(canonical)
+        # For TV shows, scope the session lookup to the picked season so
+        # a Season 4 rip doesn't pull in Season 1's ripped-discs set
+        # when both are in progress under the same title root.
+        existing = find_existing_session(canonical, season_number=top_season)
         if existing and existing.all_ripped_discs:
             ripped_discs = set(existing.all_ripped_discs)
         else:
@@ -1114,8 +1117,6 @@ class DiscOverviewScreen:
         supplies the number (there is currently a single season per
         orchestrate run); movie works stay flat.
         """
-        from riplex.normalize import season_folder_name
-
         top_match = self.app.state.get("tmdb_match")
         top_season = self.app.state.get("season_number")
         groups = self.app.state.get("disc_groups", []) or []
@@ -1124,22 +1125,18 @@ class DiscOverviewScreen:
             match = g.tmdb_match if g.tmdb_match is not None else top_match
             if match is None:
                 continue
-            title = getattr(match, "title", "") or ""
-            year = getattr(match, "year", 0) or 0
-            media_type = getattr(match, "media_type", "movie") or "movie"
-            base_folder = sanitize_filename(f"{title} ({year})")
-            if media_type == "tv" and top_season is not None:
-                folder = f"{base_folder}/{season_folder_name(top_season)}"
+            work = build_session_work(
+                title=getattr(match, "title", "") or "",
+                year=getattr(match, "year", 0) or 0,
+                media_type=getattr(match, "media_type", "movie") or "movie",
+                disc_numbers=list(g.disc_numbers),
+                source_id=getattr(match, "source_id", "") or "",
+                season_number=top_season,
+            )
+            if work.folder in seen:
+                seen[work.folder].disc_numbers.extend(g.disc_numbers)
             else:
-                folder = base_folder
-            if folder in seen:
-                seen[folder].disc_numbers.extend(g.disc_numbers)
-            else:
-                seen[folder] = SessionWork(
-                    title=title, year=year, media_type=media_type,
-                    folder=folder, disc_numbers=list(g.disc_numbers),
-                    source_id=getattr(match, "source_id", "") or "",
-                )
+                seen[work.folder] = work
         return list(seen.values())
 
     def _write_session_marker(self) -> None:

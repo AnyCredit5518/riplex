@@ -102,6 +102,11 @@ class SessionWork:
     (e.g. ``tv:1447``). Persisted in the session marker so resume can
     hydrate a real ``MetadataSearchResult`` without re-running a
     fuzzy title search — organize needs it to fetch show/movie detail.
+
+    ``season_number`` is the TV season this work targets (None for
+    movies or TV works with unknown season). Persisted so resume can
+    bias the dvdcompare film lookup to the correct per-season page
+    instead of guessing from the film title.
     """
 
     title: str
@@ -110,6 +115,43 @@ class SessionWork:
     folder: str
     disc_numbers: list[int] = field(default_factory=list)
     source_id: str = ""
+    season_number: int | None = None
+
+
+def build_session_work(
+    *,
+    title: str,
+    year: int,
+    media_type: str,
+    disc_numbers: list[int],
+    source_id: str = "",
+    season_number: int | None = None,
+) -> SessionWork:
+    """Construct a :class:`SessionWork` with a canonical folder path.
+
+    Both CLI orchestrate and the GUI's disc-overview screen build
+    ``SessionWork`` entries; keeping the folder + season logic here
+    prevents drift (missing season persistence, differing sanitization).
+    ``season_number`` is only applied to the folder path for TV works.
+    """
+    from riplex.normalize import sanitize_filename, season_folder_name
+
+    effective_season = season_number if (media_type or "movie") == "tv" else None
+    base = sanitize_filename(f"{title} ({year or 0})")
+    folder = (
+        f"{base}/{season_folder_name(effective_season)}"
+        if effective_season is not None
+        else base
+    )
+    return SessionWork(
+        title=title,
+        year=year or 0,
+        media_type=media_type or "movie",
+        folder=folder,
+        disc_numbers=list(disc_numbers),
+        source_id=source_id or "",
+        season_number=effective_season,
+    )
 
 
 SESSION_MARKER_NAME = "_riplex_session.json"
@@ -154,6 +196,7 @@ def write_session_marker(
                 "folder": w.folder,
                 "disc_numbers": list(w.disc_numbers),
                 "source_id": w.source_id,
+                "season_number": w.season_number,
             }
             for w in works
         ],
@@ -214,6 +257,7 @@ class ExistingSession:
     works: list[SessionWork] = field(default_factory=list)
     all_ripped_discs: set[int] = field(default_factory=set)
     source_id: str = ""
+    season_number: int | None = None
 
 
 _SEASON_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
@@ -246,7 +290,9 @@ def _iter_candidate_work_folders(root: Path):
                 yield sub
 
 
-def find_existing_session(title: str) -> ExistingSession | None:
+def find_existing_session(
+    title: str, *, season_number: int | None = None,
+) -> ExistingSession | None:
     """Scan the rip output root for a session matching *title*.
 
     A session matches if either:
@@ -260,6 +306,12 @@ def find_existing_session(title: str) -> ExistingSession | None:
        disc of the first-ripped work writes markers into every sibling
        folder, so inserting any other work's disc later still resolves
        to the same session.
+
+    When ``season_number`` is provided, only sessions whose
+    ``season_number`` matches are considered — needed to disambiguate a
+    show that has multiple in-progress season rips under the same
+    title root. ``season_number=None`` matches sessions with any season
+    (including movies).
 
     When a session marker is present, ``all_ripped_discs`` aggregates
     every sibling folder's ``find_ripped_discs`` output so callers can
@@ -293,13 +345,23 @@ def find_existing_session(title: str) -> ExistingSession | None:
         ripped = find_ripped_discs(title_folder)
         works, all_ripped = _fan_out_marker(root, title_folder, ripped)
 
-        # The marker (if present) knows this work's TMDb source_id;
-        # look it up by matching the folder that we resolved from.
+        # The marker (if present) knows this work's TMDb source_id and
+        # season_number; look them up by matching the folder we resolved.
         source_id = ""
+        resolved_season: int | None = None
         for w in works:
             if w.folder and (root / w.folder) == title_folder:
                 source_id = w.source_id
+                resolved_season = w.season_number
                 break
+        if resolved_season is None:
+            raw = primary_manifest.get("season_number")
+            if isinstance(raw, int):
+                resolved_season = raw
+
+        if season_number is not None and resolved_season != season_number:
+            # Wrong season — keep scanning for a better candidate.
+            continue
 
         return ExistingSession(
             title=primary_manifest.get("title", ""),
@@ -312,6 +374,7 @@ def find_existing_session(title: str) -> ExistingSession | None:
             works=works,
             all_ripped_discs=all_ripped,
             source_id=source_id,
+            season_number=resolved_season,
         )
 
     # --- Pass 2: match on any session marker's works[*].title. --------
@@ -324,9 +387,14 @@ def find_existing_session(title: str) -> ExistingSession | None:
             continue
         matching_work: dict | None = None
         for entry in marker.get("works", []):
-            if entry.get("title", "").strip().lower() == title_lower:
-                matching_work = entry
-                break
+            if entry.get("title", "").strip().lower() != title_lower:
+                continue
+            if season_number is not None:
+                entry_season = entry.get("season_number")
+                if entry_season != season_number:
+                    continue
+            matching_work = entry
+            break
         if matching_work is None:
             continue
 
@@ -373,9 +441,45 @@ def find_existing_session(title: str) -> ExistingSession | None:
             works=works,
             all_ripped_discs=all_ripped,
             source_id=matching_work.get("source_id", ""),
+            season_number=matching_work.get("season_number"),
         )
 
     return None
+
+
+def scan_in_progress_seasons(
+    title: str, season_numbers,
+) -> dict[int, str]:
+    """Return ``{season_number: hint_text}`` for seasons of *title* that
+    have an in-progress rip session on disk.
+
+    Shared by the GUI season picker (badge/chip rendering) and the CLI
+    season prompt (default bias + option annotation) so both surfaces
+    describe an in-progress rip with identical wording. Failures are
+    swallowed and logged — this is a display concern; the caller must
+    always be able to render the picker even if the scan errors out.
+    """
+    result: dict[int, str] = {}
+    try:
+        for s in season_numbers:
+            sess = find_existing_session(title, season_number=s)
+            if sess is None:
+                continue
+            ripped = len(sess.ripped_discs or set())
+            total = 0
+            for w in getattr(sess, "works", []) or []:
+                if getattr(w, "season_number", None) == s:
+                    total = len(w.disc_numbers or [])
+                    break
+            if total and ripped:
+                result[s] = f"in progress ({ripped}/{total} discs ripped)"
+            elif ripped:
+                result[s] = f"in progress ({ripped} disc(s) ripped)"
+            else:
+                result[s] = "session started"
+    except Exception as exc:
+        log.warning("scan_in_progress_seasons(%r) failed: %s", title, exc)
+    return result
 
 
 def _fan_out_marker(
@@ -405,6 +509,7 @@ def _fan_out_marker(
             folder=entry.get("folder", ""),
             disc_numbers=list(entry.get("disc_numbers", [])),
             source_id=entry.get("source_id", ""),
+            season_number=entry.get("season_number"),
         )
         works.append(w)
         if not w.folder:
@@ -550,6 +655,7 @@ def build_rip_manifest(
     tmdb_source_id: str | None = None,
     dvdcompare_film_id: int | None = None,
     dvdcompare_release_name: str | None = None,
+    season_number: int | None = None,
 ) -> dict:
     """Build the rip manifest dict from rip results.
 
@@ -560,6 +666,10 @@ def build_rip_manifest(
     ``dvdcompare_release_name`` are optional identity fields recorded at
     rip time so a later organize run can skip the TMDb picker and the
     dvdcompare release picker.
+
+    ``season_number`` is persisted for TV rips so a later resume can
+    rebuild the session with the correct season without re-guessing
+    from the dvdcompare film title.
     """
     from riplex.disc.makemkv import build_stream_fingerprint, probe_chapter_durations
 
@@ -573,6 +683,8 @@ def build_rip_manifest(
         "release": release_name,
         "files": [],
     }
+    if season_number is not None and not is_movie:
+        manifest["season_number"] = season_number
     if tmdb_source_id:
         manifest["tmdb_source_id"] = tmdb_source_id
     if dvdcompare_film_id:

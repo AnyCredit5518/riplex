@@ -199,6 +199,22 @@ def _extract_feature_type(label: str) -> str:
     return ""
 
 
+_CLASSIFICATION_TYPE_PREFIX_RE = re.compile(r"^\[([^\]]+)\]\s*")
+
+
+def _extract_classification_type(classification: str | None) -> str:
+    """Return the ``[type]`` prefix from a rip-time classification.
+
+    ``"[extra] Start-up Trailers (1080p)"`` -> ``"extra"``. Empty
+    when the classification carries no bracketed prefix (episodes,
+    play-alls, main films).
+    """
+    if not classification:
+        return ""
+    m = _CLASSIFICATION_TYPE_PREFIX_RE.match(classification)
+    return m.group(1).strip() if m else ""
+
+
 _TRAILER_PATTERN = re.compile(
     r"^(trailer|teaser|tv\s*spot|promo)\b", re.IGNORECASE,
 )
@@ -666,6 +682,27 @@ def _compute_destination(
                     dest = base / season_folder_name(ep.season_number) / fname
                     log.debug("  -> episode by title lookup '%s': %s", title_part, dest)
                     return dest
+                # No TMDb episode match. Before dropping the file as
+                # unmatched, consult the rip-time classification
+                # prefix "[extra] Title" — dvdcompare sometimes leaves
+                # feature_type blank on extras (e.g. "Start-up
+                # Trailers"), which strips the "(type)" suffix from
+                # the target label but the classifier still tags the
+                # file. Route to an extras folder derived from that
+                # hint (with a title-based fallback for generic
+                # "extra"/"segment" that map to "Other").
+                class_type = _extract_classification_type(candidate.classification)
+                if class_type:
+                    folder = _extras_folder(class_type)
+                    if folder == "Other":
+                        folder = _infer_extras_folder(title_part)
+                    safe = sanitize_filename(title_part)
+                    dest = base / folder / f"{safe}.mkv"
+                    log.debug(
+                        "  -> extras via classification [%s] -> '%s': %s",
+                        class_type, folder, dest,
+                    )
+                    return dest
                 # No TMDb match; can't produce a valid Plex filename.
                 log.debug("  -> no TMDb match for title '%s', returning None", title_part)
                 return None
@@ -732,10 +769,10 @@ def execute_plan(
                 log.info("Deleted unmatched: %s", f.path)
 
     # --- Build grouped output ---
-    return _format_plan_output(organize_plan, dry_run, unmatched_policy, unmatched_dir)
+    return format_organize_plan(organize_plan, dry_run, unmatched_policy, unmatched_dir)
 
 
-def _format_plan_output(
+def format_organize_plan(
     organize_plan: OrganizePlan,
     dry_run: bool,
     unmatched_policy: str,
@@ -849,20 +886,46 @@ def _format_plan_output(
 def archive_source_folder(
     source_folder: Path,
     archive_root: str,
+    *,
+    prune_stop: Path | None = None,
 ) -> Path | None:
     """Move *source_folder* into *archive_root*, preserving the folder name.
 
     Returns the destination path on success, or ``None`` if archiving is
     skipped (empty *archive_root*) or fails.
+
+    After a successful move, walks up ``source_folder.parent`` and
+    ``rmdir``s empty ancestors so a season-nested rip like
+    ``<rip_root>/Psych (2006)/Season 02`` doesn't leave the empty
+    ``Psych (2006)/`` shell behind. Stops at *prune_stop* (typically
+    the rip output root) or at the first non-empty ancestor. Never
+    removes *prune_stop* itself.
     """
     if not archive_root:
         return None
     dest = Path(archive_root) / source_folder.name
+    parent = source_folder.parent
     try:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source_folder), dest)
         log.info("Archived: %s -> %s", source_folder, dest)
-        return dest
     except OSError as exc:
         log.warning("Failed to archive %s: %s", source_folder, exc)
         return None
+
+    stop = prune_stop.resolve() if prune_stop else None
+    current = parent
+    for _ in range(4):  # bounded walk; TV is at most 2 hops
+        try:
+            resolved = current.resolve()
+        except OSError:
+            break
+        if stop is not None and resolved == stop:
+            break
+        try:
+            current.rmdir()  # only succeeds if empty
+            log.info("Pruned empty parent: %s", current)
+        except OSError:
+            break
+        current = current.parent
+    return dest

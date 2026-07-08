@@ -13,6 +13,18 @@ from riplex.metadata.provider import (
 from riplex_app.screens.season_select import SeasonSelectScreen
 
 
+@pytest.fixture(autouse=True)
+def _isolate_from_real_sessions(monkeypatch):
+    """Prevent the picker's in-progress scan from touching the dev
+    machine's real rip root during tests. Individual tests that want
+    to observe find_existing_session calls override this fixture by
+    monkey-patching again with their own stub."""
+    monkeypatch.setattr(
+        "riplex.manifest.find_existing_session",
+        lambda *_a, **_kw: None,
+    )
+
+
 class _App:
     """Minimal stand-in for the Flet app object.
 
@@ -160,9 +172,8 @@ class TestPicker:
         screen.build()
         # Not navigated yet -- we're on the picker.
         assert app.navigated_to == []
-        # Radio values contain only 1, 2, 3 (no "0").
-        radio_values = {r.value for r in screen._radio_group.content.controls}
-        assert radio_values == {"1", "2", "3"}
+        # Only seasons 1, 2, 3 are offered (no "0").
+        assert set(screen._season_meta.keys()) == {1, 2, 3}
         # Default is the first non-special season (season 1).
         assert screen._radio_group.value == "1"
 
@@ -232,7 +243,7 @@ class TestPicker:
         })
         screen = SeasonSelectScreen(app)
         screen.build()
-        labels = [r.label for r in screen._radio_group.content.controls]
+        labels = [meta["label"] for meta in screen._season_meta.values()]
         assert any("Volume One" in lbl for lbl in labels)
         # "Season 2 (Season 2)" would be silly -- we suppress the
         # redundant suffix.
@@ -252,3 +263,247 @@ class TestLoadingState:
         # Not asserting exact UI structure; just that we produced a Column
         # and did not raise. (A ProgressRing lives inside.)
         assert result is not None
+
+
+class TestOrchestrateResumeOnPick:
+    """When workflow=orchestrate and a session exists for the picked
+    (title, season), season_select must start a full resume instead
+    of walking the fresh release-picker flow. Handles both entry
+    points (disc_detection prep -> season_select and back-navigation
+    from release)."""
+
+    def test_resumes_matching_session_and_skips_release(self, monkeypatch):
+        # A fake session for (Psych, season 2) that find_existing_session
+        # will return when queried with season_number=2.
+        fake_session = SimpleNamespace(
+            title="Psych", year=2006, media_type="tv",
+            source_id="tv:1447", season_number=2,
+        )
+
+        seen: list[tuple[str, int | None]] = []
+        def _fake_find(title, *, season_number=None):
+            seen.append((title, season_number))
+            return fake_session if season_number == 2 else None
+
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session", _fake_find,
+        )
+
+        # Prevent the resume thread from actually running the adapter.
+        started: list = []
+
+        class _FakeThread:
+            def __init__(self, *, target, args, daemon):
+                started.append((target, args))
+
+            def start(self):
+                pass
+
+        import riplex_app.screens.season_select as ss_mod
+        monkeypatch.setattr(ss_mod.threading, "Thread", _FakeThread)
+
+        app = _App({
+            "workflow": "orchestrate",
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+        screen._radio_group.value = "2"
+        screen._on_next(None)
+
+        assert app.state["season_number"] == 2
+        # Resume kicked off; no navigation to release.
+        assert app.navigated_to == []
+        assert len(started) == 1
+        target, args = started[0]
+        # Second arg is the session; verify it's the exact object we
+        # returned from find_existing_session.
+        assert args[1] is fake_session
+        # The picker's in-progress scan calls find_existing_session
+        # once per non-special season during build(), and _on_next
+        # calls it once more for the picked season. What matters is
+        # that the picked season's query happened.
+        assert ("Psych", 2) in seen
+
+    def test_no_matching_session_falls_through_to_release(self, monkeypatch):
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session",
+            lambda _t, **_kw: None,
+        )
+        app = _App({
+            "workflow": "orchestrate",
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+        screen._radio_group.value = "3"
+        screen._on_next(None)
+
+        assert app.state["season_number"] == 3
+        assert app.navigated_to == ["release"]
+
+    def test_fresh_workflow_does_not_start_resume(self, monkeypatch):
+        # Fresh (non-orchestrate) rip flow should never start a resume
+        # even if a session happens to exist for the picked season --
+        # the user asked for a fresh flow. (The in-progress scan may
+        # still call find_existing_session to render hints; that's a
+        # display concern separate from resume routing.)
+        session = SimpleNamespace(
+            title="Psych", year=2006, media_type="tv",
+            source_id="tv:1447", season_number=1,
+            ripped_discs=set(), works=[],
+        )
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session",
+            lambda *_a, **_kw: session,
+        )
+
+        started: list = []
+        class _FakeThread:
+            def __init__(self, *, target, args, daemon):
+                started.append((target, args))
+            def start(self):
+                pass
+        import riplex_app.screens.season_select as ss_mod
+        monkeypatch.setattr(ss_mod.threading, "Thread", _FakeThread)
+
+        app = _App({
+            # workflow deliberately unset -- fresh rip flow
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+        screen._radio_group.value = "1"
+        screen._on_next(None)
+
+        assert app.navigated_to == ["release"]
+        assert started == []
+
+
+class TestInProgressHints:
+    """Hint annotations and default-selection bias driven by
+    ``find_existing_session`` results."""
+
+    def test_default_is_season_1_when_no_sessions(self, monkeypatch):
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session",
+            lambda *_a, **_kw: None,
+        )
+        app = _App({
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+        assert screen._radio_group.value == "1"
+        # No hints at all when no seasons are in progress.
+        hints = [meta["hint"] for meta in screen._season_meta.values()]
+        assert all(h is None for h in hints)
+
+    def test_default_biases_to_first_in_progress_season(self, monkeypatch):
+        # Only Season 2 has a session; picker should default to it
+        # instead of Season 1 (which is otherwise the default).
+        session_s2 = SimpleNamespace(
+            title="Psych", year=2006, media_type="tv",
+            source_id="tv:1447", season_number=2,
+            ripped_discs={1, 2},
+            works=[SimpleNamespace(season_number=2, disc_numbers=[1, 2, 3, 4])],
+        )
+
+        def _fake_find(_title, *, season_number=None):
+            if season_number == 2:
+                return session_s2
+            return None
+
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session", _fake_find,
+        )
+
+        app = _App({
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+
+        assert screen._radio_group.value == "2"
+        # Season 2 has an in-progress hint with the ripped/total breakdown.
+        s2_hint = screen._season_meta[2]["hint"]
+        assert s2_hint is not None
+        assert "in progress" in s2_hint
+        assert "2/4 discs ripped" in s2_hint
+        # Season 1 has no hint.
+        assert screen._season_meta[1]["hint"] is None
+
+    def test_multiple_in_progress_seasons_pick_first_in_tmdb_order(
+        self, monkeypatch,
+    ):
+        # Both Season 2 and Season 3 in progress; default = Season 2
+        # (first in the TMDb-ordered non-special list).
+        def _session(season, ripped, total):
+            return SimpleNamespace(
+                title="Psych", year=2006, media_type="tv",
+                source_id="tv:1447", season_number=season,
+                ripped_discs=set(range(1, ripped + 1)),
+                works=[SimpleNamespace(
+                    season_number=season,
+                    disc_numbers=list(range(1, total + 1)),
+                )],
+            )
+
+        def _fake_find(_title, *, season_number=None):
+            if season_number == 2:
+                return _session(2, 1, 4)
+            if season_number == 3:
+                return _session(3, 3, 4)
+            return None
+
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session", _fake_find,
+        )
+
+        app = _App({
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+
+        # Default = earliest in-progress season.
+        assert screen._radio_group.value == "2"
+        # Both seasons render an in-progress hint.
+        assert "in progress" in screen._season_meta[2]["hint"]
+        assert "in progress" in screen._season_meta[3]["hint"]
+        # Season 1 (untouched) has no hint.
+        assert screen._season_meta[1]["hint"] is None
+
+
+    def test_scan_failure_is_non_fatal(self, monkeypatch):
+        # A filesystem error during the scan must not block picker
+        # rendering; the picker degrades to no-hints, Season 1 default.
+        def _raise(*_a, **_kw):
+            raise OSError("disk offline")
+
+        monkeypatch.setattr(
+            "riplex.manifest.find_existing_session", _raise,
+        )
+
+        app = _App({
+            "title": "Psych",
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+
+        assert screen._radio_group.value == "1"
+

@@ -47,6 +47,28 @@ def _backfill_season_number_from_film_title(state: dict, film) -> None:
         state["season_number"] = parsed
 
 
+def _apply_season_filter(state: dict, discs: list, film) -> list:
+    """Return *discs* filtered to the picked TV season, if any.
+
+    Enforces the "one season at a time" invariant at the boundary
+    where the release picker hands off to the disc overview / rip
+    flow. Movies and rips with no picked season pass through
+    unchanged. See ``riplex.disc.analysis.filter_discs_to_season``
+    for the filter's fallback semantics.
+    """
+    tmdb_match = state.get("tmdb_match")
+    season = state.get("season_number")
+    if getattr(tmdb_match, "media_type", None) != "tv":
+        return discs
+    if season is None or not discs:
+        return discs
+    from riplex.disc.analysis import filter_discs_to_season
+    filtered = filter_discs_to_season(
+        discs, season, film_title=getattr(film, "title", None),
+    )
+    return filtered or discs
+
+
 class ReleaseScreen:
     def __init__(self, app):
         self.app = app
@@ -581,6 +603,7 @@ class ReleaseScreen:
                 raise LookupError(
                     f"saved release {release_name!r} contained no usable disc data"
                 )
+            discs = _apply_season_filter(self.app.state, discs, film)
 
             self.app.state["release"] = match
             self.app.state["dvdcompare_discs"] = discs
@@ -752,6 +775,9 @@ class ReleaseScreen:
             self.app.navigate("release")
             return
 
+        discs = _apply_season_filter(
+            self.app.state, discs, self.app.state.get("_dvdcompare_film"),
+        )
         self.app.state["release"] = release
         self.app.state["dvdcompare_discs"] = discs
         self.app.navigate(self._next_screen)
