@@ -53,6 +53,11 @@ class LookupResult:
     # persist this into the session marker + rip manifest so a later
     # resume knows which per-season dvdcompare page to fetch.
     season_number: int | None = None
+    # True when the picked movie is the primary work of a multi-work
+    # release and lives on the pointer disc(s) as a non-pointer main
+    # feature. Signal for :func:`group_release_discs` to prepend a
+    # dedicated primary-work FilmSlot to the pointer group.
+    primary_movie_needs_slot: bool = False
 
 
 async def _maybe_prompt_for_season(
@@ -183,6 +188,7 @@ async def lookup_metadata(
     release_name = ""
     dvdcompare_error: Exception | None = None
     dvdcompare_film_id: int | None = None
+    primary_movie_needs_slot = False
 
     if not skip_dvdcompare:
         try:
@@ -201,22 +207,26 @@ async def lookup_metadata(
                 film, disc_info=disc_info, preferred=preferred_release,
             )
             dvdcompare_film_id = getattr(film, "film_id", None)
-            # Enforce the "one season at a time" invariant: if the user
-            # picked a boxset release covering multiple seasons, drop
-            # the discs that don't belong to the requested season so
-            # the rest of the pipeline (session marker, disc overview,
-            # resume) only sees the season the user is actually ripping.
-            if (
-                not is_movie
-                and request.season_number is not None
-                and discs
-            ):
+            # Enforce the "one pick at a time" invariant: if the user
+            # picked a boxset release covering multiple works, drop
+            # the discs that don't match their pick so the rest of the
+            # pipeline (session marker, disc overview, resume) only
+            # sees relevant discs. For TV that's the picked season;
+            # for movies that's the pointer-linked disc(s) in a
+            # multi-work release.
+            if not is_movie and request.season_number is not None and discs:
                 from riplex.disc.analysis import filter_discs_to_season
                 filtered = filter_discs_to_season(
                     discs, request.season_number,
                     film_title=getattr(film, "title", None),
                 )
                 if filtered:
+                    discs = filtered
+            elif is_movie and discs:
+                from riplex.disc.analysis import filter_discs_to_picked_movie
+                filtered = filter_discs_to_picked_movie(discs)
+                if filtered:
+                    primary_movie_needs_slot = len(filtered) < len(discs)
                     discs = filtered
         except SystemExit:
             raise
@@ -235,6 +245,7 @@ async def lookup_metadata(
         tmdb_match=match,
         dvdcompare_film_id=dvdcompare_film_id,
         season_number=(request.season_number if not is_movie else None),
+        primary_movie_needs_slot=primary_movie_needs_slot,
     )
 
 
@@ -262,7 +273,11 @@ async def resolve_disc_groups(
     if interactive is None:
         interactive = is_interactive()
 
-    groups = group_release_discs(meta.discs, meta.tmdb_match)
+    groups = group_release_discs(
+        meta.discs, meta.tmdb_match,
+        add_primary_work_slot=meta.primary_movie_needs_slot,
+        primary_runtime_seconds=int(meta.movie_runtime or 0),
+    )
     if len(groups) <= 1:
         # Single-work release: caller uses the existing single-plan path.
         return []

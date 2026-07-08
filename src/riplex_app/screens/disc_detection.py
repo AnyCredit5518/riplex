@@ -84,72 +84,15 @@ class DiscDetectionScreen:
     # interactive scanning UI.
     # ------------------------------------------------------------------
     def build(self) -> ft.Control:
-        # Already-read state: navigation came back here after a successful
-        # background read. Show the title-confirmation form.
-        disc_read_done = self.app.state.pop("_disc_read_done", False)
-        drive = self.app.state.get("drive")
-        disc_info = self.app.state.get("disc_info")
-        if disc_read_done and disc_info and drive:
-            return self._build_results_view(drive, disc_info)
-
-        # Normal flow: render the interactive scanning panel.
+        # The former "results" step (Verify title + Search Metadata) is
+        # gone -- Metadata Lookup now owns title editing and re-search
+        # via its search bar + Rescan Disc button. This screen only
+        # renders the interactive scanning panel; on successful read
+        # we route straight through to the appropriate next screen.
         self._user_picked = False
         self._reading = False
         self._last_drives = None
         return self._build_scanning_view()
-
-    # ------------------------------------------------------------------
-    # Results view (after a successful disc read).
-    # ------------------------------------------------------------------
-    def _build_results_view(self, drive: DriveInfo, disc_info) -> ft.Control:
-        title = self.app.state.get("title", "")
-        n_titles = len(disc_info.titles)
-        total_size = sum(t.size_bytes for t in disc_info.titles) / (1024 ** 3)
-
-        self.title_field = ft.TextField(
-            label="Title",
-            hint_text="Auto-detected from disc label",
-            value=title,
-            width=500,
-        )
-        self.search_btn = ft.ElevatedButton(
-            "Search Metadata",
-            icon=ft.Icons.SEARCH,
-            on_click=self._search,
-            style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-        )
-        self.back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome"))
-
-        return ft.Column(
-            [
-                ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
-                ft.Text(
-                    "Your disc has been read. Verify the title below and edit it if "
-                    "the auto-detected name is wrong, then search for metadata.",
-                    size=13,
-                    color=ft.Colors.GREY_500,
-                ),
-                ft.Divider(height=20),
-                ft.Row([
-                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN),
-                    ft.Text(
-                        f"Found: {drive.disc_label} ({drive.device})",
-                        size=14, color=ft.Colors.GREEN,
-                    ),
-                ], spacing=10),
-                ft.Text(
-                    f"{n_titles} titles, {total_size:.1f} GB total",
-                    size=12, color=ft.Colors.GREY_400,
-                ),
-                ft.Container(height=10),
-                self.title_field,
-                ft.Container(expand=True),
-                ft.Row([self.back_btn, self.search_btn]),
-            ],
-            spacing=10,
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
-        )
 
     # ------------------------------------------------------------------
     # Interactive scanning view.
@@ -172,18 +115,9 @@ class DiscDetectionScreen:
         self.spinner = ft.ProgressRing(width=20, height=20)
         self.drive_panel = ft.Column(spacing=8)
         self.error_panel = ft.Container(visible=False)
-        self.back_btn = ft.TextButton("Back", on_click=lambda _: self._on_back())
 
-        self.content = ft.Column(
+        body = ft.Column(
             [
-                ft.Row(
-                    [
-                        ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
-                        ft.Container(expand=True),
-                        self.refresh_btn,
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                ),
                 ft.Text(
                     "Insert a disc and pick the drive to read from. The list updates "
                     "automatically every few seconds.",
@@ -195,11 +129,29 @@ class DiscDetectionScreen:
                 ft.Row([self.spinner, self.status_text], spacing=10),
                 self.drive_panel,
                 self.error_panel,
-                ft.Container(expand=True),
-                ft.Row([self.back_btn]),
             ],
             spacing=10,
             scroll=ft.ScrollMode.AUTO,
+        )
+
+        self.content = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text("Disc Detection", size=24, weight=ft.FontWeight.BOLD),
+                        ft.Container(expand=True),
+                        self.refresh_btn,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Container(content=body, expand=True),
+                # Bottom footer row -- kept empty here so the global
+                # Quit button injected by main.navigate() has a
+                # canonical target and sits alongside any future
+                # screen-specific buttons.
+                ft.Row([]),
+            ],
+            spacing=10,
             expand=True,
         )
 
@@ -459,12 +411,13 @@ class DiscDetectionScreen:
                 self.app.state["season_number"] = parsed_season
             else:
                 self.app.state.pop("season_number", None)
-            self.app.state["_disc_read_done"] = True
 
-            async def _nav():
-                self.app.navigate("disc_detection")
-
-            self.app.page.run_task(_nav)
+            # Route straight into the next step -- no intermediate
+            # "Verify title" screen. Metadata Lookup owns title editing
+            # + re-search. Orchestrate resumes still short-circuit
+            # here (TV -> season_select, movie -> disc_overview) so a
+            # known session doesn't force an unnecessary TMDb round-trip.
+            self._route_after_read()
 
         except Exception as exc:
             log.exception("disc read failed")
@@ -600,10 +553,6 @@ class DiscDetectionScreen:
         _safe_update(self.app.page)
         threading.Thread(target=self._initial_scan, daemon=True).start()
 
-    def _on_back(self) -> None:
-        self._stop_polling()
-        self.app.navigate("welcome")
-
     def _open_bug_report(self) -> None:
         import webbrowser
         from riplex_app.bug_report import build_bug_report_url
@@ -619,36 +568,38 @@ class DiscDetectionScreen:
         result = parse_volume_label(label)
         return result if result else label.replace("_", " ").strip().title()
 
-    def _search(self, e):
-        title = self.title_field.value.strip()
-        if not title:
-            self.title_field.error_text = "Enter a title"
-            self.app.page.update()
-            return
-        self.app.state["title"] = title
+    def _route_after_read(self) -> None:
+        """Decide the next screen after a successful disc read.
 
-        if self.app.state.get("workflow") == "orchestrate":
+        Orchestrate resumes short-circuit here so an in-progress
+        session for this title doesn't force an unnecessary TMDb
+        round-trip: TV titles route through ``season_select`` (so the
+        user can pick a different season even if S1 is still in
+        progress), movies go straight into ``disc_overview`` via the
+        resume adapter. All other cases fall through to ``metadata``
+        where the user can edit the title and re-search.
+        """
+        title = (self.app.state.get("title") or "").strip()
+
+        if title and self.app.state.get("workflow") == "orchestrate":
             from riplex.manifest import find_existing_session
 
             session = find_existing_session(title)
             if session:
                 log.info(
-                    "Found existing session for '%s' (%d) — media_type=%s",
+                    "Found existing session for '%s' (%d) \u2014 media_type=%s",
                     session.title, session.year, session.media_type,
                 )
                 if session.media_type == "tv":
-                    # Route TV titles through season_select even on
-                    # resume so the user can pick a different season
-                    # (e.g. inserted a Season 4 disc while a Season 1
-                    # rip is still in progress). If they pick the same
-                    # season, season_select will find_existing_session
-                    # again with that season and start a full resume.
                     self._prepare_tv_season_pick(session)
                     return
                 self._resume_session(session)
                 return
 
-        self.app.navigate("metadata")
+        async def _nav():
+            self.app.navigate("metadata")
+
+        self.app.page.run_task(_nav)
 
     def _prepare_tv_season_pick(self, session):
         """Preload just enough state for season_select to render, then
@@ -667,10 +618,6 @@ class DiscDetectionScreen:
         self.app.state.pop("season_number", None)
         self.app.state.pop("release", None)
         self.app.state.pop("dvdcompare_discs", None)
-
-        self.search_btn.disabled = True
-        self.search_btn.text = "Loading seasons..."
-        self.app.page.update()
 
         threading.Thread(
             target=self._fetch_show_detail_for_season_pick,
@@ -714,10 +661,6 @@ class DiscDetectionScreen:
             year=session.year,
             media_type=session.media_type,
         )
-
-        self.search_btn.disabled = True
-        self.search_btn.text = "Resuming session..."
-        self.app.page.update()
 
         threading.Thread(
             target=self._fetch_dvdcompare_for_resume,
@@ -774,6 +717,10 @@ def perform_resume_fetch(app, session) -> None:
 
     app.state["release"] = result.release
     app.state["dvdcompare_discs"] = list(result.discs)
+    app.state["primary_movie_needs_slot"] = result.primary_movie_needs_slot
+    app.state["hidden_disc_numbers"] = list(result.hidden_disc_numbers)
+    if result.movie_runtime:
+        app.state["movie_runtime"] = result.movie_runtime
 
     if result.dvdcompare_film is not None:
         app.state["_dvdcompare_film"] = result.dvdcompare_film

@@ -61,6 +61,11 @@ def _run(coro):
 
 class TestResumeFromSession:
     def test_matches_release_by_name(self, monkeypatch):
+        from riplex.models import PlannedDisc
+        fake_discs = [
+            PlannedDisc(number=1, disc_format="Blu-ray"),
+            PlannedDisc(number=2, disc_format="Blu-ray"),
+        ]
         release = _FakeRelease("The Complete Series")
         film = _FakeFilm(releases=[release])
         provider = _FakeProvider(film=film)
@@ -72,7 +77,7 @@ class TestResumeFromSession:
         )
         monkeypatch.setattr(
             "riplex.disc.provider._convert_release",
-            lambda r: ["disc1", "disc2"],
+            lambda r: list(fake_discs),
         )
 
         result = _run(resume_from_session(_session()))
@@ -87,7 +92,9 @@ class TestResumeFromSession:
         assert result.dvdcompare_film_title == "Psych: Season 1 (TV) (Blu-ray)"
         assert result.release is release
         assert result.release_name == "The Complete Series"
-        assert result.discs == ["disc1", "disc2"]
+        # No per-disc season titles -> filter_discs_to_season passes
+        # the input through unchanged (single-season release semantics).
+        assert result.discs == fake_discs
         assert result.season_number == 1
         assert result.disc_format == "Blu-ray"
         assert result.dvdcompare_error is None
@@ -203,6 +210,63 @@ class TestResumeFromSession:
         assert result.discs == []
         # Error path still populates film metadata.
         assert result.dvdcompare_film is film
+
+    def test_movie_boxset_drops_primary_work_discs(self, monkeypatch):
+        """Psych: The Complete Series resume for the movie pick.
+
+        The marker records ``media_type=movie`` and the release is the
+        full 31-disc boxset. On resume we must filter the empty-pointer
+        primary-work TV discs (1-30) out and keep only the pointer disc
+        (31) so downstream disc-overview code doesn't mis-attribute the
+        picked movie. ``primary_movie_needs_slot`` is also flagged so
+        ``group_release_discs`` prepends a slot for the primary movie.
+        """
+        from riplex.models import PlannedDisc, PlannedExtra
+        # 30 TV episode discs with no pointer_fids + 1 bonus-films disc
+        # whose extras hyperlink to standalone movie pages.
+        tv_discs = [PlannedDisc(number=n, disc_format="Blu-ray")
+                    for n in range(1, 31)]
+        movie_disc = PlannedDisc(
+            number=31, disc_format="Blu-ray",
+            extras=[
+                PlannedExtra(title="Psych 2", pointer_fid=101),
+                PlannedExtra(title="Psych 3", pointer_fid=102),
+            ],
+        )
+        fake_discs = tv_discs + [movie_disc]
+
+        release = _FakeRelease("The Complete Series")
+        film = _FakeFilm(
+            title="Psych: The Movie (2017)", releases=[release],
+        )
+        provider = _FakeProvider(film=film)
+
+        monkeypatch.setattr(
+            "riplex.disc.provider.DiscProvider", lambda: provider,
+        )
+        monkeypatch.setattr(
+            "riplex.disc.provider._convert_release", lambda r: list(fake_discs),
+        )
+
+        async def _fake_runtime(source_id):
+            return 6300
+
+        monkeypatch.setattr(
+            "riplex.resume._fetch_movie_runtime", _fake_runtime,
+        )
+
+        result = _run(resume_from_session(_session(
+            media_type="movie", source_id="movie:456",
+        )))
+
+        assert [d.number for d in result.discs] == [31]
+        assert result.primary_movie_needs_slot is True
+        # The 30 dropped TV discs are recorded so the GUI banner can
+        # name them instead of silently shrinking the disc list.
+        assert result.hidden_disc_numbers == list(range(1, 31))
+        # Movie runtime is fetched on resume (MetadataSearchResult
+        # carries none) so the prepended slot doesn't show "unknown".
+        assert result.movie_runtime == 6300
 
     def test_legacy_session_without_source_id_stub_tmdb_match(self, monkeypatch):
         """When ``source_id`` is empty AND the best-guess fails, we still

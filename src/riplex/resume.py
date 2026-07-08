@@ -62,6 +62,18 @@ class ResumedLookup:
     # (e.g. Psych S3 D1 lists a bonus re-edit alongside the real
     # episode); without it those duplicates masquerade as episodes.
     show_detail: object | None = field(default=None, repr=False)
+    # True when the picked movie is the primary work of a multi-work
+    # release and lives on the pointer disc(s) as a non-pointer main
+    # feature (Psych: The Complete Series disc 31 shape). Signals to
+    # ``group_release_discs`` that the picked movie needs a dedicated
+    # FilmSlot prepended to the pointer group rather than overwriting
+    # one of the pointered slots.
+    primary_movie_needs_slot: bool = False
+    # Disc numbers dropped by the "one pick at a time" filter (movie
+    # boxset primary-work discs, or cross-season TV discs). The GUI
+    # surfaces these in an informational banner so the shortened disc
+    # list doesn't look like riplex lost discs.
+    hidden_disc_numbers: list[int] = field(default_factory=list)
     dvdcompare_error: Exception | None = field(default=None, repr=False)
 
 
@@ -231,6 +243,41 @@ async def resume_from_session(
     else:
         result.season_number = _season_from_film_title(film, tmdb_match)
 
+    # Mirror the "one pick at a time" filter that lookup.py and
+    # release.py apply on the fresh-lookup path. Without this, a
+    # resumed session with a multi-work boxset release (e.g. Psych:
+    # The Complete Series — 30 TV discs + 1 standalone-movies disc)
+    # would hand the full 31-disc set to downstream group / overview
+    # code and mis-attribute the picked title.
+    if result.discs:
+        from riplex.disc.analysis import (
+            filter_discs_to_picked_movie, filter_discs_to_season,
+        )
+
+        def _record_hidden(kept: list) -> None:
+            kept_numbers = {getattr(d, "number", None) for d in kept}
+            result.hidden_disc_numbers = [
+                n for d in result.discs
+                if (n := getattr(d, "number", None)) is not None
+                and n not in kept_numbers
+            ]
+
+        original_count = len(result.discs)
+        if is_movie:
+            filtered = filter_discs_to_picked_movie(result.discs)
+            if len(filtered) < original_count:
+                result.primary_movie_needs_slot = True
+                _record_hidden(filtered)
+            result.discs = filtered
+        elif result.season_number is not None:
+            filtered = filter_discs_to_season(
+                result.discs, result.season_number,
+                film_title=result.dvdcompare_film_title or None,
+            )
+            if filtered:
+                _record_hidden(filtered)
+                result.discs = filtered
+
     log.info(
         "Resume: hydrated %r (%d) -> film=%r fid=%s release=%r discs=%d season=%s",
         result.canonical, result.year,
@@ -244,6 +291,15 @@ async def resume_from_session(
     # classification will still work, just without the enrichment.
     if tmdb_match.source_id and session.media_type == "tv":
         result.show_detail = await _fetch_show_detail(tmdb_match.source_id)
+    elif tmdb_match.source_id and is_movie:
+        # Movie runtime isn't carried on MetadataSearchResult, so the
+        # prepended primary-work FilmSlot would render "(unknown
+        # runtime)" on resume. Fetch the movie detail to recover it,
+        # mirroring the fresh-lookup path where metadata.py stashes
+        # movie_runtime in app.state. Non-fatal on failure.
+        runtime = await _fetch_movie_runtime(tmdb_match.source_id)
+        if runtime:
+            result.movie_runtime = runtime
 
     return result
 
@@ -261,4 +317,21 @@ async def _fetch_show_detail(source_id: str) -> object | None:
             await provider.close()
     except Exception as exc:
         log.warning("Resume: TMDb show_detail fetch failed: %s", exc)
+        return None
+
+
+async def _fetch_movie_runtime(source_id: str) -> int | None:
+    """Best-effort TMDb movie runtime fetch. Returns ``None`` on failure."""
+    try:
+        from riplex.config import get_api_key
+        from riplex.metadata.sources.tmdb import TmdbProvider
+
+        provider = TmdbProvider(get_api_key())
+        try:
+            detail = await provider.get_movie_detail(source_id)
+        finally:
+            await provider.close()
+        return int(getattr(detail, "runtime_seconds", 0) or 0) or None
+    except Exception as exc:
+        log.warning("Resume: TMDb movie_detail fetch failed: %s", exc)
         return None

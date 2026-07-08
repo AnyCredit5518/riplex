@@ -48,25 +48,57 @@ def _backfill_season_number_from_film_title(state: dict, film) -> None:
 
 
 def _apply_season_filter(state: dict, discs: list, film) -> list:
-    """Return *discs* filtered to the picked TV season, if any.
+    """Return *discs* filtered to what the user actually picked.
 
-    Enforces the "one season at a time" invariant at the boundary
-    where the release picker hands off to the disc overview / rip
-    flow. Movies and rips with no picked season pass through
-    unchanged. See ``riplex.disc.analysis.filter_discs_to_season``
-    for the filter's fallback semantics.
+    Enforces the "one pick at a time" invariant at the boundary where
+    the release picker hands off to the disc overview / rip flow. For
+    TV picks we drop cross-season discs (see
+    :func:`riplex.disc.analysis.filter_discs_to_season`). For movie
+    picks against a multi-work boxset (e.g. *Psych: The Complete
+    Series*, whose 31 discs bundle 30 TV discs with one standalone
+    movies disc) we drop the empty-pointer primary-work discs so only
+    the movie disc(s) survive (see
+    :func:`riplex.disc.analysis.filter_discs_to_picked_movie`).
+    Anything else (no picked media type, no discs) passes through
+    unchanged.
     """
     tmdb_match = state.get("tmdb_match")
-    season = state.get("season_number")
-    if getattr(tmdb_match, "media_type", None) != "tv":
+    media_type = getattr(tmdb_match, "media_type", None)
+    # Default to False / cleared on every call so a subsequent pick
+    # doesn't inherit an earlier one's flag (state persists across
+    # navigations).
+    state["primary_movie_needs_slot"] = False
+    state["hidden_disc_numbers"] = []
+    if not discs:
         return discs
-    if season is None or not discs:
-        return discs
-    from riplex.disc.analysis import filter_discs_to_season
-    filtered = filter_discs_to_season(
-        discs, season, film_title=getattr(film, "title", None),
-    )
-    return filtered or discs
+
+    def _record_hidden(kept: list) -> None:
+        kept_numbers = {getattr(d, "number", None) for d in kept}
+        state["hidden_disc_numbers"] = [
+            n for d in discs
+            if (n := getattr(d, "number", None)) is not None
+            and n not in kept_numbers
+        ]
+
+    if media_type == "tv":
+        season = state.get("season_number")
+        if season is None:
+            return discs
+        from riplex.disc.analysis import filter_discs_to_season
+        filtered = filter_discs_to_season(
+            discs, season, film_title=getattr(film, "title", None),
+        )
+        if filtered:
+            _record_hidden(filtered)
+        return filtered or discs
+    if media_type == "movie":
+        from riplex.disc.analysis import filter_discs_to_picked_movie
+        filtered = filter_discs_to_picked_movie(discs)
+        if filtered and len(filtered) < len(discs):
+            state["primary_movie_needs_slot"] = True
+            _record_hidden(filtered)
+        return filtered or discs
+    return discs
 
 
 class ReleaseScreen:
@@ -377,7 +409,9 @@ class ReleaseScreen:
                         ),
                     ], spacing=10),
                     ft.Container(expand=True),
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                    ft.Row([
+                        ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
+                    ]),
                 ],
                 spacing=10,
                 expand=True,

@@ -332,7 +332,9 @@ class FolderPickerScreen:
                 ft.Divider(height=20),
                 ft.Column(rows, spacing=10, scroll=ft.ScrollMode.AUTO),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                ]),
             ],
             spacing=10,
             expand=True,
@@ -580,7 +582,9 @@ class FolderPickerScreen:
                 ft.Divider(height=20),
                 ft.Text(f"Scan failed: {error}", size=14, color=ft.Colors.ORANGE),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                ]),
             ],
             spacing=10,
             expand=True,

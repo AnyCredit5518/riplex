@@ -11,13 +11,15 @@ from riplex.disc.analysis import (
     detect_cross_res_play_all,
     detect_play_all,
     enrich_dvd_entries_with_tmdb,
+    filter_discs_to_picked_movie,
     filter_discs_to_season,
     find_duration_match,
+    format_disc_ranges,
     format_seconds,
-    group_for_disc,
-    group_release_discs,
+    group_for_disc,    group_release_discs,
     is_skip_title,
     parse_season_number,
+    reconcile_bonus_films,
 )
 from riplex.disc.provider import detect_disc_number as _detect_disc_number
 from riplex.disc.makemkv import DiscInfo, DiscTitle
@@ -1357,6 +1359,60 @@ class TestDetectBonusFilms:
         assert [f.title for f in films] == ["Real Film"]
 
 
+class TestReconcileBonusFilms:
+    """Tests for reconcile_bonus_films() — trim dvdcompare's linked-film
+    list to what the physical scan actually holds."""
+
+    class _Title:
+        def __init__(self, duration_seconds):
+            self.duration_seconds = duration_seconds
+
+    def _films(self, n):
+        return [
+            PlannedExtra(title=f"Film {i}", runtime_seconds=5400,
+                         pointer_fid=100 + i)
+            for i in range(n)
+        ]
+
+    def test_single_feature_title_suppresses_all(self):
+        # dvdcompare linked 2 sibling films, but the disc only pressed
+        # one feature-length title -> no multi-film alert.
+        films = self._films(2)
+        rippable = [self._Title(5282)]  # one 88-min feature
+        assert reconcile_bonus_films(films, rippable) == []
+
+    def test_genuine_multi_film_keeps_extras(self):
+        # 3 feature-length titles on the disc -> main + 2 extras.
+        films = self._films(2)
+        rippable = [self._Title(5282), self._Title(5310), self._Title(5782)]
+        assert len(reconcile_bonus_films(films, rippable)) == 2
+
+    def test_extras_capped_to_available_titles(self):
+        # dvdcompare claims 5 films but only 2 feature titles present ->
+        # keep at most 1 extra beyond the main.
+        films = self._films(5)
+        rippable = [self._Title(5282), self._Title(5310)]
+        assert len(reconcile_bonus_films(films, rippable)) == 1
+
+    def test_short_titles_are_not_features(self):
+        # A main feature plus a batch of short featurettes (< 40 min)
+        # counts as a single-film disc.
+        films = self._films(2)
+        rippable = [self._Title(5282), self._Title(600), self._Title(300)]
+        assert reconcile_bonus_films(films, rippable) == []
+
+    def test_no_bonus_films_stays_empty(self):
+        assert reconcile_bonus_films([], [self._Title(5282)]) == []
+
+    def test_custom_threshold(self):
+        # A shorter feature threshold lets 30-min TV-movies count.
+        films = self._films(2)
+        rippable = [self._Title(2000), self._Title(2100)]
+        assert len(
+            reconcile_bonus_films(films, rippable, min_feature_seconds=1800)
+        ) == 1
+
+
 class TestGroupReleaseDiscs:
     """Tests for group_release_discs() — the release-splitting heuristic."""
 
@@ -1554,6 +1610,106 @@ class TestGroupReleaseDiscs:
         assert groups[0].films[0].source == "user"
         assert groups[1].films[0].tmdb_match is None
 
+    def test_add_primary_work_slot_prepends_new_slot(self):
+        # Psych: The Complete Series post-filter shape -- primary-work
+        # TV discs 1-30 have been dropped, leaving only disc 31 with
+        # 2 pointered TV-movie sequels. The picked TMDb movie
+        # (Psych: The Movie 2017) is the release's primary work and
+        # lives on disc 31 as "The Film" alongside the linked works.
+        # With add_primary_work_slot=True the seating logic must
+        # prepend a new FilmSlot for the primary work instead of
+        # overwriting either of the pointered slots.
+        disc = self._disc(31, is_film=True, extras=[
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5280, pointer_fid=101),
+            PlannedExtra(title="Psych 3: This Is Gus",
+                         runtime_seconds=5760, pointer_fid=102),
+        ])
+        match = self._fake_match("movie", "Psych: The Movie")
+        groups = group_release_discs(
+            [disc], match, add_primary_work_slot=True,
+        )
+        assert len(groups) == 1
+        g = groups[0]
+        assert [f.title for f in g.films] == [
+            "Psych: The Movie",
+            "Psych 2: Lassie Come Home",
+            "Psych 3: This Is Gus",
+        ]
+        # Prepended primary-work slot carries the picked match; the
+        # pointered slots keep their original (unassigned) state.
+        assert g.films[0].tmdb_match is match
+        assert g.films[0].source == "user"
+        assert g.films[0].dvdcompare_fid is None
+        assert g.films[1].tmdb_match is None
+        assert g.films[2].tmdb_match is None
+        assert g.label == "Disc 31: 3 works"
+
+    def test_add_primary_work_slot_runtime_from_param(self):
+        # MetadataSearchResult carries no runtime, so the prepended
+        # primary-work slot must take its runtime from the explicit
+        # primary_runtime_seconds param (movie_runtime the caller
+        # already has) rather than rendering "unknown runtime".
+        disc = self._disc(31, is_film=True, extras=[
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5280, pointer_fid=101),
+        ])
+        match = self._fake_match("movie", "Psych: The Movie")
+        groups = group_release_discs(
+            [disc], match, add_primary_work_slot=True,
+            primary_runtime_seconds=6300,
+        )
+        assert groups[0].films[0].runtime_seconds == 6300
+
+    def test_add_primary_work_slot_runtime_defaults_zero(self):
+        # Without a runtime param (and no runtime on the match), the
+        # prepended slot falls back to 0 rather than raising.
+        disc = self._disc(31, is_film=True, extras=[
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5280, pointer_fid=101),
+        ])
+        match = self._fake_match("movie", "Psych: The Movie")
+        groups = group_release_discs(
+            [disc], match, add_primary_work_slot=True,
+        )
+        assert groups[0].films[0].runtime_seconds == 0
+
+    def test_add_primary_work_slot_off_by_default(self):
+        # Same shape as the previous test but without the opt-in flag:
+        # the fallback stays with the pre-existing "overwrite first
+        # slot" behavior (double-feature-single-disc case).
+        disc = self._disc(31, is_film=True, extras=[
+            PlannedExtra(title="Psych 2: Lassie Come Home",
+                         runtime_seconds=5280, pointer_fid=101),
+            PlannedExtra(title="Psych 3: This Is Gus",
+                         runtime_seconds=5760, pointer_fid=102),
+        ])
+        match = self._fake_match("movie", "Picked A")
+        groups = group_release_discs([disc], match)
+        assert len(groups) == 1
+        g = groups[0]
+        assert len(g.films) == 2  # no prepend
+        assert g.films[0].tmdb_match is match
+
+    def test_add_primary_work_slot_ignored_when_primary_group_exists(self):
+        # If a primary-work group is available the flag is a no-op:
+        # the picked match seats on that group as usual, not prepended.
+        discs = [
+            self._disc(1),  # empty-pointer primary-work group
+            self._disc(2, extras=[
+                PlannedExtra(title="Bonus", runtime_seconds=5000,
+                             pointer_fid=99),
+            ]),
+        ]
+        match = self._fake_match("movie", "Feature")
+        groups = group_release_discs(
+            discs, match, add_primary_work_slot=True,
+        )
+        assert len(groups) == 2
+        assert groups[0].tmdb_match is match  # primary group seat
+        assert groups[0].films == []          # nothing prepended
+        assert len(groups[1].films) == 1
+
     def test_is_complete_group_without_slots(self):
         g = DiscGroup(id="disc_1", label="", disc_numbers=[1])
         assert not g.is_complete()
@@ -1743,6 +1899,93 @@ class TestFilterDiscsToSeason:
         # helper via an over-broad call site -- pass through untouched.
         discs = [self._disc(1), self._disc(2)]
         assert filter_discs_to_season(discs, None) == discs
+
+
+class TestFilterDiscsToPickedMovie:
+    """Tests for filter_discs_to_picked_movie() — the movie counterpart
+    to filter_discs_to_season(). Drops primary-work discs when the user
+    picks a movie in a multi-work release (e.g. Psych: The Complete
+    Series where 30 discs of TV episodes bundle with 1 disc of
+    standalone TV-movie sequels).
+    """
+
+    def _disc(self, number, extras=()):
+        from riplex.models import PlannedDisc
+        return PlannedDisc(
+            number=number, disc_format="Blu-ray", extras=list(extras),
+        )
+
+    def _pointer_extra(self, fid=12345):
+        from riplex.models import PlannedExtra
+        return PlannedExtra(title="Pointer film", pointer_fid=fid)
+
+    def _plain_extra(self):
+        from riplex.models import PlannedExtra
+        return PlannedExtra(title="Behind the scenes")
+
+    def test_empty_discs_returns_empty(self):
+        assert filter_discs_to_picked_movie([]) == []
+
+    def test_multi_work_boxset_keeps_only_pointer_discs(self):
+        # Psych shape: discs 1-30 are primary-work TV episodes (no
+        # pointers), disc 31 is a bonus-films disc whose extras link
+        # to standalone movie pages via pointer_fid.
+        discs = (
+            [self._disc(n, extras=[self._plain_extra()]) for n in range(1, 31)]
+            + [self._disc(31, extras=[
+                self._pointer_extra(fid=100),
+                self._pointer_extra(fid=200),
+            ])]
+        )
+        filtered = filter_discs_to_picked_movie(discs)
+        assert [d.number for d in filtered] == [31]
+
+    def test_single_work_movie_release_passes_through_unchanged(self):
+        # A plain movie release with only bonus featurettes (no
+        # cross-work pointers). Nothing to drop.
+        discs = [
+            self._disc(1, extras=[self._plain_extra()]),
+            self._disc(2, extras=[self._plain_extra()]),
+        ]
+        filtered = filter_discs_to_picked_movie(discs)
+        assert [d.number for d in filtered] == [1, 2]
+
+    def test_discs_with_no_extras_pass_through_when_no_pointers_anywhere(self):
+        discs = [self._disc(1), self._disc(2)]
+        filtered = filter_discs_to_picked_movie(discs)
+        assert [d.number for d in filtered] == [1, 2]
+
+    def test_all_discs_have_pointers_keeps_all(self):
+        # Every disc is a bonus-films disc -- nothing to drop.
+        discs = [
+            self._disc(1, extras=[self._pointer_extra(fid=10)]),
+            self._disc(2, extras=[self._pointer_extra(fid=20)]),
+        ]
+        filtered = filter_discs_to_picked_movie(discs)
+        assert [d.number for d in filtered] == [1, 2]
+
+
+class TestFormatDiscRanges:
+    """Tests for format_disc_ranges() — compact human range strings
+    for the hidden-discs banner."""
+
+    def test_empty(self):
+        assert format_disc_ranges([]) == ""
+
+    def test_single(self):
+        assert format_disc_ranges([7]) == "7"
+
+    def test_contiguous_run(self):
+        assert format_disc_ranges([1, 2, 3, 4]) == "1-4"
+
+    def test_multiple_runs(self):
+        assert format_disc_ranges([1, 2, 3, 4, 9, 10]) == "1-4, 9-10"
+
+    def test_gaps_and_singletons(self):
+        assert format_disc_ranges([1, 3, 5, 6, 7]) == "1, 3, 5-7"
+
+    def test_dedupes_and_sorts(self):
+        assert format_disc_ranges([3, 1, 2, 2, 4]) == "1-4"
 
 
 class TestGroupForDisc:

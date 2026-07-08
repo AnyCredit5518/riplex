@@ -115,7 +115,47 @@ class RiplexApp:
         self._current_screen_name = screen_name
         self.page.controls.clear()
         screen = self.screens[screen_name]
-        self.page.controls.append(screen.build())
+        built = screen.build()
+        # Every non-welcome screen gets a globally-injected Quit
+        # button. We try to append it to the screen's own footer Row
+        # so it sits alongside the screen-specific buttons; if the
+        # screen doesn't end in a Row we fall back to wrapping the
+        # built control so Quit anchors to the bottom regardless.
+        if screen_name == "welcome":
+            self.page.controls.append(built)
+        else:
+            quit_btn = ft.TextButton(
+                "Quit",
+                icon=ft.Icons.CLOSE,
+                on_click=self._confirm_quit,
+            )
+            if _append_to_footer_row(built, quit_btn):
+                # Successfully merged into the screen's existing footer
+                # row -- ensure the root control still claims all
+                # available vertical space so the footer stays anchored.
+                try:
+                    built.expand = True
+                except AttributeError:
+                    pass
+                self.page.controls.append(built)
+            else:
+                try:
+                    built.expand = True
+                except AttributeError:
+                    pass
+                self.page.controls.append(
+                    ft.Column(
+                        [
+                            built,
+                            ft.Row(
+                                [quit_btn],
+                                alignment=ft.MainAxisAlignment.END,
+                            ),
+                        ],
+                        spacing=0,
+                        expand=True,
+                    )
+                )
         self.page.floating_action_button = ft.FloatingActionButton(
             icon=ft.Icons.BUG_REPORT,
             tooltip="Report a Bug",
@@ -123,12 +163,45 @@ class RiplexApp:
             mini=True,
             bgcolor=ft.Colors.GREY_800,
         )
+        self.page.appbar = None
         self.page.update()
 
         # Kick off background checks on welcome screen
         if screen_name == "welcome":
             screen.check_for_updates()
             screen.check_connectivity()
+
+    def _confirm_quit(self, _e):
+        """Show a small confirmation dialog before dropping back to welcome.
+
+        Guards against accidental clicks that would drop the user out
+        of a mid-workflow session (they can still reach welcome via
+        the confirm button).
+        """
+        def do_quit(_e):
+            dialog.open = False
+            self.page.update()
+            self.navigate("welcome")
+
+        def cancel(_e):
+            dialog.open = False
+            self.page.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Return to Welcome?"),
+            content=ft.Text(
+                "This ends the current workflow and returns to the start. "
+                "In-progress rips continue in the background."
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel),
+                ft.ElevatedButton("Return to Welcome", on_click=do_quit),
+            ],
+        )
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
 
     def _open_bug_report(self, e):
         """Open a pre-filled GitHub bug report in the browser."""
@@ -312,6 +385,70 @@ def _parse_exception_summary(traceback_text: str) -> tuple[str, str]:
         exc_type, _, exc_message = last_line.partition(":")
         return exc_type.strip(), exc_message.strip()
     return last_line or "Exception", ""
+
+
+def _button_label(control) -> str | None:
+    """Return a button's visible label across Flet versions.
+
+    Flet 0.85 stores a ``TextButton('Quit')`` label under ``.content``
+    (a plain str), while other button flavors / older versions use
+    ``.text``. We normalize both so the Quit-dedup below is reliable.
+    """
+    for attr in ("text", "content"):
+        val = getattr(control, attr, None)
+        if isinstance(val, str):
+            return val
+    return None
+
+
+def _tree_has_quit(control) -> bool:
+    """True if any Row in ``control``'s subtree already holds a Quit button.
+
+    Terminal screens (``done``, ``orchestrate_done``) bake in their own
+    Quit-to-close-app button, which may not live in the very last footer
+    row. We scan the whole tree so the globally-injected Quit is skipped
+    wherever the local one sits, avoiding a confusing double-Quit.
+    """
+    if isinstance(control, ft.Row):
+        for existing in control.controls or []:
+            if _button_label(existing) == "Quit":
+                return True
+    children = getattr(control, "controls", None) or []
+    return any(_tree_has_quit(child) for child in children)
+
+
+def _append_to_footer_row(control, button) -> bool:
+    """Append ``button`` to the footer ``Row`` of ``control`` if there is one.
+
+    Screens generally end with a footer ``Row`` of navigation buttons.
+    We only look at the *last* child of a Column tree so the injected
+    Quit button lands in the true bottom footer rather than a header
+    row that happens to also be a Row. Returns ``True`` on success so
+    ``navigate`` can fall back to wrapping when a screen's build
+    doesn't fit this shape.
+
+    If the built tree already contains a control labelled "Quit"
+    (some terminal screens like ``done`` and ``orchestrate_done``
+    bake in a local Quit-to-close-app button), we skip injection to
+    avoid a confusing double-Quit.
+    """
+    if _tree_has_quit(control):
+        return True  # skip injection, but treat as handled
+    return _append_to_last_row(control, button)
+
+
+def _append_to_last_row(control, button) -> bool:
+    """Append ``button`` to the last descendant ``Row`` of ``control``."""
+    if not isinstance(control, ft.Column):
+        return False
+    children = control.controls or []
+    if not children:
+        return False
+    last = children[-1]
+    if isinstance(last, ft.Row):
+        last.controls.append(button)
+        return True
+    return _append_to_last_row(last, button)
 
 
 def _configure_tls_certificates(env=None):

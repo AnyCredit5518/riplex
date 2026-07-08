@@ -15,6 +15,7 @@ from riplex.disc.analysis import (
     detect_bonus_films,
     format_seconds,
     print_disc_analysis,
+    reconcile_bonus_films,
 )
 from riplex.disc.makemkv import (
     MakeMKV,
@@ -191,10 +192,13 @@ async def run_rip(args: argparse.Namespace) -> int:
 
     # Detect multiple feature-length films on the same disc (e.g. box-set
     # movie collections). Alert the user before ripping so they know each
-    # film will need its own destination folder later.
+    # film will need its own destination folder later. dvdcompare can
+    # over-report linked films that aren't physically on this disc, so
+    # reconcile against the scan before warning.
     bonus_films: list = []
     for d in current_disc_entries:
         bonus_films.extend(detect_bonus_films(d))
+    bonus_films = reconcile_bonus_films(bonus_films, analysis.rippable_titles)
     if bonus_films:
         print(
             f"\n** Multi-film disc detected: {len(bonus_films)} feature-length "
@@ -204,9 +208,8 @@ async def run_rip(args: argparse.Namespace) -> int:
             rt = format_seconds(film.runtime_seconds) if film.runtime_seconds else "?"
             print(f"    {film.title} ({rt})")
         print(
-            "  Riplex will rip each film's title, but per-film organization "
-            "(separate Plex folders) is not wired up yet — for now the rips "
-            "land in one disc folder and you can move them manually."
+            "  Riplex will rip each film's title and sort each into its own "
+            "Plex folder during organize, matching titles to films by runtime."
         )
         if not dry_run and not getattr(args, "yes", False):
             if not prompt_confirm("Continue ripping this multi-film disc?"):

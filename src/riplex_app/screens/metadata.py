@@ -33,6 +33,64 @@ class MetadataScreen:
                 self.app.state["title"] = saved
         self.app.navigate(self._back_screen if target is None else "disc_overview")
 
+    def _on_rescan(self, _e):
+        """Rescan Disc: go back to the disc detection scanner.
+
+        Clears the just-read disc payload so the user can pick a
+        drive and read again from scratch (typically after ejecting
+        and reinserting a disc). The title is preserved so if the
+        same disc is re-read, the user doesn't lose their edit; a
+        successful re-read overwrites it with the fresh volume label
+        anyway.
+        """
+        self.app.state.pop("disc_info", None)
+        self.app.state.pop("_tmdb_results", None)
+        self.app.state.pop("_tmdb_error", None)
+        self.app.navigate("disc_detection")
+
+    def _footer_button(self) -> ft.Control:
+        """Return the left-side navigation button for this view.
+
+        In the orchestrate workflow the previous step is a disc scan,
+        so the natural action is "Rescan Disc". In the organize
+        workflow or scoped-group mode the previous step is a folder
+        picker / disc overview, so "Back" applies.
+        """
+        in_orchestrate = (
+            self.app.state.get("workflow") == "orchestrate"
+            and not self.app.state.get("_group_match_target_id")
+        )
+        if in_orchestrate:
+            return ft.TextButton(
+                "Rescan Disc",
+                icon=ft.Icons.REFRESH,
+                on_click=self._on_rescan,
+            )
+        return ft.TextButton("Back", on_click=self._on_back)
+
+    def _layout(
+        self,
+        header: list[ft.Control],
+        body: list[ft.Control],
+        footer: ft.Control,
+    ) -> ft.Control:
+        """Standard three-region layout for this screen.
+
+        ``header`` renders at the top, ``body`` is a scrollable middle
+        region that takes any leftover vertical space (so long
+        content scrolls instead of pushing the footer off-screen),
+        and ``footer`` is anchored to the bottom.
+        """
+        return ft.Column(
+            [
+                *header,
+                ft.Column(body, spacing=10, scroll=ft.ScrollMode.AUTO, expand=True),
+                footer,
+            ],
+            spacing=10,
+            expand=True,
+        )
+
     def _build_search_bar(self, title: str, *, searching: bool) -> ft.Control:
         """Search field + button so the user can refine the query in place."""
         self._search_field = ft.TextField(
@@ -85,8 +143,8 @@ class MetadataScreen:
                 args=(prefill_source_id,),
                 daemon=True,
             ).start()
-            return ft.Column(
-                [
+            return self._layout(
+                header=[
                     ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                     ft.Text(
                         "Restoring the TMDb match saved when this folder was ripped.",
@@ -94,15 +152,14 @@ class MetadataScreen:
                         color=ft.Colors.GREY_500,
                     ),
                     ft.Divider(height=20),
+                ],
+                body=[
                     ft.Row([
                         ft.ProgressRing(width=30, height=30),
                         ft.Text(f"Fetching TMDb details for \"{title}\"...", size=14),
                     ], spacing=10),
-                    ft.Container(expand=True),
-                    ft.TextButton("Back", on_click=self._on_back),
                 ],
-                spacing=10,
-                expand=True,
+                footer=ft.Row([self._footer_button()]),
             )
 
         # Check if results already fetched (re-render after background search)
@@ -117,8 +174,8 @@ class MetadataScreen:
             return self._build_error_view(title, tmdb_error)
 
         # Loading state
-        content = ft.Column(
-            [
+        content = self._layout(
+            header=[
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     "Searching TMDb for the correct movie or TV show match.",
@@ -127,18 +184,17 @@ class MetadataScreen:
                 ),
                 ft.Divider(height=20),
                 self._build_search_bar(title, searching=True),
+            ],
+            body=[
                 ft.Row([
                     ft.ProgressRing(width=30, height=30),
                     ft.Text(f"Searching TMDb for \"{title}\"...", size=14),
                 ], spacing=10),
-                ft.Container(expand=True),
-                ft.Row([
-                    ft.TextButton("Back", on_click=self._on_back),
-                    ft.TextButton("Skip", on_click=lambda _: self._continue_without_metadata(title)),
-                ]),
             ],
-            spacing=10,
-            expand=True,
+            footer=ft.Row([
+                self._footer_button(),
+                ft.TextButton("Skip", on_click=lambda _: self._continue_without_metadata(title)),
+            ]),
         )
 
         # Start search in background
@@ -183,8 +239,8 @@ class MetadataScreen:
                 ),
             ]
 
-        return ft.Column(
-            [
+        return self._layout(
+            header=[
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     "Choose the correct movie or TV show from the results below. "
@@ -197,27 +253,23 @@ class MetadataScreen:
                 *prefill_banner,
                 self._build_search_bar(title, searching=False),
                 ft.Text("Select a match:", size=14),
-                self.radio_group,
-                ft.Container(expand=True),
-                ft.Row([
-                    ft.TextButton("Back", on_click=self._on_back),
-                    ft.ElevatedButton(
-                        "Next",
-                        icon=ft.Icons.ARROW_FORWARD,
-                        on_click=self._next,
-                        style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-                    ),
-                ]),
             ],
-            spacing=10,
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
+            body=[self.radio_group],
+            footer=ft.Row([
+                self._footer_button(),
+                ft.ElevatedButton(
+                    "Next",
+                    icon=ft.Icons.ARROW_FORWARD,
+                    on_click=self._next,
+                    style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
+                ),
+            ]),
         )
 
     def _build_error_view(self, title: str, error: str) -> ft.Control:
         """Build the error view with option to continue without metadata."""
-        return ft.Column(
-            [
+        return self._layout(
+            header=[
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     "TMDb is needed for canonical titles, years, and media-library folder "
@@ -227,6 +279,8 @@ class MetadataScreen:
                 ),
                 ft.Divider(height=20),
                 self._build_search_bar(title, searching=False),
+            ],
+            body=[
                 ft.Text(error, size=14, color=ft.Colors.ORANGE),
                 ft.Container(height=10),
                 ft.Text(
@@ -234,19 +288,16 @@ class MetadataScreen:
                     "without metadata. Organize your rips later when TMDb is available.",
                     size=13,
                 ),
-                ft.Container(expand=True),
-                ft.Row([
-                    ft.TextButton("Back", on_click=self._on_back),
-                    ft.ElevatedButton(
-                        "Rip without metadata",
-                        icon=ft.Icons.ARROW_FORWARD,
-                        on_click=lambda _: self._continue_without_metadata(title),
-                        style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-                    ),
-                ]),
             ],
-            spacing=10,
-            expand=True,
+            footer=ft.Row([
+                self._footer_button(),
+                ft.ElevatedButton(
+                    "Rip without metadata",
+                    icon=ft.Icons.ARROW_FORWARD,
+                    on_click=lambda _: self._continue_without_metadata(title),
+                    style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
+                ),
+            ]),
         )
 
     def _continue_without_metadata(self, title: str):

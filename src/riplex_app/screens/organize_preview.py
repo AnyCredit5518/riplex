@@ -68,7 +68,9 @@ class OrganizePreviewScreen:
                     self._progress_text,
                 ], spacing=10),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
+                ]),
             ],
             spacing=10,
             expand=True,
@@ -390,7 +392,9 @@ class OrganizePreviewScreen:
                 ft.Divider(height=20),
                 ft.Text(f"Failed to build plan: {error}", size=14, color=ft.Colors.ORANGE),
                 ft.Container(expand=True),
-                ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
+                ft.Row([
+                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("release")),
+                ]),
             ],
             spacing=10,
             expand=True,

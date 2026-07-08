@@ -12,6 +12,7 @@ from riplex.disc.analysis import (
     detect_bonus_films,
     format_seconds,
     group_for_disc,
+    reconcile_bonus_films,
 )
 from riplex.disc.makemkv import DiscTitle
 
@@ -117,6 +118,7 @@ class SelectionScreen:
         for t in titles:
             is_recommended = t.index in rippable_indices
             classification = classifications.get(t.index, "")
+            is_main_film = classification.startswith("MAIN FILM")
             cb = ft.Checkbox(
                 value=is_recommended,
                 data=t.index,
@@ -137,9 +139,29 @@ class SelectionScreen:
                 padding=ft.Padding(left=6, top=2, right=6, bottom=2),
                 visible=not is_recommended,
             )
+            # Highlight the main feature with its own tag so it stands
+            # out from extras / duplicates in the list.
+            main_film_badge = ft.Container(
+                ft.Text("MAIN FILM", size=10, color=ft.Colors.WHITE,
+                        weight=ft.FontWeight.BOLD),
+                bgcolor=ft.Colors.INDIGO_400,
+                border_radius=4,
+                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
+                visible=is_main_film,
+            )
+            rec_cell = ft.Row(
+                [rec_badge, skip_badge, main_film_badge],
+                spacing=4, width=150,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
 
-            # Use classification as the display name (comes from dvdcompare matching)
-            display_name = classification or t.filename or f"Title {t.index}"
+            # Prefer the TMDb title the user already confirmed on the
+            # release screen for the main feature; fall back to the
+            # classification label for extras / episodes / duplicates.
+            if is_main_film and getattr(tmdb_match, "title", None):
+                display_name = tmdb_match.title
+            else:
+                display_name = classification or t.filename or f"Title {t.index}"
 
             row = ft.Row(
                 [
@@ -148,8 +170,7 @@ class SelectionScreen:
                     ft.Text(format_seconds(t.duration_seconds), width=70, size=12),
                     ft.Text(_format_size(t.size_bytes), width=70, size=12),
                     ft.Text(t.resolution, width=90, size=12),
-                    rec_badge,
-                    skip_badge,
+                    rec_cell,
                     ft.Text(display_name, size=12, color=ft.Colors.GREY_300, expand=True),
                 ],
                 spacing=8,
@@ -174,12 +195,12 @@ class SelectionScreen:
         # Header row
         header = ft.Row(
             [
-                ft.Container(width=48),  # checkbox space
+                ft.Text("Rip?", width=48, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("#", width=30, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Duration", width=70, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Size", width=70, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Resolution", width=90, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
-                ft.Text("", width=50),
+                ft.Text("Recommendation", width=150, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Name", size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD, expand=True),
             ],
             spacing=8,
@@ -253,6 +274,14 @@ class SelectionScreen:
         bonus_films: list = []
         for d in current_discs:
             bonus_films.extend(detect_bonus_films(d))
+        # dvdcompare can over-report the films on a disc: a boxset's
+        # movies disc often hyperlinks sibling works (sequels, spin-offs)
+        # that aren't physically pressed on this disc. Reconcile against
+        # the scan so a single-film disc that dvdcompare thought held
+        # several doesn't raise a bogus multi-film alert.
+        bonus_films = reconcile_bonus_films(
+            bonus_films, analysis.rippable_titles,
+        )
         bonus_films_section = self._build_bonus_films_section(bonus_films)
 
         return ft.Column(
@@ -333,9 +362,8 @@ class SelectionScreen:
                     ),
                     *rows,
                     ft.Text(
-                        "Per-film organization (separate Plex folders) is not yet "
-                        "wired up. For now all rips land in one disc folder — move them "
-                        "manually after ripping.",
+                        "Riplex sorts each film into its own Plex folder during "
+                        "organize, matching titles to films by runtime.",
                         size=12, color=ft.Colors.GREY_400,
                     ),
                 ],

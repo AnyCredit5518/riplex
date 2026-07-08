@@ -89,9 +89,41 @@ def detect_bonus_films(disc: "PlannedDisc") -> list["PlannedExtra"]:
     return results
 
 
+def reconcile_bonus_films(
+    bonus_films: list,
+    rippable_titles: list,
+    *,
+    min_feature_seconds: int = 2400,
+) -> list:
+    """Trim dvdcompare's linked-film list to what the disc actually holds.
+
+    ``detect_bonus_films`` returns the films dvdcompare *links* to a
+    disc, which can over-report: a boxset's movies disc frequently
+    hyperlinks sibling works (sequels, spin-offs) whose real home is a
+    different disc, so a disc that physically presses a single feature
+    can appear to hold three. Reconcile against the live scan by
+    counting feature-length rippable titles (``>= min_feature_seconds``)
+    and keeping only as many bonus films as there are titles beyond the
+    main feature. A single-feature disc therefore returns ``[]`` and the
+    caller shows no multi-film alert.
+
+    Pure function — no I/O — so both the GUI selection screen and the
+    CLI ``rip`` command share one reconciliation rule.
+    """
+    feature_count = sum(
+        1 for t in rippable_titles
+        if getattr(t, "duration_seconds", 0) >= min_feature_seconds
+    )
+    max_extra_films = max(0, feature_count - 1)
+    return bonus_films[:max_extra_films]
+
+
 def group_release_discs(
     discs: list["PlannedDisc"],
     current_tmdb_match: object | None = None,
+    *,
+    add_primary_work_slot: bool = False,
+    primary_runtime_seconds: int = 0,
 ) -> list["DiscGroup"]:
     """Split a release's discs into groups that map to distinct organize targets.
 
@@ -120,6 +152,20 @@ def group_release_discs(
     searched for). Groups with per-film slots always autofill from each
     slot's ``dvdcompare_fid`` instead — the user's search can't be
     pre-routed to N distinct linked works.
+
+    ``add_primary_work_slot`` (keyword-only) tells the seating logic
+    that ``current_tmdb_match`` is the release's primary work living
+    on a pointer disc alongside pointered linked works. Set this when
+    the caller has filtered the release down to pointer discs only
+    (via :func:`filter_discs_to_picked_movie`) and the user's pick is
+    a movie: the seating fallback then prepends a new ``FilmSlot`` for
+    the primary work instead of overwriting the first pointered slot.
+
+    ``primary_runtime_seconds`` (keyword-only) supplies the runtime for
+    that prepended primary-work slot. ``MetadataSearchResult`` (the
+    usual ``current_tmdb_match`` type) carries no runtime, so callers
+    pass the movie runtime they already have (``movie_runtime`` in
+    app state / ``LookupResult``) to avoid an "unknown runtime" label.
     """
     from riplex.models import DiscGroup, FilmSlot
 
@@ -202,6 +248,37 @@ def group_release_discs(
         if target is not None:
             target.tmdb_match = current_tmdb_match
             target.source = "user"
+        elif add_primary_work_slot and groups[0].films:
+            # Multi-work release where the picked movie IS the primary
+            # work and co-lives on the pointer disc as a non-pointer
+            # main feature (Psych: The Complete Series disc 31 shape:
+            # "The Film" plus 2 linked TV-movie sequels). Prepend a
+            # dedicated slot for the primary work so all N works stay
+            # visible and correctly attributed, instead of clobbering
+            # the first pointered slot.
+            primary = FilmSlot(
+                title=getattr(current_tmdb_match, "title", "") or "",
+                runtime_seconds=int(
+                    primary_runtime_seconds
+                    or getattr(current_tmdb_match, "runtime_seconds", 0)
+                    or 0
+                ),
+            )
+            primary.tmdb_match = current_tmdb_match
+            primary.source = "user"
+            groups[0].films.insert(0, primary)
+            numbers = groups[0].disc_numbers
+            first_n, last_n = numbers[0], numbers[-1]
+            range_str = (
+                f"Disc {first_n}"
+                if first_n == last_n
+                else f"Discs {first_n}-{last_n}"
+            )
+            n_films = len(groups[0].films)
+            if n_films == 1:
+                groups[0].label = f"{range_str}: {primary.title}"
+            else:
+                groups[0].label = f"{range_str}: {n_films} works"
         elif groups[0].films:
             groups[0].films[0].tmdb_match = current_tmdb_match
             groups[0].films[0].source = "user"
@@ -335,6 +412,59 @@ def filter_discs_to_season(
         d for d in discs
         if parse_season_number(labels.get(d.number, "")) == season_number
     ]
+
+
+def filter_discs_to_picked_movie(
+    discs: list["PlannedDisc"],
+) -> list["PlannedDisc"]:
+    """Drop discs that aren't relevant to a picked movie.
+
+    Sibling of :func:`filter_discs_to_season` for the movie flow. In a
+    multi-work boxset (e.g. *Psych: The Complete Series* — 30 TV discs
+    plus 1 disc of standalone TV-movie sequels), the standalone movies
+    live on the pointer-linked disc(s) while the primary-work discs
+    hold TV episodes irrelevant to a movie pick. When the release
+    contains any pointer discs, we drop the empty-pointer discs so
+    the rest of the pipeline only sees the movie disc(s).
+
+    Single-work movie releases have no pointer discs at all; those
+    pass through unchanged.
+    """
+    if not discs:
+        return list(discs)
+
+    def _has_pointer(d: "PlannedDisc") -> bool:
+        return any(
+            getattr(e, "pointer_fid", None) is not None for e in d.extras
+        )
+
+    pointer_discs = [d for d in discs if _has_pointer(d)]
+    if not pointer_discs:
+        return list(discs)
+    return pointer_discs
+
+
+def format_disc_ranges(numbers: list[int]) -> str:
+    """Collapse a list of disc numbers into a compact range string.
+
+    ``[1, 2, 3, 4, 9, 10]`` -> ``"1-4, 9-10"``; ``[7]`` -> ``"7"``.
+    Used to describe the discs a "one pick at a time" filter hid from
+    the disc-overview list so the UI banner can name them without
+    listing every number. Input is de-duplicated and sorted.
+    """
+    unique = sorted(set(numbers))
+    if not unique:
+        return ""
+    parts: list[str] = []
+    start = prev = unique[0]
+    for n in unique[1:]:
+        if n == prev + 1:
+            prev = n
+            continue
+        parts.append(f"{start}" if start == prev else f"{start}-{prev}")
+        start = prev = n
+    parts.append(f"{start}" if start == prev else f"{start}-{prev}")
+    return ", ".join(parts)
 
 
 def collect_tmdb_episodes_for_disc(

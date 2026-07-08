@@ -1,9 +1,16 @@
 import builtins
 
 import certifi
+import flet as ft
 
 from riplex_app import main as app_main
-from riplex_app.main import _configure_flet_view_path, _configure_tls_certificates
+from riplex_app.main import (
+    _append_to_footer_row,
+    _button_label,
+    _configure_flet_view_path,
+    _configure_tls_certificates,
+    _tree_has_quit,
+)
 
 
 def test_configure_tls_certificates_sets_ssl_env_when_unset():
@@ -92,3 +99,61 @@ def test_configure_flet_view_path_preserves_existing_override(tmp_path):
 
     assert flet_view_path == "C:/custom/flet"
     assert env["FLET_VIEW_PATH"] == "C:/custom/flet"
+
+
+# ---------------------------------------------------------------------------
+# Footer Quit-button injection
+# ---------------------------------------------------------------------------
+
+
+def test_button_label_reads_flet085_content_attr():
+    # Flet 0.85 stores a TextButton's label under .content (a plain str)
+    # and has no .text attribute at all — verify we still read the label
+    # so the Quit dedup below is reliable.
+    quit_btn = ft.TextButton("Quit")
+
+    assert getattr(quit_btn, "text", None) is None
+    assert quit_btn.content == "Quit"
+    assert _button_label(quit_btn) == "Quit"
+
+
+def test_tree_has_quit_detects_baked_in_quit_anywhere():
+    # done/orchestrate_done bake in a local Quit that may not sit in the
+    # last footer row; a whole-tree scan must still find it.
+    tree = ft.Column(
+        [
+            ft.Text("Rip complete"),
+            ft.Row([ft.TextButton("Open Folder"), ft.TextButton("Quit")]),
+            ft.Row([ft.TextButton("Report a Bug")]),
+        ]
+    )
+
+    assert _tree_has_quit(tree) is True
+
+
+def test_append_to_footer_row_skips_injection_when_quit_present():
+    # A screen with its own Quit must not get a second injected Quit.
+    footer = ft.Row([ft.TextButton("Open Folder"), ft.TextButton("Quit")])
+    tree = ft.Column([ft.Text("Done"), footer])
+    injected = ft.TextButton("Quit")
+
+    handled = _append_to_footer_row(tree, injected)
+
+    assert handled is True
+    # Flet controls compare by value, so use identity to confirm the
+    # injected Quit was NOT added on top of the baked-in one.
+    assert not any(c is injected for c in footer.controls)
+    assert len(footer.controls) == 2
+
+
+def test_append_to_footer_row_appends_when_no_quit_present():
+    # A screen without a Quit (e.g. disc_overview) gets exactly one
+    # injected Quit in its last footer row.
+    footer = ft.Row([ft.TextButton("Back"), ft.Button("Start Ripping")])
+    tree = ft.Column([ft.Text("Disc Overview"), footer])
+    injected = ft.TextButton("Quit")
+
+    handled = _append_to_footer_row(tree, injected)
+
+    assert handled is True
+    assert footer.controls[-1] is injected

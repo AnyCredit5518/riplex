@@ -115,7 +115,15 @@ class DiscOverviewScreen:
         # Split the release into organize-target groups. Auto-assigns the
         # current tmdb_match to the group whose kind matches its media_type;
         # per-group and per-film overrides are then layered on top.
-        disc_groups = group_release_discs(dvdcompare_discs, tmdb_match)
+        disc_groups = group_release_discs(
+            dvdcompare_discs, tmdb_match,
+            add_primary_work_slot=bool(
+                self.app.state.get("primary_movie_needs_slot")
+            ),
+            primary_runtime_seconds=int(
+                self.app.state.get("movie_runtime") or 0
+            ),
+        )
         self._apply_overrides(disc_groups)
         self.app.state["disc_groups"] = disc_groups
         log.info(
@@ -225,6 +233,7 @@ class DiscOverviewScreen:
             self._refresh_start_guard()
 
         multigroup_banner = self._build_multigroup_banner(disc_groups)
+        hidden_discs_banner = self._build_hidden_discs_banner()
         loaded_selector = self._build_loaded_disc_selector(
             dvdcompare_discs, inserted_disc, auto_detected,
         )
@@ -247,6 +256,7 @@ class DiscOverviewScreen:
                 ft.Divider(height=20),
                 loaded_selector,
                 multigroup_banner,
+                hidden_discs_banner,
                 resume_info,
                 ft.Column(group_sections, spacing=12, scroll=ft.ScrollMode.AUTO,
                           expand=True),
@@ -545,6 +555,73 @@ class DiscOverviewScreen:
             content=ft.Row(
                 [
                     ft.Icon(ft.Icons.INFO_OUTLINE, color=ft.Colors.BLUE_300, size=20),
+                    ft.Column(
+                        [
+                            ft.Text(
+                                headline,
+                                size=13,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.BLUE_300,
+                            ),
+                            ft.Text(body, size=12, color=ft.Colors.GREY_300),
+                        ],
+                        spacing=2,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            ),
+            padding=12,
+            border=ft.Border.all(1, ft.Colors.BLUE_800),
+            border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.06, ft.Colors.BLUE_400),
+        )
+
+    def _build_hidden_discs_banner(self) -> ft.Control:
+        """Info card naming discs the "one pick at a time" filter hid.
+
+        When the user picks a movie from a multi-work boxset (e.g.
+        *Psych: The Complete Series* — 30 TV discs + 1 movies disc) or
+        a single TV season from a full-series release, the boundary
+        filter drops the discs that aren't part of that pick. Without a
+        note, the shortened disc list looks like riplex lost discs, so
+        we explain what's hidden and why."""
+        hidden = self.app.state.get("hidden_disc_numbers") or []
+        if not hidden:
+            return ft.Container()
+
+        from riplex.disc.analysis import format_disc_ranges
+
+        total = len(self.app.state.get("dvdcompare_discs") or []) + len(hidden)
+        ranges = format_disc_ranges([int(n) for n in hidden])
+        n_hidden = len(hidden)
+        disc_word = "disc" if n_hidden == 1 else "discs"
+        tmdb_match = self.app.state.get("tmdb_match")
+        if getattr(tmdb_match, "media_type", None) == "tv":
+            reason = "aren't part of the season you picked"
+        else:
+            reason = "aren't part of the title you picked"
+
+        headline = (
+            f"Hiding {n_hidden} of {total} discs"
+            if total
+            else f"Hiding {n_hidden} {disc_word}"
+        )
+        body = (
+            f"{disc_word.capitalize()} {ranges} {reason}, so they're "
+            "hidden from the list below. Only the discs you'll actually "
+            "rip are shown."
+        )
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(
+                        ft.Icons.VISIBILITY_OFF_OUTLINED,
+                        color=ft.Colors.BLUE_300,
+                        size=20,
+                    ),
                     ft.Column(
                         [
                             ft.Text(

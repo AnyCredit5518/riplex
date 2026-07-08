@@ -199,11 +199,9 @@ class TestPrepareTvSeasonPick:
         app.state["dvdcompare_discs"] = ["stale"]
 
         screen = DiscDetectionScreen(app)
-        # Give the screen the widgets that _prepare_tv_season_pick
-        # updates in place.
-        screen.search_btn = MagicMock()
-        screen.search_btn.disabled = False
-        screen.search_btn.text = "Search"
+        # _prepare_tv_season_pick no longer touches any UI widgets —
+        # it just seeds state and kicks off the show_detail thread,
+        # so no MagicMock stubs are needed.
 
         session = _FakeSession(
             title="Psych", year=2006, media_type="tv",
@@ -225,7 +223,6 @@ class TestPrepareTvSeasonPick:
         # Route the resume through _prepare_tv_season_pick rather than
         # the movie-style _resume_session so the user can disambiguate
         # multiple in-progress seasons.
-        import riplex_app.screens.disc_detection as dd_mod
         session = _FakeSession(
             title="Psych", media_type="tv", source_id="tv:1447",
         )
@@ -236,10 +233,8 @@ class TestPrepareTvSeasonPick:
 
         app = _FakeApp()
         app.state["workflow"] = "orchestrate"
+        app.state["title"] = "Psych"
         screen = DiscDetectionScreen(app)
-        screen.title_field = MagicMock()
-        screen.title_field.value = "Psych"
-        screen.search_btn = MagicMock()
 
         prep_calls: list = []
         resume_calls: list = []
@@ -252,7 +247,7 @@ class TestPrepareTvSeasonPick:
             lambda s: resume_calls.append(s),
         )
 
-        screen._search(None)
+        screen._route_after_read()
 
         assert prep_calls == [session]
         assert resume_calls == []
@@ -260,7 +255,6 @@ class TestPrepareTvSeasonPick:
     def test_search_routes_movie_session_via_direct_resume(self, monkeypatch):
         # Movies have no season ambiguity, so they should still jump
         # straight to the resume flow (no extra picker screen).
-        import riplex_app.screens.disc_detection as dd_mod
         session = _FakeSession(
             title="Some Movie", media_type="movie",
             source_id="movie:1", season_number=None,
@@ -272,10 +266,8 @@ class TestPrepareTvSeasonPick:
 
         app = _FakeApp()
         app.state["workflow"] = "orchestrate"
+        app.state["title"] = "Some Movie"
         screen = DiscDetectionScreen(app)
-        screen.title_field = MagicMock()
-        screen.title_field.value = "Some Movie"
-        screen.search_btn = MagicMock()
 
         prep_calls: list = []
         resume_calls: list = []
@@ -288,7 +280,7 @@ class TestPrepareTvSeasonPick:
             lambda s: resume_calls.append(s),
         )
 
-        screen._search(None)
+        screen._route_after_read()
 
         assert resume_calls == [session]
         assert prep_calls == []
