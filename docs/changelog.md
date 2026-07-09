@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Release highlights
+
+**Headline feature — multi-work & multi-season boxset support.** riplex now
+understands releases that bundle *several distinct Plex works* on one physical
+set — a TV series plus standalone bonus films, complete-series boxsets, and
+multi-season shows. The canonical test case is *Psych: The Complete Series*:
+30 discs of TV episodes plus a 31st disc that hyperlinks three standalone
+TV-movies. Where riplex previously flattened such a release into one folder (or
+mislabeled the movie disc as "linked works"), it now:
+
+- **Splits a release into per-work disc groups** using dvdcompare's own
+  cross-page hyperlinks (`pointer_fid`) rather than a brittle `is_film` flag,
+  and routes each group to its own Plex target — a TV series to `Season NN/`
+  episode folders, each bonus film to its own movie folder.
+- **Handles one season at a time end-to-end.** A new Season Select screen (GUI)
+  and season prompt (CLI) bias the dvdcompare query to the right per-season film
+  page; TV rips nest under `<title> (<year>)/Season NN/Disc N/` so different
+  seasons never collide on `Disc N` folder names.
+- **Auto-fills each work's TMDb match** (best-guess lookup per disc group,
+  stripping dvdcompare's `(TV)`/`(Blu-ray)` format markers), and cross-references
+  dvdcompare features against the TMDb episode list so episodes get canonical
+  `SxxEyy` numbering and accurate titles.
+- **Resumes across every work-folder in the release.** A new
+  `_riplex_session.json` marker written into each work-folder lets a
+  half-finished boxset resume from *any* disc of *any* work — inserting a TV
+  disc continues the same session that started with the movie disc, skipping
+  discs already ripped under a sibling folder.
+- **Organizes the whole release in one pass.** `riplex organize` and the GUI's
+  "Organize into Library" fan out across every sibling work-folder from the
+  marker, with far more accurate episode routing (deterministic rip-time
+  `SxxEyy` classification, fuzzy dvdcompare↔TMDb title matching, and a fix for
+  same-basename MKVs colliding across discs).
+
+**Also in this release:**
+
+- **Interactive title-selection editor in the CLI** — press `e` at the
+  `Proceed?` prompt to toggle exactly which titles rip, instead of aborting and
+  re-running with `--titles`.
+- **Rip manifests persist the TMDb/dvdcompare IDs**, so a later organize (or a
+  resume) restores the exact match and skips both metadata pickers.
+- **Clean Ctrl-C everywhere** — aborts immediately at any prompt, exits with
+  code 130 instead of a traceback, and no longer orphans `makemkvcon`.
+- **Numerous GUI and CLI polish fixes** — user-selectable "currently loaded"
+  disc, a "Organize into Library" shortcut when every disc is already ripped,
+  a hidden-discs banner, season chips, softer disc-mismatch wording, and
+  removal of duplicate Quit buttons.
+
+The detailed per-change entries follow.
+
 ### Fixed
 
 - **The rip-complete summary screens (single-rip `done` and multi-disc `orchestrate_done`) no longer show two Quit buttons.** ``main.navigate`` globally injects a Quit into every non-welcome screen's footer, and dedups against any Quit the screen already baked in. That dedup was checking ``getattr(control, "text", None) == "Quit"``, but Flet 0.85 stores a ``TextButton``'s label under ``.content`` (a plain ``str``) and exposes no ``.text`` attribute at all — so the check never matched and the injected Quit was always added on top of the screen's own Quit-to-close-app button. Two fixes in ``src/riplex_app/main.py``: (1) a new ``_button_label`` helper reads the label across Flet versions (``.text`` then ``.content``); (2) the old single-row dedup was replaced with ``_tree_has_quit``, which walks the *entire* built subtree — necessary because ``done.py`` keeps its local Quit in the second-to-last row (the last row holds only "Report a Bug"), so a last-row-only check would have missed it. When a local Quit is found, injection is skipped entirely; the screen keeps its own button. Tests: 4 new cases in ``tests/test_app_main.py`` covering ``_button_label`` reading ``.content``, whole-tree Quit detection, skip-on-duplicate, and append-when-absent.
