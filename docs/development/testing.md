@@ -11,9 +11,9 @@ The suite has two layers:
 
 - **Unit tests** (`tests/test_*.py`) — one file per source module, covering
   parsing, planning, matching, and per-screen handler logic in isolation.
-- **GUI integration tests** (`tests/integration/`) — headless end-to-end flows
-  that drive the Flet wizard through mocked scenarios to catch regressions in
-  how screens hand off to each other.
+- **Integration tests** (`tests/integration/`) — headless end-to-end flows that
+  drive the GUI wizard and the CLI through mocked scenarios to catch regressions
+  in how the pieces fit together.
 
 To run only the integration flows (or skip them):
 
@@ -109,6 +109,31 @@ def test_seasonal_flow(gui, name):
 
 Adding a new fixture of a category makes it flow through that category's tests
 on the next run — no test edits required.
+
+## CLI integration tests
+
+The CLI is exercised end-to-end the same way: `tests/support/cli.py` runs the
+real argparse parser and async command dispatch (`_run`) in-process, so tests
+cover argument parsing, command routing, and command logic together. External
+boundaries (config, TMDb, dvdcompare) are stubbed via monkeypatch.
+
+```python
+from tests.support.cli import install_cli_mocks, run_command
+
+def test_lookup(monkeypatch, capsys):
+    install_cli_mocks(monkeypatch)              # offline config + providers
+    ...                                         # mock the lookup seam
+    code = run_command(["lookup", "The Matrix"])
+    assert code == 0
+    assert "The Matrix" in capsys.readouterr().out
+```
+
+Covered: parser/dispatch (help on no command, `--version`, unknown command,
+every subcommand parses), `organize` dry-run against a committed scan snapshot
+plus its guard rails (`--execute` rejected with `--snapshot`, missing snapshot,
+non-directory folder), and `lookup` (rip guide, graceful dvdcompare failure,
+`--json` output). The `organize --snapshot` path replays a real
+`tests/snapshots/*.snapshot.json` so no ffprobe or live files are needed.
 
 ## Test fixtures from archived rips
 

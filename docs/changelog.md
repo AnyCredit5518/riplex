@@ -35,7 +35,7 @@ destination.
 - "Organize into Library" shortcut on the Disc Overview once every disc has been ripped.
 - Hidden-discs banner explaining discs the plan intentionally skips.
 - "View on dvdcompare.net" link when a release has already been matched.
-- **Development > Testing guide** (`development/testing.md`) documenting the headless GUI integration test suite, the `tests/support/` harness, the `gui` fixture, and how to generate scenario fixtures from archived rips with `scripts/gen_gui_fixtures.py`.
+- **Development > Testing guide** (`development/testing.md`) documenting the headless GUI and CLI integration test suites, the `tests/support/` harness, the `gui` fixture, media-type-targeted flows, and how to generate scenario fixtures from archived rips with `scripts/gen_gui_fixtures.py`.
 
 ### Changed
 
