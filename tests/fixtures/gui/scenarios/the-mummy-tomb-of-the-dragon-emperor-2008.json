@@ -1,0 +1,59 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "MUMMY3UHD_NA",
+      "disc_name": "MUMMY3UHD_NA",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 20,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 6699,
+          "filename": "The Mummy- Tomb of the Dragon Emperor_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 61401747456,
+          "stream_count": 17,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [],
+    "release": ""
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    3
+  ],
+  "scenario": "the-mummy-tomb-of-the-dragon-emperor-2008",
+  "schema_version": 1,
+  "selected_titles": [
+    3
+  ],
+  "source": "archive:The Mummy - Tomb of the Dragon Emperor (2008)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "The Mummy: Tomb of the Dragon Emperor",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:3697583",
+    "title": "The Mummy: Tomb of the Dragon Emperor",
+    "year": 2008
+  },
+  "workflow": "orchestrate",
+  "year": 2008
+}

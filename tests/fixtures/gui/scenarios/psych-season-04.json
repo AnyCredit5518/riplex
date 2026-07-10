@@ -1,0 +1,971 @@
+{
+  "category": "tv_series",
+  "discs": [
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 1,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E01 - Extradition: British Columbia (1080p)",
+          "duration_seconds": 2568,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1549469696,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E02 - He Dead (1080p)",
+          "duration_seconds": 2563,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1478981632,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E03 - High Noon-ish (1080p)",
+          "duration_seconds": 2549,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1472260096,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E04 - The Devil's in the Details... and the Upstairs Bathroom (1080p)",
+          "duration_seconds": 2561,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1617094656,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 2,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E05 - Shawn Gets the Yips (1080p)",
+          "duration_seconds": 2521,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1612613632,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E06 - Bollywood Homicide (1080p)",
+          "duration_seconds": 2559,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1691011072,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E07 - High Top Fade-Out (1080p)",
+          "duration_seconds": 2579,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1722249216,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E08 - Let's Get Hairy (1080p)",
+          "duration_seconds": 2578,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1905989632,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 3,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E09 - Shawn Takes a Shot in the Dark (1080p)",
+          "duration_seconds": 2572,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1702148096,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E10 - You Can't Handle This Episode (1080p)",
+          "duration_seconds": 2576,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1583734784,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E11 - Thrill Seekers and Hell-Raisers (1080p)",
+          "duration_seconds": 2583,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1677481984,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E12 - A Very Juliet Episode (1080p)",
+          "duration_seconds": 2578,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1617641472,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 4,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E13 - Death Is in the Air (1080p)",
+          "duration_seconds": 2557,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1508227072,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E14 - Think Tank (1080p)",
+          "duration_seconds": 2583,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1602011136,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E15 - The Head, the Tail, the Whole Damn Episode (1080p)",
+          "duration_seconds": 2578,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1585649664,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "S04E16 - Mr. Yin Presents... (1080p)",
+          "duration_seconds": 2618,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1591080960,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2568,
+            "season_number": 1,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2564,
+            "season_number": 1,
+            "title": "He Dead"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2552,
+            "season_number": 1,
+            "title": "High Noon-ish"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2562,
+            "season_number": 1,
+            "title": "The Devil's in the Details... and the Upstairs Bathroom"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Extradition: British Columbia\" with writers Steve Franks & Andy Berman, executive producer Kelly Kulchak, co-executive producer Saladin K. Patterson and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"The Devil's in the Details... and the Upstairs Bathroom\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer Bill Callahan and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 458,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 330,
+            "title": "He Dead"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 446,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 219,
+            "title": "He Dead"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 300,
+            "title": "High Noon-ish"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 243,
+            "title": "The Devil's in the Details... and the Upstairs Bathroom"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 355,
+            "title": "Gag Reel"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Bonus Trailers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 31,
+            "title": "Battlestar Galactica"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 46,
+            "title": "Columbo"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 39,
+            "title": "House"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 65,
+            "title": "Law & Order"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 49,
+            "title": "Life"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 60,
+            "title": "Monk"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 33,
+            "title": "The A-Team / Knight Rider / Magnum P.I."
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 75,
+            "title": "Warehouse 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 288,
+            "title": "Start-up Trailers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Royal Pains"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "In Plain Sight"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Monk"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Anywhere4U.com"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Psych"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 5,
+            "runtime_seconds": 2523,
+            "season_number": 1,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 2561,
+            "season_number": 1,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "High Top Fade-Out"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "Let's Get Hairy"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"High Top Fade-Out\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writers Saladin K. Patterson & James Roday and series star Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 183,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 269,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 376,
+            "title": "High Top Fade-Out"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 139,
+            "title": "Let's Get Hairy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 154,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 521,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 62,
+            "title": "Psychouts"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 9,
+            "runtime_seconds": 2573,
+            "season_number": 1,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 2578,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Thrill Seekers and Hell-Raisers"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 614,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 603,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Shawn Takes a Shot in the Dark\" with executive producer/creator Steve Franks, executive producer Kelly Kulchak, writer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"A Very Juliet Episode\" with writers Steve Franks and Tim Meltreger, executive producers Chris Henze & Kelly Kulchak and series stars James Roday, Dulé Hill, Timothy Omundson & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 106,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 392,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 107,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 236,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 380,
+            "title": "Thrill Seekers and Hell-Raisers"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2559,
+            "season_number": 1,
+            "title": "Death Is in the Air"
+          },
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 18,
+            "runtime_seconds": 2619,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "episode_number": 19,
+            "runtime_seconds": 610,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 20,
+            "runtime_seconds": 709,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 21,
+            "runtime_seconds": 760,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Think Tank\" with writers Steve Franks and Andy Berman"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"The Head, the Tail, the Whole Damn Episode\" with writers Steve Franks & Tim Meltreger, executive producers Chris Henze & Kelly Kulchak and series stars James Roday, Dulé Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Mr. Yin Presents...\" with executive producer/creator Steve Franks, executive producer Kelly Kulchak, writers Andy Berman & James Roday and series stars Dulé Hill, Timothy Omundson & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 61,
+            "title": "Think Tank"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 384,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 220,
+            "title": "Death Is in the Air"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Montages"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 41,
+            "title": "Fist Bumps"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 56,
+            "title": "Body Language"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 57,
+            "title": "Screams"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 51,
+            "title": "What!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 68,
+            "title": "Introductions"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 116,
+            "title": "Shawn and Juliet"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 90,
+            "title": "Shawn and Lassie"
+          }
+        ],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      }
+    ],
+    "release": "R1 America - Universal Pictures"
+  },
+  "media_type": "tv",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "scenario": "psych-season-04",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "source": "archive:Season 04",
+  "synthesized": [
+    "tmdb.seasons",
+    "tmdb.source_id"
+  ],
+  "title": "Psych",
+  "tmdb": {
+    "media_type": "tv",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "seasons": [
+      {
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2568,
+            "season_number": 1,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2564,
+            "season_number": 1,
+            "title": "He Dead"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2552,
+            "season_number": 1,
+            "title": "High Noon-ish"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2562,
+            "season_number": 1,
+            "title": "The Devil's in the Details... and the Upstairs Bathroom"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 2523,
+            "season_number": 1,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 2561,
+            "season_number": 1,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "High Top Fade-Out"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "Let's Get Hairy"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 2573,
+            "season_number": 1,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 2578,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Thrill Seekers and Hell-Raisers"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 614,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 603,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2559,
+            "season_number": 1,
+            "title": "Death Is in the Air"
+          },
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 18,
+            "runtime_seconds": 2619,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "episode_number": 19,
+            "runtime_seconds": 610,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 20,
+            "runtime_seconds": 709,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 21,
+            "runtime_seconds": 760,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          }
+        ],
+        "name": "Season 1",
+        "season_number": 1
+      }
+    ],
+    "source_id": "tv:15573983",
+    "title": "Psych",
+    "year": 2006
+  },
+  "workflow": "orchestrate",
+  "year": 2006
+}

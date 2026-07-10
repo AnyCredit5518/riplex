@@ -1,0 +1,277 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "UHD_IMAX_FOB",
+      "disc_name": "UHD_IMAX_FOB",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 12,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 2653,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 19204964352,
+          "stream_count": 9,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "FLIGHT_OF_BUTTERFLIES_3D",
+      "disc_name": "FLIGHT_OF_BUTTERFLIES_3D",
+      "disc_number": 2,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 12,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 2653,
+          "filename": "Flight of the Butterflies_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 14494550016,
+          "stream_count": 7,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[extra] Humpback Whales (1080p)",
+          "duration_seconds": 138,
+          "filename": "Flight of the Butterflies_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 503199744,
+          "stream_count": 13,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 6,
+          "classification": "[featurette] Behind the Scenes (1080p)",
+          "duration_seconds": 1717,
+          "filename": "Flight of the Butterflies_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 8393472000,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 12,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 2653,
+          "filename": "Flight of the Butterflies_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 13900886016,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Shout! Factory4K+3D"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "scenario": "flight-of-the-butterflies-2012",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "source": "archive:Flight of the Butterflies (2012)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Flight of the Butterflies",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:4683632",
+    "title": "Flight of the Butterflies",
+    "year": 2012
+  },
+  "workflow": "orchestrate",
+  "year": 2012
+}

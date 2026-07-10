@@ -1,0 +1,278 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "2001_ A Space Odyssey",
+      "disc_name": "2001_ A Space Odyssey",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 34,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 8929,
+          "filename": "2001- A Space Odyssey_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 85159274496,
+          "stream_count": 77,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "2001_A_SPACE_ODYSSEY_BONUS",
+      "disc_name": "2001_A_SPACE_ODYSSEY_BONUS",
+      "disc_number": 3,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[documentary] 2001: The Making of a Myth (1080p)",
+          "duration_seconds": 2588,
+          "filename": "2001- A Space Odyssey Bonus_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1916030976,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Standing on the Shoulders of Kubrick: The Legacy of 2001 (1080p)",
+          "duration_seconds": 1285,
+          "filename": "2001- A Space Odyssey Bonus_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 946980864,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Vision of a Future Passed: The Prophecy of 2001 (1080p)",
+          "duration_seconds": 1291,
+          "filename": "2001- A Space Odyssey Bonus_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 950587392,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] A Look Behind the Future (1080p)",
+          "duration_seconds": 1391,
+          "filename": "2001- A Space Odyssey Bonus_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1019412480,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] What is Out There? (1080p)",
+          "duration_seconds": 1242,
+          "filename": "2001- A Space Odyssey Bonus_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 910344192,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] FX and Early Conceptual Artwork (1080p)",
+          "duration_seconds": 573,
+          "filename": "2001- A Space Odyssey Bonus_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 407181312,
+          "stream_count": 36,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Warner Home Video50th Anniversary Edition"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "scenario": "2001-a-space-odyssey-1968",
+  "schema_version": 1,
+  "selected_titles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "source": "archive:2001 - A Space Odyssey (1968)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "dvdcompare.disc3.episodes",
+    "dvdcompare.disc3.extras",
+    "tmdb.source_id"
+  ],
+  "title": "2001: A Space Odyssey",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:11652657",
+    "title": "2001: A Space Odyssey",
+    "year": 1968
+  },
+  "workflow": "orchestrate",
+  "year": 1968
+}

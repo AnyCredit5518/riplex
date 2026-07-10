@@ -58,4 +58,6 @@ nav:
   - CLI Reference: reference/cli.md
   - Architecture: architecture.md
   - Plex Naming Rules: naming-rules.md
+  - Development:
+      - Testing: development/testing.md
   - Changelog: changelog.md

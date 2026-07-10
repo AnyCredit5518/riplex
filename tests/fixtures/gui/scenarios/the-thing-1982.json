@@ -1,0 +1,148 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "THE_THING",
+      "disc_name": "THE_THING",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 37,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 6515,
+          "filename": "The Thing_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 80322594816,
+          "stream_count": 18,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 9,
+          "classification": "[documentary] John Carpenter's The Thing: Terror Takes Shape (1080p)",
+          "duration_seconds": 5033,
+          "filename": "The Thing_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 7252764672,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "[extra] Outtakes (4K, skip #5 1080p duplicate)",
+          "duration_seconds": 248,
+          "filename": "The Thing_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 839817216,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal Pictures"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    1,
+    2,
+    3
+  ],
+  "scenario": "the-thing-1982",
+  "schema_version": 1,
+  "selected_titles": [
+    1,
+    2,
+    3
+  ],
+  "source": "archive:The Thing (1982)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "tmdb.source_id"
+  ],
+  "title": "The Thing",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:3831544",
+    "title": "The Thing",
+    "year": 1982
+  },
+  "workflow": "orchestrate",
+  "year": 1982
+}

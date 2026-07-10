@@ -1,0 +1,1525 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "THE_GODFATHER",
+      "disc_name": "THE_GODFATHER",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 23,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 10528,
+          "filename": "THE GODFATHER_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 95312769024,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[extra] Introduction by director Francis Ford Coppola (4K)",
+          "duration_seconds": 186,
+          "filename": "THE GODFATHER_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 849235968,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Introduction by director Francis Ford Coppola (4K)",
+          "duration_seconds": 174,
+          "filename": "THE GODFATHER_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1163132928,
+          "stream_count": 24,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "GODFATHERBONUS_WW_2022",
+      "disc_name": "GODFATHERBONUS_WW_2022",
+      "disc_number": 5,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 12,
+          "classification": "[documentary] A Look Inside (1080p)",
+          "duration_seconds": 4409,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 3502823424,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 338110464,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 288989184,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 292306944,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 292153344,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 295354368,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 72,
+          "classification": "[Trailer] The Godfather (1080p, #21 is 1080p)",
+          "duration_seconds": 214,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 281640960,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "Unmatched content (1080p, 6:12)",
+          "duration_seconds": 372,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 36415488,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "[(with Play All)] Four Short Films on 'The Godfather' (1080p, #28 is 1080p)",
+          "duration_seconds": 440,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t08.mkv",
+          "index": 8,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1238409216,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 67,
+          "classification": "Unmatched content (1080p, 56:39)",
+          "duration_seconds": 3399,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t09.mkv",
+          "index": 9,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2082607104,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "[Trailer] The Godfather Part III (1080p, #16 is 1080p)",
+          "duration_seconds": 264,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t10.mkv",
+          "index": 10,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 185708544,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[featurette] ...When the Shooting Stopped (1080p)",
+          "duration_seconds": 858,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2362269696,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Masterpiece That Almost Wasn't (1080p)",
+          "duration_seconds": 1786,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t12.mkv",
+          "index": 12,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 4989984768,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Godfather World (1080p)",
+          "duration_seconds": 679,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t13.mkv",
+          "index": 13,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1889906688,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Emulsional Rescue: Revealing The Godfather (1080p)",
+          "duration_seconds": 1145,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t14.mkv",
+          "index": 14,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 3173529600,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] ...When the Shooting Stopped (1080p)",
+          "duration_seconds": 858,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t15.mkv",
+          "index": 15,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2362214400,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather on the Red Carpet (1080p, #10 is 1080p)",
+          "duration_seconds": 243,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t16.mkv",
+          "index": 16,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 700151808,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Godfather vs. The Godfather Part II (1080p, #20 is 1080p)",
+          "duration_seconds": 136,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t17.mkv",
+          "index": 17,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 385419264,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Fanucci Attacked (1080p)",
+          "duration_seconds": 172,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t18.mkv",
+          "index": 18,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 95766528,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Playing the Flute (1080p, #16 is 1080p)",
+          "duration_seconds": 245,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t19.mkv",
+          "index": 19,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 136728576,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Vito's Revenge (1080p, #17 is 1080p)",
+          "duration_seconds": 122,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t20.mkv",
+          "index": 20,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 86108160,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Death of Genco (1080p, #1 is 1080p)",
+          "duration_seconds": 237,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t21.mkv",
+          "index": 21,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 133005312,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Michael and Kay in Bed (1080p, #17 is 1080p)",
+          "duration_seconds": 151,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t22.mkv",
+          "index": 22,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 84430848,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Sonny Absorbs the News (1080p, #17 is 1080p)",
+          "duration_seconds": 163,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t23.mkv",
+          "index": 23,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 87674880,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Michael Gets Involved (1080p, #17 is 1080p)",
+          "duration_seconds": 157,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t24.mkv",
+          "index": 24,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 94371840,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Communist Demonstration (1080p, #17 is 1080p)",
+          "duration_seconds": 129,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t25.mkv",
+          "index": 25,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 79392768,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Francesca to Marry (1080p, #17 is 1080p)",
+          "duration_seconds": 164,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t26.mkv",
+          "index": 26,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 118751232,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Godfather Part III Alternate Opening (1080p)",
+          "duration_seconds": 403,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t27.mkv",
+          "index": 27,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 246669312,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] On Location (1080p, #8 is 1080p)",
+          "duration_seconds": 416,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t28.mkv",
+          "index": 28,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 283650048,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Music of the Godfather: Nino Rota (1080p, #43 is 1080p)",
+          "duration_seconds": 330,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t29.mkv",
+          "index": 29,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 243898368,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Music of the Godfather: Carmine Coppola (1080p, #1 is 1080p)",
+          "duration_seconds": 197,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t30.mkv",
+          "index": 30,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 148684800,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Gordon Willis on Cinematography (1080p, #1 is 1080p)",
+          "duration_seconds": 225,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t31.mkv",
+          "index": 31,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 166723584,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Music of the Godfather: Carmine Coppola (1080p, #1 is 1080p)",
+          "duration_seconds": 206,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t32.mkv",
+          "index": 32,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 144506880,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather Behind the Scenes (1080p, #42 is 1080p)",
+          "duration_seconds": 536,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t33.mkv",
+          "index": 33,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 385818624,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Coppola & Puzo on Screenwriting (1080p)",
+          "duration_seconds": 487,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t34.mkv",
+          "index": 34,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 359165952,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather, Best Screenplay 1972 (1080p, #17 is 1080p)",
+          "duration_seconds": 144,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t35.mkv",
+          "index": 35,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 106285056,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[Trailer] The Godfather (1080p, #19 is 1080p)",
+          "duration_seconds": 220,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t36.mkv",
+          "index": 36,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 561530880,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[Trailer] The Godfather Part II (1080p, #10 is 1080p)",
+          "duration_seconds": 256,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t37.mkv",
+          "index": 37,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 653850624,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[Trailer] The Godfather Part III (1080p, #10 is 1080p)",
+          "duration_seconds": 268,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t38.mkv",
+          "index": 38,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 684134400,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Francis Coppolas Notebook (1080p)",
+          "duration_seconds": 613,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t39.mkv",
+          "index": 39,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 474832896,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Full Circle: Preserving The Godfather (1080p)",
+          "duration_seconds": 981,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t40.mkv",
+          "index": 40,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 4910020608,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Capturing the Corleones: Through the Lens of Photographer Steve Schapiro (1080p)",
+          "duration_seconds": 801,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t41.mkv",
+          "index": 41,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 3961583616,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather: Home Movies (1080p, #33 is 1080p)",
+          "duration_seconds": 544,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t42.mkv",
+          "index": 42,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2582059008,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather: Scan Element Comparisons (1080p, #29 is 1080p)",
+          "duration_seconds": 319,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t43.mkv",
+          "index": 43,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1505949696,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Godfather Part II: Scan Element Comparisons (1080p, #29 is 1080p)",
+          "duration_seconds": 324,
+          "filename": "THE GODFATHER TRILOGY BONUS DISC_t44.mkv",
+          "index": 44,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1530058752,
+          "stream_count": 50,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          }
+        ],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 19"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 20"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 21"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 22"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 23"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 24"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 25"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 26"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 27"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 28"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 29"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 30"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 31"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 32"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 33"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 34"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 35"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 36"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 37"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 38"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 39"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 40"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 41"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 42"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 43"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 44"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 45"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 46"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 47"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 48"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 49"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 50"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 51"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 52"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 53"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 54"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 55"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 56"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 57"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 58"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 59"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 60"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 61"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 62"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 63"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 64"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 65"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 66"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 67"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 68"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 69"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 70"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 71"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 72"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 73"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 74"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 75"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 76"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 77"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 78"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 79"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 80"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 81"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 82"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 83"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 84"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 85"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 86"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 87"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 88"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 89"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 90"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 91"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 92"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 93"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 94"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 95"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 96"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 97"
+          }
+        ],
+        "is_film": false,
+        "number": 5,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Paramount Home Entertainment50th Anniversary Trilogy"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44
+  ],
+  "scenario": "the-godfather-1972",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44
+  ],
+  "source": "archive:The Godfather (1972)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "dvdcompare.disc3.extras",
+    "dvdcompare.disc4.extras",
+    "dvdcompare.disc5.extras",
+    "tmdb.source_id"
+  ],
+  "title": "The Godfather",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:14840067",
+    "title": "The Godfather",
+    "year": 1972
+  },
+  "workflow": "orchestrate",
+  "year": 1972
+}

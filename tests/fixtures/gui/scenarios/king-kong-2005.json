@@ -1,0 +1,1384 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "King Kong",
+      "disc_name": "King Kong",
+      "disc_number": 1,
+      "disc_type": "Blu-ray disc",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 51,
+          "classification": "",
+          "duration_seconds": 11236,
+          "filename": "",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 84780017664,
+          "stream_count": 0,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 66,
+          "classification": "",
+          "duration_seconds": 330,
+          "filename": "",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 90482688,
+          "stream_count": 0,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 54,
+          "classification": "",
+          "duration_seconds": 12008,
+          "filename": "",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 90695970816,
+          "stream_count": 0,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 3"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 4"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 19"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 20"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 21"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 22"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 23"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 24"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 25"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 26"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 27"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 28"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 29"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 30"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 31"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 32"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 33"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 34"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 35"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 36"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 37"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 38"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 39"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 40"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 41"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 42"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 43"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 44"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 45"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 46"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 47"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 48"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 49"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 50"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 51"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 52"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 53"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 54"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 55"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 56"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 57"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 58"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 59"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 60"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 61"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 62"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 63"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 64"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 65"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 66"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 67"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 68"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 69"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 70"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 71"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 72"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 73"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 74"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 75"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 76"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 77"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 78"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 79"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 80"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 81"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 82"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 83"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 84"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 85"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 86"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 87"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 88"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 89"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 90"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 91"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 92"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 93"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 94"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 95"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 96"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 97"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 98"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 99"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 100"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 101"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 102"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 103"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 104"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 105"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 106"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 107"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 108"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 109"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 110"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 111"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 112"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 113"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 114"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 115"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 116"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 117"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 118"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 119"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 120"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 121"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 122"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 123"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 124"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 125"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 126"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 127"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 128"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 129"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 130"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 131"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 132"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 133"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 134"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 135"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 136"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 137"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 138"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 139"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 140"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 141"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 142"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 143"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 144"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 145"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 146"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 147"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 148"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 149"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 150"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 151"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 152"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 153"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 154"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 155"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 156"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 157"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 158"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 159"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 160"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 161"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 162"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 163"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 164"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 165"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 166"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 167"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 168"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 169"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 170"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 171"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 172"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 173"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 174"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 175"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 176"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 177"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 178"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 179"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 180"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 181"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 182"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 183"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 184"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 185"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 186"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 187"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 188"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 189"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 190"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 191"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 192"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 193"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 194"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 195"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 196"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 197"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 198"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 199"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 200"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 201"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 202"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 203"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 204"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 205"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 206"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 207"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 208"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 209"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 210"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 211"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 212"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 213"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 214"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 215"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 216"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 217"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 218"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 219"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 220"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 221"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 222"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 223"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 224"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 225"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 226"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 227"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 228"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 229"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 230"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 231"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 232"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 233"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 234"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 235"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 236"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 237"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal PicturesUltimate Edition"
+  },
+  "media_type": "movie",
+  "ripped_titles": [],
+  "scenario": "king-kong-2005",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    2
+  ],
+  "source": "archive:King Kong (2005)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "dvdcompare.disc3.episodes",
+    "dvdcompare.disc3.extras",
+    "tmdb.source_id"
+  ],
+  "title": "King Kong",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": 11280,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:6978400",
+    "title": "King Kong",
+    "year": 2005
+  },
+  "workflow": "orchestrate",
+  "year": 2005
+}

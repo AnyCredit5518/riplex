@@ -1,0 +1,2850 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "PSYCH_THE_MOVIE",
+      "disc_name": "PSYCH_THE_MOVIE",
+      "disc_number": 31,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 10,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 5282,
+          "filename": "B1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 6036074496,
+          "stream_count": 5,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 3966,
+            "season_number": 1,
+            "title": "Pilot"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Spellingg Bee"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 4690,
+            "season_number": 1,
+            "title": "International Pilot"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 220,
+            "season_number": 1,
+            "title": "James Roday as Shawn Spencer"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 174,
+            "season_number": 1,
+            "title": "DulÃ© Hill as Burton 'Gus' Guster"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 185,
+            "season_number": 1,
+            "title": "Corbin Bernsen as Henry Spencer"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"Pilot\" with executive producer/creator Steve Franks, executive producer Chris Henze and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Spellingg Bee\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 179,
+            "title": "Actor's Audition Tape (James Roday)"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 459,
+            "title": "Psych Revealed"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 444,
+            "title": "Inside the Writers' Room"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 580,
+            "title": "Character Profiles: Play All"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 412,
+            "title": "Blooper Reels"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2565,
+            "season_number": 1,
+            "title": "Speak Now or Forever Hold Your Piece"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2539,
+            "season_number": 1,
+            "title": "Woman Seeking Dead Husband: Smokers Okay, No Pets"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "9 Lives"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Weekend Warriors"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Who Ya Gonna Call?"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"9 Lives\" with executive producer/creator Steve Franks, executive producer Chris Henze, executive producer Kelly Kulchak and writer Andy Berman"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Weekend Warriors\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 196,
+            "title": "Speak Now or Forever Hold Your Piece"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 48,
+            "title": "Woman Seeking Dead Husband: Smokers Okay, No Pets"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 92,
+            "title": "9 Lives"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 67,
+            "title": "Weekend Warriors"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Shawn vs. the Red Phantom"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Forget Me Not"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "From the Earth to the Starbucks"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2590,
+            "season_number": 1,
+            "title": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead!"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Cloudy... With a Chance of Murder"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"From the Earth to the Starbucks\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 53,
+            "title": "Shawn vs. the Red Phantom"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 200,
+            "title": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 37,
+            "title": "Cloudy... With a Chance of Murder"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Game, Set... Muuurder?"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2586,
+            "season_number": 1,
+            "title": "Poker? I Barely Know Her"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Scary Sherry: Bianca's Toast"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"Scary Sherry: Bianca's Toast\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 399,
+            "title": "Scary Sherry: Bianca's Toast"
+          }
+        ],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2590,
+            "season_number": 1,
+            "title": "American Duos"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "65 Million Years Off"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Psy vs. Psy"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Zero to Murder in Sixty Seconds"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"American Duos\" with creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"65 Million Years Off\" with creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Psy vs. Psy\" with creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Zero to Murder in Sixty Seconds\" with creator/executive producer Steve Franks, co-executive producer Saladin Patterson and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 73,
+            "title": "American Duos"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 22,
+            "title": "65 Million Years Off"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 314,
+            "title": "Psy vs. Psy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 96,
+            "title": "Zero to Murder in Sixty Seconds"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 453,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 5,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2575,
+            "season_number": 1,
+            "title": "And Down the Stretch Comes Murder"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Meat Is Murder, But Murder Is Also Murder"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2532,
+            "season_number": 1,
+            "title": "If You're So Smart, Then Why Are You Dead?"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Rob-a-Bye Baby"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"And Down the Stretch Comes Murder\" with creator/executive producer Steve Franks, co-executive producer Josh Bycel and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"If You're So Smart, Then Why Are You Dead?\" with co-producer Anupam Nigam"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Rob-a-Bye Baby\" with creator/executive producer Steve Franks, writer Tim Meltreger and producer Andy Berman"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 86,
+            "title": "And Down the Stretch Comes Murder"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 71,
+            "title": "Meat Is Murder, But Murder Is Also Murder"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 244,
+            "title": "If You're So Smart, Then Why Are You Dead?"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 147,
+            "title": "Rob-a-Bye Baby"
+          }
+        ],
+        "is_film": false,
+        "number": 6,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Bounty Hunters!"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Gus' Dad May Have Killed an Old Guy"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "There's Something About Mira"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2542,
+            "season_number": 1,
+            "title": "The Old and the Restless"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Bounty Hunters!\" with creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak, producer Andy Berman and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 310,
+            "title": "Bounty Hunters!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 344,
+            "title": "Gus' Dad May Have Killed an Old Guy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 89,
+            "title": "There's Something About Mira"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 44,
+            "title": "The Old and the Restless"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 204,
+            "title": "Psychouts"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 217,
+            "title": "Where's the Pineapple?"
+          },
+          {
+            "feature_type": "featurettes",
+            "runtime_seconds": 105,
+            "title": "The Name Game: Play All"
+          },
+          {
+            "feature_type": "The Name Game",
+            "runtime_seconds": 46,
+            "title": "Shawn!"
+          },
+          {
+            "feature_type": "The Name Game",
+            "runtime_seconds": 58,
+            "title": "And My Partner Is..."
+          }
+        ],
+        "is_film": false,
+        "number": 7,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2575,
+            "season_number": 1,
+            "title": "Lights, Camera... Homicidio"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2568,
+            "season_number": 1,
+            "title": "Dis-Lodged"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "Black and Tan: A Crime of Fashion"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Shawn (and Gus) of the Dead"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Lights, Camera... Homicidio\" with creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak, producer Andy Berman and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Dis-Lodged\" by creator/executive producer Steve Franks and writer Tim Meltreger"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Black and Tan: A Crime of Fashion\" by creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak, producer Andy Berman and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Shawn (and Gus) of the Dead\" by creator/executive producer Steve Franks, executive producers Chris Henze and Kelly Kulchak, producer Andy Berman and series stars James Roday and DulÃ© Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 165,
+            "title": "Lights, Camera... Homicidio"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 131,
+            "title": "Dis-Lodged"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 158,
+            "title": "Black and Tan: A Crime of Fashion"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 122,
+            "title": "Shawn (and Gus) of the Dead"
+          },
+          {
+            "feature_type": "minisodes",
+            "runtime_seconds": 408,
+            "title": "The Big Adventures of Lil' Shawn and Gus"
+          }
+        ],
+        "is_film": false,
+        "number": 8,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Ghosts"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2554,
+            "season_number": 1,
+            "title": "Daredevils!"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "The Greatest Adventure in the History of Basic Cable"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 1617,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Ghosts\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, producer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Murder? ... Anyone? ... Anyone? ... Bueller?\" by writer Andy Berman and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 37,
+            "title": "Ghosts"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 340,
+            "title": "Daredevils!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 191,
+            "title": "The Greatest Adventure in the History of Basic Cable"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 498,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 9,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2535,
+            "season_number": 1,
+            "title": "Disco Didn't Die. It Was Murdered!"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2561,
+            "season_number": 1,
+            "title": "There Might Be Blood"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Talk Derby to Me"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2574,
+            "season_number": 1,
+            "title": "Gus Walks into a Bank"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Talk Derby to Me\" by writer Tim Meltreger, Jason Berger, executive assistant to Steve Franks and script co-ordinator Ray Utarnachitt"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Gus Walks into a Bank\" by creator/executive producer Steve Franks, executive producer Chris Henze, writer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 441,
+            "title": "Disco Didn't Die. It Was Murdered!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 129,
+            "title": "There Might Be Blood"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 305,
+            "title": "Gus Walks into a Bank"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentary (interview)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 302,
+            "title": "Gus Walks into a Bank"
+          }
+        ],
+        "is_film": false,
+        "number": 10,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Christmas Joy"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2578,
+            "season_number": 1,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Earth, Wind and... Wait for It"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Christmas Joy\" by writer Saladin K. Patterson and writer's production assistant Brittany Hilgers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Six Feet Under the Sea\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Lassie Did a Bad, Bad Thing\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, writers Kell Cahoon & Tim Meltreger and series stars James Roday, Dulé Hill & Tim Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Earth, Wind and... Wait for It\" by writer Anupam Nigam, story editor Tim Meltreger and script co-ordinator Ray Utarnachitt"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 102,
+            "title": "Christmas Joy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 263,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 228,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 101,
+            "title": "Earth, Wind and... Wait for It"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries (interviews)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 379,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 477,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 260,
+            "title": "Earth, Wind and... Wait for It"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 331,
+            "title": "Psychouts"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 67,
+            "title": "Easter Egg"
+          }
+        ],
+        "is_film": false,
+        "number": 11,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2527,
+            "season_number": 1,
+            "title": "Truer Lies"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "An Evening with Mr. Yang"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 40,
+            "season_number": 1,
+            "title": "Shawn Introductions"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 57,
+            "season_number": 1,
+            "title": "Bickering"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 68,
+            "season_number": 1,
+            "title": "Shawnisms"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 90,
+            "season_number": 1,
+            "title": "Psychic Ju-Ju"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 23,
+            "season_number": 1,
+            "title": "What?"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 25,
+            "season_number": 1,
+            "title": "Gus, Don't Be..."
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Truer Lies\" by writer Victoria Walker, story editor Tim Meltreger and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Tuesday the 17th\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"An Evening with Mr. Yang\" by creator/executive producer Steve Franks, executive producer Kelly Kulchak, story editor Tim Meltreger and series stars James Roday, Dulé Hill & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 311,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 33,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 479,
+            "title": "An Evening with Mr. Yang"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries (interviews)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 194,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 194,
+            "title": "Truer Lies"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 374,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 306,
+            "title": "Montages: Play All"
+          }
+        ],
+        "is_film": false,
+        "number": 12,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2573,
+            "season_number": 1,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2567,
+            "season_number": 1,
+            "title": "He Dead"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2551,
+            "season_number": 1,
+            "title": "High Noon-ish"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2563,
+            "season_number": 1,
+            "title": "The Devil's in the Details... and the Upstairs Bathroom"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Extradition: British Columbia\" with writers Steve Franks & Andy Berman, executive producer Kelly Kulchak, co-executive producer Saladin K. Patterson and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"The Devil's in the Details... and the Upstairs Bathroom\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer Bill Callahan and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 466,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 344,
+            "title": "He Dead"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 444,
+            "title": "Extradition: British Columbia"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 218,
+            "title": "He Dead"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 299,
+            "title": "High Noon-ish"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 242,
+            "title": "The Devil's in the Details... and the Upstairs Bathroom"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 353,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 13,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2524,
+            "season_number": 1,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2563,
+            "season_number": 1,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "High Top Fade-Out"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2580,
+            "season_number": 1,
+            "title": "Let's Get Hairy"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"High Top Fade-Out\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writers Saladin K. Patterson & James Roday and series star Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 197,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 280,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 385,
+            "title": "High Top Fade-Out"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 141,
+            "title": "Let's Get Hairy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 153,
+            "title": "Shawn Gets the Yips"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 520,
+            "title": "Bollywood Homicide"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 65,
+            "title": "Psychouts"
+          }
+        ],
+        "is_film": false,
+        "number": 14,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2575,
+            "season_number": 1,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "Thrill Seekers and Hell-Raisers"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2578,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 614,
+            "season_number": 1,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 603,
+            "season_number": 1,
+            "title": "A Very Juliet Episode"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Shawn Takes a Shot in the Dark\" with executive producer/creator Steve Franks, executive producer Kelly Kulchak, writer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"A Very Juliet Episode\" with writers Steve Franks and Tim Meltreger, executive producers Chris Henze & Kelly Kulchak and series stars James Roday, Dulé Hill, Timothy Omundson & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 108,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 403,
+            "title": "You Can't Handle This Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 114,
+            "title": "A Very Juliet Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 235,
+            "title": "Shawn Takes a Shot in the Dark"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 379,
+            "title": "Thrill Seekers and Hell-Raisers"
+          }
+        ],
+        "is_film": false,
+        "number": 15,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2561,
+            "season_number": 1,
+            "title": "Death Is in the Air"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2619,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 610,
+            "season_number": 1,
+            "title": "Think Tank"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 709,
+            "season_number": 1,
+            "title": "The Head, the Tail, the Whole Damn Episode"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 759,
+            "season_number": 1,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 40,
+            "season_number": 1,
+            "title": "Fist Bumps"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 54,
+            "season_number": 1,
+            "title": "Body Language"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 56,
+            "season_number": 1,
+            "title": "Screams"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 50,
+            "season_number": 1,
+            "title": "What!"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 67,
+            "season_number": 1,
+            "title": "Introductions"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 115,
+            "season_number": 1,
+            "title": "Shawn and Juliet"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 89,
+            "season_number": 1,
+            "title": "Shawn and Lassie"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Think Tank\" with writers Steve Franks and Andy Berman"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"The Head, the Tail, the Whole Damn Episode\" with writers Steve Franks & Tim Meltreger, executive producers Chris Henze & Kelly Kulchak and series stars James Roday, Dulé Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Mr. Yin Presents...\" with executive producer/creator Steve Franks, executive producer Kelly Kulchak, writers Andy Berman & James Roday and series stars Dulé Hill, Timothy Omundson & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 63,
+            "title": "Think Tank"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 412,
+            "title": "Mr. Yin Presents..."
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 220,
+            "title": "Death Is in the Air"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 472,
+            "title": "Montages: Play All"
+          }
+        ],
+        "is_film": false,
+        "number": 16,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Feet Don't Kill Me Now"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Not Even Close... Encounters"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Chivalry Is Not Dead... But Someone Is"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 2898,
+            "title": "Romeo and Juliet and Juliet"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Romeo and Juliet and Juliet\" (Extended Version) with writer/director Steve Franks, executive producer Chris Henze, consulting producer Todd Harthan and actors James Roday, Dule Hill & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Not Even Close... Encounters\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer Bill Callahan and actors James Roday, Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 822,
+            "title": "Romeo and Juliet and Juliet"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 364,
+            "title": "Feet Don't Kill Me Now"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 534,
+            "title": "Chivalry Is Not Dead... But Someone Is"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "(3 scenes, 2:56)",
+            "runtime_seconds": 0,
+            "title": "Feet Don't Kill Me Now"
+          },
+          {
+            "feature_type": "(1 scene, 0:42)",
+            "runtime_seconds": 0,
+            "title": "Not Even Close... Encounters"
+          },
+          {
+            "feature_type": "(3 scenes, 8:55)",
+            "runtime_seconds": 0,
+            "title": "Chivalry Is Not Dead... But Someone Is"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 241,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 17,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2586,
+            "season_number": 1,
+            "title": "Shawn and Gus in Drag (Racing)"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2504,
+            "season_number": 1,
+            "title": "Viagra Falls"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2535,
+            "season_number": 1,
+            "title": "Ferry Tale"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2584,
+            "season_number": 1,
+            "title": "Shawn 2.0"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Viagra Falls\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer Todd Harthan and actors James Roday and Dule Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 510,
+            "title": "Shawn and Gus in Drag (Racing)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 311,
+            "title": "Viagra Falls"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 334,
+            "title": "Ferry Tale"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 187,
+            "title": "Shawn 2.0"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "(3 scenes, 4:15)",
+            "runtime_seconds": 0,
+            "title": "Shawn and Gus in Drag (Racing)"
+          },
+          {
+            "feature_type": "(1 scene, 0:58)",
+            "runtime_seconds": 0,
+            "title": "Viagra Falls"
+          },
+          {
+            "feature_type": "(2 scenes, 3:35)",
+            "runtime_seconds": 0,
+            "title": "Ferry Tale"
+          }
+        ],
+        "is_film": false,
+        "number": 18,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2572,
+            "season_number": 1,
+            "title": "One, Maybe Two, Ways Out"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2586,
+            "season_number": 1,
+            "title": "Extradition II: The Actual Extradition Part"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2557,
+            "season_number": 1,
+            "title": "In Plain Fright"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 3276,
+            "title": "Dual Spires"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Extradition II: The Actual Extradition Part\" with director Steve Franks, executive producer Chris Henze and actors James Roday, Dule Hill & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Dual Spires\" (Extended Version) with executive producer/creator Steve Franks, executive producer Kelly Kulchak, writers James Roday & Bill Callahan and actors Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 205,
+            "title": "One, Maybe Two, Ways Out"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 504,
+            "title": "Extradition II: The Actual Extradition Part"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 412,
+            "title": "In Plain Fright"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 352,
+            "title": "Dual Spires"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "(2 scenes, 2:57)",
+            "runtime_seconds": 0,
+            "title": "One, Maybe Two, Ways Out"
+          },
+          {
+            "feature_type": "(1 scene, 4:21)",
+            "runtime_seconds": 0,
+            "title": "Extradition II: The Actual Extradition Part"
+          },
+          {
+            "feature_type": "(1 scene, 0:32)",
+            "runtime_seconds": 0,
+            "title": "In Plain Fright"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 591,
+            "title": "The Making of Dual Spires"
+          }
+        ],
+        "is_film": false,
+        "number": 19,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "We'd Like to Thank the Academy"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "The Polarizing Express"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "Dead Bear Walking"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Yang 3 in 2D"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"The Polarizing Express\" with executive producer/creator Steve Franks, executive producer Kelly Kulchak, director/co-writer James Roday, co-writer Saladin Patterson and actors Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Yang 3 in 2D\" with executive producer/creator Steve Franks, executive producers Chris Henze & Kelly Kulchak, writers James Roday & Andy Berman and actors Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 525,
+            "title": "The Polarizing Express"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 370,
+            "title": "Dead Bear Walking"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 449,
+            "title": "Yang 3 in 2D"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "(1 scene, 1:32)",
+            "runtime_seconds": 0,
+            "title": "We'd Like to Thank the Academy"
+          },
+          {
+            "feature_type": "(1 scene, 3:02)",
+            "runtime_seconds": 0,
+            "title": "The Polarizing Express"
+          },
+          {
+            "feature_type": "(3 scenes, 9:40)",
+            "runtime_seconds": 0,
+            "title": "Dead Bear Walking"
+          },
+          {
+            "feature_type": "(1 scene, 8:32)",
+            "runtime_seconds": 0,
+            "title": "Yang 3 in 2D"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 340,
+            "title": "No Comment: Behind the Scenes of a Psych Commentary"
+          }
+        ],
+        "is_film": false,
+        "number": 20,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2574,
+            "season_number": 1,
+            "title": "Shawn Rescues Darth Vader"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Last Night Gus"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2573,
+            "season_number": 1,
+            "title": "This Episode Sucks"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2560,
+            "season_number": 1,
+            "title": "The Amazing Psych-Man & Tap-Man, Issue #2"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Shawn Rescues Darth Vader\" with writer/director Steve Franks, executive producers Chris Henze & Kelly Kulchak, and actors James Roday, Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Last Night Gus\" with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer/director Andy Berman and actors James Roday, Dule Hill, Maggie Lawson & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"This Episode Sucks\" with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, co-writer Todd Harthan, director/co-writer/actor James Roday, and actors Dule Hill, Maggie Lawson & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 248,
+            "title": "Shawn Rescues Darth Vader"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 238,
+            "title": "Last Night Gus"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 264,
+            "title": "This Episode Sucks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 259,
+            "title": "The Amazing Psych-Man & Tap-Man, Issue #2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted/Extended Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 277,
+            "title": "Shawn Rescues Darth Vader"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 243,
+            "title": "Last Night Gus"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 417,
+            "title": "This Episode Sucks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 251,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 21,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2545,
+            "season_number": 1,
+            "title": "Dead Man's Curve Ball"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2552,
+            "season_number": 1,
+            "title": "Shawn, Interrupted"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "In for a Penny..."
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "The Tao of Gus"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 625,
+            "season_number": 1,
+            "title": "In for a Penny..."
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 102,
+            "season_number": 1,
+            "title": "C'mon Son/Names/Suck It"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 36,
+            "season_number": 1,
+            "title": "Gus & Food"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 84,
+            "season_number": 1,
+            "title": "Missing Jokes"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 101,
+            "season_number": 1,
+            "title": "Pop Culture"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"In for a Penny...\" with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, director Mel Damski, and actors James Roday, Dule Hill, Maggie Lawson & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 170,
+            "title": "Dead Man's Curve Ball"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 206,
+            "title": "Shawn, Interrupted"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 207,
+            "title": "In for a Penny..."
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 203,
+            "title": "The Tao of Gus"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted/Extended Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 344,
+            "title": "Dead Man's Curve Ball"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 26,
+            "title": "The Tao of Gus"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 325,
+            "title": "Montages: Play All"
+          }
+        ],
+        "is_film": false,
+        "number": 22,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Neil Simon's Lover's Retreat"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Shawn and the Real Girl"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 3004,
+            "title": "Indiana Shawn and the Temple of the Kinda Crappy, Rusty Old Dagger"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 2985,
+            "title": "Heeeeere's Lassie"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Neil Simon's Lover's Retreat\" with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, writer Carlos Jacott, and actors James Roday, Dule Hill, Maggie Lawson & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Indiana Shawn and the Temple of the Kinda Crappy, Rusty Old Dagger\" (Extended Version) with writer/director Steve Franks, executive producers Chris Henze & Kelly Kulchak, and actors James Roday, Dule Hill & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Heeeeere's Lassie\" (Extended Version) with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, co-writer Todd Harthan, director/actor James Roday, and actors Maggie Lawson & Timothy Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 195,
+            "title": "Neil Simon's Lover's Retreat"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 259,
+            "title": "Indiana Shawn and the Temple of the Kinda Crappy, Rusty Old Dagger"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 219,
+            "title": "Heeeeere's Lassie"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 232,
+            "title": "Shawn and the Real Girl"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted/Extended Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 67,
+            "title": "Neil Simon's Lover's Retreat"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 573,
+            "title": "Shawn and the Real Girl"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 244,
+            "title": "Underground with Psych"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 42,
+            "title": "Psychouts"
+          }
+        ],
+        "is_film": false,
+        "number": 23,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2534,
+            "season_number": 1,
+            "title": "Let's Doo-Wop It Again"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Autopsy Turvy"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "True Grits"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2543,
+            "season_number": 1,
+            "title": "Santabarbaratown"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 810,
+            "season_number": 1,
+            "title": "Autopsy Turvy"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary on \"Santabarbaratown\" with creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, and actors James Roday, Maggie Lawson, Timothy Omundson & Corbin Bernsen"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 228,
+            "title": "Let's Doo-Wop It Again"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 225,
+            "title": "Autopsy Turvy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 240,
+            "title": "True Grits"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 174,
+            "title": "Santabarbaratown"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted/Extended Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 336,
+            "title": "Let's Doo-Wop It Again"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 214,
+            "title": "True Grits"
+          }
+        ],
+        "is_film": false,
+        "number": 24,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2570,
+            "season_number": 1,
+            "title": "Santabarbaratown 2"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Juliet Takes a Luvvah"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2551,
+            "season_number": 1,
+            "title": "Lassie Jerky"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2585,
+            "season_number": 1,
+            "title": "No Country for Two Old Men"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Juliet Takes a Luvvah\" with Steve Franks, Chris Henze, Kelly Kulchak, Andy Berman, and Todd Harthan"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 228,
+            "title": "Santabarbaratown 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 454,
+            "title": "Juliet Takes a Luvvah"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 298,
+            "title": "Lassie Jerky"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 49,
+            "title": "No Country for Two Old Men"
+          }
+        ],
+        "is_film": false,
+        "number": 25,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2493,
+            "season_number": 1,
+            "title": "Cirque Du Soul"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2578,
+            "season_number": 1,
+            "title": "Deez Nups"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Right Turn or Left for Dead"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Juliet Wears the Pantsuit"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "(Extended Cut with Alternate Endings)",
+            "runtime_seconds": 3191,
+            "title": "100 Clues"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Deez Nups\" with Steve Franks, Chris Henze, and Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Right Turn or Left for Dead\" with Steve Franks, Chris Henze, Kelly Kulchak, David Crabtree, and Carlos Jacott"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Juliet Wears the Pantsuit\" with Steve Franks, Chris Henze, Kelly Kulchak, and Brittany Hilgers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 36,
+            "title": "Cirque Du Soul"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 158,
+            "title": "Deez Nups"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 234,
+            "title": "Juliet Wears the Pantsuit"
+          }
+        ],
+        "is_film": false,
+        "number": 26,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Santa Barbarian Candidate"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "Office Space"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "Dead Air"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2533,
+            "season_number": 1,
+            "title": "Nip and Suck It!"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "No Trout About It"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Office Space\" with Steve Franks, Chris Henze, Kelly Kulchak, Andy Berman, Todd Harthan, and Kurt Fuller"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 468,
+            "title": "Office Space"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 36,
+            "title": "Dead Air"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 136,
+            "title": "Nip and Suck It!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 126,
+            "title": "No Trout About It"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 75,
+            "title": "Psychouts"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 210,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 27,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "S.E.I.Z.E. the Day"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2576,
+            "season_number": 1,
+            "title": "Remake A.K.A. Cloudy... With a Chance of Improvement"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2570,
+            "season_number": 1,
+            "title": "Someone's Got a Woody"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2580,
+            "season_number": 1,
+            "title": "COG Blocked"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "(Extended Version)",
+            "runtime_seconds": 2874,
+            "title": "Lock, Stock, Some Smoking Barrels and Burton Guster's Goblet of Fire"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Lock, Stock, Some Smoking Barrels and Burton Guster's Goblet of Fire\" (Extended Version) with Steve Franks, Chris Henze, Kelly Kulchak, Carlos Jacott, Todd Harthan, and David Crabtree"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"S.E.I.Z.E. the Day\" with Steve Franks, Chris Henze, Kelly Kulchak, Todd Harthan, David Crabtree, and Carlos Jacott"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Remake A.K.A. Cloudy... With a Chance of Improvement\" with Steve Franks, Chris Henze, Kelly Kulchak, Andy Berman, and Todd Harthan"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"COG Blocked\" with Steve Franks, Chris Henze, Kelly Kulchak, Dule Hill, Carlos Jacott, and Todd Harthan"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 84,
+            "title": "S.E.I.Z.E. the Day"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 192,
+            "title": "Remake A.K.A. Cloudy... With a Chance of Improvement"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 26,
+            "title": "Someone's Got a Woody"
+          }
+        ],
+        "is_film": false,
+        "number": 28,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2570,
+            "season_number": 1,
+            "title": "1967: A Psych Odyssey"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2530,
+            "season_number": 1,
+            "title": "Shawn and Gus Truck Things Up"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2568,
+            "season_number": 1,
+            "title": "A Touch of Sweevil"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2574,
+            "season_number": 1,
+            "title": "A Nightmare on State Street"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"1967: A Psych Odyssey\" with Steve Franks, Chris Henze, Kelly Kulchak, Kirsten Nelson, James Roday, and Tim Meltreger"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"A Touch of Sweevil\" with Steve Franks, Chris Henze, Kelly Kulchak, Todd Harthan, and Andy Berman"
+          },
+          {
+            "feature_type": "(Director's Cut)",
+            "runtime_seconds": 2584,
+            "title": "A Nightmare on State Street"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"A Nightmare on State Street\" (Director's Cut) with Steve Franks, Chris Henze, Kelly Kulchak, James Roday, Kirsten Nelson, and Carlos Jacott"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 65,
+            "title": "A Touch of Sweevil"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 49,
+            "title": "A Nightmare on State Street"
+          }
+        ],
+        "is_film": false,
+        "number": 29,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2899,
+            "season_number": 1,
+            "title": "The Break-Up"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 784,
+            "season_number": 1,
+            "title": "Dancing *"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 93,
+            "season_number": 1,
+            "title": "Suck It"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 27,
+            "season_number": 1,
+            "title": "Lip Smacks"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 93,
+            "season_number": 1,
+            "title": "Main Titles Mashup"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 784,
+            "season_number": 1,
+            "title": "Special Main Titles Mashup **"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"The Break Up\" with Steve Franks, Chris Henze, Kelly Kulchak, James Roday, Kirsten Nelson, Andy Berman, and Tim Meltreger"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 73,
+            "title": "The Break Up"
+          },
+          {
+            "feature_type": "episode",
+            "runtime_seconds": 5233,
+            "title": "Psych: The Musical"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast Commentary on \"Psych: The Musical\" with Steve Franks, Chris Henze, Kelly Kulchak, James Roday, Maggie Lawson, and Adam Cohen"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 301,
+            "title": "Behind the Scenes of Psych: The Musical"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 93,
+            "title": "Extended Scene for \"Psych: The Musical\""
+          },
+          {
+            "feature_type": "post-finale TV episode",
+            "runtime_seconds": 2593,
+            "title": "Psych After Pshow"
+          },
+          {
+            "feature_type": "music video",
+            "runtime_seconds": 198,
+            "title": "Was It Something I Said?"
+          },
+          {
+            "feature_type": "cast and crew interviews",
+            "runtime_seconds": 784,
+            "title": "I Know, You Know, That I'm No Good With Goodbyes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 1782,
+            "title": "Montages: Play All"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 323,
+            "title": "Gag Reel"
+          }
+        ],
+        "is_film": false,
+        "number": 30,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 5290,
+            "title": "The Film"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 5310,
+            "title": "Psych 2: Lassie Come Home"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 5782,
+            "title": "Psych 3: This Is Gus"
+          }
+        ],
+        "is_film": true,
+        "number": 31,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal PicturesThe Complete Series"
+  },
+  "media_type": "movie",
+  "ripped_titles": [],
+  "scenario": "psych-the-movie-2017",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3,
+    6,
+    7,
+    8
+  ],
+  "source": "archive:Psych - The Movie (2017)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "Psych: The Movie",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": 5280,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:7972788",
+    "title": "Psych: The Movie",
+    "year": 2017
+  },
+  "workflow": "orchestrate",
+  "year": 2017
+}

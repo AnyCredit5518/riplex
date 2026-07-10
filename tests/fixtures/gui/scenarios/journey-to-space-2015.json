@@ -1,0 +1,272 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "UHD_IMAX_JTS",
+      "disc_name": "UHD_IMAX_JTS",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 2494,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 17687126016,
+          "stream_count": 9,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[Bonus Trailers] Humpback Whales (4K)",
+          "duration_seconds": 131,
+          "filename": "title_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 811057152,
+          "stream_count": 6,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 2494,
+          "filename": "title_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 17690959872,
+          "stream_count": 9,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Behind the Scenes (1080p)",
+          "duration_seconds": 303,
+          "filename": "title_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 975089664,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "IMAX_JTS_3D",
+      "disc_name": "IMAX_JTS_3D",
+      "disc_number": 2,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 2494,
+          "filename": "IMAX - Journey to Space_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 9353189376,
+          "stream_count": 7,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 2494,
+          "filename": "IMAX - Journey to Space_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 12509902848,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Shout! Factory4K+3D"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    2
+  ],
+  "scenario": "journey-to-space-2015",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "source": "archive:Journey to Space (2015)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Journey to Space",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:10785653",
+    "title": "Journey to Space",
+    "year": 2015
+  },
+  "workflow": "orchestrate",
+  "year": 2015
+}

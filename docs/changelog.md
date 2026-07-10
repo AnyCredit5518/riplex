@@ -35,6 +35,7 @@ destination.
 - "Organize into Library" shortcut on the Disc Overview once every disc has been ripped.
 - Hidden-discs banner explaining discs the plan intentionally skips.
 - "View on dvdcompare.net" link when a release has already been matched.
+- **Development > Testing guide** (`development/testing.md`) documenting the headless GUI integration test suite, the `tests/support/` harness, the `gui` fixture, and how to generate scenario fixtures from archived rips with `scripts/gen_gui_fixtures.py`.
 
 ### Changed
 
@@ -46,9 +47,13 @@ destination.
 - Softer disc-mismatch wording, and the release picker shows the matched dvdcompare film.
 - `_plan_show` keeps Season 0 (Specials); the Organize preview shows a title/season source badge.
 - Every `orchestrate` disc now routes through an Insert Disc scan-confirm step.
+- **Architecture** file tree now lists `tests/integration/`, `tests/support/`, and `tests/fixtures/gui/scenarios/`.
 
 ### Fixed
 
+- **GUI: Organize Rips scan-results footer now anchors to the bottom** like every other wizard screen. The results form now scrolls internally while the Back/Next buttons stay pinned at the window edge.
+- **GUI: Organize Rips Back button walks up the flow** instead of dropping to the Welcome screen. On the scan-results view it restores the multi-group picker (when the folder held several seasons or works) or otherwise returns to the folder input; the multi-group picker's Back button now returns to the folder input as well.
+- **Organize: duplicate-title extras no longer clobber their episode's destination.** dvdcompare sometimes lists the same episode name twice (real broadcast episode + a shorter bonus re-edit). The rip-time enrichment already demotes the shorter entry to ``[extra]``, but the organizer was ignoring that tag and fuzzy-routing both files to the same ``s0Xe0Y - Title.mkv`` destination — so the second file silently overwrote the first when organize actually executed. The organizer now respects the ``[extra]`` classification and routes the duplicate to an extras folder instead.
 - Duplicate Quit buttons on the rip-complete summary and Insert Disc screens.
 - False "multiple films" alert on Select Titles, with a confirmed movie title and clearer section headers.
 - Ctrl-C at a prompt no longer behaves like pressing Enter.

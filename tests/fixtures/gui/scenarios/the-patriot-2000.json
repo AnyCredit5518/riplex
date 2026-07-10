@@ -1,0 +1,148 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "THE_PATRIOT_2000",
+      "disc_name": "THE_PATRIOT_2000",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "Theatrical Cut (4K)",
+          "duration_seconds": 9886,
+          "filename": "Patriot, The (2000)_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 83429818368,
+          "stream_count": 80,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "Blu-ray 4K",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Theatrical Cut (2160p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary with Director Roland Emmerich and Producer Dean Devlin"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 585,
+            "title": "The Art of War"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 597,
+            "title": "The True Patriots"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 560,
+            "title": "Visual Effects"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 781,
+            "title": "Deleted Scenes (with optional commentary with Director Roland Emmerich and Producer Dean Devlin)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Photo Gallery"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 159,
+            "title": "Theatrical Trailer"
+          }
+        ],
+        "is_film": true,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Extended Cut (1080p)"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 598,
+            "title": "The True Patriots"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 585,
+            "title": "The Art of War"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Bonus trailers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 73,
+            "title": "Sony Blu-ray"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 138,
+            "title": "Legends of the Fall"
+          }
+        ],
+        "is_film": true,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Sony Pictures Home Entertainment"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0
+  ],
+  "scenario": "the-patriot-2000",
+  "schema_version": 1,
+  "selected_titles": [
+    0
+  ],
+  "source": "archive:The Patriot (2000)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "The Patriot",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:3540710",
+    "title": "The Patriot",
+    "year": 2000
+  },
+  "workflow": "orchestrate",
+  "year": 2000
+}

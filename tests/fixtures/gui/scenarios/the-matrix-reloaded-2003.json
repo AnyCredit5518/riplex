@@ -1,0 +1,500 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "THE MATRIX RELOADED",
+      "disc_name": "THE MATRIX RELOADED",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 36,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 8297,
+          "filename": "",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 89110910976,
+          "stream_count": 74,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "THE_MATRIX_RELOADED_BONUS_DISC",
+      "disc_name": "THE_MATRIX_RELOADED_BONUS_DISC",
+      "disc_number": 3,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 34,
+          "classification": "[extra] Freeway Truck Crash: Anatomy of a Shot (1080p, #15 is 1080p)",
+          "duration_seconds": 340,
+          "filename": "The Matrix Reloaded Bonus_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 178225152,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 9,
+          "classification": "Episode (1080p)",
+          "duration_seconds": 5167,
+          "filename": "The Matrix Reloaded Bonus_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 3498928128,
+          "stream_count": 32,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[featurettes] Teahouse Fight (1080p)",
+          "duration_seconds": 424,
+          "filename": "The Matrix Reloaded Bonus_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 305399808,
+          "stream_count": 28,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "[featurettes] Unplugged (1080p)",
+          "duration_seconds": 2426,
+          "filename": "The Matrix Reloaded Bonus_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1753233408,
+          "stream_count": 28,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "[featurettes] I'll Handle Them (1080p)",
+          "duration_seconds": 1030,
+          "filename": "The Matrix Reloaded Bonus_t07.mkv",
+          "index": 9,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 748019712,
+          "stream_count": 28,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[featurettes] The Exiles (1080p)",
+          "duration_seconds": 1073,
+          "filename": "The Matrix Reloaded Bonus_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 780195840,
+          "stream_count": 28,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 24,
+          "classification": "[video game cut scenes] Enter the Matrix (1080p)",
+          "duration_seconds": 2551,
+          "filename": "The Matrix Reloaded Bonus_t11.mkv",
+          "index": 13,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2109806592,
+          "stream_count": 28,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 3"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 4"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 5"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 6"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 7"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 19"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 20"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 21"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 22"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 23"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 24"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 25"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 26"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 27"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 28"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Warner Home Video"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13
+  ],
+  "scenario": "the-matrix-reloaded-2003",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "source": "archive:The Matrix Reloaded (2003)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "dvdcompare.disc3.episodes",
+    "dvdcompare.disc3.extras",
+    "tmdb.source_id"
+  ],
+  "title": "The Matrix Reloaded",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:13456956",
+    "title": "The Matrix Reloaded",
+    "year": 2003
+  },
+  "workflow": "orchestrate",
+  "year": 2003
+}

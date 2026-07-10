@@ -1,0 +1,125 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "MAD_MAX_FURY_ROAD",
+      "disc_name": "MAD_MAX_FURY_ROAD",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 13,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 7221,
+          "filename": "Mad Max- Fury Road_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 57546663936,
+          "stream_count": 32,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Warner Home Video"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    2
+  ],
+  "scenario": "mad-max-fury-road-2015",
+  "schema_version": 1,
+  "selected_titles": [
+    2
+  ],
+  "source": "archive:Mad Max - Fury Road (2015)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Mad Max: Fury Road",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:9877994",
+    "title": "Mad Max: Fury Road",
+    "year": 2015
+  },
+  "workflow": "orchestrate",
+  "year": 2015
+}

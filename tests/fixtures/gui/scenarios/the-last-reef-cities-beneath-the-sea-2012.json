@@ -1,0 +1,350 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "UHD_IMAX_TLR",
+      "disc_name": "UHD_IMAX_TLR",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 15,
+          "classification": "Episode (4K)",
+          "duration_seconds": 2394,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 17147000832,
+          "stream_count": 9,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "LAST_REEF_3D",
+      "disc_name": "LAST_REEF_3D",
+      "disc_number": 2,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 15,
+          "classification": "Episode (1080p)",
+          "duration_seconds": 2394,
+          "filename": "IMAX - The Last Reef 3D_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 12788103168,
+          "stream_count": 7,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[extra] Macro Filming in Palau (1080p)",
+          "duration_seconds": 237,
+          "filename": "IMAX - The Last Reef 3D_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1101275136,
+          "stream_count": 13,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 15,
+          "classification": "Episode (1080p)",
+          "duration_seconds": 2394,
+          "filename": "IMAX - The Last Reef 3D_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 12277512192,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Ocean Acidification (1080p)",
+          "duration_seconds": 164,
+          "filename": "IMAX - The Last Reef 3D_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 759908352,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Editing and Scoring (1080p)",
+          "duration_seconds": 172,
+          "filename": "IMAX - The Last Reef 3D_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 796895232,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Jellyfish Lake (1080p)",
+          "duration_seconds": 142,
+          "filename": "IMAX - The Last Reef 3D_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 661475328,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Macro Filming in Palau (1080p)",
+          "duration_seconds": 217,
+          "filename": "IMAX - The Last Reef 3D_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1005004800,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Reef and the City (1080p)",
+          "duration_seconds": 136,
+          "filename": "IMAX - The Last Reef 3D_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 629274624,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Statues Under the Sea (1080p)",
+          "duration_seconds": 124,
+          "filename": "IMAX - The Last Reef 3D_t08.mkv",
+          "index": 8,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 575600640,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "Blu-ray 4K",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film (2D) (2160p)"
+          }
+        ],
+        "is_film": true,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "3D Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film (3D) (1080p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film (2D) (1080p)"
+          },
+          {
+            "feature_type": "featurettes",
+            "runtime_seconds": 1071,
+            "title": "Behind the Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 164,
+            "title": "Ocean Acidification"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 116,
+            "title": "Filming in Bimini"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 172,
+            "title": "Editing and Scoring"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 142,
+            "title": "Jellyfish Lake"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 217,
+            "title": "Macro Filming in Palau"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 136,
+            "title": "Reef and the City"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 124,
+            "title": "Statues Under the Sea"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 145,
+            "title": "Picture Gallery"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Bonus Trailers (with \"Play All\" option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 95,
+            "title": "Last Reef"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 101,
+            "title": "Wonders of the Arctic"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 86,
+            "title": "Rocky Mountain Express"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 66,
+            "title": "Journey to Space"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 113,
+            "title": "Humpback Whales"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 70,
+            "title": "Flight of the Butterflies"
+          }
+        ],
+        "is_film": true,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Shout! Factory4K+3D"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "scenario": "the-last-reef-cities-beneath-the-sea-2012",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "source": "archive:The Last Reef - Cities Beneath the Sea (2012)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "The Last Reef: Cities Beneath the Sea",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:16194896",
+    "title": "The Last Reef: Cities Beneath the Sea",
+    "year": 2012
+  },
+  "workflow": "orchestrate",
+  "year": 2012
+}

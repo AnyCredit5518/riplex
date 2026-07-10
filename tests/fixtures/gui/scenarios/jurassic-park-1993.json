@@ -1,0 +1,567 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "JurassicPark_UPK75",
+      "disc_name": "JurassicPark_UPK75",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "[featurette] Phil Tippett Animatics: Raptors in the Kitchen (4K, skip #13 1080p duplicate)",
+          "duration_seconds": 158,
+          "filename": "Jurassic Park_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 857112576,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 26,
+          "classification": "[featurette] Phil Tippett Animatics: Raptors in the Kitchen (1080p)",
+          "duration_seconds": 208,
+          "filename": "Jurassic Park_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 225263616,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 20,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 7588,
+          "filename": "Jurassic Park_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 69361225728,
+          "stream_count": 15,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Return to Jurassic Park: Making Prehistory (1080p)",
+          "duration_seconds": 1216,
+          "filename": "Jurassic Park_t09.mkv",
+          "index": 9,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1985273856,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Return to Jurassic Park: Dawn of a New Era (1080p)",
+          "duration_seconds": 1525,
+          "filename": "Jurassic Park_t10.mkv",
+          "index": 10,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2492676096,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] ILM and 'Jurassic Park': Before and After Visual Effects (1080p)",
+          "duration_seconds": 392,
+          "filename": "Jurassic Park_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 732555264,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Animatics: T-Rex Attack (1080p)",
+          "duration_seconds": 442,
+          "filename": "Jurassic Park_t12.mkv",
+          "index": 12,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 824512512,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Early Pre-Production Meetings (1080p)",
+          "duration_seconds": 378,
+          "filename": "Jurassic Park_t14.mkv",
+          "index": 14,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 718055424,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Steven Spielberg Directs Jurassic Park (1080p)",
+          "duration_seconds": 545,
+          "filename": "Jurassic Park_t16.mkv",
+          "index": 16,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1026207744,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Original Featurette on the Making of the Film (1080p)",
+          "duration_seconds": 288,
+          "filename": "Jurassic Park_t17.mkv",
+          "index": 17,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 546902016,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Making of 'Jurassic Park' (1080p)",
+          "duration_seconds": 2977,
+          "filename": "Jurassic Park_t18.mkv",
+          "index": 18,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 5652326400,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Return to Jurassic Park: The Next Step in Evolution (1080p)",
+          "duration_seconds": 903,
+          "filename": "Jurassic Park_t20.mkv",
+          "index": 20,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1475880960,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "Blu-ray 4K",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1525,
+            "title": "Return to Jurassic Park: Dawn of a New Era"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1216,
+            "title": "Return to Jurassic Park: Making Prehistory"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 903,
+            "title": "Return to Jurassic Park: The Next Step in Evolution"
+          },
+          {
+            "feature_type": "featurettes",
+            "runtime_seconds": 0,
+            "title": "Archival"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 2979,
+            "title": "The Making of 'Jurassic Park'"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 290,
+            "title": "Original Featurette on the Making of the Film"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 547,
+            "title": "Steven Spielberg Directs Jurassic Park"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 129,
+            "title": "Hurricane in Kauai Featurette"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Behind the Scenes"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 380,
+            "title": "Early Pre-Production Meetings"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 119,
+            "title": "Location Scouting"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 184,
+            "title": "Phil Tippett Animatics: Raptors in the Kitchen"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 441,
+            "title": "Animatics: T-Rex Attack"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 392,
+            "title": "ILM and 'Jurassic Park': Before and After Visual Effects"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 85,
+            "title": "Foley Artists"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Storyboard galleries"
+          },
+          {
+            "feature_type": "(78 pictures)",
+            "runtime_seconds": 0,
+            "title": "T-Rex Attack"
+          },
+          {
+            "feature_type": "(12 pictures)",
+            "runtime_seconds": 0,
+            "title": "Jeep Chase"
+          },
+          {
+            "feature_type": "(26 pictures)",
+            "runtime_seconds": 0,
+            "title": "Raptors in the Kitchen"
+          },
+          {
+            "feature_type": "(9 pictures)",
+            "runtime_seconds": 0,
+            "title": "Omitted Baby Trike Scene"
+          },
+          {
+            "feature_type": "(44 pictures)",
+            "runtime_seconds": 0,
+            "title": "The Original Ending"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Production Archives"
+          },
+          {
+            "feature_type": "photo gallery",
+            "runtime_seconds": 0,
+            "title": "Photographs"
+          },
+          {
+            "feature_type": "art gallery",
+            "runtime_seconds": 0,
+            "title": "Design Sketches"
+          },
+          {
+            "feature_type": "art gallery",
+            "runtime_seconds": 0,
+            "title": "Conceptual Paintings"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 78,
+            "title": "Theatrical trailer"
+          }
+        ],
+        "is_film": true,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1525,
+            "title": "Return to Jurassic Park: Dawn of a New Era"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1216,
+            "title": "Return to Jurassic Park: Making Prehistory"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 903,
+            "title": "Return to Jurassic Park: The Next Step in Evolution"
+          },
+          {
+            "feature_type": "featurettes",
+            "runtime_seconds": 0,
+            "title": "Archival"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 2979,
+            "title": "The Making of 'Jurassic Park'"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 290,
+            "title": "Original Featurette on the Making of the Film"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 547,
+            "title": "Steven Spielberg Directs Jurassic Park"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 129,
+            "title": "Hurricane in Kauai Featurette"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Behind the Scenes"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 380,
+            "title": "Early Pre-Production Meetings"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 119,
+            "title": "Location Scouting"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 184,
+            "title": "Phil Tippett Animatics: Raptors in the Kitchen"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 441,
+            "title": "Animatics: T-Rex Attack"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 392,
+            "title": "ILM and 'Jurassic Park': Before and After Visual Effects"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 85,
+            "title": "Foley Artists"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Storyboard galleries"
+          },
+          {
+            "feature_type": "(78 pictures)",
+            "runtime_seconds": 0,
+            "title": "T-Rex Attack"
+          },
+          {
+            "feature_type": "(12 pictures)",
+            "runtime_seconds": 0,
+            "title": "Jeep Chase"
+          },
+          {
+            "feature_type": "(26 pictures)",
+            "runtime_seconds": 0,
+            "title": "Raptors in the Kitchen"
+          },
+          {
+            "feature_type": "(9 pictures)",
+            "runtime_seconds": 0,
+            "title": "Omitted Baby Trike Scene"
+          },
+          {
+            "feature_type": "(44 pictures)",
+            "runtime_seconds": 0,
+            "title": "The Original Ending"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Production Archives"
+          },
+          {
+            "feature_type": "photo gallery",
+            "runtime_seconds": 0,
+            "title": "Photographs"
+          },
+          {
+            "feature_type": "art gallery",
+            "runtime_seconds": 0,
+            "title": "Design Sketches"
+          },
+          {
+            "feature_type": "art gallery",
+            "runtime_seconds": 0,
+            "title": "Conceptual Paintings"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 283,
+            "title": "Jurassic Park: Making the Game"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 78,
+            "title": "Theatrical trailer"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "BD-Live"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "D-Box"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "pocket Blu"
+          }
+        ],
+        "is_film": true,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal Pictures"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    5,
+    7,
+    9,
+    10,
+    11,
+    12,
+    14,
+    16,
+    17,
+    18,
+    20
+  ],
+  "scenario": "jurassic-park-1993",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    5,
+    7,
+    9,
+    10,
+    11,
+    12,
+    14,
+    16,
+    17,
+    18,
+    20
+  ],
+  "source": "archive:Jurassic Park (1993)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "Jurassic Park",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:79294",
+    "title": "Jurassic Park",
+    "year": 1993
+  },
+  "workflow": "orchestrate",
+  "year": 1993
+}

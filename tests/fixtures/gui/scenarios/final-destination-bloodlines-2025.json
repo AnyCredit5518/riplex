@@ -1,0 +1,98 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "FINAL_DESTINATION_BLOODLINES",
+      "disc_name": "FINAL_DESTINATION_BLOODLINES",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 11,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 6588,
+          "filename": "Final Destination- Bloodlines_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 54446610432,
+          "stream_count": 34,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - BBC"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    1
+  ],
+  "scenario": "final-destination-bloodlines-2025",
+  "schema_version": 1,
+  "selected_titles": [
+    1
+  ],
+  "source": "archive:Final Destination Bloodlines (2025)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Final Destination Bloodlines",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:14465620",
+    "title": "Final Destination Bloodlines",
+    "year": 2025
+  },
+  "workflow": "orchestrate",
+  "year": 2025
+}

@@ -1,0 +1,825 @@
+{
+  "category": "tv_series",
+  "discs": [
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 1,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Domestic Pilot (1080p)",
+          "duration_seconds": 3962,
+          "filename": "B1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2550978560,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 2,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Spellingg Bee (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1586874368,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Speak Now or Forever Hold Your Piece (1080p)",
+          "duration_seconds": 2563,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1529368576,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Woman Seeking Dead Husband: Smokers Okay, No Pets (1080p)",
+          "duration_seconds": 2540,
+          "filename": "C3_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1501442048,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "9 Lives (1080p)",
+          "duration_seconds": 2588,
+          "filename": "C4_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1580822528,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Weekend Warriors (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C5_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1581481984,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 3,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Who Ya Gonna Call? (1080p)",
+          "duration_seconds": 2584,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1519548416,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Shawn vs. the Red Phantom (1080p)",
+          "duration_seconds": 2589,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1530324992,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Forget Me Not (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C3_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1539979264,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "From the Earth to the Starbucks (1080p)",
+          "duration_seconds": 2589,
+          "filename": "B1_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1508956160,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead! (1080p)",
+          "duration_seconds": 2584,
+          "filename": "C4_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1612865536,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 4,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Cloudy... With a Chance of Murder (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1948598272,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Game, Set... Muuurder? (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1940969472,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Poker? I Barely Know Her (1080p)",
+          "duration_seconds": 2585,
+          "filename": "C3_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1843519488,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "Scary Sherry: Bianca's Toast (1080p)",
+          "duration_seconds": 2586,
+          "filename": "C4_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1900240896,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 3964,
+            "season_number": 1,
+            "title": "Domestic Pilot"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 62,
+            "season_number": 1,
+            "title": "The Office"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 33,
+            "season_number": 1,
+            "title": "House"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 52,
+            "season_number": 1,
+            "title": "Columbo"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 54,
+            "season_number": 1,
+            "title": "Quantum Leap"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 33,
+            "season_number": 1,
+            "title": "Battlestar: Galactica"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 73,
+            "season_number": 1,
+            "title": "Law & Order"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 55,
+            "season_number": 1,
+            "title": "Saturday Night Live"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 42,
+            "season_number": 1,
+            "title": "Alias Smith and Jones"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 71,
+            "season_number": 1,
+            "title": "Saturday Night Live: The Best of Saturday TV Funhouse"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episode"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"Domestic Pilot\" with executive producer/creator Steve Franks, executive producer Chris Henze and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 178,
+            "title": "Actor's Audition Tape (James Roday)"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 461,
+            "title": "Psych Revealed"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 445,
+            "title": "Inside the Writers' Room"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 583,
+            "title": "Character Profiles"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 221,
+            "title": "James Roday as Shawn Spencer"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 175,
+            "title": "DulÃ© Hill as Burton 'Gus' Guster"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 187,
+            "title": "Corbin Bernsen as Henry Spencer"
+          },
+          {
+            "feature_type": "episode",
+            "runtime_seconds": 4667,
+            "title": "International Pilot"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 414,
+            "title": "Blooper Reel"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 469,
+            "title": "Bonus Trailers: Play All"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 206,
+            "title": "Start-up Trailer for \"Monk: S1-5\", \"The Office: S3\", \"Hot Fuzz\" and DVD/HD-DVD"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Spellingg Bee"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2566,
+            "season_number": 1,
+            "title": "Speak Now or Forever Hold Your Piece"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 2542,
+            "season_number": 1,
+            "title": "Woman Seeking Dead Husband: Smokers Okay, No Pets"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 2591,
+            "season_number": 1,
+            "title": "9 Lives"
+          },
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Weekend Warriors"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Spellingg Bee\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"9 Lives\" with executive producer/creator Steve Franks, executive producer Chris Henze, executive producer Kelly Kulchak and writer Andy Berman"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Weekend Warriors\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 184,
+            "title": "Speak Now or Forever Hold Your Piece"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 46,
+            "title": "Woman Seeking Dead Husband: Smokers Okay, No Pets"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 90,
+            "title": "9 Lives"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 65,
+            "title": "Weekend Warriors"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Who Ya Gonna Call?"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2592,
+            "season_number": 1,
+            "title": "Shawn vs. the Red Phantom"
+          },
+          {
+            "episode_number": 18,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Forget Me Not"
+          },
+          {
+            "episode_number": 19,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "From the Earth to the Starbucks"
+          },
+          {
+            "episode_number": 20,
+            "runtime_seconds": 2592,
+            "season_number": 1,
+            "title": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead!"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"From the Earth to the Starbucks\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 52,
+            "title": "Shawn vs. the Red Phantom"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 193,
+            "title": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead!"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 21,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Cloudy... With a Chance of Murder"
+          },
+          {
+            "episode_number": 22,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Game, Set... Muuurder?"
+          },
+          {
+            "episode_number": 23,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Poker? I Barely Know Her"
+          },
+          {
+            "episode_number": 24,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Scary Sherry: Bianca's Toast"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes (with Play All option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary on \"Scary Sherry: Bianca's Toast\" with executive producer/creator Steve Franks, actor James Roday, actor DulÃ© Hill and executive producer Kelly Kulchak"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 36,
+            "title": "Cloudy... With a Chance of Murder"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 391,
+            "title": "Scary Sherry: Bianca's Toast"
+          }
+        ],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      }
+    ],
+    "release": "R1 America - Universal Pictures"
+  },
+  "media_type": "tv",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "scenario": "psych-season-01",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "source": "archive:Season 01",
+  "synthesized": [
+    "tmdb.seasons",
+    "tmdb.source_id"
+  ],
+  "title": "Psych",
+  "tmdb": {
+    "media_type": "tv",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "seasons": [
+      {
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 3964,
+            "season_number": 1,
+            "title": "Domestic Pilot"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 62,
+            "season_number": 1,
+            "title": "The Office"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 33,
+            "season_number": 1,
+            "title": "House"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 52,
+            "season_number": 1,
+            "title": "Columbo"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 54,
+            "season_number": 1,
+            "title": "Quantum Leap"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 33,
+            "season_number": 1,
+            "title": "Battlestar: Galactica"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 73,
+            "season_number": 1,
+            "title": "Law & Order"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 55,
+            "season_number": 1,
+            "title": "Saturday Night Live"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 42,
+            "season_number": 1,
+            "title": "Alias Smith and Jones"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 71,
+            "season_number": 1,
+            "title": "Saturday Night Live: The Best of Saturday TV Funhouse"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Spellingg Bee"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2566,
+            "season_number": 1,
+            "title": "Speak Now or Forever Hold Your Piece"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 2542,
+            "season_number": 1,
+            "title": "Woman Seeking Dead Husband: Smokers Okay, No Pets"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 2591,
+            "season_number": 1,
+            "title": "9 Lives"
+          },
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Weekend Warriors"
+          },
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Who Ya Gonna Call?"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2592,
+            "season_number": 1,
+            "title": "Shawn vs. the Red Phantom"
+          },
+          {
+            "episode_number": 18,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Forget Me Not"
+          },
+          {
+            "episode_number": 19,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "From the Earth to the Starbucks"
+          },
+          {
+            "episode_number": 20,
+            "runtime_seconds": 2592,
+            "season_number": 1,
+            "title": "He Loves Me, He Loves Me Not, He Loves Me, Oops He's Dead!"
+          },
+          {
+            "episode_number": 21,
+            "runtime_seconds": 2588,
+            "season_number": 1,
+            "title": "Cloudy... With a Chance of Murder"
+          },
+          {
+            "episode_number": 22,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Game, Set... Muuurder?"
+          },
+          {
+            "episode_number": 23,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Poker? I Barely Know Her"
+          },
+          {
+            "episode_number": 24,
+            "runtime_seconds": 2589,
+            "season_number": 1,
+            "title": "Scary Sherry: Bianca's Toast"
+          }
+        ],
+        "name": "Season 1",
+        "season_number": 1
+      }
+    ],
+    "source_id": "tv:15573983",
+    "title": "Psych",
+    "year": 2006
+  },
+  "workflow": "orchestrate",
+  "year": 2006
+}

@@ -77,7 +77,10 @@ src/
             organize_done.py    # Organize results summary
 tests/
     test_*.py               # One test file per source module
+    integration/            # Headless GUI flow tests (see Development > Testing)
+    support/                # Integration harness: fake page, driver, provider mocks
     fixtures/               # makemkvcon output samples for parsing tests
+        gui/scenarios/      # Committed GUI scenarios (generated from archived rips)
     snapshots/              # MKV metadata snapshots for offline test replay
 ```
 

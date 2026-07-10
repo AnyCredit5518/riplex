@@ -1,0 +1,59 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "D-Day Normandy 1944",
+      "disc_name": "D-Day Normandy 1944",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 12,
+          "classification": "Unknown content (4K, 42:56)",
+          "duration_seconds": 2576,
+          "filename": "D-Day- Normandy 1944_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 20899037184,
+          "stream_count": 7,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [],
+    "release": ""
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0
+  ],
+  "scenario": "d-day-normandy-1944-2014",
+  "schema_version": 1,
+  "selected_titles": [
+    0
+  ],
+  "source": "archive:D-Day - Normandy 1944 (2014)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "D-Day: Normandy 1944",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:5234428",
+    "title": "D-Day: Normandy 1944",
+    "year": 2014
+  },
+  "workflow": "orchestrate",
+  "year": 2014
+}

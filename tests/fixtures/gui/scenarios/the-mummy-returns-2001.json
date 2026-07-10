@@ -1,0 +1,273 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "THE_MUMMY_RETURNS",
+      "disc_name": "THE_MUMMY_RETURNS",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 21,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 7772,
+          "filename": "The Mummy Returns_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 63728412672,
+          "stream_count": 17,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "Blu-ray 4K",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film (2160p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary with writer/director Stephen Sommers and executive producer/editor Bob Ducsay"
+          }
+        ],
+        "is_film": true,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film (1080p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio Commentary with writer/director Stephen Sommers and executive producer/editor Bob Ducsay"
+          },
+          {
+            "feature_type": "feature",
+            "runtime_seconds": 0,
+            "title": "U-Control: Picture-in-Picture"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 366,
+            "title": "Outtakes"
+          },
+          {
+            "feature_type": "Sneak Peek",
+            "runtime_seconds": 181,
+            "title": "The Mummy: Tomb of the Dragon Emperor"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 359,
+            "title": "An Army to Rule the World, Part 2"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 487,
+            "title": "Unraveling the Legacy of The Mummy"
+          },
+          {
+            "feature_type": "Visual And Special Effects Formation",
+            "runtime_seconds": 0,
+            "title": "Imhotep Returns"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 70,
+            "title": "---- Conceptual Stage"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 37,
+            "title": "---- Reference Plate"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 35,
+            "title": "---- Plate Photography"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 132,
+            "title": "---- Visual FX Elements"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 39,
+            "title": "---- Final Feature Sequence"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Pygmy Mummies Attack"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 115,
+            "title": "---- Conceptual Stage"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 23,
+            "title": "---- Animation Test"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 23,
+            "title": "---- Plate Photography"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 42,
+            "title": "---- Visual FX Elements"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 23,
+            "title": "---- Final Feature Sequence"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Anubis Warriors Rising"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 93,
+            "title": "---- Conceptual Stage"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 59,
+            "title": "---- Animation Test"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 18,
+            "title": "---- Plate Photography"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 72,
+            "title": "---- Visual FX Elements"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 29,
+            "title": "---- Final Feature Sequence"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Scorpion King Revealed"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 76,
+            "title": "---- Conceptual Stage"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 116,
+            "title": "---- Animation Test"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 22,
+            "title": "---- Plate Photography"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 47,
+            "title": "---- Visual FX Elements"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 37,
+            "title": "---- Final Feature Sequence"
+          },
+          {
+            "feature_type": "interview",
+            "runtime_seconds": 222,
+            "title": "An Exclusive Conversation with The Rock"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1203,
+            "title": "Spotlight on Location: The Making of The Mummy Returns"
+          },
+          {
+            "feature_type": "Storyboard to Final Film Comparison",
+            "runtime_seconds": 151,
+            "title": "Blimp Being Chased"
+          },
+          {
+            "feature_type": "Storyboard to Final Film Comparison",
+            "runtime_seconds": 193,
+            "title": "Pygmy Chase"
+          },
+          {
+            "feature_type": "Storyboard to Final Film Comparison",
+            "runtime_seconds": 121,
+            "title": "Scorpion King Final Battle"
+          },
+          {
+            "feature_type": "Music Video by Live",
+            "runtime_seconds": 273,
+            "title": "Forever May Not Be Long Enough"
+          }
+        ],
+        "is_film": true,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal Pictures"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0
+  ],
+  "scenario": "the-mummy-returns-2001",
+  "schema_version": 1,
+  "selected_titles": [
+    0
+  ],
+  "source": "archive:The Mummy Returns (2001)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "The Mummy Returns",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:6286701",
+    "title": "The Mummy Returns",
+    "year": 2001
+  },
+  "workflow": "orchestrate",
+  "year": 2001
+}

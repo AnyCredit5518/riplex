@@ -1,0 +1,59 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "Journey_To_The_South_Pacific",
+      "disc_name": "Journey_To_The_South_Pacific",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 6,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 2387,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 22742532096,
+          "stream_count": 13,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [],
+    "release": ""
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0
+  ],
+  "scenario": "journey-to-the-south-pacific-2013",
+  "schema_version": 1,
+  "selected_titles": [
+    0
+  ],
+  "source": "archive:Journey to the South Pacific (2013)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "Journey to the South Pacific",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:1643991",
+    "title": "Journey to the South Pacific",
+    "year": 2013
+  },
+  "workflow": "orchestrate",
+  "year": 2013
+}

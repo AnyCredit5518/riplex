@@ -1,0 +1,1268 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "BACK_TO_THE_FUTURE_PART_III",
+      "disc_name": "BACK_TO_THE_FUTURE_PART_III",
+      "disc_number": 5,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 20,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 7098,
+          "filename": "Back to the Future Part III_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 79669260288,
+          "stream_count": 17,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "[Music Video by ZZ Top] Doubleback (4K, skip #12 1080p duplicate)",
+          "duration_seconds": 248,
+          "filename": "Back to the Future Part III_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 959606784,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Lobby Monitor (1080p)",
+          "duration_seconds": 905,
+          "filename": "Back to the Future Part III_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 662974464,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[extra] The Ride (1080p)",
+          "duration_seconds": 960,
+          "filename": "Back to the Future Part III_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 704673792,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "[clips] Back to the Future: The Ride (1080p)",
+          "duration_seconds": 1860,
+          "filename": "Back to the Future Part III_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1367193600,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Tales from the Future: Third Time's the Charm (1080p)",
+          "duration_seconds": 1027,
+          "filename": "Back to the Future Part III_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1193803776,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Tales from the Future: The Test of Time (1080p)",
+          "duration_seconds": 1019,
+          "filename": "Back to the Future Part III_t08.mkv",
+          "index": 8,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1184243712,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Making of Back to the Future Part III (1080p)",
+          "duration_seconds": 451,
+          "filename": "Back to the Future Part III_t09.mkv",
+          "index": 9,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 334675968,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Making the Trilogy: Chapter Three (1080p)",
+          "duration_seconds": 979,
+          "filename": "Back to the Future Part III_t10.mkv",
+          "index": 10,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 730693632,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Secrets of the Back to the Future Trilogy (1080p)",
+          "duration_seconds": 1240,
+          "filename": "Back to the Future Part III_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 913655808,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Theatrical Trailer (1080p)",
+          "duration_seconds": 137,
+          "filename": "Back to the Future Part III_t13.mkv",
+          "index": 13,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 98691072,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Lobby Monitor (1080p)",
+          "duration_seconds": 899,
+          "filename": "Back to the Future Part III_t14.mkv",
+          "index": 14,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 662519808,
+          "stream_count": 8,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "BTTF_BONUS",
+      "disc_name": "BTTF_BONUS",
+      "disc_number": 7,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 66,
+          "classification": "[extra] Christopher Lloyd Reflects on Doc Brown (1080p, #4 is 1080p)",
+          "duration_seconds": 330,
+          "filename": "Back to the Future- Bonus Disc_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 7514112,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "Mac the Black (Season 2, Episode 1) (1080p)",
+          "duration_seconds": 1388,
+          "filename": "Back to the Future- Bonus Disc_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1609334784,
+          "stream_count": 63,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "Brothers (Season 1, Episode 1) (1080p)",
+          "duration_seconds": 1404,
+          "filename": "Back to the Future- Bonus Disc_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1633597440,
+          "stream_count": 63,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] The Script (1080p, #13 is 1080p)",
+          "duration_seconds": 182,
+          "filename": "Back to the Future- Bonus Disc_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 186163200,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Casting Marty McFly (1080p, #0 is 1080p)",
+          "duration_seconds": 305,
+          "filename": "Back to the Future- Bonus Disc_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 310702080,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Christopher Lloyd Reflects on Doc Brown (1080p, #0 is 1080p)",
+          "duration_seconds": 318,
+          "filename": "Back to the Future- Bonus Disc_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 322222080,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] The DeLorean Time Machine (1080p)",
+          "duration_seconds": 386,
+          "filename": "Back to the Future- Bonus Disc_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 392601600,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Building Hill Valley (1080p, #0 is 1080p)",
+          "duration_seconds": 302,
+          "filename": "Back to the Future- Bonus Disc_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 307722240,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[Johnny B. Goode\" Scene] Prepping for the (1080p)",
+          "duration_seconds": 448,
+          "filename": "Back to the Future- Bonus Disc_t08.mkv",
+          "index": 8,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 446994432,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] The Score (1080p, #0 is 1080p)",
+          "duration_seconds": 308,
+          "filename": "Back to the Future- Bonus Disc_t09.mkv",
+          "index": 9,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 302229504,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Rushing the Cut (1080p, #16 is 1080p)",
+          "duration_seconds": 233,
+          "filename": "Back to the Future- Bonus Disc_t10.mkv",
+          "index": 10,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 235849728,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] The Legacy (1080p)",
+          "duration_seconds": 297,
+          "filename": "Back to the Future- Bonus Disc_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 298586112,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 9,
+          "classification": "[documentary] Looking Back to the Future (1080p)",
+          "duration_seconds": 2742,
+          "filename": "Back to the Future- Bonus Disc_t12.mkv",
+          "index": 12,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2798843904,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[music video] Gotta Start Somewhere (1080p, #3 is 1080p)",
+          "duration_seconds": 154,
+          "filename": "Back to the Future- Bonus Disc_t13.mkv",
+          "index": 13,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 715087872,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "[music video] Put Your Mind to It (1080p, #3 is 1080p)",
+          "duration_seconds": 170,
+          "filename": "Back to the Future- Bonus Disc_t14.mkv",
+          "index": 14,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 334393344,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Hollywood Museum Goes Back to the Future (1080p)",
+          "duration_seconds": 617,
+          "filename": "Back to the Future- Bonus Disc_t15.mkv",
+          "index": 15,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2186809344,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] An Alternate Future: Lost Audition Tapes (1080p, #10 is 1080p)",
+          "duration_seconds": 225,
+          "filename": "Back to the Future- Bonus Disc_t16.mkv",
+          "index": 16,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 782764032,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Could You Survive the Movies? Back to the Future (1080p)",
+          "duration_seconds": 1187,
+          "filename": "Back to the Future- Bonus Disc_t17.mkv",
+          "index": 17,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 4138272768,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[short film] Doc Brown Saves the World! (1080p)",
+          "duration_seconds": 578,
+          "filename": "Back to the Future- Bonus Disc_t18.mkv",
+          "index": 18,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2524858368,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Outatime: Restoring the DeLorean (1080p)",
+          "duration_seconds": 1320,
+          "filename": "Back to the Future- Bonus Disc_t19.mkv",
+          "index": 19,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 5865578496,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[music video] Put Your Mind to It (1080p, #13 is 1080p)",
+          "duration_seconds": 176,
+          "filename": "Back to the Future- Bonus Disc_t20.mkv",
+          "index": 20,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 185634816,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Building Hill Valley (1080p)",
+          "duration_seconds": 300,
+          "filename": "Back to the Future- Bonus Disc_t21.mkv",
+          "index": 21,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 310173696,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Score (1080p, #0 is 1080p)",
+          "duration_seconds": 312,
+          "filename": "Back to the Future- Bonus Disc_t22.mkv",
+          "index": 22,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 321693696,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The DeLorean Time Machine (1080p)",
+          "duration_seconds": 381,
+          "filename": "Back to the Future- Bonus Disc_t23.mkv",
+          "index": 23,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 392073216,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Legacy (1080p)",
+          "duration_seconds": 297,
+          "filename": "Back to the Future- Bonus Disc_t24.mkv",
+          "index": 24,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 307193856,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[Johnny B. Goode\" Scene] Prepping for the (1080p)",
+          "duration_seconds": 443,
+          "filename": "Back to the Future- Bonus Disc_t25.mkv",
+          "index": 25,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 446466048,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] Building Hill Valley (1080p, #0 is 1080p)",
+          "duration_seconds": 303,
+          "filename": "Back to the Future- Bonus Disc_t26.mkv",
+          "index": 26,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 301701120,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] An Alternate Future: Lost Audition Tapes (1080p, #16 is 1080p)",
+          "duration_seconds": 228,
+          "filename": "Back to the Future- Bonus Disc_t27.mkv",
+          "index": 27,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 235321344,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[extra] The Legacy (1080p)",
+          "duration_seconds": 292,
+          "filename": "Back to the Future- Bonus Disc_t28.mkv",
+          "index": 28,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 298057728,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "Cast and Creative Q&A (1080p)",
+          "duration_seconds": 1695,
+          "filename": "Back to the Future- Bonus Disc_t29.mkv",
+          "index": 29,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 5876361216,
+          "stream_count": 48,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[music video] Gotta Start Somewhere (1080p, #3 is 1080p)",
+          "duration_seconds": 153,
+          "filename": "Back to the Future- Bonus Disc_t30.mkv",
+          "index": 30,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 506210304,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[music video] Put Your Mind to It (1080p, #3 is 1080p)",
+          "duration_seconds": 179,
+          "filename": "Back to the Future- Bonus Disc_t31.mkv",
+          "index": 31,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 591808512,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          }
+        ],
+        "is_film": false,
+        "number": 5,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 19"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 20"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 21"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 22"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 23"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 24"
+          }
+        ],
+        "is_film": false,
+        "number": 6,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 3"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 11"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 12"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 13"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 14"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 15"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 16"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 17"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 18"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 19"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 20"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 21"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 22"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 23"
+          }
+        ],
+        "is_film": false,
+        "number": 7,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Universal Pictures35th Anniversary The Ultimate Trilogy"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "scenario": "back-to-the-future-part-iii-1990",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "source": "archive:Back to the Future Part III (1990)",
+  "synthesized": [
+    "dvdcompare.disc5.extras",
+    "dvdcompare.disc6.extras",
+    "dvdcompare.disc7.episodes",
+    "dvdcompare.disc7.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Back to the Future Part III",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:16533317",
+    "title": "Back to the Future Part III",
+    "year": 1990
+  },
+  "workflow": "orchestrate",
+  "year": 1990
+}

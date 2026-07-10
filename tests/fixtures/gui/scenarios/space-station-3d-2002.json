@@ -1,0 +1,59 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "Space_Station",
+      "disc_name": "Space_Station",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 7,
+          "classification": "MAIN FILM (4K)",
+          "duration_seconds": 2835,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 24494450688,
+          "stream_count": 19,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [],
+    "release": ""
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0
+  ],
+  "scenario": "space-station-3d-2002",
+  "schema_version": 1,
+  "selected_titles": [
+    0
+  ],
+  "source": "archive:Space Station 3D (2002)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "Space Station 3D",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:11534126",
+    "title": "Space Station 3D",
+    "year": 2002
+  },
+  "workflow": "orchestrate",
+  "year": 2002
+}

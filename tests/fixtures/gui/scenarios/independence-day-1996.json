@@ -1,0 +1,481 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "INDEPENDENCE_DAY",
+      "disc_name": "INDEPENDENCE_DAY",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 54,
+          "classification": "Theatrical Version (4K)",
+          "duration_seconds": 8688,
+          "filename": "Independence Day_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 51451981824,
+          "stream_count": 47,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 57,
+          "classification": "Extended Version (4K)",
+          "duration_seconds": 9213,
+          "filename": "Independence Day_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 54366406656,
+          "stream_count": 37,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "Blu-ray 4K",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Theatrical Version"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Extended Version"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary by director/co-writer/executive producer Roland Emmerich and co-writer/producer/second unit director Dean Devlin"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary with visual effects supervisors Volker Engel and Douglas Smith"
+          },
+          {
+            "feature_type": "trivia track",
+            "runtime_seconds": 0,
+            "title": "ID4 Datastream"
+          }
+        ],
+        "is_film": true,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Theatrical Version (1080p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Film - Extended Version (1080p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary by director/co-writer/executive producer Roland Emmerich and co-writer/producer/second unit director Dean Devlin"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary with visual effects supervisors Volker Engel and Douglas Smith"
+          },
+          {
+            "feature_type": "trivia track",
+            "runtime_seconds": 0,
+            "title": "ID4 Datastream"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 127,
+            "title": "Start-uo trailer for \"Independence Day: Resurgence\" (1080p)"
+          }
+        ],
+        "is_film": true,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "Blu-ray",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "documentary",
+            "runtime_seconds": 1840,
+            "title": "Independence Day: A Legacy Surging Forward"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 256,
+            "title": "Original Theatrical Ending with mandatory commentary by Dean Devlin"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 125,
+            "title": "Gag Reel"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1759,
+            "title": "Creating Reality"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1317,
+            "title": "ID4 Invasion"
+          },
+          {
+            "feature_type": "featurette",
+            "runtime_seconds": 1709,
+            "title": "The Making of ID4"
+          },
+          {
+            "feature_type": "clips",
+            "runtime_seconds": 544,
+            "title": "Combat Review"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 14,
+            "title": "AWACS Plane"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 12,
+            "title": "Welcome Wagon"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 36,
+            "title": "Los Angeles"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 24,
+            "title": "New York"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 72,
+            "title": "Washington, D.C."
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 79,
+            "title": "Los Angeles Tunnel"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 87,
+            "title": "Dogfight 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 17,
+            "title": "El Toro"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 56,
+            "title": "Canyon"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 42,
+            "title": "Dogfight 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 81,
+            "title": "Russell the Kamikaze"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 18,
+            "title": "Mothership"
+          },
+          {
+            "feature_type": "clips",
+            "runtime_seconds": 3068,
+            "title": "Monitor Earth Broadcasts"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 95,
+            "title": "Static Report"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 44,
+            "title": "Blue Acolytes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 185,
+            "title": "Sky News Russian"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 226,
+            "title": "Team 1 Russian"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 47,
+            "title": "Vox News Germany"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 165,
+            "title": "Katja Scholl, Berlin"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 172,
+            "title": "Farsi Report"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 174,
+            "title": "Fields/Dunphy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 125,
+            "title": "Press Conference 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 98,
+            "title": "Press Conference 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 100,
+            "title": "Chinese Broadcast"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 60,
+            "title": "Post-Conference"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 164,
+            "title": "Engel on Fox"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 168,
+            "title": "Hal Live: Modelmaker"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 90,
+            "title": "Traffic Report"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 118,
+            "title": "Russell Casse Arrest"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 150,
+            "title": "U.N. Report"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 67,
+            "title": "Alien Lovers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 35,
+            "title": "Rooftop Parties"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 220,
+            "title": "Fields/Engel Debate"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 275,
+            "title": "Welcome Wagon Report 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 280,
+            "title": "Welcome Wagon Report 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Gallery (each Gallery with \"Auto Advance\" option) (1080p)"
+          },
+          {
+            "feature_type": "(16 images)",
+            "runtime_seconds": 83,
+            "title": "Welcome Wagon Storyboard Sequences"
+          },
+          {
+            "feature_type": "(59 images)",
+            "runtime_seconds": 298,
+            "title": "Destruction Storyboard Sequences"
+          },
+          {
+            "feature_type": "(17 images)",
+            "runtime_seconds": 88,
+            "title": "Biplane Ending Storyboard Sequences"
+          },
+          {
+            "feature_type": "(11 images)",
+            "runtime_seconds": 58,
+            "title": "Alien Beings Conceptual Artwork"
+          },
+          {
+            "feature_type": "(18 images)",
+            "runtime_seconds": 93,
+            "title": "Alien Ships Conceptual Artwork"
+          },
+          {
+            "feature_type": "(18 images)",
+            "runtime_seconds": 93,
+            "title": "Sets and Props Conceptual Artwork"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 238,
+            "title": "Production Photographs (47 images)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 309,
+            "title": "Teaser trailers (with \"Play all\" option) (1080p)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 69,
+            "title": "Teaser Trailer 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 93,
+            "title": "Teaser Trailer 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 146,
+            "title": "Teaser Trailer 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 150,
+            "title": "Theatrical Trailer"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 237,
+            "title": "TV spots (with \"Play all\" option)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 32,
+            "title": "Super Bowl TV Spot"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 32,
+            "title": "Apple Computer TV Spot"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 17,
+            "title": "15-Second TV Spot"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 31,
+            "title": "30-Second TV Spot 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 30,
+            "title": "30-Second TV Spot 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 31,
+            "title": "30-Second TV Spot 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 31,
+            "title": "30-Second TV Spot 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 31,
+            "title": "30-Second TV Spot 5"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Twentieth Century Fox Home Entertainment20th Anniversary Edition"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1
+  ],
+  "scenario": "independence-day-1996",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1
+  ],
+  "source": "archive:Independence Day (1996)",
+  "synthesized": [
+    "tmdb.source_id"
+  ],
+  "title": "Independence Day",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:13139090",
+    "title": "Independence Day",
+    "year": 1996
+  },
+  "workflow": "orchestrate",
+  "year": 1996
+}

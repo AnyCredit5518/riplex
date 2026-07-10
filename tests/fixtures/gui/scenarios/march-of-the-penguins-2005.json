@@ -1,0 +1,147 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "LOGICAL_VOLUME_ID",
+      "disc_name": "LOGICAL_VOLUME_ID",
+      "disc_number": 1,
+      "disc_type": "Blu-ray",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 19,
+          "classification": "MAIN FILM (1080p)",
+          "duration_seconds": 4815,
+          "filename": "title_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 11616737280,
+          "stream_count": 9,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[documentary] Of Penguins and Men (1080p)",
+          "duration_seconds": 3225,
+          "filename": "title_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 2862084096,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] National Geographics Crittercam: Emperor Penguins (1080p)",
+          "duration_seconds": 1411,
+          "filename": "title_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1252767744,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[cartoon short] 8 Ball Bunny (1950) (1080p)",
+          "duration_seconds": 428,
+          "filename": "title_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1007572992,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Warner Home Video"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "scenario": "march-of-the-penguins-2005",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "source": "archive:March of the Penguins (2005)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "tmdb.source_id"
+  ],
+  "title": "March of the Penguins",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:8480046",
+    "title": "March of the Penguins",
+    "year": 2005
+  },
+  "workflow": "orchestrate",
+  "year": 2005
+}

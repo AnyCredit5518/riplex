@@ -1,0 +1,370 @@
+{
+  "category": "tv_miniseries",
+  "discs": [
+    {
+      "disc_label": "CHERNOBYL_D1",
+      "disc_name": "CHERNOBYL_D1",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 8,
+          "classification": "1:23:45 (4K)",
+          "duration_seconds": 3534,
+          "filename": "Chernobyl Disc 1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 28652482560,
+          "stream_count": 26,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 34,
+          "classification": "Meet the Key Players: Play All (4K)",
+          "duration_seconds": 340,
+          "filename": "Chernobyl Disc 1_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 627671040,
+          "stream_count": 1,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 3,
+          "classification": "Inside the Episodes: Play All (1080p)",
+          "duration_seconds": 440,
+          "filename": "Chernobyl Disc 1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1110546432,
+          "stream_count": 14,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 8,
+          "classification": "Open Wide, O Earth (4K)",
+          "duration_seconds": 3707,
+          "filename": "Chernobyl Disc 1_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 30230642688,
+          "stream_count": 26,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 8,
+          "classification": "Please Remain Calm (4K)",
+          "duration_seconds": 3896,
+          "filename": "Chernobyl Disc 1_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 31796779008,
+          "stream_count": 26,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "CHERNOBYL_D2",
+      "disc_name": "CHERNOBYL_D2",
+      "disc_number": 2,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 8,
+          "classification": "The Happiness of All Mankind (4K)",
+          "duration_seconds": 3899,
+          "filename": "Chernobyl Disc 2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 28075038720,
+          "stream_count": 26,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "Inside the Episodes: Play All (1080p)",
+          "duration_seconds": 416,
+          "filename": "Chernobyl Disc 2_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1805144064,
+          "stream_count": 14,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 8,
+          "classification": "Vichnaya Pamyat (4K)",
+          "duration_seconds": 4293,
+          "filename": "Chernobyl Disc 2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 31053785088,
+          "stream_count": 26,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 3"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 9"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 10"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 4,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 5"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 6"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 7"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 8"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - Warner Home Video"
+  },
+  "media_type": "tv",
+  "ripped_titles": [
+    1,
+    2,
+    3
+  ],
+  "scenario": "chernobyl-2019",
+  "schema_version": 1,
+  "selected_titles": [],
+  "source": "archive:Chernobyl (2019)",
+  "synthesized": [
+    "dvdcompare.disc1.episodes",
+    "dvdcompare.disc1.extras",
+    "dvdcompare.disc2.episodes",
+    "dvdcompare.disc2.extras",
+    "tmdb.seasons",
+    "tmdb.source_id"
+  ],
+  "title": "Chernobyl",
+  "tmdb": {
+    "media_type": "tv",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "seasons": [
+      {
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 3"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 1"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 0,
+            "season_number": 1,
+            "title": "Episode 2"
+          }
+        ],
+        "name": "Season 1",
+        "season_number": 1
+      }
+    ],
+    "source_id": "tv:9538220",
+    "title": "Chernobyl",
+    "year": 2019
+  },
+  "workflow": "orchestrate",
+  "year": 2019
+}

@@ -59,3 +59,6 @@ local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: end-to-end GUI flow tests that drive the wizard headlessly",
+]

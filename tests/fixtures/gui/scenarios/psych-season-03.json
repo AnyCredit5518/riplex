@@ -1,0 +1,1023 @@
+{
+  "category": "tv_series",
+  "discs": [
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 1,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E01 - Ghosts (1080p)",
+          "duration_seconds": 2576,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1526456320,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E02 - Murder? ... Anyone? ... Anyone? ... Bueller? (1080p)",
+          "duration_seconds": 2579,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1566353408,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E03 - Daredevils! (1080p)",
+          "duration_seconds": 2551,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1484507136,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E04 - The Greatest Adventure in the History of Basic Cable (1080p)",
+          "duration_seconds": 2580,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1537617920,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Gag Reel (1080p)",
+          "duration_seconds": 498,
+          "filename": "E2_t05.mkv",
+          "index": 5,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 268120064,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 16,
+          "classification": "[extra] Murder? ... Anyone? ... Anyone? ... Bueller? (1080p)",
+          "duration_seconds": 1561,
+          "filename": "C4_t06.mkv",
+          "index": 6,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 845723648,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "[extra] Daredevils! (1080p)",
+          "duration_seconds": 323,
+          "filename": "D3_t07.mkv",
+          "index": 7,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 175966208,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 2,
+          "classification": "[extra] The Greatest Adventure in the History of Basic Cable (1080p)",
+          "duration_seconds": 185,
+          "filename": "D4_t08.mkv",
+          "index": 8,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 100233216,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 1,
+          "classification": "[extra] Start-up Trailers (1080p)",
+          "duration_seconds": 266,
+          "filename": "A1_t11.mkv",
+          "index": 11,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 156921856,
+          "stream_count": 2,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 2,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E05 - Disco Didn't Die. It Was Murdered! (1080p)",
+          "duration_seconds": 2531,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1654038528,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E06 - There Might Be Blood (1080p)",
+          "duration_seconds": 2557,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1670090752,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E07 - Talk Derby to Me (1080p)",
+          "duration_seconds": 2583,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1786552320,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E08 - Gus Walks into a Bank (1080p)",
+          "duration_seconds": 2573,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1817081856,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PSYCH",
+      "disc_name": "PSYCH",
+      "disc_number": 3,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E09 - Christmas Joy (1080p)",
+          "duration_seconds": 2579,
+          "filename": "C1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1629452288,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E10 - Six Feet Under the Sea (1080p)",
+          "duration_seconds": 2578,
+          "filename": "C2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1617491968,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E11 - Lassie Did a Bad, Bad Thing (1080p)",
+          "duration_seconds": 2574,
+          "filename": "D1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1612720128,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E12 - Earth, Wind and... Wait for It (1080p)",
+          "duration_seconds": 2579,
+          "filename": "D2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1661661184,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    },
+    {
+      "disc_label": "PYSCH",
+      "disc_name": "PYSCH",
+      "disc_number": 4,
+      "disc_type": "DVD",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E13 - Any Given Friday Night at 10pm, 9pm Central (1080p)",
+          "duration_seconds": 2580,
+          "filename": "D1_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1727328256,
+          "stream_count": 3,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E14 - Truer Lies (1080p)",
+          "duration_seconds": 2523,
+          "filename": "D2_t01.mkv",
+          "index": 1,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1717618688,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E15 - Tuesday the 17th (1080p)",
+          "duration_seconds": 2585,
+          "filename": "E1_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1774657536,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 4,
+          "classification": "S03E16 - An Evening with Mr. Yang (1080p)",
+          "duration_seconds": 2578,
+          "filename": "E2_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "720x480",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1785309184,
+          "stream_count": 4,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Ghosts"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2554,
+            "season_number": 1,
+            "title": "Daredevils!"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "The Greatest Adventure in the History of Basic Cable"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 1569,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Ghosts\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, producer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Murder? ... Anyone? ... Anyone? ... Bueller?\" by writer Andy Berman and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 34,
+            "title": "Ghosts"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 327,
+            "title": "Daredevils!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 187,
+            "title": "The Greatest Adventure in the History of Basic Cable"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 499,
+            "title": "Gag Reel"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Bonus Trailers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 71,
+            "title": "30 Rock"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 89,
+            "title": "Battlestar Galactica"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 46,
+            "title": "Columbo"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 48,
+            "title": "Eureka"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 51,
+            "title": "The Incredible Hulk"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 60,
+            "title": "Heroes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 46,
+            "title": "Life"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 33,
+            "title": "Monk"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 63,
+            "title": "The Office (US)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 33,
+            "title": "Psych"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 267,
+            "title": "Start-up Trailers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Monk"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "In Plain Sight"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Eureka"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Office (US)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "The Fast and the Furious Trilogy"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 6,
+            "runtime_seconds": 2533,
+            "season_number": 1,
+            "title": "Disco Didn't Die. It Was Murdered!"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 2560,
+            "season_number": 1,
+            "title": "There Might Be Blood"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 2586,
+            "season_number": 1,
+            "title": "Talk Derby to Me"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 2574,
+            "season_number": 1,
+            "title": "Gus Walks into a Bank"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Talk Derby to Me\" by writer Tim Meltreger, Jason Berger, executive assistant to Steve Franks and script co-ordinator Ray Utarnachitt"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Gus Walks into a Bank\" by creator/executive producer Steve Franks, executive producer Chris Henze, writer Andy Berman and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 432,
+            "title": "Disco Didn't Die. It Was Murdered!"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 124,
+            "title": "There Might Be Blood"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 289,
+            "title": "Gus Walks into a Bank"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentary (interview)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 300,
+            "title": "Gus Walks into a Bank"
+          }
+        ],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 10,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Christmas Joy"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2580,
+            "season_number": 1,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Earth, Wind and... Wait for It"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Christmas Joy\" by writer Saladin K. Patterson and writer's production assistant Brittany Hilgers"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Six Feet Under the Sea\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Lassie Did a Bad, Bad Thing\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak, writers Kell Cahoon & Tim Meltreger and series stars James Roday, Dulé Hill & Tim Omundson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Earth, Wind and... Wait for It\" by writer Anupam Nigam, story editor Tim Meltreger and script co-ordinator Ray Utarnachitt"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 101,
+            "title": "Christmas Joy"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 254,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 220,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 93,
+            "title": "Earth, Wind and... Wait for It"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries (interviews)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 300,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 475,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 258,
+            "title": "Earth, Wind and... Wait for It"
+          },
+          {
+            "feature_type": "segment",
+            "runtime_seconds": 316,
+            "title": "Psychouts"
+          }
+        ],
+        "is_film": false,
+        "number": 3,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [
+          {
+            "episode_number": 14,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2525,
+            "season_number": 1,
+            "title": "Truer Lies"
+          },
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "An Evening with Mr. Yang"
+          }
+        ],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Episodes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Podcast commentary for \"Truer Lies\" by writer Victoria Walker, story editor Tim Meltreger and Jason Berger, executive assistant to Steve Franks"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"Tuesday the 17th\" by creator/executive producer Steve Franks, executive producers Chris Henze & Kelly Kulchak and series stars James Roday & Dulé Hill"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Audio commentary for \"An Evening with Mr. Yang\" by creator/executive producer Steve Franks, executive producer Kelly Kulchak, story editor Tim Meltreger and series stars James Roday, Dulé Hill & Maggie Lawson"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Deleted Scenes"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 292,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 32,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 465,
+            "title": "An Evening with Mr. Yang"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Video Commentaries (interviews)"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 192,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 191,
+            "title": "Truer Lies"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 371,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Montages"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 38,
+            "title": "Shawn Introductions"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 56,
+            "title": "Bickering"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 66,
+            "title": "Shawnisms"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 88,
+            "title": "Psychic Ju-Ju"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 22,
+            "title": "What?"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 24,
+            "title": "Gus, Don't Be..."
+          }
+        ],
+        "is_film": false,
+        "number": 4,
+        "title": ""
+      }
+    ],
+    "release": "R1 America - Universal Pictures"
+  },
+  "media_type": "tv",
+  "ripped_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "scenario": "psych-season-03",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "source": "archive:Season 03",
+  "synthesized": [
+    "tmdb.seasons",
+    "tmdb.source_id"
+  ],
+  "title": "Psych",
+  "tmdb": {
+    "media_type": "tv",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "seasons": [
+      {
+        "episodes": [
+          {
+            "episode_number": 1,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Ghosts"
+          },
+          {
+            "episode_number": 2,
+            "runtime_seconds": 2582,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          },
+          {
+            "episode_number": 3,
+            "runtime_seconds": 2554,
+            "season_number": 1,
+            "title": "Daredevils!"
+          },
+          {
+            "episode_number": 4,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "The Greatest Adventure in the History of Basic Cable"
+          },
+          {
+            "episode_number": 5,
+            "runtime_seconds": 1569,
+            "season_number": 1,
+            "title": "Murder? ... Anyone? ... Anyone? ... Bueller?"
+          },
+          {
+            "episode_number": 6,
+            "runtime_seconds": 2533,
+            "season_number": 1,
+            "title": "Disco Didn't Die. It Was Murdered!"
+          },
+          {
+            "episode_number": 7,
+            "runtime_seconds": 2560,
+            "season_number": 1,
+            "title": "There Might Be Blood"
+          },
+          {
+            "episode_number": 8,
+            "runtime_seconds": 2586,
+            "season_number": 1,
+            "title": "Talk Derby to Me"
+          },
+          {
+            "episode_number": 9,
+            "runtime_seconds": 2574,
+            "season_number": 1,
+            "title": "Gus Walks into a Bank"
+          },
+          {
+            "episode_number": 10,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Christmas Joy"
+          },
+          {
+            "episode_number": 11,
+            "runtime_seconds": 2580,
+            "season_number": 1,
+            "title": "Six Feet Under the Sea"
+          },
+          {
+            "episode_number": 12,
+            "runtime_seconds": 2577,
+            "season_number": 1,
+            "title": "Lassie Did a Bad, Bad Thing"
+          },
+          {
+            "episode_number": 13,
+            "runtime_seconds": 2581,
+            "season_number": 1,
+            "title": "Earth, Wind and... Wait for It"
+          },
+          {
+            "episode_number": 14,
+            "runtime_seconds": 2583,
+            "season_number": 1,
+            "title": "Any Given Friday Night at 10pm, 9pm Central"
+          },
+          {
+            "episode_number": 15,
+            "runtime_seconds": 2525,
+            "season_number": 1,
+            "title": "Truer Lies"
+          },
+          {
+            "episode_number": 16,
+            "runtime_seconds": 2587,
+            "season_number": 1,
+            "title": "Tuesday the 17th"
+          },
+          {
+            "episode_number": 17,
+            "runtime_seconds": 2579,
+            "season_number": 1,
+            "title": "An Evening with Mr. Yang"
+          }
+        ],
+        "name": "Season 1",
+        "season_number": 1
+      }
+    ],
+    "source_id": "tv:15573983",
+    "title": "Psych",
+    "year": 2006
+  },
+  "workflow": "orchestrate",
+  "year": 2006
+}

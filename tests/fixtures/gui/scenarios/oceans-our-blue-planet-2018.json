@@ -1,0 +1,156 @@
+{
+  "category": "movie",
+  "discs": [
+    {
+      "disc_label": "Oceans - Our Blue Planet",
+      "disc_name": "Oceans - Our Blue Planet",
+      "disc_number": 1,
+      "disc_type": "Blu-ray 4K",
+      "titles": [
+        {
+          "audio_tracks": [],
+          "chapters": 5,
+          "classification": "Unknown content (4K, 41:52)",
+          "duration_seconds": 2512,
+          "filename": "Oceans - Our Blue Planet_t00.mkv",
+          "index": 0,
+          "name": "",
+          "playlist": "",
+          "resolution": "3840x2160",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 18949220352,
+          "stream_count": 5,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] How Do You Become a Marine Biologist? (1080p)",
+          "duration_seconds": 284,
+          "filename": "Oceans - Our Blue Planet_t02.mkv",
+          "index": 2,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1186056192,
+          "stream_count": 5,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] Surfing for Science: Smartfin (1080p)",
+          "duration_seconds": 396,
+          "filename": "Oceans - Our Blue Planet_t03.mkv",
+          "index": 3,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1661288448,
+          "stream_count": 5,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        },
+        {
+          "audio_tracks": [],
+          "chapters": 0,
+          "classification": "[featurette] The Secret Sounds of Fish (1080p)",
+          "duration_seconds": 412,
+          "filename": "Oceans - Our Blue Planet_t04.mkv",
+          "index": 4,
+          "name": "",
+          "playlist": "",
+          "resolution": "1920x1080",
+          "segment_count": 1,
+          "segment_map": "",
+          "size_bytes": 1723176960,
+          "stream_count": 5,
+          "subtitle_tracks": [],
+          "video_codec": ""
+        }
+      ]
+    }
+  ],
+  "dvdcompare": {
+    "discs": [
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 1"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 2"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 3"
+          },
+          {
+            "feature_type": "",
+            "runtime_seconds": 0,
+            "title": "Extra 4"
+          }
+        ],
+        "is_film": false,
+        "number": 1,
+        "title": ""
+      },
+      {
+        "disc_format": "",
+        "episodes": [],
+        "extras": [],
+        "is_film": false,
+        "number": 2,
+        "title": ""
+      }
+    ],
+    "release": "Blu-ray ALL America - BBC"
+  },
+  "media_type": "movie",
+  "ripped_titles": [
+    0,
+    2,
+    3,
+    4
+  ],
+  "scenario": "oceans-our-blue-planet-2018",
+  "schema_version": 1,
+  "selected_titles": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "source": "archive:Oceans - Our Blue Planet (2018)",
+  "synthesized": [
+    "dvdcompare.disc1.extras",
+    "tmdb.source_id"
+  ],
+  "title": "Oceans: Our Blue Planet",
+  "tmdb": {
+    "media_type": "movie",
+    "movie_runtime_seconds": null,
+    "overview": "",
+    "popularity": 1.0,
+    "source_id": "movie:14262671",
+    "title": "Oceans: Our Blue Planet",
+    "year": 2018
+  },
+  "workflow": "orchestrate",
+  "year": 2018
+}
