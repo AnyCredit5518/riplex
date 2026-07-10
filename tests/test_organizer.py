@@ -735,6 +735,75 @@ class TestBuildOrganizePlanShow:
         assert len(op.moves) == 1
         assert "s01e02 - Spelling Bee" in op.moves[0].destination
 
+    def test_extra_classification_does_not_clobber_episode(self):
+        """A ``[extra]`` file whose label matches an episode routes to extras.
+
+        dvdcompare occasionally lists the same episode name twice (real
+        episode + a bonus re-edit); the rip-time enrichment demotes the
+        shorter duplicate to ``extra`` and stamps the classification
+        with ``[extra] Title``. The matcher still pairs the extra file
+        to a same-named target label, so if the organizer fuzzy-looks-up
+        the label as an episode it clobbers the real episode's
+        destination. Route by the classifier's verdict instead: extras
+        go to an extras folder, the real episode keeps its Season NN
+        slot.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="c2_t01.mkv",
+                    file_duration_seconds=2588,
+                    matched_label="Disc 1: Murder? Bueller?",
+                    matched_runtime_seconds=2585,
+                    delta_seconds=3,
+                    confidence="high",
+                    classification="S03E02 - Murder? Bueller? (1080p)",
+                ),
+                MatchCandidate(
+                    file_name="c4_t06.mkv",
+                    file_duration_seconds=2593,
+                    matched_label="Disc 1: Murder? Bueller?",
+                    matched_runtime_seconds=2585,
+                    delta_seconds=8,
+                    confidence="high",
+                    classification="[extra] Murder? Bueller? (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[
+                PlannedSeason(
+                    season_number=3,
+                    episodes=[
+                        PlannedEpisode(
+                            season_number=3, episode_number=2,
+                            title="Murder? Bueller?", runtime="43m",
+                        ),
+                    ],
+                ),
+            ],
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        assert len(op.moves) == 2
+        destinations = [m.destination for m in op.moves]
+        # Real episode keeps the Season 03 slot.
+        episode_moves = [d for d in destinations if "s03e02" in d]
+        assert len(episode_moves) == 1, (
+            f"expected exactly one file routed to s03e02, got {destinations}"
+        )
+        # The [extra] duplicate is diverted to an extras folder, not
+        # a second copy of the episode.
+        extra_moves = [d for d in destinations if "s03e02" not in d]
+        assert len(extra_moves) == 1
+        assert (
+            "Featurettes" in extra_moves[0]
+            or "Other" in extra_moves[0]
+            or "Behind The Scenes" in extra_moves[0]
+        )
+
     def test_tv_extra_matching_season0_routes_to_season00(self):
         """A TV extra whose title matches a Season 00 episode goes to Season 00."""
         result = OrganizeResult(

@@ -673,24 +673,18 @@ def _compute_destination(
                         candidate.classification, dest,
                     )
                     return dest
-                ep = _find_episode_by_title(plan, title_part)
-                if ep:
-                    fname = episode_file_name(
-                        plan.canonical_title, plan.year,
-                        ep.season_number, ep.episode_number, ep.title,
-                    )
-                    dest = base / season_folder_name(ep.season_number) / fname
-                    log.debug("  -> episode by title lookup '%s': %s", title_part, dest)
-                    return dest
-                # No TMDb episode match. Before dropping the file as
-                # unmatched, consult the rip-time classification
-                # prefix "[extra] Title" — dvdcompare sometimes leaves
-                # feature_type blank on extras (e.g. "Start-up
-                # Trailers"), which strips the "(type)" suffix from
-                # the target label but the classifier still tags the
-                # file. Route to an extras folder derived from that
-                # hint (with a title-based fallback for generic
-                # "extra"/"segment" that map to "Other").
+                # If the rip-time classifier explicitly tagged this
+                # file as an extra (via a "[type]" prefix), don't try
+                # to route it as an episode via fuzzy title matching.
+                # dvdcompare sometimes lists the same episode name
+                # twice (once as the actual episode, once as a bonus
+                # re-edit); ``enrich_dvd_entries_with_tmdb`` demotes
+                # the shorter entry to ``extra`` and the classifier
+                # stamps it with ``[extra]``, but the *label* alone
+                # still looks like the episode's — so a fuzzy title
+                # lookup would clobber the real episode's destination
+                # with the duplicate re-edit. Honoring the classifier
+                # here keeps the two files on distinct paths.
                 class_type = _extract_classification_type(candidate.classification)
                 if class_type:
                     folder = _extras_folder(class_type)
@@ -702,6 +696,15 @@ def _compute_destination(
                         "  -> extras via classification [%s] -> '%s': %s",
                         class_type, folder, dest,
                     )
+                    return dest
+                ep = _find_episode_by_title(plan, title_part)
+                if ep:
+                    fname = episode_file_name(
+                        plan.canonical_title, plan.year,
+                        ep.season_number, ep.episode_number, ep.title,
+                    )
+                    dest = base / season_folder_name(ep.season_number) / fname
+                    log.debug("  -> episode by title lookup '%s': %s", title_part, dest)
                     return dest
                 # No TMDb match; can't produce a valid Plex filename.
                 log.debug("  -> no TMDb match for title '%s', returning None", title_part)
