@@ -9,15 +9,27 @@ dvdcompare) are stubbed by the test via monkeypatch.
 from __future__ import annotations
 
 import asyncio
+import tempfile
+from pathlib import Path
 
 from riplex_cli.main import _build_parser, _run
 
-_DEFAULT_CONFIG = {
+# The rip/output/archive roots MUST be throwaway temp locations — commands
+# derive real write targets (rip folders, session markers, snapshots) from
+# them via ``build_rip_path``. Pointing at a real library would litter it.
+_STATIC_CONFIG = {
     "tmdb_api_key": "test-key",
-    "output_root": "E:/Media",
-    "rip_output": "E:/Media/_MakeMKV",
-    "archive_root": "E:/Media/_MakeMKV/_archive",
 }
+
+
+def _sandbox_config() -> dict:
+    root = Path(tempfile.mkdtemp(prefix="riplex-cli-test-"))
+    return {
+        **_STATIC_CONFIG,
+        "output_root": str(root / "Media"),
+        "rip_output": str(root / "Media" / "_MakeMKV"),
+        "archive_root": str(root / "Media" / "_MakeMKV" / "_archive"),
+    }
 
 
 def install_cli_mocks(monkeypatch, config: dict | None = None) -> dict:
@@ -28,8 +40,11 @@ def install_cli_mocks(monkeypatch, config: dict | None = None) -> dict:
     ``TmdbProvider(api_key=...)`` never validates a key or opens a client. Tests
     still mock the actual lookup functions (``lookup_metadata`` etc.) to supply
     data.
+
+    Config roots point at a throwaway temp sandbox so a command can never write
+    into a real media library.
     """
-    cfg = {**_DEFAULT_CONFIG, **(config or {})}
+    cfg = {**_sandbox_config(), **(config or {})}
     import riplex.config as config_mod
 
     monkeypatch.setattr(config_mod, "load_config", lambda: dict(cfg))

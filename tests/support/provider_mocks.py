@@ -88,16 +88,33 @@ def install(
 # config + tool discovery
 # ---------------------------------------------------------------------------
 
-_DEFAULT_CONFIG = {
+# NOTE: the config roots MUST point at throwaway temp locations. Screens and
+# commands derive real filesystem write targets from ``rip_output`` /
+# ``output_root`` via ``build_rip_path`` — e.g. the orchestrate flow writes a
+# ``_riplex_session.json`` session marker and rip snapshots. If these pointed
+# at a real media library, running the tests would litter (and could overwrite)
+# it. Every test therefore gets a fresh temp sandbox.
+
+_STATIC_CONFIG = {
     "tmdb_api_key": "test-key",
-    "output_root": "E:/Media",
-    "rip_output": "E:/Media/_MakeMKV",
-    "archive_root": "E:/Media/_MakeMKV/_archive",
 }
 
 
+def _sandbox_config() -> dict:
+    """Config whose output/rip/archive roots live in a throwaway temp dir."""
+    import tempfile
+
+    root = Path(tempfile.mkdtemp(prefix="riplex-test-"))
+    return {
+        **_STATIC_CONFIG,
+        "output_root": str(root / "Media"),
+        "rip_output": str(root / "Media" / "_MakeMKV"),
+        "archive_root": str(root / "Media" / "_MakeMKV" / "_archive"),
+    }
+
+
 def _install_config(monkeypatch, config: dict | None) -> None:
-    cfg = {**_DEFAULT_CONFIG, **(config or {})}
+    cfg = {**_sandbox_config(), **(config or {})}
     import riplex.config as config_mod
 
     monkeypatch.setattr(config_mod, "load_config", lambda: dict(cfg))
