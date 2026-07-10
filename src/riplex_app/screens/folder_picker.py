@@ -69,6 +69,10 @@ class FolderPickerScreen:
     def build(self) -> ft.Control:
         batch_groups = self.app.state.pop("_batch_groups", None)
         if batch_groups is not None:
+            # Remember the full batch list so the results view's Back
+            # button can restore this picker when the user backs out
+            # of a single group they opened.
+            self.app.state["_batch_groups_saved"] = batch_groups
             return self._build_batch_groups_view(batch_groups)
 
         # Check for scan results from background thread
@@ -330,10 +334,9 @@ class FolderPickerScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
-                ft.Column(rows, spacing=10, scroll=ft.ScrollMode.AUTO),
-                ft.Container(expand=True),
+                ft.Column(rows, spacing=10, scroll=ft.ScrollMode.AUTO, expand=True),
                 ft.Row([
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                    ft.TextButton("Back", on_click=self._back_from_batch_groups),
                 ]),
             ],
             spacing=10,
@@ -526,41 +529,47 @@ class FolderPickerScreen:
                     color=ft.Colors.GREY_500,
                 ),
                 ft.Divider(height=20),
-                *manifest_banner,
-                *marker_banner,
-                ft.Text(
-                    f"Scanned {len(scanned)} disc{'s' if len(scanned) != 1 else ''}, "
-                    f"{total_files} files ({disc_format}{summary_suffix})",
-                    size=14,
-                    weight=ft.FontWeight.BOLD,
-                ),
-                ft.Column(disc_rows, spacing=2),
-                ft.Container(height=10),
-                detection_hint,
-                ft.Text("Detected title:", size=14),
-                self.title_field,
-                *(
+                ft.Column(
                     [
-                        ft.Text("Season number:", size=14),
-                        self.season_field,
-                    ]
-                    + (
-                        [
-                            ft.Text(
-                                "Leave blank for movies.",
-                                size=12,
-                                color=ft.Colors.GREY_500,
+                        *manifest_banner,
+                        *marker_banner,
+                        ft.Text(
+                            f"Scanned {len(scanned)} disc{'s' if len(scanned) != 1 else ''}, "
+                            f"{total_files} files ({disc_format}{summary_suffix})",
+                            size=14,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Column(disc_rows, spacing=2),
+                        ft.Container(height=10),
+                        detection_hint,
+                        ft.Text("Detected title:", size=14),
+                        self.title_field,
+                        *(
+                            [
+                                ft.Text("Season number:", size=14),
+                                self.season_field,
+                            ]
+                            + (
+                                [
+                                    ft.Text(
+                                        "Leave blank for movies.",
+                                        size=12,
+                                        color=ft.Colors.GREY_500,
+                                    )
+                                ]
+                                if manifest_type is None
+                                else []
                             )
-                        ]
-                        if manifest_type is None
-                        else []
-                    )
-                    if show_season_field
-                    else []
+                            if show_season_field
+                            else []
+                        ),
+                    ],
+                    spacing=10,
+                    scroll=ft.ScrollMode.AUTO,
+                    expand=True,
                 ),
-                ft.Container(expand=True),
                 ft.Row([
-                    ft.TextButton("Back", on_click=lambda _: self.app.navigate("welcome")),
+                    ft.TextButton("Back", on_click=self._back_from_results),
                     ft.ElevatedButton(
                         "Next",
                         icon=ft.Icons.ARROW_FORWARD,
@@ -570,7 +579,6 @@ class FolderPickerScreen:
                 ]),
             ],
             spacing=10,
-            scroll=ft.ScrollMode.AUTO,
             expand=True,
         )
 
@@ -589,6 +597,39 @@ class FolderPickerScreen:
             spacing=10,
             expand=True,
         )
+
+    def _back_from_batch_groups(self, _e):
+        """Back from the batch groups picker -> folder input.
+
+        Clears the saved group list and source folder so the picker
+        starts fresh on re-entry.
+        """
+        self.app.state.pop("_batch_groups_saved", None)
+        self.app.state["source_folder"] = None
+        self.app.navigate("folder_picker")
+
+    def _back_from_results(self, _e):
+        """Back from the scan results view.
+
+        If we arrived via a batch groups picker (multiple season/title
+        folders under one parent), restore that picker so the user can
+        choose a different group. Otherwise drop back to the folder
+        input so they can pick a different folder.
+        """
+        # Clear scan state so re-entry re-renders the appropriate view
+        # instead of showing stale results.
+        self.app.state.pop("scanned", None)
+        self.app.state.pop("_scan_result", None)
+        self.app.state.pop("_scan_from_manifest", None)
+
+        saved_groups = self.app.state.get("_batch_groups_saved")
+        if saved_groups:
+            # Restore the batch picker; keep _batch_groups_saved intact
+            # so backing out of a second attempted group still works.
+            self.app.state["_batch_groups"] = saved_groups
+        else:
+            self.app.state["source_folder"] = None
+        self.app.navigate("folder_picker")
 
     def _next(self, e):
         """Store title and proceed to metadata lookup."""
