@@ -36,6 +36,7 @@ destination.
 - Hidden-discs banner explaining discs the plan intentionally skips.
 - "View on dvdcompare.net" link when a release has already been matched.
 - **Development > Testing guide** (`development/testing.md`) documenting the headless GUI and CLI integration test suites, the `tests/support/` harness, the `gui` fixture, media-type-targeted flows, and how to generate scenario fixtures from archived rips with `scripts/gen_gui_fixtures.py`.
+- **GUI auto-eject.** The disc is ejected automatically after a rip finishes so you can swap discs (or know it's done) without reaching for the drive. On by default; set `auto_eject = false` in the config to disable.
 
 ### Changed
 

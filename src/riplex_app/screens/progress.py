@@ -202,6 +202,10 @@ class ProgressScreen:
         # Write rip manifest (for orchestrate resume support)
         self._write_manifest(results)
 
+        # Auto-eject the finished disc so the user can swap discs (or knows
+        # the rip is done) without reaching for the drive.
+        self._auto_eject(results)
+
         # Brief pause then navigate
         time.sleep(1)
 
@@ -321,6 +325,37 @@ class ProgressScreen:
             log.info("Wrote rip manifest: %s", manifest_path)
         except Exception as exc:
             log.warning("Failed to write rip manifest: %s", exc)
+
+    def _auto_eject(self, results: list[RipResult]):
+        """Eject the disc once ripping finishes, unless disabled in config.
+
+        Best-effort: a failed eject is logged and surfaced in the activity
+        log but never blocks the flow. Skipped when the user cancelled or no
+        title actually ripped (so a failed disc can be retried without a
+        manual reload).
+        """
+        from riplex.config import get_auto_eject
+        from riplex.disc.makemkv import eject_disc
+
+        if not get_auto_eject():
+            return
+        if self._cancel_event.is_set():
+            return
+        if not any(r.success for r in results):
+            return
+
+        drive = self.app.state.get("drive")
+        device = getattr(drive, "device", None)
+        if not device:
+            return
+
+        try:
+            eject_disc(device)
+            log.info("Auto-ejected %s", device)
+            self._log_message(f"Ejected {device}.", ft.Colors.GREEN)
+        except Exception as exc:
+            log.warning("Auto-eject failed for %s: %s", device, exc)
+            self._log_message(f"Auto-eject failed: {exc}", ft.Colors.ORANGE)
 
     def _advance_orchestrate(self, results: list[RipResult]):
         """In orchestrate mode, store results and advance to next disc or finish."""

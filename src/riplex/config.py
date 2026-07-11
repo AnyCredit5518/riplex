@@ -111,6 +111,15 @@ def get_archive_root() -> str:
     return cfg.get("archive_root", "")
 
 
+def get_auto_eject() -> bool:
+    """Whether to auto-eject the disc after a GUI rip completes.
+
+    Defaults to ``True``. Set ``auto_eject: false`` in the config to disable.
+    """
+    cfg = load_config()
+    return bool(cfg.get("auto_eject", True))
+
+
 def _config_write_path() -> Path:
     """Determine the writable config path (user-scoped)."""
     appdata = os.environ.get("APPDATA")

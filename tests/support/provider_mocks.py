@@ -260,6 +260,13 @@ def _install_makemkv(monkeypatch, scenario, rec, rip_success, preflight_availabl
     # MakeMKV.drive_list is a method on the shared class object.
     monkeypatch.setattr(MakeMKV, "drive_list", _drive_list)
 
+    # Never touch a real optical drive. The progress screen ejects on rip
+    # completion via a lazy ``from riplex.disc.makemkv import eject_disc``, so
+    # patch the source symbol (not just the screen namespaces).
+    import riplex.disc.makemkv as makemkv_mod
+
+    monkeypatch.setattr(makemkv_mod, "eject_disc", lambda *a, **k: True, raising=False)
+
     # These are imported by name into individual screen modules.
     for mod_name, names in {
         "riplex_app.screens.disc_detection": {
