@@ -1,11 +1,12 @@
 """Update screen - shows release notes and link to download."""
 
 import logging
+import threading
 import webbrowser
 
 import flet as ft
 
-from riplex.updater import get_current_version
+from riplex.updater import can_self_update, get_current_version
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +51,12 @@ class UpdateScreen:
             if i < len(releases) - 1:
                 notes_controls.append(ft.Divider(height=10, color=ft.Colors.GREY_800))
 
+        # Action controls (populated by _action_buttons; progress/status are
+        # revealed during an in-place update).
+        self._progress = ft.ProgressBar(width=400, visible=False)
+        self._status = ft.Text("", size=13)
+        self._actions = ft.Row(self._action_buttons(release_url), spacing=12)
+
         return ft.Column(
             [
                 ft.Row(
@@ -83,29 +90,102 @@ class UpdateScreen:
                     border_radius=8,
                 ),
                 ft.Container(height=10),
-                ft.Row(
-                    [
-                        ft.ElevatedButton(
-                            "View Release & Download",
-                            icon=ft.Icons.OPEN_IN_NEW,
-                            on_click=lambda _: webbrowser.open(release_url),
-                            style=ft.ButtonStyle(
-                                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
-                            ),
-                            disabled=not release_url,
-                        ),
-                        ft.OutlinedButton(
-                            "Back",
-                            on_click=self._go_back,
-                        ),
-                    ],
-                    spacing=12,
-                ),
+                self._progress,
+                self._status,
+                self._actions,
             ],
             spacing=10,
             scroll=ft.ScrollMode.AUTO,
             expand=True,
         )
+
+    # ------------------------------------------------------------------
+    # Actions row (in-place update when available, else browser download)
+    # ------------------------------------------------------------------
+    def _action_buttons(self, release_url: str) -> list[ft.Control]:
+        buttons: list[ft.Control] = []
+        if can_self_update():
+            buttons.append(
+                ft.ElevatedButton(
+                    "Update & Restart",
+                    icon=ft.Icons.SYSTEM_UPDATE_ALT,
+                    on_click=self._start_self_update,
+                    style=ft.ButtonStyle(
+                        padding=ft.Padding(left=30, top=15, right=30, bottom=15),
+                    ),
+                    tooltip="Download the update, verify it, and restart riplex automatically.",
+                )
+            )
+            download_label = "Download in Browser"
+        else:
+            download_label = "View Release & Download"
+        buttons.append(
+            ft.OutlinedButton(
+                download_label,
+                icon=ft.Icons.OPEN_IN_NEW,
+                on_click=lambda _: webbrowser.open(release_url),
+                disabled=not release_url,
+            )
+        )
+        buttons.append(ft.OutlinedButton("Back", on_click=self._go_back))
+        return buttons
+
+    def _start_self_update(self, _e):
+        """Kick off the in-place download + verify + swap in the background."""
+        info = self.app.state.get("update_info") or {}
+        self._progress.visible = True
+        self._progress.value = None  # indeterminate until first byte
+        self._status.value = "Downloading update\u2026"
+        self._status.color = ft.Colors.BLUE_300
+        self._actions.controls = [
+            ft.Row([ft.ProgressRing(width=18, height=18), ft.Text("Updating\u2026")], spacing=10),
+        ]
+        self.app.page.update()
+        threading.Thread(target=self._run_self_update, args=(info,), daemon=True).start()
+
+    def _run_self_update(self, info: dict):
+        from riplex import updater
+
+        def _on_progress(got: int, total: int):
+            frac = got / total if total else None
+            pct = f" {got * 100 // total}%" if total else ""
+
+            async def _u():
+                self._progress.value = frac
+                self._status.value = f"Downloading update\u2026{pct}"
+                self.app.page.update()
+
+            try:
+                self.app.page.run_task(_u)
+            except Exception:
+                pass
+
+        try:
+            staged = updater.stage_update(info, progress=_on_progress)
+        except Exception as exc:
+            log.exception("in-place update failed")
+
+            async def _fail():
+                self._progress.visible = False
+                self._status.value = (
+                    f"Update failed: {exc}. Use the browser download instead."
+                )
+                self._status.color = ft.Colors.ORANGE
+                self._actions.controls = self._action_buttons(info.get("url", ""))
+                self.app.page.update()
+
+            self.app.page.run_task(_fail)
+            return
+
+        async def _apply():
+            self._progress.value = 1.0
+            self._status.value = "Update verified. Restarting riplex\u2026"
+            self._status.color = ft.Colors.GREEN
+            self.app.page.update()
+
+        self.app.page.run_task(_apply)
+        # Swap the exe and relaunch; this terminates the current process.
+        updater.apply_update_and_relaunch(staged)
 
     def _go_back(self, e):
         self.app.navigate("welcome")

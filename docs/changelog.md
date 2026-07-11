@@ -37,6 +37,7 @@ destination.
 - "View on dvdcompare.net" link when a release has already been matched.
 - **Development > Testing guide** (`development/testing.md`) documenting the headless GUI and CLI integration test suites, the `tests/support/` harness, the `gui` fixture, media-type-targeted flows, and how to generate scenario fixtures from archived rips with `scripts/gen_gui_fixtures.py`.
 - **GUI auto-eject.** The disc is ejected automatically after a rip finishes so you can swap discs (or know it's done) without reaching for the drive. On by default; set `auto_eject = false` in the config to disable.
+- **GUI in-place update (Windows).** The update screen now offers **Update & Restart**: riplex downloads the new build, verifies its SHA-256 checksum, swaps the running `.exe` in place, and relaunches — no manual re-download or repeated SmartScreen approval. Requires a writable install folder; falls back to the browser download otherwise. Releases now publish `.sha256` checksums for every asset.
 
 ### Changed
 

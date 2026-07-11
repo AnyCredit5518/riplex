@@ -192,6 +192,12 @@ jobs:
           cp artifacts/riplex-windows/riplex-ui.exe release/riplex-ui-windows.exe
           cp artifacts/riplex-macos/riplex-macos release/
           cp artifacts/riplex-macos/riplex-ui-macos.zip release/
+          # Publish SHA-256 checksums so the app can verify a download before
+          # applying an in-place update (see riplex.updater.stage_update).
+          cd release
+          for f in riplex-windows.exe riplex-ui-windows.exe riplex-macos riplex-ui-macos.zip; do
+            sha256sum "$f" > "$f.sha256"
+          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -204,6 +210,10 @@ jobs:
           body: ${{ steps.tag_notes.outputs.body }}
           files: |
             release/riplex-windows.exe
+            release/riplex-windows.exe.sha256
             release/riplex-ui-windows.exe
+            release/riplex-ui-windows.exe.sha256
             release/riplex-macos
+            release/riplex-macos.sha256
             release/riplex-ui-macos.zip
+            release/riplex-ui-macos.zip.sha256

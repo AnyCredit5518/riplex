@@ -21,11 +21,23 @@ Download the latest release for your platform from the
 **GUI only (easiest):**
 
 1. Download `riplex-ui-windows.exe`
-2. Move it wherever you keep apps (e.g. `C:\Program Files\riplex\`)
+2. Move it wherever you keep apps. To get one-click in-app updates (below),
+   pick a folder you own — e.g. `%LOCALAPPDATA%\riplex\` or a folder under your
+   user directory — rather than `C:\Program Files\` (which needs admin rights
+   to update).
 3. Double-click to run. Windows SmartScreen may warn you because the app
    isn't code-signed -- click **More info** then **Run anyway**.
 4. Optionally, right-click the `.exe` and select **Create shortcut** to add
    it to your desktop or Start menu.
+
+> [!TIP]
+> **In-app updates (Windows).** When a new version is available, the app shows
+> an update banner. Click through to the update screen and choose
+> **Update & Restart** — riplex downloads the new build, verifies its SHA-256
+> checksum, swaps itself in place, and relaunches. No re-downloading or
+> re-approving SmartScreen each time. This needs the `.exe` to live in a
+> folder you can write to (step 2); from a read-only location it falls back to
+> a browser download.
 
 **CLI (for terminal users):**
 

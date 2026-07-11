@@ -518,6 +518,15 @@ def main():
     lib_logger.addHandler(fh)
     lib_logger.setLevel(logging.DEBUG)
     app_logger.info("Log file: %s", log_path)
+
+    # Remove any leftover ``riplex-ui.exe.old`` from a previous in-place update.
+    try:
+        from riplex.updater import cleanup_stale_update
+
+        cleanup_stale_update()
+    except Exception:  # pragma: no cover - best effort, never block launch
+        app_logger.debug("stale-update cleanup skipped", exc_info=True)
+
     ft.app(target=RiplexApp)
 
 
