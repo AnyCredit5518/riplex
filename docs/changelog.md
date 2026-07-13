@@ -53,6 +53,7 @@ destination.
 
 ### Fixed
 
+- **TV: a single wrong dvdcompare episode runtime no longer mislabels two episodes.** When a disc's episode-length titles line up 1:1 with the dvdcompare episode list, riplex now assigns them by disc position instead of purely by runtime. Previously a bad listed runtime (e.g. Psych S6 D3 listing "Heeeeere's Lassie" at 43:10 when the disc title is 49:41) orphaned that episode to a generic "Episode" label and let a same-runtime neighbour steal its slot. Positional alignment fixes both; it only applies on an exact 1:1 count match with at most one runtime outlier, and defers to runtime matching on ragged or reordered discs.
 - **GUI: cancelling a rip returns to the current disc, not the next one.** In an orchestrate session, stopping a rip mid-disc took you to the *next* disc's Insert Disc screen. It now returns to the current disc's Insert Disc screen so you can retry, skip, or eject — and the cancelled disc is no longer marked as ripped (no manifest written) or auto-ejected.
 - **GUI: Organize Rips scan-results footer now anchors to the bottom** like every other wizard screen. The results form now scrolls internally while the Back/Next buttons stay pinned at the window edge.
 - **GUI: Organize Rips Back button walks up the flow** instead of dropping to the Welcome screen. On the scan-results view it restores the multi-group picker (when the folder held several seasons or works) or otherwise returns to the folder input; the multi-group picker's Back button now returns to the folder input as well.

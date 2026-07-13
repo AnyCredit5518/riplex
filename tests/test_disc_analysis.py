@@ -354,6 +354,46 @@ class TestClassifyTitle:
         assert "Open Wide, O Earth" in _classify(t3)
         assert "Please Remain Calm" in _classify(t4)
 
+    def test_positional_alignment_survives_a_wrong_dvdcompare_runtime(self):
+        """Psych S6 D3: dvdcompare lists "Heeeeere's Lassie" at 43:10 but the
+        disc title is actually 49:41. With pure first-fit that title (49:41)
+        can't claim Lassie's slot (391s off), so it's orphaned to a generic
+        "Episode", and the *next* title (43:06 — really "Shawn and the Real
+        Girl", same 43:10 listed runtime) steals the Lassie slot. The disc's 4
+        episode-length titles line up 1:1 with the 4 dvdcompare episodes, so
+        positional alignment assigns them in disc order and both are fixed.
+        """
+        # Distinct sizes defeat the same-resolution duplicate check.
+        t4 = _make_title(4, 2579, resolution="1920x1080", size=1_600_000_000)  # Neil Simon
+        t5 = _make_title(5, 2999, resolution="1920x1080", size=1_810_000_000)  # Indiana (Extended)
+        t6 = _make_title(6, 2981, resolution="1920x1080", size=1_800_000_000)  # Lassie (49:41!)
+        t7 = _make_title(7, 2586, resolution="1920x1080", size=1_500_000_000)  # Real Girl
+        # A full-disc play-all and a short extra — neither is episode-length.
+        t8 = _make_title(8, 11145, resolution="1920x1080", size=6_800_000_000)
+        t0 = _make_title(0, 192, resolution="1920x1080", size=100_000_000)
+        all_titles = [t0, t4, t5, t6, t7, t8]
+
+        dvd_entries = [
+            ("S06E09 - Neil Simon's Lover's Retreat", 2583, "episode"),
+            ("S06E10 - Indiana Shawn and the Temple", 3005, "episode"),
+            ("S06E11 - Heeeeere's Lassie", 2590, "episode"),   # wrong runtime (43:10)
+            ("S06E12 - Shawn and the Real Girl", 2590, "episode"),
+        ]
+        total = sum(rt for _, rt, _ in dvd_entries)
+
+        def _classify(t):
+            return classify_title(t, all_titles, dvd_entries, False, None, total, 4)
+
+        assert "Neil Simon" in _classify(t4)
+        assert "Indiana Shawn" in _classify(t5)
+        # The formerly-orphaned title is now correctly the Lassie episode...
+        assert "Heeeeere's Lassie" in _classify(t6)
+        # ...and the title that used to steal Lassie is now Real Girl.
+        assert "Shawn and the Real Girl" in _classify(t7)
+        # No episode name lands on two disc titles.
+        labels = [_classify(t) for t in (t4, t5, t6, t7)]
+        assert len(set(labels)) == 4
+
 
 class TestDetectEditionName:
     def test_theatrical_cut_from_dvdcompare(self):

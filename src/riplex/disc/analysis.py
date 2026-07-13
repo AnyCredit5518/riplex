@@ -784,15 +784,76 @@ def enrich_dvd_entries_with_tmdb(
 # ---- title classification ----
 
 
+def _positional_episode_alignment(
+    all_titles: list,
+    episodes: list[tuple[int, str, int]],
+    tolerance_seconds: int,
+) -> dict[int, tuple[str, int, str]] | None:
+    """Align episode-length disc titles to dvdcompare episodes *by position*.
+
+    dvdcompare lists a disc's episodes in disc order, and makemkv reports titles
+    in disc order too. When the count of episode-length titles equals the count
+    of dvdcompare episode entries, position is a far stronger signal than
+    runtime: a single wrong dvdcompare runtime (a listing typo) would otherwise
+    orphan the title it belongs to and let a same-runtime neighbour steal its
+    episode. Aligning 1:1 in order fixes both at once.
+
+    Returns the ``title.index -> (name, runtime, "episode")`` mapping, or
+    ``None`` to defer to runtime matching when this can't be applied safely:
+
+    * the count of episode-length titles doesn't equal the episode count
+      (ragged disc — a listing has an episode not present, or the disc has an
+      extra title), or
+    * more than one positional pair is out of tolerance. A *lone* outlier is
+      the signature of a single bad runtime (trust position); two or more means
+      the identity/order is genuinely uncertain, so runtime matching is safer.
+
+    "Episode-length" is a duration band derived from the known episode runtimes.
+    Because the alignment only fires on an exact count match, a mis-included or
+    mis-excluded title simply changes the count and defers to the fallback —
+    positional assignment never fires on an ambiguous disc.
+    """
+    ep_runtimes = [rt for _, _, rt in episodes]
+    if not ep_runtimes:
+        return None
+    lo = min(ep_runtimes) * 0.6
+    hi = max(ep_runtimes) * 1.5
+
+    candidates = [
+        t for t in sorted(all_titles, key=lambda t: t.index)
+        if lo <= t.duration_seconds <= hi
+    ]
+    if len(candidates) != len(episodes):
+        return None
+
+    outliers = sum(
+        1 for t, (_, _, runtime) in zip(candidates, episodes)
+        if abs(t.duration_seconds - runtime) > tolerance_seconds
+    )
+    if outliers > 1:
+        return None
+
+    return {
+        t.index: (name, runtime, "episode")
+        for t, (_, name, runtime) in zip(candidates, episodes)
+    }
+
+
 def _assign_episodes_sequentially(
     all_titles: list,
     dvd_entries: list[tuple[str, int, str]],
     *,
     tolerance_seconds: int = 60,
 ) -> dict[int, tuple[str, int, str]]:
-    """Walk disc titles in index order, matching them to dvdcompare episode
-    entries in dvdcompare order (first-fit over the remaining unconsumed
-    episodes).
+    """Match disc titles to dvdcompare episode entries.
+
+    First tries a *positional* 1:1 alignment (see
+    :func:`_positional_episode_alignment`) which trusts disc order over
+    runtime when the episode-length titles line up exactly with the episode
+    list — this survives a single wrong dvdcompare runtime.
+
+    Otherwise falls back to a first-fit walk: disc titles in index order, each
+    taking the earliest unconsumed dvdcompare episode within tolerance.
 
     TV episode runtimes on the same disc are often within a few seconds of
     each other, so pure duration matching can grab the wrong entry and
@@ -823,6 +884,11 @@ def _assign_episodes_sequentially(
     ]
     if not episodes or not all_titles:
         return {}
+
+    # Plan A: trust disc order when the episode-length titles line up 1:1.
+    positional = _positional_episode_alignment(all_titles, episodes, tolerance_seconds)
+    if positional is not None:
+        return positional
 
     consumed: set[int] = set()
     assignments: dict[int, tuple[str, int, str]] = {}
