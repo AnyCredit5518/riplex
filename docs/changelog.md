@@ -53,6 +53,7 @@ destination.
 
 ### Fixed
 
+- **GUI: cancelling a rip returns to the current disc, not the next one.** In an orchestrate session, stopping a rip mid-disc took you to the *next* disc's Insert Disc screen. It now returns to the current disc's Insert Disc screen so you can retry, skip, or eject — and the cancelled disc is no longer marked as ripped (no manifest written) or auto-ejected.
 - **GUI: Organize Rips scan-results footer now anchors to the bottom** like every other wizard screen. The results form now scrolls internally while the Back/Next buttons stay pinned at the window edge.
 - **GUI: Organize Rips Back button walks up the flow** instead of dropping to the Welcome screen. On the scan-results view it restores the multi-group picker (when the folder held several seasons or works) or otherwise returns to the folder input; the multi-group picker's Back button now returns to the folder input as well.
 - **Organize: duplicate-title extras no longer clobber their episode's destination.** dvdcompare sometimes lists the same episode name twice (real broadcast episode + a shorter bonus re-edit). The rip-time enrichment already demotes the shorter entry to ``[extra]``, but the organizer was ignoring that tag and fuzzy-routing both files to the same ``s0Xe0Y - Title.mkv`` destination — so the second file silently overwrote the first when organize actually executed. The organizer now respects the ``[extra]`` classification and routes the duplicate to an extras folder instead.

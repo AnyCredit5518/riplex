@@ -185,8 +185,14 @@ class ProgressScreen:
                 ))
 
         # Done
+        cancelled = self._cancel_event.is_set()
         self.app.state["rip_results"] = results
-        self.overall_text.value = f"Complete: {sum(1 for r in results if r.success)}/{len(results)} successful"
+        if cancelled:
+            self.overall_text.value = "Cancelled."
+        else:
+            self.overall_text.value = (
+                f"Complete: {sum(1 for r in results if r.success)}/{len(results)} successful"
+            )
         self.current_title_text.value = ""
         self.progress_bar.value = 1.0
         self.progress_pct.value = "100%"
@@ -195,6 +201,29 @@ class ProgressScreen:
         self.progress_eta.value = ""
         self.cancel_btn.visible = False
         self._update()
+
+        # Cancelled: do NOT mark this disc ripped, write a manifest (which
+        # would flag it as completed for resume), auto-eject, or advance the
+        # queue. Return to this disc's Insert Disc screen so the user can
+        # retry, skip, or eject — they aborted on purpose and may want any of
+        # those. (Non-orchestrate rips just show the results summary.)
+        if cancelled:
+            self._log_message(
+                "Rip cancelled. Returning to disc options — retry, skip, or eject.",
+                ft.Colors.ORANGE,
+            )
+            self._update()
+            target = (
+                "disc_swap"
+                if self.app.state.get("workflow") == "orchestrate"
+                else "done"
+            )
+
+            async def _nav_cancel():
+                self.app.navigate(target)
+
+            self.app.page.run_task(_nav_cancel)
+            return
 
         # Write debug snapshots
         self._write_snapshots(results)
