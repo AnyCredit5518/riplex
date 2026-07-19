@@ -47,7 +47,7 @@ More screenshots:
 [disc overview](screenshots/5_Multi_Disc_Overview_BTTF.png).
 
 > [!NOTE]
-> riplex currently handles one film (or one TV show) per session. Multi-film box sets that bundle separate films onto separate discs (e.g. a trilogy in one box) need to be ripped one film at a time.
+> riplex handles multi-work box sets and complete multi-season TV series in a single guided session. It detects the separate films (or films plus a show) inside a release, groups the discs that belong to each work, and routes every one to its own Plex destination — you can stop after any disc and resume the set later.
 
 ## Requirements
 

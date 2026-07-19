@@ -40,6 +40,9 @@ for the main flow with screenshots.
 
 - **TMDb integration**: Identifies movies vs TV shows, gets canonical titles, episode lists, and runtimes
 - **dvdcompare.net integration**: Looks up disc contents (featurettes, interviews, deleted scenes, trailers) with per-feature runtimes
+- **Multi-work box sets**: Detects several films (or films plus a TV series) in one release and routes each work to its own Plex destination
+- **Multi-season TV**: Rips a complete series season by season, nesting under `Season NN/` with a Season Select step and per-season disc grouping
+- **Guided resume**: A session marker records the whole plan, so you can stop after any disc and resume the set later — from any disc
 - **Duplicate detection**: Removes duplicate MKV rips using metadata fingerprinting and perceptual hashing
 - **Play-all handling**: Detects and removes compilation files; splits play-all files by chapters when needed
 - **Runtime matching**: Matches ripped files to their correct identity by comparing durations against known runtimes
@@ -50,3 +53,5 @@ for the main flow with screenshots.
 - **Dry-run by default**: Preview all changes before committing; `--execute` to apply
 - **Snapshot replay**: Capture and replay organize workflows from JSON metadata snapshots
 - **Caching**: File-based JSON caching for dvdcompare (30-day TTL) and TMDb (7-day TTL) responses
+- **In-place updates (desktop, Windows)**: Downloads and checksum-verifies new versions, swaps the app in place, and relaunches — no manual re-download
+- **Auto-eject (desktop)**: Ejects the disc automatically once a rip finishes

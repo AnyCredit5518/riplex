@@ -11,6 +11,20 @@ box set at once — detecting the *works* inside a release, grouping the discs t
 belong to each, and routing every work to its correct Plex destination in a
 single guided session — and then keeps itself up to date automatically.
 
+## Why 1.0.0?
+
+riplex has been usable for a while; three things make this the right moment to
+call it stable:
+
+- **The hard workflows are done.** Multi-work box sets and complete multi-season
+  TV series — the cases that used to mean ripping disc-by-disc and sorting by
+  hand — now work end to end, in both the desktop app and the CLI.
+- **It's protected against regressions.** A headless integration suite exercises
+  the entire GUI wizard and the CLI against real-world scenarios generated from
+  archived rips, so the flows you depend on keep working as development continues.
+- **Updates are effortless.** In-place updates mean you install once and never
+  have to re-download and re-approve the app for each new version.
+
 ## Headline features
 
 ### Multi-work box sets

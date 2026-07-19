@@ -55,6 +55,7 @@ routed to its correct Plex destination.
 - `_plan_show` keeps Season 0 (Specials); the Organize preview shows a title/season source badge.
 - Every `orchestrate` disc now routes through an Insert Disc scan-confirm step.
 - **Architecture** file tree now lists `tests/integration/`, `tests/support/`, and `tests/fixtures/gui/scenarios/`.
+- Home page and docs index/README refreshed for the 1.0.0 feature set (multi-work box sets, multi-season TV, in-place updates, auto-eject).
 
 ### Fixed
 
