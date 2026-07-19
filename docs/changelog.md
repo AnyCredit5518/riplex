@@ -4,12 +4,15 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
+## v1.0.0 — 2026-07-18
 
-Summary: multi-work and multi-season box-set support. riplex can now rip and
-organize a box set that bundles several films, or a complete multi-season TV
-series, in a single guided session — with each work routed to its correct Plex
-destination.
+Summary: the first stable release. v1.0.0 brings full multi-work and
+multi-season box-set support, hardens TV episode matching, adds a comprehensive
+headless GUI + CLI integration test suite to guard against regressions, and
+introduces one-click in-place updates on Windows so future upgrades are
+seamless. A box set that bundles several films, or a complete multi-season TV
+series, can be ripped and organized in a single guided session, with each work
+routed to its correct Plex destination.
 
 ### Highlights
 
@@ -18,6 +21,8 @@ destination.
 - **Guided resume.** A session marker (`_riplex_session.json`) records the whole plan, so you can stop after any disc and resume later — from any disc of the set — without re-picking metadata.
 - **Metadata persisted per rip.** Rip manifests now store the chosen TMDb and dvdcompare ids, so organizing (or resuming) a ripped disc skips the pickers and reuses the exact match you confirmed at rip time.
 - **Smarter TV matching.** dvdcompare episode listings are cross-referenced against the TMDb episode list, and episodes are assigned deterministically from their rip-time classification instead of guessing between near-identical runtimes.
+- **Seamless updates.** On Windows, the app can download, verify, and install its own updates in place and relaunch — no more re-downloading the exe and clearing SmartScreen every release.
+- **Regression-proofed for 1.0.** A headless integration suite drives the full GUI wizard and the CLI through mocked disc/TMDb/dvdcompare scenarios (generated from real archived rips), so the flows that matter stay protected as the project grows.
 
 ### ⚠️ Breaking
 
