@@ -784,6 +784,18 @@ def enrich_dvd_entries_with_tmdb(
 # ---- title classification ----
 
 
+def _parse_se_key(name: str) -> tuple[int, int] | None:
+    """Parse a leading ``SxxEyy`` label into a ``(season, episode)`` sort key.
+
+    Returns ``None`` when the name has no canonical S/E prefix (the entry
+    hasn't been enriched against TMDb), so callers fall back to source order.
+    """
+    m = re.match(r"^S(\d+)E(\d+)\b", name or "")
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+    return None
+
+
 def _positional_episode_alignment(
     all_titles: list,
     episodes: list[tuple[int, str, int]],
@@ -813,9 +825,21 @@ def _positional_episode_alignment(
     mis-excluded title simply changes the count and defers to the fallback —
     positional assignment never fires on an ambiguous disc.
     """
-    ep_runtimes = [rt for _, _, rt in episodes]
-    if not ep_runtimes:
+    if not episodes:
         return None
+
+    # dvdcompare can list a disc's episodes out of broadcast order - most
+    # commonly when TMDb enrichment promotes a feature dvdcompare filed under
+    # extras (e.g. an "(Extended Version)" episode) into an episode, leaving it
+    # positioned after the real episode list. Positional alignment assumes the
+    # episode list is in disc/broadcast order, so when every episode carries a
+    # canonical SxxEyy number (from enrichment) sort by it first; without
+    # numbers we keep dvdcompare order.
+    se_keys = [_parse_se_key(name) for _, name, _ in episodes]
+    if all(k is not None for k in se_keys):
+        episodes = [e for _, e in sorted(zip(se_keys, episodes), key=lambda p: p[0])]
+
+    ep_runtimes = [rt for _, _, rt in episodes]
     lo = min(ep_runtimes) * 0.6
     hi = max(ep_runtimes) * 1.5
 

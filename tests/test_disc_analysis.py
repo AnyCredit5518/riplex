@@ -394,6 +394,44 @@ class TestClassifyTitle:
         labels = [_classify(t) for t in (t4, t5, t6, t7)]
         assert len(set(labels)) == 4
 
+    def test_positional_alignment_sorts_promoted_out_of_order_episode(self):
+        """Psych S6 D3 (real disc): dvdcompare files the "(Extended Version)" of
+        an episode under *extras*, so the disc's episode list has only 3 entries.
+        TMDb enrichment promotes that extra to an episode (E10) but it stays in
+        the extras section, so the episode entries arrive out of broadcast order:
+        [E09, E11, E12, E10]. Positional alignment must sort by the canonical S/E
+        number first, or E10 (the 50-min title) misaligns and the 49:41 title is
+        orphaned to a generic "Episode".
+        """
+        t4 = _make_title(4, 2579, resolution="1920x1080", size=1_600_000_000)  # E09 Neil
+        t5 = _make_title(5, 2999, resolution="1920x1080", size=1_810_000_000)  # E10 Indiana (Ext.)
+        t6 = _make_title(6, 2981, resolution="1920x1080", size=1_800_000_000)  # E11 Lassie (49:41)
+        t7 = _make_title(7, 2586, resolution="1920x1080", size=1_500_000_000)  # E12 Real Girl
+        t8 = _make_title(8, 11145, resolution="1920x1080", size=6_800_000_000)  # play-all
+        t0 = _make_title(0, 192, resolution="1920x1080", size=100_000_000)  # short extra
+        all_titles = [t0, t4, t5, t6, t7, t8]
+
+        # Episode entries OUT of broadcast order -- E10 promoted from extras, last.
+        dvd_entries = [
+            ("S06E09 - Neil Simon's Lover's Retreat", 2583, "episode"),
+            ("S06E11 - Heeeeere's Lassie", 2590, "episode"),
+            ("S06E12 - Shawn and the Real Girl", 2590, "episode"),
+            ("Episodes", 0, "extra"),
+            ("S06E10 - Indiana Shawn and the Temple", 3005, "episode"),
+        ]
+        total = sum(rt for _, rt, et in dvd_entries if et == "episode")
+        ep_count = sum(1 for _, _, et in dvd_entries if et == "episode")
+
+        def _classify(t):
+            return classify_title(t, all_titles, dvd_entries, False, None, total, ep_count)
+
+        assert "Neil Simon" in _classify(t4)
+        assert "Indiana Shawn" in _classify(t5)
+        assert "Heeeeere's Lassie" in _classify(t6)          # was generic "Episode"
+        assert "Shawn and the Real Girl" in _classify(t7)    # was Lassie
+        labels = [_classify(t) for t in (t4, t5, t6, t7)]
+        assert len(set(labels)) == 4
+
 
 class TestDetectEditionName:
     def test_theatrical_cut_from_dvdcompare(self):

@@ -4,6 +4,12 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## Unreleased
+
+### Fixed
+
+- **Out-of-order episode matching.** When dvdcompare files an “(Extended Version)” of an episode under a disc's *extras*, TMDb enrichment promotes it to an episode but leaves it positioned after the real episode list, so the episode entries arrive out of broadcast order. Positional episode alignment now sorts episodes by their canonical `SxxEyy` number before matching disc titles, so a disc whose titles are in broadcast order maps correctly. Previously the misordered list could orphan a title to a generic “Episode” label and shift the following episodes by one (e.g. Psych S6 D3).
+
 ## v1.0.0 — 2026-07-18
 
 Summary: the first stable release. v1.0.0 brings full multi-work and
