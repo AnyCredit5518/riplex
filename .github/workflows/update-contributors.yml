@@ -35,8 +35,8 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: chore: refresh CONTRIBUTORS.md
-          title: chore: refresh CONTRIBUTORS.md
+          commit-message: "chore: refresh CONTRIBUTORS.md"
+          title: "chore: refresh CONTRIBUTORS.md"
           body: |
             Updates the generated Bug Bashers table in CONTRIBUTORS.md from closed issue reports.
           branch: chore/update-contributors
