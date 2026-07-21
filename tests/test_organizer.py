@@ -586,6 +586,72 @@ class TestBuildOrganizePlanShow:
         assert len(op.moves) == 1
         assert "Trailers" in op.moves[0].destination
 
+    def test_tv_episode_with_parenthetical_title_routes_by_se_classification(self):
+        """Psych S5: an episode whose *title* contains a parenthetical
+        (``Shawn and Gus in Drag (Racing)``) — or an episode dvdcompare
+        files under a disc's extras (``Romeo and Juliet and Juliet
+        (Extended Version)``, ``Dual Spires (Extended Version)``) — must
+        still route to its Plex episode path. The dvdcompare match label
+        looks like an extra (trailing parenthetical), so the pre-fix code
+        sent these to ``Other/``. The rip-time ``SxxEyy`` classification
+        recorded in the manifest is authoritative and now wins.
+        """
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="C1_t00.mkv",
+                    file_duration_seconds=2585,
+                    matched_label="Disc 2: Shawn and Gus in Drag (Racing)",
+                    matched_runtime_seconds=2590,
+                    delta_seconds=5,
+                    confidence="high",
+                    classification="S05E05 - Shawn and Gus in Drag (Racing) (1080p)",
+                ),
+                MatchCandidate(
+                    file_name="C1_t00.mkv",
+                    file_duration_seconds=2894,
+                    matched_label="Disc 1: Romeo and Juliet and Juliet ((Extended Version))",
+                    matched_runtime_seconds=2898,
+                    delta_seconds=4,
+                    confidence="high",
+                    classification="S05E01 - Romeo and Juliet and Juliet (1080p)",
+                ),
+                MatchCandidate(
+                    file_name="D2_t03.mkv",
+                    file_duration_seconds=3275,
+                    matched_label="Disc 3: Dual Spires ((Extended Version))",
+                    matched_runtime_seconds=3279,
+                    delta_seconds=4,
+                    confidence="high",
+                    classification="S05E12 - Dual Spires (1080p)",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[
+                PlannedSeason(
+                    season_number=5,
+                    episodes=[
+                        PlannedEpisode(season_number=5, episode_number=1, title="Romeo and Juliet and Juliet", runtime="48m"),
+                        PlannedEpisode(season_number=5, episode_number=5, title="Shawn and Gus in Drag (Racket)", runtime="43m"),
+                        PlannedEpisode(season_number=5, episode_number=12, title="Dual Spires", runtime="54m"),
+                    ],
+                ),
+            ],
+        )
+        output = Path("E:/Media")
+        op = build_organize_plan(result, plan, output)
+        dests = sorted(m.destination for m in op.moves)
+        assert len(op.moves) == 3
+        # None land in Other/.
+        assert all("Other" not in d for d in dests)
+        assert all("Season 05" in d for d in dests)
+        assert any(d.endswith("s05e01 - Romeo and Juliet and Juliet.mkv") for d in dests)
+        assert any(d.endswith("s05e05 - Shawn and Gus in Drag (Racket).mkv") for d in dests)
+        assert any(d.endswith("s05e12 - Dual Spires.mkv") for d in dests)
+
     def test_tv_episode_fuzzy_title_match(self):
         """dvdcompare titles diverging from TMDb still route correctly.
 

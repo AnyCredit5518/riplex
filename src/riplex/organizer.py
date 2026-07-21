@@ -595,6 +595,30 @@ def _compute_destination(
     label = candidate.matched_label
     log.debug("_compute_destination: label='%s'", label)
 
+    # SE-first: the rip-time classification is authoritative. When the
+    # classifier tagged this file with a TMDb-enriched "SxxEyy - Title"
+    # prefix (recorded in the manifest at rip time), route directly by
+    # (season, episode) — before consulting the dvdcompare match label.
+    # The label loses episode identity when the episode title carries a
+    # parenthetical (e.g. "Shawn and Gus in Drag (Racing)", which the
+    # feature-type branch below mistakes for an extra) or when dvdcompare
+    # files the episode under a disc's extras (e.g. an "(Extended
+    # Version)" listing). Honoring the manifest avoids re-deriving — and
+    # mis-deriving — a match that was already correct at rip time.
+    if isinstance(plan, PlannedShow):
+        se_ep = _episode_from_classification_se(plan, candidate.classification)
+        if se_ep is not None:
+            fname = episode_file_name(
+                plan.canonical_title, plan.year,
+                se_ep.season_number, se_ep.episode_number, se_ep.title,
+            )
+            dest = base / season_folder_name(se_ep.season_number) / fname
+            log.debug(
+                "  -> episode by SE-in-classification '%s' (pre-label): %s",
+                candidate.classification, dest,
+            )
+            return dest
+
     # Movie main file
     if "(movie)" in label:
         edition = None

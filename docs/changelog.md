@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical (e.g. *Shawn and Gus in Drag (Racing)*), or one that dvdcompare files under a disc's extras (e.g. an *(Extended Version)* listing such as *Romeo and Juliet and Juliet* or *Dual Spires*), was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly (e.g. Psych S5 E01/E05/E12).
+
+## v1.0.1 — 2026-07-20
+
+### Fixed
+
 - **Out-of-order episode matching.** When dvdcompare files an “(Extended Version)” of an episode under a disc's *extras*, TMDb enrichment promotes it to an episode but leaves it positioned after the real episode list, so the episode entries arrive out of broadcast order. Positional episode alignment now sorts episodes by their canonical `SxxEyy` number before matching disc titles, so a disc whose titles are in broadcast order maps correctly. Previously the misordered list could orphan a title to a generic “Episode” label and shift the following episodes by one (e.g. Psych S6 D3).
 
 ## v1.0.0 — 2026-07-18
