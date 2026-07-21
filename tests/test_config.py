@@ -32,3 +32,29 @@ class TestGetApiKey:
             ):
                 os.environ.pop("TMDB_API_KEY", None)
                 assert get_api_key(None) == ""
+
+
+class TestGetMakemkvListTimeout:
+    def test_defaults_to_120(self):
+        with mock.patch("riplex.config.load_config", return_value={}):
+            from riplex.config import get_makemkv_list_timeout
+
+            assert get_makemkv_list_timeout() == 120
+
+    def test_reads_config_override(self):
+        with mock.patch(
+            "riplex.config.load_config",
+            return_value={"makemkv_list_timeout": 300},
+        ):
+            from riplex.config import get_makemkv_list_timeout
+
+            assert get_makemkv_list_timeout() == 300
+
+    def test_bad_value_falls_back_to_default(self):
+        with mock.patch(
+            "riplex.config.load_config",
+            return_value={"makemkv_list_timeout": "not-a-number"},
+        ):
+            from riplex.config import get_makemkv_list_timeout
+
+            assert get_makemkv_list_timeout() == 120

@@ -943,6 +943,17 @@ class TestDetectDiscNumber:
         info = DiscInfo(disc_name="BLADE_RUNNER_2049", disc_type="Blu-ray disc")
         assert _detect_disc_number(info, []) is None
 
+    def test_volume_label_compact_season_disc(self):
+        # Issue #18: EXPANSE_S3D1_UPB75 glues the disc digit to the season
+        # token and trails a provider code, so the old strategy-1 regex
+        # missed it and detection fell through to (wrong) duration matching.
+        info = DiscInfo(disc_name="EXPANSE_S3D1_UPB75", disc_type="Blu-ray disc")
+        assert _detect_disc_number(info, []) == 1
+
+    def test_volume_label_compact_season_disc_two(self):
+        info = DiscInfo(disc_name="EXPANSE_S3D2_UPB75", disc_type="Blu-ray disc")
+        assert _detect_disc_number(info, []) == 2
+
     def test_duration_matching(self):
         class FakeEp:
             def __init__(self, runtime):

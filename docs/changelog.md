@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical (e.g. *Shawn and Gus in Drag (Racing)*), or one that dvdcompare files under a disc's extras (e.g. an *(Extended Version)* listing such as *Romeo and Juliet and Juliet* or *Dual Spires*), was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly (e.g. Psych S5 E01/E05/E12).
 
+- **makemkvcon drive-listing timeout is now configurable (default raised to 120s).** `makemkvcon -r info list` previously timed out after a fixed 60 seconds; on some setups this fired even though the MakeMKV GUI worked fine. Raise `makemkv_list_timeout` in the config if a slow drive still times out. (#23)
+- **Disc and season detection for compact `SxDy` volume labels.** A label that glues the disc digit to the season token and trails a provider code — e.g. `EXPANSE_S3D1_UPB75` — now resolves to the correct title (*Expanse*), season (3) and disc (1). Previously the season was lost and disc detection fell through to duration matching, which could pick the wrong disc. (#18)
+
 ### Added
 
 - **Durations on the organize preview.** Each matched file now shows its runtime next to the matched episode/target's expected runtime; a divergence of more than a minute is highlighted so an incorrect match is easy to spot before you execute.

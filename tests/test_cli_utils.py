@@ -157,6 +157,11 @@ class TestParseVolumeLabel:
     def test_strips_season_disc_suffix_with_separators(self):
         assert parse_volume_label("HANNIBAL_S1_BD1") == "Hannibal"
 
+    def test_strips_compact_season_disc_with_trailing_token(self):
+        # Issue #18: labels like EXPANSE_S3D1_UPB75 glue the disc digit to the
+        # season token and carry a provider code after it.
+        assert parse_volume_label("EXPANSE_S3D1_UPB75") == "Expanse"
+
 
 class TestParseSeasonNumber:
     def test_parses_season_word_form(self):
@@ -174,6 +179,13 @@ class TestParseSeasonNumber:
     def test_returns_none_when_missing(self):
         assert parse_season_number("Scrubs") is None
 
+    def test_parses_compact_season_disc(self):
+        # Issue #18: S3 glued to D1 (no separator) plus a trailing token.
+        assert parse_season_number("EXPANSE_S3D1_UPB75") == 3
+
+    def test_parses_compact_season_bd_disc(self):
+        assert parse_season_number("Hannibal St01bd1") == 1
+
 
 class TestParseTitleAndSeason:
     def test_parses_compact_rip_label(self):
@@ -184,6 +196,10 @@ class TestParseTitleAndSeason:
 
     def test_parses_show_name_and_season(self):
         assert parse_title_and_season("Scrubs Season 6") == ("Scrubs", 6)
+
+    def test_parses_compact_season_disc_label(self):
+        # Issue #18: EXPANSE_S3D1_UPB75 -> title "Expanse", season 3.
+        assert parse_title_and_season("EXPANSE_S3D1_UPB75") == ("Expanse", 3)
 
 
 # ---------------------------------------------------------------------------

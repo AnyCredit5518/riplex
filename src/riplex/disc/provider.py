@@ -1085,7 +1085,18 @@ def detect_disc_number(
 
     # Strategy 1: volume label
     label = disc_info.disc_name or ""
-    match = re.search(r"[_\s-]D(?:isc\s*)?(\d+)\b", label, re.IGNORECASE)
+    # A standalone disc marker ("FROZEN_PLANET_II_D2", "PLANET_EARTH_III-Disc3",
+    # "PLANET EARTH Disc 1"), tolerating a trailing provider token after the
+    # number ("..._D1_UPB75") — underscores are word chars so a plain \b won't
+    # fire before one.
+    match = re.search(r"[_\s-]D(?:isc)?\s*(\d+)(?=$|[_\s-])", label, re.IGNORECASE)
+    if not match:
+        # A compact season+disc marker with no separator between them
+        # ("EXPANSE_S3D1_UPB75", "HANNIBAL_S1D1") — the disc digit is glued to
+        # the season token, so the standalone pattern above can't see it.
+        match = re.search(
+            r"[_\s-]S\d+\s*D(?:isc)?\s*(\d+)(?=$|[_\s-])", label, re.IGNORECASE,
+        )
     if match:
         n = int(match.group(1))
         log.info("detect_disc_number: strategy1 (volume label) matched disc %d", n)

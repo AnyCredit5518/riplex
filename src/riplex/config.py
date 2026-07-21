@@ -120,6 +120,22 @@ def get_auto_eject() -> bool:
     return bool(cfg.get("auto_eject", True))
 
 
+def get_makemkv_list_timeout() -> int:
+    """Seconds to wait for ``makemkvcon -r info list`` (drive enumeration).
+
+    Defaults to ``120``. Some drives are slow to spin up or enumerate and
+    time out under the old fixed 60s even though the MakeMKV GUI works;
+    raise ``makemkv_list_timeout`` in the config if you still hit
+    ``makemkvcon failed: ... timed out after N seconds``.
+    """
+    cfg = load_config()
+    try:
+        return int(cfg.get("makemkv_list_timeout", 120))
+    except (TypeError, ValueError):
+        return 120
+
+
+
 def _config_write_path() -> Path:
     """Determine the writable config path (user-scoped)."""
     appdata = os.environ.get("APPDATA")

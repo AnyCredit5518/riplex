@@ -472,11 +472,13 @@ class MakeMKV:
         cmd = [str(exe), "-r", "info", "list"]
         log.info("Running: %s", " ".join(cmd))
 
+        from riplex.config import get_makemkv_list_timeout
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=get_makemkv_list_timeout(),
             **_SUBPROCESS_FLAGS,
         )
         output = result.stdout + result.stderr

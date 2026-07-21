@@ -12,15 +12,15 @@ _TRAILING_DISC_RE = re.compile(
     r"\s*[-_]?\s*(?:D(?:isc)?\s*\d+)\s*$", re.IGNORECASE,
 )
 _TRAILING_SEASON_DISC_RE = re.compile(
-    r"\s*[-_]?\s*S(?:eason|t)?\s*\d+[\s_-]*(?:BD|B(?:lu[-_ ]*ray)|D(?:isc)?)[\s_-]*\d+\s*$",
+    r"\s*[-_]?\s*S(?:eason|t)?\s*\d+[\s_-]*(?:BD|B(?:lu[-_ ]*ray)|D(?:isc)?)[\s_-]*\d+(?:[\s_-].*)?$",
     re.IGNORECASE,
 )
 _SEASON_NUMBER_RE = re.compile(
-    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-])",
+    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-]|B?D(?:isc)?\s*\d)",
     re.IGNORECASE,
 )
 _SEASON_TOKEN_RE = re.compile(
-    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-])",
+    r"(?:^|[\s_-])(?:Season|S|St)\s*0*(\d{1,2})(?=$|[\s_-]|B?D(?:isc)?\s*\d)",
     re.IGNORECASE,
 )
 
