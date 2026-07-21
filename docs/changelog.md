@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical (e.g. *Shawn and Gus in Drag (Racing)*), or one that dvdcompare files under a disc's extras (e.g. an *(Extended Version)* listing such as *Romeo and Juliet and Juliet* or *Dual Spires*), was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly (e.g. Psych S5 E01/E05/E12).
 
+### Added
+
+- **Durations on the organize preview.** Each matched file now shows its runtime next to the matched episode/target's expected runtime; a divergence of more than a minute is highlighted so an incorrect match is easy to spot before you execute.
+
 ## v1.0.1 — 2026-07-20
 
 ### Fixed

@@ -19,6 +19,16 @@ from riplex.snapshot import save_from_scanned, save_organized_marker
 log = logging.getLogger(__name__)
 
 
+def _fmt_duration(seconds: int) -> str:
+    """Format seconds as ``m:ss`` (or ``h:mm:ss`` for hour-plus runtimes)."""
+    seconds = int(seconds or 0)
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
 class OrganizePreviewScreen:
     def __init__(self, app):
         self.app = app
@@ -282,13 +292,24 @@ class OrganizePreviewScreen:
                 padding=ft.Padding(left=6, right=6, top=2, bottom=2),
                 border_radius=4,
             )
+            # Durations make a bad match obvious at a glance: the source
+            # file's runtime beside the matched target's expected runtime,
+            # highlighted when they diverge by more than a minute.
+            file_dur = getattr(move, "file_duration_seconds", 0)
+            tgt_dur = getattr(move, "target_runtime_seconds", 0)
+            dur_mismatch = tgt_dur > 0 and abs(file_dur - tgt_dur) > 60
+            dur_color = ft.Colors.ORANGE if dur_mismatch else ft.Colors.GREY_500
+            src_dur_text = _fmt_duration(file_dur) if file_dur else ""
+            tgt_dur_text = f"({_fmt_duration(tgt_dur)})" if tgt_dur else ""
             move_rows.append(
                 ft.Row([
                     ft.Icon(ft.Icons.CHECK_CIRCLE, color=conf_color, size=16),
                     conf_chip,
-                    ft.Text(f"{src_name}", size=12, width=220, no_wrap=True),
+                    ft.Text(f"{src_name}", size=12, width=180, no_wrap=True),
+                    ft.Text(src_dur_text, size=11, width=54, no_wrap=True, color=dur_color),
                     ft.Icon(ft.Icons.ARROW_FORWARD, size=14, color=ft.Colors.GREY_500),
                     ft.Text(f"{dest_folder}/{dest_name}", size=12, expand=True, no_wrap=True),
+                    ft.Text(tgt_dur_text, size=11, no_wrap=True, color=dur_color),
                 ], spacing=6)
             )
 

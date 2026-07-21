@@ -152,6 +152,8 @@ class FileMove:
     label: str  # what this file was matched to
     confidence: str
     delta_seconds: int = 0  # |file_runtime - target_runtime|, for diagnostics
+    file_duration_seconds: int = 0  # source file runtime, for preview display
+    target_runtime_seconds: int = 0  # matched target runtime, for preview display
 
 
 @dataclass
@@ -532,6 +534,8 @@ def build_organize_plan(
                 label=candidate.matched_label,
                 confidence=candidate.confidence,
                 delta_seconds=candidate.delta_seconds,
+                file_duration_seconds=candidate.file_duration_seconds,
+                target_runtime_seconds=candidate.matched_runtime_seconds,
             )
         )
 
@@ -565,6 +569,7 @@ def build_organize_plan(
                         destination=str(dest),
                         label=f"(unmatched extra) {f.name}",
                         confidence="none",
+                        file_duration_seconds=f.duration_seconds,
                     )
                 )
             else:

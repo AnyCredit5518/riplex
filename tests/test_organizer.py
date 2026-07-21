@@ -504,6 +504,39 @@ class TestBuildOrganizePlanShow:
         assert "TV Shows" in dest
         assert "Planet Earth III (2023) - s01e01 - Coasts.mkv" in dest
 
+    def test_move_carries_file_and_target_durations(self):
+        """The preview surfaces duration mismatches, so each FileMove
+        must carry both the source file's runtime and the matched
+        target's expected runtime."""
+        result = OrganizeResult(
+            matched=[
+                MatchCandidate(
+                    file_name="d1_t00.mkv",
+                    file_duration_seconds=3141,
+                    matched_label="Disc 1: Coasts",
+                    matched_runtime_seconds=3120,
+                    delta_seconds=21,
+                    confidence="high",
+                ),
+            ],
+        )
+        plan = PlannedShow(
+            canonical_title="Planet Earth III",
+            year=2023,
+            seasons=[
+                PlannedSeason(
+                    season_number=1,
+                    episodes=[
+                        PlannedEpisode(season_number=1, episode_number=1, title="Coasts", runtime="52m"),
+                    ],
+                ),
+            ],
+        )
+        op = build_organize_plan(result, plan, Path("E:/Media"))
+        assert len(op.moves) == 1
+        assert op.moves[0].file_duration_seconds == 3141
+        assert op.moves[0].target_runtime_seconds == 3120
+
     def test_tv_episode_disc_label_no_tmdb_match_is_unmatched(self):
         """Episode not in TMDb data is treated as unmatched."""
         result = OrganizeResult(
