@@ -5,38 +5,21 @@ support, hardens episode matching, adds a comprehensive automated test suite so
 the flows that matter stay working as the project grows, and makes upgrades
 painless with one-click in-place updates on Windows.
 
-Until now every disc was treated as a standalone rip, and updating meant
-re-downloading the app each release. This release lets riplex understand a whole
-box set at once — detecting the *works* inside a release, grouping the discs that
-belong to each, and routing every work to its correct Plex destination in a
-single guided session — and then keeps itself up to date automatically.
-
-## Why 1.0.0?
-
-riplex has been usable for a while; three things make this the right moment to
-call it stable:
-
-- **The hard workflows are done.** Multi-work box sets and complete multi-season
-  TV series — the cases that used to mean ripping disc-by-disc and sorting by
-  hand — now work end to end, in both the desktop app and the CLI.
-- **It's protected against regressions.** A headless integration suite exercises
-  the entire GUI wizard and the CLI against real-world scenarios generated from
-  archived rips, so the flows you depend on keep working as development continues.
-- **Updates are effortless.** In-place updates mean you install once and never
-  have to re-download and re-approve the app for each new version.
-
 ## Headline features
 
 ### Multi-work box sets
 
-A release that contains several distinct works — several films, or films plus a
-TV series — is detected as *multiple works* instead of one. Each work gets its
+A release that contains several distinct works - several films, or films plus a
+TV series - is detected as *multiple works* instead of one. Each work gets its
 own title selection, its own rip grouping, and its own Plex target, so a mixed
 box set is ripped and filed correctly in one pass:
 
 • Disc grouping splits on dvdcompare's per-film hyperlinks (`pointer_fid`) rather than a coarse "is this a film" guess, so a bonus-films disc forms its own group and the main features stay separate.
 • The Select Titles screen shows each work's rip output separately, so you can see exactly which files belong to which movie or show.
 • Full CLI parity: `riplex orchestrate` and `riplex organize` route multi-work releases the same way the GUI does, through the shared flow logic.
+
+
+![Disc Overview grouping a multi-disc box set](https://raw.githubusercontent.com/AnyCredit5518/riplex/main/screenshots/v1.0.0_Disc_Overview.png)
 
 ### Multi-season TV series
 
@@ -46,12 +29,15 @@ Complete-series sets that span several seasons are ripped season by season:
 • TV rips nest automatically under `Season NN/`, and specials land in `Season 00`.
 • Season labels and chips appear throughout the Disc Overview, so a 12-disc set is easy to keep track of.
 
+
+![Season Select picker for a multi-season series](https://raw.githubusercontent.com/AnyCredit5518/riplex/main/screenshots/v1.0.0_Multi_Season_Select.png)
+
 ### Guided resume across a whole set
 
 Every session writes a `_riplex_session.json` marker capturing the full plan, so
 you can rip a few discs, come back later, and pick up exactly where you left off:
 
-• Resume from *any* disc of a multi-work or multi-season set — not just the next in sequence.
+• Resume from *any* disc of a multi-work or multi-season set - not just the next in sequence.
 • `riplex orchestrate` (CLI) resumes from the marker with GUI parity, via a shared `resume.py` adapter.
 • `riplex organize` discovers the marker and fans out across every work in the set.
 
@@ -59,13 +45,13 @@ you can rip a few discs, come back later, and pick up exactly where you left off
 
 Rip manifests record the exact TMDb and dvdcompare ids you confirmed at rip time.
 When you organize (or resume) a ripped disc, riplex reuses those ids and skips
-the metadata pickers entirely — no re-searching, no risk of picking a different
+the metadata pickers entirely - no re-searching, no risk of picking a different
 release the second time.
 
 ### Smarter, more resilient TV episode matching
 
 Matching ripped titles to episodes used to be a runtime guessing game that falls
-apart when episodes run within seconds of each other — or when a metadata
+apart when episodes run within seconds of each other - or when a metadata
 listing is simply wrong. Now:
 
 • dvdcompare's episode listing is cross-referenced against the TMDb episode list.
@@ -73,11 +59,14 @@ listing is simply wrong. Now:
 • Organize honors the rip-time season/episode classification and no longer collides identically-named files across different discs.
 • Over-length titles are labeled **Unmatched content** and stay visible instead of being forced into the wrong slot.
 
+
+![Organize preview with per-file and target durations](https://raw.githubusercontent.com/AnyCredit5518/riplex/main/screenshots/v1.0.0_Organize_Preview.png)
+
 ### Seamless in-place updates (Windows)
 
 When a new version is available, the update screen offers **Update & Restart**:
 riplex downloads the new build, **verifies its SHA-256 checksum**, swaps the
-running `.exe` in place, and relaunches — no re-downloading and no repeated
+running `.exe` in place, and relaunches - no re-downloading and no repeated
 SmartScreen approval. It only runs from a writable install folder (otherwise it
 falls back to the browser download), and every release now publishes `.sha256`
 checksums for its assets.
@@ -86,10 +75,13 @@ checksums for its assets.
 > still uses the browser download (the old build doesn't know how to self-update);
 > from v1.0.0 onward, updates are one click.
 
+
+![In-place update screen with release notes](https://raw.githubusercontent.com/AnyCredit5518/riplex/main/screenshots/v1.0.0_In_Place_Update.png)
+
 ### Auto-eject after ripping
 
-The disc ejects automatically once a rip finishes, so you can swap discs — or
-just know it's done — without reaching for the drive. On by default; set
+The disc ejects automatically once a rip finishes, so you can swap discs - or
+just know it's done - without reaching for the drive. On by default; set
 `auto_eject = false` in the config to disable.
 
 ## Reliability & testing
@@ -130,7 +122,7 @@ break the flows you rely on:
 
 Disc-group ids changed from the old `main_1` / `film_31` scheme to
 `disc_1` / `discs_1_4` / `disc_31`. A session saved by an earlier version will
-not resume — **start a fresh session after upgrading**.
+not resume - **start a fresh session after upgrading**.
 
 ## Full changelog
 
