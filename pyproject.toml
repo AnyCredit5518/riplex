@@ -12,7 +12,7 @@ license = {text = "MIT"}
 dependencies = [
     "certifi>=2024.2.2",
     "httpx>=0.27",
-    "dvdcompare-scraper>=0.1.18",
+    "dvdcompare-scraper>=0.1.15",
     "platformdirs>=4.0",
 ]
 
@@ -53,12 +53,12 @@ riplex-ui = "riplex_app.main:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+riplex_app = ["assets/*"]
+
 [tool.setuptools_scm]
 version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = [
-    "integration: end-to-end GUI flow tests that drive the wizard headlessly",
-]

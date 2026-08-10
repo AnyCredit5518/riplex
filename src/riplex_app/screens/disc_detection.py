@@ -18,8 +18,12 @@ Replaces the original auto-pick-only flow. The screen now:
 
 import asyncio
 import logging
+import shutil
+import subprocess
 import sys
 import threading
+import webbrowser
+from pathlib import Path
 
 import flet as ft
 
@@ -236,9 +240,10 @@ class DiscDetectionScreen:
             self._show_error(
                 "MakeMKV won\u2019t scan drives",
                 f"makemkvcon reported: {exc}\n\n"
-                "MakeMKV must be updated (or a valid registration key entered) "
-                "before riplex can detect discs. The free beta key is refreshed "
-                "monthly on the MakeMKV forum.",
+                "The usual fix is to get the current free beta key, open MakeMKV, "
+                "and enter it under Help > Register. The key is refreshed monthly "
+                "on the MakeMKV forum; download an update only if a new key does "
+                "not resolve the error.",
                 allow_retry=True,
                 install_hint=True,
                 key_hint=True,
@@ -500,26 +505,37 @@ class DiscDetectionScreen:
             ),
         ]
         actions: list[ft.Control] = []
-        if allow_retry:
+        if key_hint:
             actions.append(
-                ft.ElevatedButton(
-                    "Retry",
-                    icon=ft.Icons.REFRESH,
-                    on_click=lambda _: self._on_retry(),
+                ft.TextButton(
+                    "Get beta key \u2197",
+                    on_click=lambda _: self._open_external_url(
+                        "https://forum.makemkv.com/forum/viewtopic.php?t=1053"
+                    ),
+                )
+            )
+            actions.append(
+                ft.Button(
+                    "Open MakeMKV",
+                    icon=ft.Icons.OPEN_IN_NEW,
+                    on_click=lambda _: self._open_makemkv(),
                 )
             )
         if install_hint:
             actions.append(
                 ft.TextButton(
                     "Download MakeMKV \u2197",
-                    url="https://www.makemkv.com/download/",
+                    on_click=lambda _: self._open_external_url(
+                        "https://www.makemkv.com/download/"
+                    ),
                 )
             )
-        if key_hint:
+        if allow_retry:
             actions.append(
                 ft.TextButton(
-                    "Get beta key \u2197",
-                    url="https://forum.makemkv.com/forum/viewtopic.php?t=1053",
+                    "Retry",
+                    icon=ft.Icons.REFRESH,
+                    on_click=lambda _: self._on_retry(),
                 )
             )
         actions.append(
@@ -542,6 +558,33 @@ class DiscDetectionScreen:
     # ------------------------------------------------------------------
     # Misc handlers.
     # ------------------------------------------------------------------
+    def _open_external_url(self, url: str) -> None:
+        log.info("Opening external URL from disc_detection: %s", url)
+        webbrowser.open(url)
+
+    def _open_makemkv(self) -> None:
+        diag_exe = self.app.state.get("makemkv_diag", {}).get("exe", "")
+        candidates: list[Path] = []
+        if diag_exe:
+            console_exe = Path(diag_exe)
+            candidates.extend(
+                console_exe.with_name(name)
+                for name in ("makemkv.exe", "makemkv")
+            )
+
+        path_exe = shutil.which("makemkv")
+        if path_exe:
+            candidates.append(Path(path_exe))
+
+        gui_exe = next((path for path in candidates if path.exists()), None)
+        if gui_exe is None:
+            log.warning("Could not locate the MakeMKV desktop executable")
+            self._open_external_url("https://www.makemkv.com/download/")
+            return
+
+        log.info("Opening MakeMKV: %s", gui_exe)
+        subprocess.Popen([str(gui_exe)], close_fds=True)
+
     def _on_retry(self) -> None:
         self._reading = False
         self._user_picked = False
@@ -554,7 +597,6 @@ class DiscDetectionScreen:
         threading.Thread(target=self._initial_scan, daemon=True).start()
 
     def _open_bug_report(self) -> None:
-        import webbrowser
         from riplex_app.bug_report import build_bug_report_url
 
         url = build_bug_report_url(self.app.state)

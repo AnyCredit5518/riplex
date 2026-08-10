@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import threading
 from pathlib import Path
 
@@ -27,6 +28,16 @@ def _fmt_duration(seconds: int) -> str:
     if h:
         return f"{h}:{m:02d}:{s:02d}"
     return f"{m}:{s:02d}"
+
+
+def _natural_sort_key(value: str) -> tuple[tuple[int, object], ...]:
+    """Sort paths and labels naturally so episode 2 precedes episode 10."""
+    normalized = str(value).replace("\\", "/").casefold()
+    return tuple(
+        (1, int(part)) if part.isdigit() else (0, part)
+        for part in re.split(r"(\d+)", normalized)
+        if part
+    )
 
 
 class OrganizePreviewScreen:
@@ -264,7 +275,10 @@ class OrganizePreviewScreen:
 
         # Move rows
         move_rows = []
-        for move in plan.moves:
+        for move in sorted(
+            plan.moves,
+            key=lambda item: _natural_sort_key(item.destination),
+        ):
             src_path = Path(move.source)
             # Prefix the basename with the disc folder so identical
             # makemkv output names across sibling discs (e.g. every
@@ -314,7 +328,12 @@ class OrganizePreviewScreen:
             )
 
         # Split rows
-        for split in plan.splits:
+        for split in sorted(
+            plan.splits,
+            key=lambda item: _natural_sort_key(
+                item.chapter_destinations[0] if item.chapter_destinations else item.source
+            ),
+        ):
             split_path = Path(split.source)
             split_parent = split_path.parent.name
             src_name = f"{split_parent}/{split_path.name}" if split_parent else split_path.name
@@ -330,7 +349,10 @@ class OrganizePreviewScreen:
 
         # Unmatched rows
         unmatched_rows = []
-        for f in plan.unmatched:
+        for f in sorted(
+            plan.unmatched,
+            key=lambda item: _natural_sort_key(item.path or item.name),
+        ):
             dur_m = f.duration_seconds // 60
             dur_s = f.duration_seconds % 60
             # Prefix with disc folder for the same disambiguation
@@ -347,7 +369,7 @@ class OrganizePreviewScreen:
 
         # Missing rows
         missing_rows = []
-        for label in plan.missing:
+        for label in sorted(plan.missing, key=_natural_sort_key):
             missing_rows.append(
                 ft.Row([
                     ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE, size=16),

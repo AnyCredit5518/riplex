@@ -611,7 +611,7 @@ def _apply_movie_variant_classifications(
         sorted_titles = sorted(candidate_titles, key=lambda title: title.duration_seconds)
 
     for title, (edition, _) in zip(sorted_titles, sorted_entries):
-        res_label = "4K" if "3840" in (title.resolution or "") else "1080p"
+        res_label = _resolution_label(title.resolution)
         classifications[title.index] = f"{edition} Edition ({res_label})"
 
 
@@ -622,6 +622,26 @@ def format_seconds(seconds: int) -> str:
     if h:
         return f"{h}:{m:02d}:{s:02d}"
     return f"{m}:{s:02d}"
+
+
+def _resolution_label(resolution: str) -> str:
+    """Return a concise display label for a MakeMKV resolution."""
+    try:
+        width_text, height_text = resolution.lower().split("x", 1)
+        width = int(width_text)
+        height = int(height_text)
+    except (AttributeError, TypeError, ValueError):
+        return resolution or "unknown resolution"
+
+    if width >= 3840 or height >= 2160:
+        return "4K"
+    if width >= 1920 or height >= 1080:
+        return "1080p"
+    if width >= 1280 or height >= 720:
+        return "720p"
+    if height >= 576:
+        return "576p"
+    return "480p"
 
 
 # ---- dvdcompare entry helpers ----
@@ -990,6 +1010,28 @@ def _get_effective_match(
     return find_duration_match(title.duration_seconds, non_ep)
 
 
+def _matches_unclaimed_episode_runtime(
+    title,
+    all_titles: list,
+    dvd_entries: list[tuple[str, int, str]],
+) -> bool:
+    """Return whether an unmatched title plausibly fills a remaining slot."""
+    remaining = [entry for entry in dvd_entries if entry[2] == "episode" and entry[1] > 0]
+    assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+    for assigned in assignments.values():
+        if assigned[2] != "episode":
+            continue
+        try:
+            remaining.remove(assigned)
+        except ValueError:
+            pass
+
+    return any(
+        abs(title.duration_seconds - runtime) <= max(180, round(runtime * 0.1))
+        for _, runtime, _ in remaining
+    )
+
+
 def classify_title(
     title,
     all_titles: list,
@@ -1002,7 +1044,7 @@ def classify_title(
     """Return a human-readable recommendation for a makemkvcon title."""
     dur = title.duration_seconds
     is_4k = "3840" in (title.resolution or "")
-    res_label = "4K" if is_4k else "1080p"
+    res_label = _resolution_label(title.resolution)
 
     # Check for same-resolution duplicate (earlier title with identical duration/size)
     for t in all_titles:
@@ -1073,7 +1115,7 @@ def classify_title(
         # Check if this is a lower-resolution play-all (e.g. 1080p play-all of 4K episodes)
         cross_res_match = detect_cross_res_play_all(title, all_titles)
         if cross_res_match:
-            other_res = "4K" if "3840" in cross_res_match[0].resolution else "1080p"
+            other_res = _resolution_label(cross_res_match[0].resolution)
             return f"Play-all ({res_label}, individual {other_res} titles available)"
 
     # Check if this matches a single dvdcompare entry.
@@ -1102,7 +1144,7 @@ def classify_title(
             and t.resolution != title.resolution
         ]
         if dups:
-            dup_res = "4K" if "3840" in dups[0].resolution else "1080p"
+            dup_res = _resolution_label(dups[0].resolution)
             if is_4k:
                 return f"{type_prefix}{name} ({res_label}, skip #{dups[0].index} {dup_res} duplicate)"
             else:
@@ -1160,8 +1202,7 @@ def classify_title(
         # emit "Episode" when there's an unclaimed episode slot this
         # title could plausibly represent.
         if episode_count > 0 and dvd_entries:
-            assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
-            if len(assignments) >= episode_count and title.index not in assignments:
+            if not _matches_unclaimed_episode_runtime(title, all_titles, dvd_entries):
                 return f"Unmatched content ({res_label}, {format_seconds(dur)})"
         return f"Episode ({res_label})"
 
@@ -1287,6 +1328,8 @@ def is_skip_title(
                 if etype == "episode" and rt > 0
             ]
             if episode_runtimes and dur > max(episode_runtimes) * 1.5:
+                return True
+            if not _matches_unclaimed_episode_runtime(title, all_titles, dvd_entries):
                 return True
             # Mirror ``classify_title``'s all-slots-claimed guard: if
             # every dvdcompare episode slot is already assigned to an
@@ -1468,6 +1511,54 @@ def print_disc_analysis(
 
 
 @dataclass
+class TitleAssessment:
+    """Separate rip advice from inferred identity and concrete naming."""
+
+    recommendation: str
+    identification: str
+    name: str
+
+
+def assess_title(classification: str, *, is_rippable: bool) -> TitleAssessment:
+    """Turn a classifier label into user-facing recommendation evidence."""
+    clean_name = re.sub(r"\s+\([^)]*\)\s*$", "", classification).strip()
+
+    if not is_rippable:
+        recommendation = "skip"
+    elif classification.startswith(("Episode (", "Unknown content", "Unmatched content")):
+        recommendation = "review"
+    else:
+        recommendation = "rip"
+
+    if classification.startswith("MAIN FILM"):
+        identification, name = "Main feature", clean_name
+    elif re.match(r"^S\d{2,3}E\d{2,4}\s+-\s+", classification, re.IGNORECASE):
+        identification = "Matched episode"
+        name = re.sub(
+            r"^S\d{2,3}E\d{2,4}\s+-\s+", "", clean_name, flags=re.IGNORECASE,
+        )
+    elif classification.startswith("Episode ("):
+        identification, name = "Possible episode", "Unknown"
+    elif classification.startswith("Unmatched content"):
+        identification, name = "Unmatched", "Unknown"
+    elif classification.startswith("Unknown content"):
+        identification, name = "Unknown", "Unknown"
+    elif classification.startswith("Play-all") or ": Play All" in classification:
+        identification, name = "Play-all", "Unknown"
+    elif classification.startswith("Duplicate of"):
+        identification, name = "Duplicate", "Unknown"
+    elif classification.startswith("Very short"):
+        identification, name = "Short clip", "Unknown"
+    elif classification.startswith("[") and "] " in classification:
+        prefix, name = clean_name.split("] ", 1)
+        identification = f"Matched {prefix[1:].strip() or 'extra'}"
+    else:
+        identification, name = "Matched content", clean_name or "Unknown"
+
+    return TitleAssessment(recommendation, identification, name)
+
+
+@dataclass
 class DiscAnalysis:
     """Result of analyzing a disc's titles against metadata."""
 
@@ -1477,6 +1568,7 @@ class DiscAnalysis:
     episode_count: int
     rippable_titles: list
     classifications: dict[int, str] = field(default_factory=dict)
+    assessments: dict[int, TitleAssessment] = field(default_factory=dict)
 
 
 def analyze_disc(
@@ -1578,6 +1670,12 @@ def analyze_disc(
             classifications, titles, current_disc_entries, effective_movie_runtime,
         )
 
+    rippable_indices = {title.index for title in rippable}
+    assessments = {
+        index: assess_title(label, is_rippable=index in rippable_indices)
+        for index, label in classifications.items()
+    }
+
     return DiscAnalysis(
         disc_number=disc_number,
         dvd_entries=dvd_entries,
@@ -1585,4 +1683,5 @@ def analyze_disc(
         episode_count=episode_count,
         rippable_titles=rippable,
         classifications=classifications,
+        assessments=assessments,
     )

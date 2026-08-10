@@ -27,6 +27,12 @@ except ModuleNotFoundError as exc:  # pragma: no cover — only triggers without
 
 log = logging.getLogger("riplex_app")
 
+
+def _app_icon_path(base_dir: Path | None = None) -> Path | None:
+    """Return the packaged Windows window icon when available."""
+    icon_path = (base_dir or Path(__file__).resolve().parent) / "assets" / "riplex-icon.ico"
+    return icon_path if icon_path.is_file() else None
+
 from riplex_app.screens.welcome import WelcomeScreen
 from riplex_app.screens.disc_detection import DiscDetectionScreen
 from riplex_app.screens.metadata import MetadataScreen
@@ -54,6 +60,9 @@ class RiplexApp:
         self.page.window.width = 900
         self.page.window.height = 650
         self.page.padding = 30
+        icon_path = _app_icon_path()
+        if icon_path is not None:
+            self.page.window.icon = str(icon_path)
 
         # Shared state passed between screens
         self.state = {
@@ -518,15 +527,6 @@ def main():
     lib_logger.addHandler(fh)
     lib_logger.setLevel(logging.DEBUG)
     app_logger.info("Log file: %s", log_path)
-
-    # Remove any leftover ``riplex-ui.exe.old`` from a previous in-place update.
-    try:
-        from riplex.updater import cleanup_stale_update
-
-        cleanup_stale_update()
-    except Exception:  # pragma: no cover - best effort, never block launch
-        app_logger.debug("stale-update cleanup skipped", exc_info=True)
-
     ft.app(target=RiplexApp)
 
 

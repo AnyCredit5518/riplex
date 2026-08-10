@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>riplex disc-to-library icon</title>
+  <rect width="512" height="512" rx="92" fill="#151a20"/>
+  <rect x="9" y="9" width="494" height="494" rx="83" fill="none" stroke="#303a45" stroke-width="18"/>
+
+  <!-- Source disc -->
+  <circle cx="190" cy="256" r="126" fill="#31c4c7"/>
+  <path d="M190 130a126 126 0 0 1 109 63L190 256Z" fill="#65e1d5"/>
+  <circle cx="190" cy="256" r="64" fill="#151a20"/>
+  <circle cx="190" cy="256" r="24" fill="#ff6b57"/>
+  <circle cx="164" cy="172" r="15" fill="#baf7eb" opacity=".9"/>
+
+  <!-- Raw disc content becoming organized library rows -->
+  <path d="M271 187h132a25 25 0 0 1 25 25v2a25 25 0 0 1-25 25H271l26-26Z" fill="#f4f7f8"/>
+  <path d="M285 247h118a25 25 0 0 1 25 25v2a25 25 0 0 1-25 25H285l26-26Z" fill="#ff6b57"/>
+  <path d="M271 307h132a25 25 0 0 1 25 25v2a25 25 0 0 1-25 25H271l26-26Z" fill="#ffd166"/>
+
+  <circle cx="394" cy="213" r="7" fill="#31c4c7"/>
+  <circle cx="394" cy="273" r="7" fill="#151a20"/>
+  <circle cx="394" cy="333" r="7" fill="#151a20"/>
+</svg>

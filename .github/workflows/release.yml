@@ -50,6 +50,7 @@ jobs:
         run: |
           for /f "delims=" %%i in ('python -c "import flet_desktop; print(flet_desktop.ensure_client_cached())"') do set FLET_CLIENT_CACHE=%%i
           pyinstaller --name riplex-ui --onefile --windowed ^
+            --icon src/riplex_app/assets/riplex-icon.ico ^
             --hidden-import riplex_app.screens.welcome ^
             --hidden-import riplex_app.screens.disc_detection ^
             --hidden-import riplex_app.screens.metadata ^
@@ -69,6 +70,7 @@ jobs:
             --collect-all flet_desktop ^
             --collect-data certifi ^
             --collect-data dvdcompare_scraper ^
+            --add-data "src/riplex_app/assets/riplex-icon.ico;riplex_app/assets" ^
             --add-data "%FLET_CLIENT_CACHE%\flet;flet_client" ^
             src/riplex_app/main.py
         shell: cmd
@@ -128,6 +130,7 @@ jobs:
       - name: Build GUI app bundle
         run: |
           pyinstaller --name riplex-ui --onedir --windowed \
+            --icon src/riplex_app/assets/riplex-icon.icns \
             --hidden-import riplex_app.screens.welcome \
             --hidden-import riplex_app.screens.disc_detection \
             --hidden-import riplex_app.screens.metadata \
@@ -192,12 +195,6 @@ jobs:
           cp artifacts/riplex-windows/riplex-ui.exe release/riplex-ui-windows.exe
           cp artifacts/riplex-macos/riplex-macos release/
           cp artifacts/riplex-macos/riplex-ui-macos.zip release/
-          # Publish SHA-256 checksums so the app can verify a download before
-          # applying an in-place update (see riplex.updater.stage_update).
-          cd release
-          for f in riplex-windows.exe riplex-ui-windows.exe riplex-macos riplex-ui-macos.zip; do
-            sha256sum "$f" > "$f.sha256"
-          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -210,10 +207,6 @@ jobs:
           body: ${{ steps.tag_notes.outputs.body }}
           files: |
             release/riplex-windows.exe
-            release/riplex-windows.exe.sha256
             release/riplex-ui-windows.exe
-            release/riplex-ui-windows.exe.sha256
             release/riplex-macos
-            release/riplex-macos.sha256
             release/riplex-ui-macos.zip
-            release/riplex-ui-macos.zip.sha256

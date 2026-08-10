@@ -5,12 +5,26 @@ import flet as ft
 
 from riplex_app import main as app_main
 from riplex_app.main import (
+    _app_icon_path,
     _append_to_footer_row,
     _button_label,
     _configure_flet_view_path,
     _configure_tls_certificates,
     _tree_has_quit,
 )
+
+
+def test_app_icon_path_finds_packaged_windows_icon(tmp_path):
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    icon_path = assets_dir / "riplex-icon.ico"
+    icon_path.write_bytes(b"icon")
+
+    assert _app_icon_path(tmp_path) == icon_path
+
+
+def test_app_icon_path_returns_none_when_asset_is_missing(tmp_path):
+    assert _app_icon_path(tmp_path) is None
 
 
 def test_configure_tls_certificates_sets_ssl_env_when_unset():

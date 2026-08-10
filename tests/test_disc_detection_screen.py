@@ -66,6 +66,49 @@ class _FakeApp:
         pass
 
 
+def test_error_panel_prioritizes_key_then_makemkv_then_download(monkeypatch):
+    opened: list[str] = []
+    monkeypatch.setattr("webbrowser.open", opened.append)
+
+    screen = DiscDetectionScreen(_FakeApp())
+    open_makemkv = MagicMock()
+    monkeypatch.setattr(screen, "_open_makemkv", open_makemkv)
+    panel = screen._build_error_panel(
+        "MakeMKV won't scan drives",
+        "Registration required",
+        allow_retry=True,
+        install_hint=True,
+        key_hint=True,
+    )
+    actions = panel.content.controls[-1].controls
+
+    actions[0].on_click(None)
+    actions[1].on_click(None)
+    actions[2].on_click(None)
+
+    assert opened == [
+        "https://forum.makemkv.com/forum/viewtopic.php?t=1053",
+        "https://www.makemkv.com/download/",
+    ]
+    open_makemkv.assert_called_once_with()
+
+
+def test_open_makemkv_launches_gui_next_to_console(monkeypatch, tmp_path):
+    console_exe = tmp_path / "makemkvcon64.exe"
+    console_exe.touch()
+    gui_exe = tmp_path / "makemkv.exe"
+    gui_exe.touch()
+
+    app = _FakeApp()
+    app.state["makemkv_diag"] = {"exe": str(console_exe)}
+    popen = MagicMock()
+    monkeypatch.setattr("subprocess.Popen", popen)
+
+    DiscDetectionScreen(app)._open_makemkv()
+
+    popen.assert_called_once_with([str(gui_exe)], close_fds=True)
+
+
 
 class _FakeSession:
     def __init__(

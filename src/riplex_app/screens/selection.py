@@ -118,6 +118,7 @@ class SelectionScreen:
         for t in titles:
             is_recommended = t.index in rippable_indices
             classification = classifications.get(t.index, "")
+            assessment = analysis.assessments[t.index]
             is_main_film = classification.startswith("MAIN FILM")
             cb = ft.Checkbox(
                 value=is_recommended,
@@ -125,19 +126,22 @@ class SelectionScreen:
             )
             self.checkboxes.append(cb)
 
+            badge_colors = {
+                "rip": (ft.Colors.GREEN_700, ft.Colors.WHITE),
+                "review": (ft.Colors.AMBER_700, ft.Colors.BLACK),
+                "skip": (ft.Colors.RED_700, ft.Colors.WHITE),
+            }
+            badge_bg, badge_fg = badge_colors[assessment.recommendation]
             rec_badge = ft.Container(
-                ft.Text("RIP", size=10, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                bgcolor=ft.Colors.GREEN_700,
+                ft.Text(
+                    assessment.recommendation.upper(),
+                    size=10,
+                    color=badge_fg,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                bgcolor=badge_bg,
                 border_radius=4,
                 padding=ft.Padding(left=6, top=2, right=6, bottom=2),
-                visible=is_recommended,
-            )
-            skip_badge = ft.Container(
-                ft.Text("SKIP", size=10, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
-                bgcolor=ft.Colors.RED_700,
-                border_radius=4,
-                padding=ft.Padding(left=6, top=2, right=6, bottom=2),
-                visible=not is_recommended,
             )
             # Highlight the main feature with its own tag so it stands
             # out from extras / duplicates in the list.
@@ -150,8 +154,8 @@ class SelectionScreen:
                 visible=is_main_film,
             )
             rec_cell = ft.Row(
-                [rec_badge, skip_badge, main_film_badge],
-                spacing=4, width=150,
+                [rec_badge, main_film_badge],
+                spacing=4, width=140,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             )
 
@@ -161,7 +165,7 @@ class SelectionScreen:
             if is_main_film and getattr(tmdb_match, "title", None):
                 display_name = tmdb_match.title
             else:
-                display_name = classification or t.filename or f"Title {t.index}"
+                display_name = assessment.name
 
             row = ft.Row(
                 [
@@ -171,6 +175,8 @@ class SelectionScreen:
                     ft.Text(_format_size(t.size_bytes), width=70, size=12),
                     ft.Text(t.resolution, width=90, size=12),
                     rec_cell,
+                        ft.Text(assessment.identification, width=130, size=12,
+                            color=ft.Colors.GREY_300),
                     ft.Text(display_name, size=12, color=ft.Colors.GREY_300, expand=True),
                 ],
                 spacing=8,
@@ -200,7 +206,8 @@ class SelectionScreen:
                 ft.Text("Duration", width=70, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Size", width=70, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Resolution", width=90, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
-                ft.Text("Recommendation", width=150, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
+                ft.Text("Recommendation", width=140, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
+                ft.Text("Identification", width=130, size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD),
                 ft.Text("Name", size=11, color=ft.Colors.GREY_500, weight=ft.FontWeight.BOLD, expand=True),
             ],
             spacing=8,
