@@ -86,6 +86,8 @@ class RiplexApp:
             "current_disc_idx": 0,      # index into disc_queue
             "ripped_discs": set(),      # disc numbers already ripped (from manifests)
             "all_rip_results": {},      # dict: disc_number -> list[RipResult]
+            "episode_carryover": None,  # unresolved episodes from prior disc
+            "episode_carryover_scope": None,  # (TMDb source id, season)
             # Organize workflow
             "source_folder": None,  # Path — folder to organize
             "scanned": None,        # list[ScannedDisc] from scanner

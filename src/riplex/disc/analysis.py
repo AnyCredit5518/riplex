@@ -1456,6 +1456,7 @@ def print_disc_analysis(
     dvdcompare_discs: list,
     is_movie: bool,
     movie_runtime: int | None,
+    episode_carryover: list[EpisodeCarryover] | None = None,
 ) -> None:
     """Print live disc analysis cross-referencing makemkvcon vs dvdcompare."""
     print(f"\n{'=' * 60}")
@@ -1470,6 +1471,23 @@ def print_disc_analysis(
     dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(
         dvdcompare_discs,
     )
+    carryover = list(episode_carryover or []) if not is_movie else []
+    dvd_entries = [
+        *((entry.name, entry.runtime_seconds, "episode") for entry in carryover),
+        *dvd_entries,
+    ]
+    total_episode_runtime = sum(
+        runtime for _, runtime, entry_type in dvd_entries
+        if entry_type == "episode"
+    )
+    episode_count = sum(
+        1 for _, _, entry_type in dvd_entries if entry_type == "episode"
+    )
+    assignments = _assign_episodes_sequentially(titles, dvd_entries)
+    carryover_by_entry = {
+        (entry.name, entry.runtime_seconds, "episode"): entry
+        for entry in carryover
+    }
 
     # Classify and match each makemkvcon title
     print(f"\n  {'#':>3}  {'Duration':>9}  {'Size':>8}  {'Res':>9}  {'Ch':>3}  {'Recommendation'}")
@@ -1487,6 +1505,9 @@ def print_disc_analysis(
             is_movie, movie_runtime,
             total_episode_runtime, episode_count,
         )
+        if assignments.get(t.index) in carryover_by_entry:
+            source = carryover_by_entry[assignments[t.index]]
+            recommendation += f" [REVIEW: expected Disc {source.expected_disc}]"
 
         print(f"  {t.index:>3}  {dur_str:>9}  {size_str:>8}  {res_str:>9}  {ch_str:>3}  {recommendation}")
 
@@ -1508,6 +1529,74 @@ def print_disc_analysis(
 
 
 # ---- shared analysis entry point ----
+
+
+@dataclass
+class EpisodeCarryover:
+    """An expected episode not found on its dvdcompare-assigned disc."""
+
+    name: str
+    runtime_seconds: int
+    expected_disc: int
+
+
+def derive_episode_carryover_from_manifest(
+    manifest: dict,
+    dvdcompare_discs: list,
+    tmdb_episodes: list | None = None,
+) -> list[EpisodeCarryover]:
+    """Reconstruct missing prior-disc episodes from a legacy manifest."""
+    expected_disc = manifest.get("disc_number")
+    if not isinstance(expected_disc, int) or expected_disc <= 0:
+        return []
+
+    source_discs = [
+        disc for disc in dvdcompare_discs if disc.number == expected_disc
+    ]
+    expected_entries, _, _ = build_dvd_entries(source_discs)
+    if tmdb_episodes:
+        expected_entries, _, _ = enrich_dvd_entries_with_tmdb(
+            expected_entries,
+            tmdb_episodes,
+        )
+
+    classifications = [
+        item.get("classification", "")
+        for item in manifest.get("files", [])
+        if isinstance(item, dict)
+    ]
+    claimed_se = {
+        key for classification in classifications
+        if (key := _parse_se_key(classification)) is not None
+    }
+    claimed_names = {
+        _normalize_episode_title(
+            re.sub(
+                r"^S\d+E\d+\s+-\s+|\s+\([^)]*\)\s*$",
+                "",
+                classification,
+                flags=re.IGNORECASE,
+            ),
+        )
+        for classification in classifications
+    }
+
+    carryover = []
+    for name, runtime, entry_type in expected_entries:
+        if entry_type != "episode" or runtime <= 0:
+            continue
+        se_key = _parse_se_key(name)
+        clean_name = re.sub(
+            r"^S\d+E\d+\s+-\s+", "", name, flags=re.IGNORECASE,
+        )
+        claimed = (
+            se_key in claimed_se
+            if se_key is not None
+            else _normalize_episode_title(clean_name) in claimed_names
+        )
+        if not claimed:
+            carryover.append(EpisodeCarryover(name, runtime, expected_disc))
+    return carryover
 
 
 @dataclass
@@ -1569,6 +1658,9 @@ class DiscAnalysis:
     rippable_titles: list
     classifications: dict[int, str] = field(default_factory=dict)
     assessments: dict[int, TitleAssessment] = field(default_factory=dict)
+    recovered_carryover_indices: set[int] = field(default_factory=set)
+    alternate_layout_indices: set[int] = field(default_factory=set)
+    next_episode_carryover: list[EpisodeCarryover] = field(default_factory=list)
 
 
 def analyze_disc(
@@ -1579,6 +1671,7 @@ def analyze_disc(
     is_movie: bool,
     movie_runtime: int | None = None,
     tmdb_episodes: list | None = None,
+    episode_carryover: list[EpisodeCarryover] | None = None,
 ) -> DiscAnalysis:
     """Analyze disc titles and determine rip recommendations.
 
@@ -1610,6 +1703,11 @@ def analyze_disc(
         labels and mis-flagged features (dvdcompare's ``feature_type``
         empty or incorrect) can be promoted to episodes. Movie discs
         ignore this parameter.
+    episode_carryover:
+        Episodes expected on the immediately preceding physical disc but
+        not found there. These are tried before the current disc's entries
+        so an alternate disc layout cannot silently shift equal-runtime
+        episode identities by one position.
     """
     from riplex.disc.provider import detect_disc_number
 
@@ -1639,6 +1737,21 @@ def analyze_disc(
         dvd_entries, total_episode_runtime, episode_count = (
             enrich_dvd_entries_with_tmdb(dvd_entries, tmdb_episodes)
         )
+
+    carryover = list(episode_carryover or []) if not is_movie else []
+    carryover_entries = [
+        (entry.name, entry.runtime_seconds, "episode")
+        for entry in carryover
+    ]
+    current_entry_offset = len(carryover_entries)
+    dvd_entries = [*carryover_entries, *dvd_entries]
+    total_episode_runtime = sum(
+        runtime for _, runtime, entry_type in dvd_entries
+        if entry_type == "episode"
+    )
+    episode_count = sum(
+        1 for _, _, entry_type in dvd_entries if entry_type == "episode"
+    )
 
     # If this disc has no film/episode entries, it's a bonus disc —
     # disable movie_runtime heuristics (main film / extended cut detection)
@@ -1670,11 +1783,56 @@ def analyze_disc(
             classifications, titles, current_disc_entries, effective_movie_runtime,
         )
 
-    rippable_indices = {title.index for title in rippable}
-    assessments = {
-        index: assess_title(label, is_rippable=index in rippable_indices)
-        for index, label in classifications.items()
+    assignments = _assign_episodes_sequentially(titles, dvd_entries)
+    carryover_by_entry = {
+        (entry.name, entry.runtime_seconds, "episode"): entry
+        for entry in carryover
     }
+    recovered_carryover_indices = {
+        index for index, entry in assignments.items()
+        if entry in carryover_by_entry
+    }
+    alternate_layout_indices = (
+        set(assignments) if recovered_carryover_indices else set()
+    )
+
+    rippable_indices = {title.index for title in rippable}
+    assessments = {}
+    for index, label in classifications.items():
+        assessment = assess_title(label, is_rippable=index in rippable_indices)
+        if index in recovered_carryover_indices:
+            source = carryover_by_entry[assignments[index]]
+            assessment = TitleAssessment(
+                recommendation="review",
+                identification=f"Expected on Disc {source.expected_disc}",
+                name=assessment.name,
+            )
+        elif index in alternate_layout_indices:
+            assessment = TitleAssessment(
+                recommendation="review",
+                identification="Alternate layout sequence",
+                name=assessment.name,
+            )
+        assessments[index] = assessment
+
+    # Consume assignments in candidate order (carryover first), then carry
+    # only unclaimed *current-disc* episodes forward. Older unclaimed entries
+    # expire after this one-disc window instead of becoming long-range false
+    # matches later in the season.
+    from collections import Counter
+
+    consumed = Counter(assignments.values())
+    next_episode_carryover = []
+    for entry_index, entry in enumerate(dvd_entries):
+        if entry[2] != "episode":
+            continue
+        if consumed[entry] > 0:
+            consumed[entry] -= 1
+            continue
+        if entry_index >= current_entry_offset and disc_number is not None:
+            next_episode_carryover.append(
+                EpisodeCarryover(entry[0], entry[1], disc_number),
+            )
 
     return DiscAnalysis(
         disc_number=disc_number,
@@ -1684,4 +1842,7 @@ def analyze_disc(
         rippable_titles=rippable,
         classifications=classifications,
         assessments=assessments,
+        recovered_carryover_indices=recovered_carryover_indices,
+        alternate_layout_indices=alternate_layout_indices,
+        next_episode_carryover=next_episode_carryover,
     )

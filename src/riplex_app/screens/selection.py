@@ -76,6 +76,52 @@ class SelectionScreen:
         else:
             movie_runtime = self.app.state.get("movie_runtime")
 
+        episode_carryover = []
+        if not is_movie and orchestrate_disc_num is not None:
+            source_id = getattr(tmdb_match, "source_id", "")
+            season_number = self.app.state.get("season_number")
+            carryover_scope = (source_id, season_number)
+            if self.app.state.get("episode_carryover_scope") != carryover_scope:
+                from riplex.manifest import (
+                    build_rip_path,
+                    read_episode_carryover,
+                    read_latest_prior_manifest,
+                )
+
+                rip_root = build_rip_path(
+                    tmdb_match.title,
+                    tmdb_match.year or 0,
+                    season_number=season_number,
+                )
+                episode_carryover = read_episode_carryover(
+                    rip_root,
+                    before_disc=orchestrate_disc_num,
+                )
+                prior_manifest = read_latest_prior_manifest(
+                    rip_root,
+                    before_disc=orchestrate_disc_num,
+                )
+                if not episode_carryover and prior_manifest is not None:
+                    from riplex.disc.analysis import (
+                        derive_episode_carryover_from_manifest,
+                    )
+
+                    prior_disc = prior_manifest.get("disc_number")
+                    prior_tmdb_episodes = collect_tmdb_episodes_for_disc(
+                        self.app.state.get("show_detail"),
+                        dvdcompare_discs,
+                        prior_disc,
+                        film_title=self.app.state.get("dvdcompare_film_title"),
+                    )
+                    episode_carryover = derive_episode_carryover_from_manifest(
+                        prior_manifest,
+                        dvdcompare_discs,
+                        prior_tmdb_episodes,
+                    )
+                self.app.state["episode_carryover"] = episode_carryover
+                self.app.state["episode_carryover_scope"] = carryover_scope
+            episode_carryover = self.app.state.get("episode_carryover") or []
+
         # Use shared analyze_disc — same logic as CLI rip and orchestrate
         tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
             self.app.state.get("show_detail"),
@@ -89,6 +135,7 @@ class SelectionScreen:
             is_movie=is_movie,
             movie_runtime=movie_runtime,
             tmdb_episodes=tmdb_episodes,
+            episode_carryover=episode_carryover,
         )
         self._analysis = analysis  # store for _start_rip
         rippable_indices = {t.index for t in analysis.rippable_titles}
@@ -104,7 +151,7 @@ class SelectionScreen:
         log.info("is_movie=%s, movie_runtime=%s", is_movie, format_seconds(movie_runtime) if movie_runtime else None)
         log.info("%d/%d titles recommended for rip:", len(rippable_indices), len(titles))
         for t in titles:
-            marker = "RIP " if t.index in rippable_indices else "SKIP"
+            marker = analysis.assessments[t.index].recommendation.upper()
             log.info("  [%s] #%2d  %8s  %.1f GB  %s  %s",
                      marker, t.index, format_seconds(t.duration_seconds),
                      t.size_bytes/(1024**3), t.resolution, classifications[t.index])
@@ -222,6 +269,41 @@ class SelectionScreen:
             year_str = f" ({tmdb_match.year})" if tmdb_match.year else ""
             match_label = f"{tmdb_match.title}{year_str}"
 
+        recovered_names = [
+            analysis.assessments[index].name
+            for index in sorted(analysis.recovered_carryover_indices)
+        ]
+        alternate_layout_notice = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.Icons.SWAP_VERT, color=ft.Colors.AMBER_300),
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "Alternate disc layout inferred",
+                                size=13,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.AMBER_200,
+                            ),
+                            ft.Text(
+                                "Expected on the previous disc: "
+                                + ", ".join(recovered_names),
+                                size=12,
+                                color=ft.Colors.GREY_300,
+                            ),
+                        ],
+                        spacing=2,
+                    ),
+                ],
+                spacing=10,
+            ),
+            padding=10,
+            border=ft.Border.all(1, ft.Colors.AMBER_700),
+            border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.AMBER_700),
+            visible=bool(recovered_names),
+        )
+
         back_target = "disc_overview" if self.app.state.get("workflow") == "orchestrate" else "metadata"
         back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate(back_target))
         start_btn = ft.ElevatedButton(
@@ -297,12 +379,13 @@ class SelectionScreen:
                 ft.Text(match_label, size=14, color=ft.Colors.GREY_400) if match_label else ft.Container(),
                 disc_row,
                 ft.Text(
-                    "Titles marked RIP are recommended based on dvdcompare data and "
-                    "duration matching. Uncheck any you don't want. Titles marked SKIP "
-                    "are duplicates, play-alls, or very short clips.",
+                    "RIP titles are confident matches. REVIEW titles are selected but "
+                    "need confirmation. SKIP titles are duplicates, play-alls, or "
+                    "very short clips.",
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
+                alternate_layout_notice,
                 bonus_films_section,
                 ft.Text(
                     f"Debug files: {debug_dir}",

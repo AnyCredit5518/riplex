@@ -329,6 +329,7 @@ class ProgressScreen:
                 is_movie=is_movie,
                 movie_runtime=movie_runtime,
                 tmdb_episodes=tmdb_episodes,
+                episode_carryover=self.app.state.get("episode_carryover") or [],
             )
 
             manifest = build_rip_manifest(
@@ -349,8 +350,10 @@ class ProgressScreen:
                 dvdcompare_film_id=self.app.state.get("dvdcompare_film_id"),
                 dvdcompare_release_name=(release.name if release else None),
                 season_number=self.app.state.get("season_number"),
+                episode_carryover=analysis.next_episode_carryover,
             )
             manifest_path = write_manifest(Path(output_dir), manifest)
+            self.app.state["episode_carryover"] = analysis.next_episode_carryover
             log.info("Wrote rip manifest: %s", manifest_path)
         except Exception as exc:
             log.warning("Failed to write rip manifest: %s", exc)

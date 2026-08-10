@@ -12,6 +12,7 @@ from riplex.config import get_api_key, get_output_root, get_rip_output
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
+    derive_episode_carryover_from_manifest,
     format_seconds,
     print_disc_analysis,
 )
@@ -28,6 +29,8 @@ from riplex.manifest import (
     build_snapshot_manifest,
     find_existing_session,
     find_ripped_discs,
+    read_episode_carryover,
+    read_latest_prior_manifest,
     write_manifest,
     write_session_marker,
 )
@@ -506,11 +509,26 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             continue
 
         # Analyze disc titles using the known disc number
+        episode_carryover = read_episode_carryover(
+            rip_root,
+            before_disc=disc.number,
+        )
+        if not episode_carryover:
+            prior_manifest = read_latest_prior_manifest(
+                rip_root,
+                before_disc=disc.number,
+            )
+            if prior_manifest is not None:
+                episode_carryover = derive_episode_carryover_from_manifest(
+                    prior_manifest,
+                    discs,
+                )
         analysis = analyze_disc(
             disc_info, discs,
             disc_number=disc.number,
             is_movie=is_movie,
             movie_runtime=movie_runtime,
+            episode_carryover=episode_carryover,
         )
         dvd_entries = analysis.dvd_entries
         total_episode_runtime = analysis.total_episode_runtime
@@ -518,7 +536,22 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         rip_titles = analysis.rippable_titles
 
         current_disc_entries = [d for d in discs if d.number == disc.number]
-        print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
+        print_disc_analysis(
+            disc_info,
+            current_disc_entries,
+            is_movie,
+            movie_runtime,
+            episode_carryover,
+        )
+        if analysis.recovered_carryover_indices:
+            recovered = ", ".join(
+                analysis.assessments[index].name
+                for index in sorted(analysis.recovered_carryover_indices)
+            )
+            print(
+                f"\nREVIEW: alternate disc layout inferred ({recovered}).",
+                file=sys.stderr,
+            )
 
         if not rip_titles:
             print(f"\nNo titles to rip on Disc {disc.number}.", file=sys.stderr)
@@ -649,6 +682,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 dvdcompare_film_id=meta.dvdcompare_film_id,
                 dvdcompare_release_name=release_name or None,
                 season_number=season_number,
+                episode_carryover=analysis.next_episode_carryover,
             )
             manifest_path = write_manifest(output_dir, manifest)
             log.info("Wrote rip manifest: %s", manifest_path)

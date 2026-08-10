@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from riplex.models import ScannedDisc, ScannedFile
 
 if TYPE_CHECKING:
+    from riplex.disc.analysis import EpisodeCarryover
     from riplex.disc.makemkv import DiscInfo, RipResult
 
 log = logging.getLogger(__name__)
@@ -87,6 +88,83 @@ def find_ripped_discs(output_dir: Path) -> set[int]:
             if m:
                 ripped.add(int(m.group(1)))
     return ripped
+
+
+def serialize_episode_carryover(
+    entries: list[EpisodeCarryover],
+) -> list[dict]:
+    """Convert shared carryover entries to their manifest representation."""
+    return [
+        {
+            "name": entry.name,
+            "runtime_seconds": entry.runtime_seconds,
+            "expected_disc": entry.expected_disc,
+        }
+        for entry in entries
+    ]
+
+
+def deserialize_episode_carryover(raw: object) -> list[EpisodeCarryover]:
+    """Parse carryover entries from a manifest, ignoring malformed items."""
+    from riplex.disc.analysis import EpisodeCarryover
+
+    if not isinstance(raw, list):
+        return []
+    entries = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        runtime = item.get("runtime_seconds")
+        expected_disc = item.get("expected_disc")
+        if (
+            isinstance(name, str)
+            and name
+            and isinstance(runtime, int)
+            and runtime > 0
+            and isinstance(expected_disc, int)
+            and expected_disc > 0
+        ):
+            entries.append(EpisodeCarryover(name, runtime, expected_disc))
+    return entries
+
+
+def read_latest_prior_manifest(
+    rip_root: Path,
+    *,
+    before_disc: int | None = None,
+) -> dict | None:
+    """Read the latest completed disc manifest before ``before_disc``."""
+    candidates: list[tuple[int, Path]] = []
+    if not rip_root.exists():
+        return None
+    for child in rip_root.iterdir():
+        match = re.fullmatch(r"Disc\s+(\d+)", child.name, re.IGNORECASE)
+        manifest_path = child / "_rip_manifest.json"
+        if not match or not manifest_path.exists():
+            continue
+        disc_number = int(match.group(1))
+        if before_disc is None or disc_number < before_disc:
+            candidates.append((disc_number, manifest_path))
+
+    for _, manifest_path in sorted(candidates, reverse=True):
+        try:
+            return json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            log.warning("Failed to read carryover from %s: %s", manifest_path, exc)
+    return None
+
+
+def read_episode_carryover(
+    rip_root: Path,
+    *,
+    before_disc: int | None = None,
+) -> list[EpisodeCarryover]:
+    """Load carryover from the latest completed disc before ``before_disc``."""
+    manifest = read_latest_prior_manifest(rip_root, before_disc=before_disc)
+    if manifest is not None and "episode_carryover" in manifest:
+        return deserialize_episode_carryover(manifest["episode_carryover"])
+    return []
 
 
 @dataclass
@@ -656,6 +734,7 @@ def build_rip_manifest(
     dvdcompare_film_id: int | None = None,
     dvdcompare_release_name: str | None = None,
     season_number: int | None = None,
+    episode_carryover: list[EpisodeCarryover] | None = None,
 ) -> dict:
     """Build the rip manifest dict from rip results.
 
@@ -691,6 +770,10 @@ def build_rip_manifest(
         manifest["dvdcompare_film_id"] = dvdcompare_film_id
     if dvdcompare_release_name:
         manifest["dvdcompare_release_name"] = dvdcompare_release_name
+    if episode_carryover is not None:
+        manifest["episode_carryover"] = serialize_episode_carryover(
+            episode_carryover,
+        )
     for r in rip_results:
         if not r.success:
             continue

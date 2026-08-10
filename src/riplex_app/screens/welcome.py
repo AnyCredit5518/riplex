@@ -705,6 +705,8 @@ class WelcomeScreen:
         self.app.state["current_disc_idx"] = 0
         self.app.state["ripped_discs"] = set()
         self.app.state["all_rip_results"] = {}
+        self.app.state["episode_carryover"] = None
+        self.app.state["episode_carryover_scope"] = None
         self.app.navigate("disc_detection")
 
     def _start_organize(self, e):
