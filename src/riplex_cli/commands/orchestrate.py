@@ -542,6 +542,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             is_movie,
             movie_runtime,
             episode_carryover,
+            analysis=analysis,
         )
         if analysis.recovered_carryover_indices:
             recovered = ", ".join(

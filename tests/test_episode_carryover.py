@@ -6,11 +6,12 @@ from riplex.disc.analysis import (
     EpisodeCarryover,
     analyze_disc,
     derive_episode_carryover_from_manifest,
+    print_disc_analysis,
 )
 from riplex.disc.makemkv import DiscInfo, DiscTitle
 from riplex.manifest import read_episode_carryover, serialize_episode_carryover
 from riplex.metadata.provider import EpisodeMetadata
-from riplex.models import PlannedDisc, PlannedEpisode
+from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
 
 
 EPISODE_TITLES = {
@@ -102,6 +103,188 @@ def test_carryover_precedes_same_length_current_disc_episodes():
     assert second.next_episode_carryover == [
         EpisodeCarryover("S07E10 - Santa Barbarian Candidate", 2580, 2),
     ]
+
+
+def test_next_disc_episode_overflow_is_borrowed_once(capsys):
+    episode_titles = {
+        1: "Lock, Stock, Some Smoking Barrels and Burton Guster's Goblet of Fire",
+        2: "S.E.I.Z.E. the Day",
+        3: "Remake A.K.A. Cloudy... With a Chance of Improvement",
+        4: "Someone's Got a Woody",
+        5: "COG Blocked",
+        6: "1967: A Psych Odyssey",
+        7: "Shawn and Gus Truck Things Up",
+        8: "A Touch of Sweevil",
+    }
+
+    def episode(number: int) -> PlannedEpisode:
+        return PlannedEpisode(
+            8, number, episode_titles[number], "43m", 2580,
+        )
+
+    metadata = [
+        EpisodeMetadata(8, number, episode_titles[number], 2580)
+        for number in range(1, 9)
+    ]
+    discs = [
+        PlannedDisc(
+            1,
+            "DVD",
+            episodes=[episode(number) for number in range(2, 5)],
+            extras=[
+                PlannedExtra("Episodes"),
+                PlannedExtra(
+                    episode_titles[1], 2760, "(Extended Version)",
+                ),
+                PlannedExtra("Deleted Scenes", 300),
+            ],
+        ),
+        PlannedDisc(
+            2,
+            "DVD",
+            episodes=[episode(number) for number in range(5, 9)],
+        ),
+    ]
+    disc_one = DiscInfo(
+        "PSYCH",
+        "DVD",
+        [
+            _title(2, 13190),
+            _title(3, 2875),
+            _title(4, 2583),
+            _title(5, 2576),
+            _title(6, 2573),
+            _title(7, 2583),
+            _title(8, 303),
+        ],
+    )
+
+    first = analyze_disc(
+        disc_one,
+        discs,
+        disc_number=1,
+        is_movie=False,
+        tmdb_episodes=metadata,
+    )
+
+    assert first.classifications[2].startswith("Play-all of 5 titles")
+    assert "S08E01" in first.classifications[3]
+    assert "Extended Version" in first.classifications[3]
+    assert first.classifications[4].startswith("S08E02")
+    assert first.classifications[5].startswith("S08E03")
+    assert first.classifications[6].startswith("S08E04")
+    assert first.classifications[7].startswith("S08E05 - COG Blocked")
+    assert "Deleted Scenes" in first.classifications[8]
+    assert [title.index for title in first.rippable_titles] == [3, 4, 5, 6, 7, 8]
+    assert first.assessments[7].recommendation == "review"
+    assert first.assessments[7].identification == "Expected on Disc 2"
+    assert first.next_episode_carryover == [
+        EpisodeCarryover("S08E05 - COG Blocked", 2580, 2),
+    ]
+
+    print_disc_analysis(
+        disc_one,
+        [discs[0]],
+        False,
+        None,
+        analysis=first,
+    )
+    printed = capsys.readouterr().out
+    assert "S08E05 - COG Blocked" in printed
+    assert "Rip titles: 3, 4, 5, 6, 7, 8" in printed
+
+    disc_two = DiscInfo(
+        "PSYCH",
+        "DVD",
+        [_title(index) for index in range(3)],
+    )
+    second = analyze_disc(
+        disc_two,
+        discs,
+        disc_number=2,
+        is_movie=False,
+        episode_carryover=first.next_episode_carryover,
+    )
+
+    assert [
+        second.classifications[index].split(" (480p)")[0]
+        for index in range(3)
+    ] == [episode_titles[6], episode_titles[7], episode_titles[8]]
+    assert second.next_episode_carryover == []
+
+
+def test_next_disc_overflow_rejects_duplicate_title():
+    discs = [
+        PlannedDisc(1, "DVD", episodes=[_episode(1)]),
+        PlannedDisc(2, "DVD", episodes=[_episode(2)]),
+    ]
+    original = _title(0)
+    duplicate = _title(1)
+    duplicate.size_bytes = original.size_bytes
+
+    analysis = analyze_disc(
+        DiscInfo("PSYCH", "DVD", [original, duplicate]),
+        discs,
+        disc_number=1,
+        is_movie=False,
+        tmdb_episodes=_metadata(range(1, 3)),
+    )
+
+    assert analysis.classifications[1].startswith("Duplicate of #0")
+    assert analysis.next_episode_carryover == []
+
+
+def test_next_disc_overflow_rejects_lower_resolution_duplicate():
+    discs = [
+        PlannedDisc(1, "DVD", episodes=[_episode(1)]),
+        PlannedDisc(2, "DVD", episodes=[_episode(2)]),
+    ]
+    original = _title(0)
+    original.resolution = "3840x2160"
+    duplicate = _title(1)
+    duplicate.resolution = "1920x1080"
+
+    analysis = analyze_disc(
+        DiscInfo("PSYCH", "DVD", [original, duplicate]),
+        discs,
+        disc_number=1,
+        is_movie=False,
+        tmdb_episodes=_metadata(range(1, 3)),
+    )
+
+    assert duplicate not in analysis.rippable_titles
+    assert analysis.next_episode_carryover == []
+
+
+def test_next_disc_overflow_rejects_play_all_title():
+    discs = [
+        PlannedDisc(
+            1,
+            "DVD",
+            episodes=[_episode(1, 1200), _episode(2, 1200)],
+        ),
+        PlannedDisc(2, "DVD", episodes=[_episode(3, 2520)]),
+    ]
+    metadata = [
+        EpisodeMetadata(7, 1, EPISODE_TITLES[1], 1200),
+        EpisodeMetadata(7, 2, EPISODE_TITLES[2], 1200),
+        EpisodeMetadata(7, 3, EPISODE_TITLES[3], 2520),
+    ]
+
+    analysis = analyze_disc(
+        DiscInfo(
+            "PSYCH",
+            "DVD",
+            [_title(0, 1200), _title(1, 1200), _title(2, 2400)],
+        ),
+        discs,
+        disc_number=1,
+        is_movie=False,
+        tmdb_episodes=metadata,
+    )
+
+    assert analysis.classifications[2].startswith("Play-all of 2 titles")
+    assert analysis.next_episode_carryover == []
 
 
 def test_latest_prior_disc_carryover_survives_resume(tmp_path):
