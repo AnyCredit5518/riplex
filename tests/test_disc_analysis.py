@@ -726,6 +726,74 @@ class _FakeShowDetail:
 
 
 class TestEnrichDvdEntriesWithTmdb:
+    def test_physical_standard_and_extended_episode_versions(self):
+        entries = [
+            ("S.E.I.Z.E. the Day", 2580, "episode"),
+            ("Remake A.K.A. Cloudy... With a Chance of Improvement", 2580, "episode"),
+            ("Someone's Got a Woody", 2580, "episode"),
+            (
+                "Lock, Stock, Some Smoking Barrels and Burton Guster's Goblet of Fire",
+                2760,
+                "(Extended Version)",
+            ),
+            ("Deleted Scenes", 300, "extra"),
+        ]
+        tmdb = [
+            _FakeTmdbEpisode(8, 1, entries[3][0], 2580),
+            _FakeTmdbEpisode(8, 2, entries[0][0], 2580),
+            _FakeTmdbEpisode(8, 3, entries[1][0], 2580),
+            _FakeTmdbEpisode(8, 4, entries[2][0], 2580),
+        ]
+        titles = [
+            _make_title(2, 13190, resolution="720x480"),
+            _make_title(3, 2875, resolution="720x480", size=1_675_014_144),
+            _make_title(4, 2583, resolution="720x480", size=1_487_794_176),
+            _make_title(5, 2576, resolution="720x480", size=1_483_640_832),
+            _make_title(6, 2573, resolution="720x480", size=1_419_931_648),
+            _make_title(7, 2583, resolution="720x480", size=1_503_440_896),
+            _make_title(8, 303, resolution="720x480", size=100_000_000),
+        ]
+
+        enriched, total, count = enrich_dvd_entries_with_tmdb(
+            entries, tmdb, disc_titles=titles,
+        )
+
+        assert count == 5
+        assert total == 13080
+        assert enriched[3][0].endswith("(Extended Version)")
+        assert enriched[4] == (
+            f"S08E01 - {entries[3][0]} (Standard Version)",
+            2580,
+            "episode",
+        )
+        classifications = {
+            title.index: classify_title(
+                title, titles, enriched, False, None, total, count,
+            )
+            for title in titles
+        }
+        assert classifications[2].startswith("Play-all of 5 titles")
+        assert classifications[3].startswith("S08E01")
+        assert "Extended Version" in classifications[3]
+        assert classifications[4].startswith("S08E02")
+        assert classifications[5].startswith("S08E03")
+        assert classifications[6].startswith("S08E04")
+        assert classifications[7].startswith("S08E01")
+        assert "Standard Version" in classifications[7]
+        assert "Deleted Scenes" in classifications[8]
+        assert is_skip_title(
+            titles[0], titles, False, None, total, count, enriched,
+        ) is True
+        assert is_skip_title(
+            titles[1], titles, False, None, total, count, enriched,
+        ) is False
+        assert is_skip_title(
+            titles[5], titles, False, None, total, count, enriched,
+        ) is True
+        assert is_skip_title(
+            titles[6], titles, False, None, total, count, enriched,
+        ) is False
+
     def test_prepends_se_prefix_to_matched_episodes(self):
         """Psych S1 D2 pattern: dvdcompare titles get canonical S01E0N
         prefixes when they match TMDb episode names."""

@@ -706,6 +706,7 @@ def enrich_dvd_entries_with_tmdb(
     *,
     similarity_threshold: float = 0.85,
     min_promote_seconds: int = 900,
+    disc_titles: list | None = None,
 ) -> tuple[list[tuple[str, int, str]], int, int]:
     """Cross-reference dvdcompare features against a TMDb episode list.
 
@@ -774,6 +775,11 @@ def enrich_dvd_entries_with_tmdb(
         if winner_entry_idx not in entry_to_tmdb:
             entry_to_tmdb[winner_entry_idx] = tmdb_i
 
+    winner_runtimes = [
+        dvd_entries[entry_idx][1] for entry_idx in entry_to_tmdb
+        if dvd_entries[entry_idx][1] > 0
+    ]
+
     # Pass 2 — emit enriched entries.
     enriched: list[tuple[str, int, str]] = []
     for entry_idx, (name, runtime, etype) in enumerate(dvd_entries):
@@ -784,7 +790,40 @@ def enrich_dvd_entries_with_tmdb(
                 enriched_name = name
             else:
                 enriched_name = f"{se} - {name}"
+            variant = etype if re.search(
+                r"\b(?:extended|director'?s)\b", etype, re.IGNORECASE,
+            ) else ""
+            if variant:
+                enriched_name = f"{enriched_name} {variant}"
             enriched.append((enriched_name, runtime, "episode"))
+            tmdb_runtime = int(getattr(ep, "runtime_seconds", 0) or 0)
+            episode_length_titles = [
+                title for title in disc_titles or []
+                if winner_runtimes
+                and min(winner_runtimes) * 0.6
+                <= title.duration_seconds
+                <= max(winner_runtimes) * 1.5
+            ]
+            if (
+                variant
+                and tmdb_runtime > 0
+                and abs(runtime - tmdb_runtime) >= 60
+                and len(episode_length_titles) > len(entry_to_tmdb)
+                and any(
+                    abs(title.duration_seconds - runtime) <= 120
+                    for title in episode_length_titles
+                )
+                and any(
+                    abs(title.duration_seconds - tmdb_runtime) <= 60
+                    and abs(title.duration_seconds - runtime) > 60
+                    for title in episode_length_titles
+                )
+            ):
+                enriched.append((
+                    f"{se} - {name} (Standard Version)",
+                    tmdb_runtime,
+                    "episode",
+                ))
         elif etype == "episode" and entry_idx in entry_strong_match:
             # dvdcompare said "episode" and the name matches a TMDb
             # episode, but a longer entry already claimed that episode.
@@ -856,6 +895,9 @@ def _positional_episode_alignment(
     # canonical SxxEyy number (from enrichment) sort by it first; without
     # numbers we keep dvdcompare order.
     se_keys = [_parse_se_key(name) for _, name, _ in episodes]
+    populated_se_keys = [key for key in se_keys if key is not None]
+    if len(populated_se_keys) != len(set(populated_se_keys)):
+        return None
     if all(k is not None for k in se_keys):
         episodes = [e for _, e in sorted(zip(se_keys, episodes), key=lambda p: p[0])]
 
@@ -887,7 +929,7 @@ def _assign_episodes_sequentially(
     all_titles: list,
     dvd_entries: list[tuple[str, int, str]],
     *,
-    tolerance_seconds: int = 60,
+    tolerance_seconds: int = 120,
 ) -> dict[int, tuple[str, int, str]]:
     """Match disc titles to dvdcompare episode entries.
 
@@ -974,6 +1016,29 @@ def _is_claimed_episode(
         return False
     assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
     return title.index in assignments
+
+
+def _superseded_standard_variant(
+    title,
+    all_titles: list,
+    dvd_entries: list[tuple[str, int, str]] | None,
+) -> tuple[int, str] | None:
+    """Return the preferred extended cut when this is its standard version."""
+    if not dvd_entries:
+        return None
+    assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
+    assigned = assignments.get(title.index)
+    if assigned is None or "(Standard Version)" not in assigned[0]:
+        return None
+    episode_key = _parse_se_key(assigned[0])
+    for title_index, (name, _, _) in assignments.items():
+        if (
+            title_index != title.index
+            and _parse_se_key(name) == episode_key
+            and re.search(r"\b(?:extended|director'?s)\b", name, re.IGNORECASE)
+        ):
+            return title_index, name
+    return None
 
 
 def _get_effective_match(
@@ -1096,7 +1161,7 @@ def classify_title(
             and t.duration_seconds > 120
         ]
         if same_res_individuals:
-            return f"Play-all of {len(same_res_individuals)} titles ({res_label})"
+            return f"Play-all of {episode_count} titles ({res_label})"
         return f"Play-all ({res_label})"
 
     # Disc-internal play-all detection: check if duration matches sum of other
@@ -1123,6 +1188,17 @@ def classify_title(
     # walk so each dvdcompare episode is assigned to at most one disc
     # title, in dvdcompare order — pure duration matching mis-assigns
     # episodes on TV discs whose runtimes cluster within seconds.
+    superseded = _superseded_standard_variant(title, all_titles, dvd_entries)
+    if superseded is not None:
+        preferred_index, _ = superseded
+        assigned_name = _assign_episodes_sequentially(
+            all_titles, dvd_entries,
+        )[title.index][0]
+        return (
+            f"{assigned_name} "
+            f"({res_label}, skip #{preferred_index} extended version)"
+        )
+
     best_match = _get_effective_match(title, all_titles, dvd_entries)
     if best_match:
         name, _, entry_type = best_match
@@ -1280,6 +1356,9 @@ def is_skip_title(
         ]
         if len(same_res_individuals) >= episode_count:
             return True
+
+    if _superseded_standard_variant(title, all_titles, dvd_entries) is not None:
+        return True
 
     # Guard the play-all detectors from matching the movie itself.
     # On movie discs packed with many small extras, the extras' durations
@@ -1735,7 +1814,11 @@ def analyze_disc(
     # didn't flag as episodes can be promoted based on name matches.
     if tmdb_episodes and not is_movie:
         dvd_entries, total_episode_runtime, episode_count = (
-            enrich_dvd_entries_with_tmdb(dvd_entries, tmdb_episodes)
+            enrich_dvd_entries_with_tmdb(
+                dvd_entries,
+                tmdb_episodes,
+                disc_titles=disc_info.titles,
+            )
         )
 
     carryover = list(episode_carryover or []) if not is_movie else []
