@@ -303,7 +303,7 @@ class OrganizePreviewScreen:
                 bgcolor=ft.Colors.with_opacity(0.12, conf_color),
                 padding=ft.Padding(left=6, right=6, top=2, bottom=2),
                 border_radius=4,
-                width=92,
+                width=112,
             )
             # Durations make a bad match obvious at a glance: the source
             # file's runtime beside the matched target's expected runtime,
@@ -385,7 +385,7 @@ class OrganizePreviewScreen:
             sections.append(
                 ft.Row([
                     ft.Container(width=16),
-                    ft.Text("Confidence", size=11, width=92, color=ft.Colors.GREY_500),
+                    ft.Text("Confidence", size=11, width=112, color=ft.Colors.GREY_500),
                     ft.Text("Source", size=11, width=220, color=ft.Colors.GREY_500),
                     ft.Text("Runtime", size=11, width=62, color=ft.Colors.GREY_500),
                     ft.Container(width=14),
