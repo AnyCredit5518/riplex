@@ -903,6 +903,97 @@ class TestEnrichedClassificationTitleKey:
         assert "Spellingg Bee" in by_name["a.mkv"]
         assert "Speak Now" in by_name["b.mkv"]
 
+    def test_canonical_episode_crosses_disc_and_edition_suffix(self):
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[PlannedSeason(
+                season_number=7,
+                episodes=[PlannedEpisode(
+                    season_number=7,
+                    episode_number=5,
+                    title="100 Clues",
+                    runtime="",
+                    runtime_seconds=3189,
+                )],
+            )],
+        )
+        discs = [
+            PlannedDisc(
+                number=1,
+                disc_format="DVD",
+                extras=[PlannedExtra(
+                    title="100 Clues",
+                    runtime_seconds=3191,
+                    feature_type="(Extended Version)",
+                )],
+            ),
+            PlannedDisc(number=2, disc_format="DVD"),
+        ]
+        scanned = [ScannedDisc(
+            folder_name="Disc 2",
+            files=[ScannedFile(
+                name="D1_t03.mkv",
+                path="/rip/Disc 2/D1_t03.mkv",
+                duration_seconds=3189,
+                classification="S07E05 - 100 Clues (480p)",
+            )],
+        )]
+
+        result = match_discs(scanned, discs, plan)
+
+        assert len(result.matched) == 1
+        assert "100 Clues" in result.matched[0].matched_label
+        assert result.unmatched == []
+        assert not any("100 Clues" in label for label in result.missing)
+
+    def test_canonical_episode_handles_tmdb_title_variant(self):
+        plan = PlannedShow(
+            canonical_title="Psych",
+            year=2006,
+            seasons=[PlannedSeason(
+                season_number=7,
+                episodes=[PlannedEpisode(
+                    season_number=7,
+                    episode_number=10,
+                    title="The Santabarbarian Candidate",
+                    runtime="",
+                    runtime_seconds=2580,
+                )],
+            )],
+        )
+        discs = [PlannedDisc(
+            number=2,
+            disc_format="DVD",
+            episodes=[PlannedEpisode(
+                season_number=7,
+                episode_number=10,
+                title="Santa Barbarian Candidate",
+                runtime="",
+                runtime_seconds=2580,
+            )],
+            extras=[PlannedExtra(
+                title="42 Deleted Scenes (for 12 episodes)",
+                runtime_seconds=2492,
+            )],
+        )]
+        scanned = [ScannedDisc(
+            folder_name="Disc 3",
+            files=[ScannedFile(
+                name="G1_t00.mkv",
+                path="/rip/Disc 3/G1_t00.mkv",
+                duration_seconds=2575,
+                classification="S07E10 - Santa Barbarian Candidate (480p)",
+            )],
+        )]
+
+        result = match_discs(scanned, discs, plan)
+
+        assert len(result.matched) == 1
+        assert "Santa Barbarian Candidate" in result.matched[0].matched_label
+        assert result.unmatched == []
+        assert any("42 Deleted Scenes" in label for label in result.missing)
+
 
 class TestMissingFilteredToPresent:
     """Missing targets only include discs the user has folders for."""

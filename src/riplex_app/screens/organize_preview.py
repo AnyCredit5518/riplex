@@ -30,14 +30,12 @@ def _fmt_duration(seconds: int) -> str:
     return f"{m}:{s:02d}"
 
 
-def _natural_sort_key(value: str) -> tuple[tuple[int, object], ...]:
-    """Sort paths and labels naturally so episode 2 precedes episode 10."""
-    normalized = str(value).replace("\\", "/").casefold()
-    return tuple(
-        (1, int(part)) if part.isdigit() else (0, part)
-        for part in re.split(r"(\d+)", normalized)
-        if part
-    )
+def _natural_sort_key(value: str) -> list[str | int]:
+    """Sort labels containing numbers in human order."""
+    return [
+        int(part) if part.isdigit() else part.casefold()
+        for part in re.split(r"(\d+)", value)
+    ]
 
 
 class OrganizePreviewScreen:
@@ -277,7 +275,7 @@ class OrganizePreviewScreen:
         move_rows = []
         for move in sorted(
             plan.moves,
-            key=lambda item: _natural_sort_key(item.destination),
+            key=lambda item: _natural_sort_key(str(item.destination)),
         ):
             src_path = Path(move.source)
             # Prefix the basename with the disc folder so identical
@@ -301,10 +299,11 @@ class OrganizePreviewScreen:
             else:
                 conf_text = conf_label
             conf_chip = ft.Container(
-                content=ft.Text(conf_text, size=10, color=conf_color, weight=ft.FontWeight.BOLD),
+                content=ft.Text(conf_text, size=11, color=conf_color, weight=ft.FontWeight.BOLD),
                 bgcolor=ft.Colors.with_opacity(0.12, conf_color),
                 padding=ft.Padding(left=6, right=6, top=2, bottom=2),
                 border_radius=4,
+                width=92,
             )
             # Durations make a bad match obvious at a glance: the source
             # file's runtime beside the matched target's expected runtime,
@@ -319,21 +318,16 @@ class OrganizePreviewScreen:
                 ft.Row([
                     ft.Icon(ft.Icons.CHECK_CIRCLE, color=conf_color, size=16),
                     conf_chip,
-                    ft.Text(f"{src_name}", size=12, width=180, no_wrap=True),
-                    ft.Text(src_dur_text, size=11, width=54, no_wrap=True, color=dur_color),
+                    ft.Text(f"{src_name}", size=13, width=220, no_wrap=True),
+                    ft.Text(src_dur_text, size=12, width=62, no_wrap=True, color=dur_color),
                     ft.Icon(ft.Icons.ARROW_FORWARD, size=14, color=ft.Colors.GREY_500),
-                    ft.Text(f"{dest_folder}/{dest_name}", size=12, expand=True, no_wrap=True),
-                    ft.Text(tgt_dur_text, size=11, no_wrap=True, color=dur_color),
-                ], spacing=6)
+                    ft.Text(f"{dest_folder}/{dest_name}", size=13, expand=True, no_wrap=True),
+                    ft.Text(tgt_dur_text, size=12, width=62, no_wrap=True, color=dur_color),
+                ], spacing=8)
             )
 
         # Split rows
-        for split in sorted(
-            plan.splits,
-            key=lambda item: _natural_sort_key(
-                item.chapter_destinations[0] if item.chapter_destinations else item.source
-            ),
-        ):
+        for split in plan.splits:
             split_path = Path(split.source)
             split_parent = split_path.parent.name
             src_name = f"{split_parent}/{split_path.name}" if split_parent else split_path.name
@@ -349,10 +343,7 @@ class OrganizePreviewScreen:
 
         # Unmatched rows
         unmatched_rows = []
-        for f in sorted(
-            plan.unmatched,
-            key=lambda item: _natural_sort_key(item.path or item.name),
-        ):
+        for f in plan.unmatched:
             dur_m = f.duration_seconds // 60
             dur_s = f.duration_seconds % 60
             # Prefix with disc folder for the same disambiguation
@@ -369,7 +360,7 @@ class OrganizePreviewScreen:
 
         # Missing rows
         missing_rows = []
-        for label in sorted(plan.missing, key=_natural_sort_key):
+        for label in plan.missing:
             missing_rows.append(
                 ft.Row([
                     ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE, size=16),
@@ -391,7 +382,25 @@ class OrganizePreviewScreen:
 
         if move_rows:
             sections.append(ft.Text("Matched files:", size=13, weight=ft.FontWeight.BOLD))
-            sections.append(ft.Column(move_rows, spacing=2, scroll=ft.ScrollMode.AUTO))
+            sections.append(
+                ft.Row([
+                    ft.Container(width=16),
+                    ft.Text("Confidence", size=11, width=92, color=ft.Colors.GREY_500),
+                    ft.Text("Source", size=11, width=220, color=ft.Colors.GREY_500),
+                    ft.Text("Runtime", size=11, width=62, color=ft.Colors.GREY_500),
+                    ft.Container(width=14),
+                    ft.Text("Destination", size=11, expand=True, color=ft.Colors.GREY_500),
+                    ft.Text("Expected", size=11, width=62, color=ft.Colors.GREY_500),
+                ], spacing=8)
+            )
+            sections.append(ft.Divider(height=1))
+            sections.append(
+                ft.Column(
+                    move_rows,
+                    spacing=5,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                )
+            )
 
         if unmatched_rows:
             sections.append(ft.Container(height=8))
@@ -425,6 +434,7 @@ class OrganizePreviewScreen:
             spacing=10,
             scroll=ft.ScrollMode.AUTO,
             expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
     def _build_error_view(self, error: str) -> ft.Control:

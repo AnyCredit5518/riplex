@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+from difflib import SequenceMatcher
 
 from riplex.models import (
     MatchCandidate,
@@ -206,6 +207,10 @@ _CLASSIFICATION_TYPE_PREFIX_RE = re.compile(r"^\[[^\]]+\]\s*")
 # to episode classifications. Stripped before title comparison so the
 # key matches the un-enriched dvdcompare target label.
 _CLASSIFICATION_SE_PREFIX_RE = re.compile(r"^S\d{2,3}E\d{2,4}\s*-\s*", re.IGNORECASE)
+_CLASSIFICATION_SE_RE = re.compile(
+    r"^S(?P<season>\d{2,3})E(?P<episode>\d{2,4})\b",
+    re.IGNORECASE,
+)
 
 # Classifications that don't identify a specific dvdcompare-listed
 # title. Runtime-based matching handles these downstream, so the
@@ -255,6 +260,48 @@ def _target_title_key(label: str) -> str:
         key = key[: -len("(movie)")].strip()
     key = _TRAILING_TYPE_RE.sub("", key).strip()
     return re.sub(r"\s+", " ", key).casefold()
+
+
+def _canonical_episode_target(
+    classification: str,
+    targets: list[tuple[str, int, int | None]],
+    plan: PlannedMovie | PlannedShow | None,
+    claimed_targets: set[int],
+) -> int | None:
+    """Resolve a manifest S/E identity to its dvdcompare target."""
+    if not isinstance(plan, PlannedShow):
+        return None
+    match = _CLASSIFICATION_SE_RE.match(classification)
+    if match is None:
+        return None
+    season_number = int(match.group("season"))
+    episode_number = int(match.group("episode"))
+    episode = next(
+        (
+            episode
+            for season in plan.seasons
+            for episode in season.episodes
+            if episode.season_number == season_number
+            and episode.episode_number == episode_number
+        ),
+        None,
+    )
+    if episode is None:
+        return None
+
+    episode_key = re.sub(r"\s+", " ", episode.title).casefold()
+    scored: list[tuple[float, int]] = []
+    for target_index, (label, runtime_seconds, _) in enumerate(targets):
+        if target_index in claimed_targets or runtime_seconds <= 0:
+            continue
+        target_key = _target_title_key(label)
+        if episode_key in target_key or target_key in episode_key:
+            score = 1.0
+        else:
+            score = SequenceMatcher(None, episode_key, target_key).ratio()
+        if score >= 0.7:
+            scored.append((score, target_index))
+    return max(scored, default=(0.0, None))[1]
 
 
 def _duplicate_content_key(label: str) -> str | None:
@@ -534,6 +581,39 @@ def match_discs(
     claimed_targets: set[int] = set()
     claimed_files: set[int] = set()
 
+    # --- Pass -1: honor canonical manifest episode identities ---
+    # SxxEyy comes from TMDb at rip time and remains authoritative when
+    # physical disc layout or dvdcompare title wording differs.
+    for fi, sf in enumerate(all_scanned):
+        if sf.duration_seconds <= 0:
+            continue
+        target_index = _canonical_episode_target(
+            sf.classification, targets, plan, claimed_targets,
+        )
+        if target_index is None:
+            continue
+        label, runtime_s, _ = targets[target_index]
+        delta = abs(sf.duration_seconds - runtime_s)
+        conf = _confidence(delta)
+        log.debug(
+            "Pass -1 (canonical episode): %s [%s] -> '%s' delta=%ds [%s]",
+            sf.name, sf.classification, label, delta, conf,
+        )
+        matched.append(
+            MatchCandidate(
+                file_name=sf.name,
+                file_duration_seconds=sf.duration_seconds,
+                matched_label=label,
+                matched_runtime_seconds=runtime_s,
+                delta_seconds=delta,
+                confidence=conf,
+                classification=sf.classification,
+                file_path=sf.path,
+            )
+        )
+        claimed_files.add(fi)
+        claimed_targets.add(target_index)
+
     # --- Pass 0: honor rip-time classifications ---
     # The rip-time classifier already tagged each ripped file with the
     # dvdcompare title it belongs to. When that tag identifies a target
@@ -542,7 +622,7 @@ def match_discs(
     # discs cluster all episodes within ~10s of each other, so pure
     # runtime greedy assigns them essentially at random).
     for fi, sf in enumerate(all_scanned):
-        if sf.duration_seconds <= 0:
+        if fi in claimed_files or sf.duration_seconds <= 0:
             continue
         class_key = _classification_title_key(sf.classification)
         if not class_key:
