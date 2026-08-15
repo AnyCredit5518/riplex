@@ -26,6 +26,7 @@ class SeasonSelectScreen:
     def __init__(self, app):
         self.app = app
         self._radio_group: ft.RadioGroup | None = None
+        self._resume_started = False
         # Cached ordered list of non-special seasons for _next() lookup.
         self._non_special_seasons: list = []
 
@@ -306,6 +307,10 @@ class SeasonSelectScreen:
         uses so both entry points converge on the same disc_overview
         state.
         """
+        if self._resume_started:
+            log.debug("season_select: resume already in progress; ignoring duplicate")
+            return
+        self._resume_started = True
         from riplex_app.screens.disc_detection import perform_resume_fetch
 
         threading.Thread(

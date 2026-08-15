@@ -312,6 +312,7 @@ class TestOrchestrateResumeOnPick:
         screen.build()
         screen._radio_group.value = "2"
         screen._on_next(None)
+        screen._on_next(None)
 
         assert app.state["season_number"] == 2
         # Resume kicked off; no navigation to release.

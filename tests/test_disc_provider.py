@@ -1,10 +1,58 @@
 """Tests for disc_provider conversion logic."""
 
+import asyncio
+import threading
+import time
+
 import pytest
 
 from dvdcompare.models import Disc, Feature, FilmComparison, Release
 
 from riplex.disc.provider import _clean_feature_type, _convert_film
+
+
+class TestRequestThrottle:
+    def test_process_lock_works_across_event_loops(self, monkeypatch):
+        import riplex.disc.provider as provider
+
+        first_entered = threading.Event()
+        release_first = threading.Event()
+        calls: list[str] = []
+        errors: list[BaseException] = []
+
+        async def _fake_find(title, _disc_format, _year):
+            calls.append(title)
+            if title == "first":
+                first_entered.set()
+                await asyncio.to_thread(release_first.wait)
+            return FilmComparison(title=title, releases=[])
+
+        monkeypatch.setattr(provider, "_find_film_prefer_format", _fake_find)
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+        monkeypatch.setattr(provider, "_last_request_at", 0.0)
+
+        def _run(title: str) -> None:
+            try:
+                asyncio.run(provider._throttled_find_film(title, "DVD"))
+            except BaseException as exc:
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=_run, args=(title,))
+            for title in ("first", "second", "third")
+        ]
+        threads[0].start()
+        assert first_entered.wait(timeout=1)
+        threads[1].start()
+        time.sleep(0.05)
+        threads[2].start()
+        release_first.set()
+        for thread in threads:
+            thread.join(timeout=2)
+
+        assert errors == []
+        assert set(calls) == {"first", "second", "third"}
+        assert all(not thread.is_alive() for thread in threads)
 
 
 class TestCleanFeatureType:

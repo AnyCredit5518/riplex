@@ -12,6 +12,7 @@ import dataclasses
 import logging
 import os
 import re
+import threading
 import time
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
@@ -35,8 +36,14 @@ _CACHE_NS = "dvdcompare"
 # across the entire process, regardless of how many UI threads/tasks try to
 # fetch concurrently. Tunable via env var for tests.
 _MIN_INTERVAL_S = float(os.environ.get("RIPLEX_DVDCOMPARE_MIN_INTERVAL_S", "3.0"))
-_request_lock = asyncio.Lock()
+_request_lock = threading.Lock()
 _last_request_at: float = 0.0
+
+
+async def _acquire_request_lock() -> None:
+    """Acquire the process-wide throttle without binding it to an event loop."""
+    while not _request_lock.acquire(blocking=False):
+        await asyncio.sleep(0.05)
 
 
 def _scraper_version() -> str:
@@ -356,7 +363,8 @@ async def _throttled_find_film(
     format-match above year-match when a disc format is known.
     """
     global _last_request_at
-    async with _request_lock:
+    await _acquire_request_lock()
+    try:
         now = time.monotonic()
         wait = _MIN_INTERVAL_S - (now - _last_request_at)
         if wait > 0:
@@ -370,12 +378,15 @@ async def _throttled_find_film(
             )
         finally:
             _last_request_at = time.monotonic()
+    finally:
+        _request_lock.release()
 
 
 async def _throttled_get_film_by_url(url: str) -> FilmComparison:
     """Call ``get_film_by_url`` under the same throttle as ``find_film``."""
     global _last_request_at
-    async with _request_lock:
+    await _acquire_request_lock()
+    try:
         now = time.monotonic()
         wait = _MIN_INTERVAL_S - (now - _last_request_at)
         if wait > 0:
@@ -385,6 +396,8 @@ async def _throttled_get_film_by_url(url: str) -> FilmComparison:
             return await get_film_by_url(url, resolve_pointers=True)
         finally:
             _last_request_at = time.monotonic()
+    finally:
+        _request_lock.release()
 
 
 async def _find_film_prefer_format(
