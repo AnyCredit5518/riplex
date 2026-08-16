@@ -1,7 +1,10 @@
 """Focused regressions for title identity and recommendation evidence."""
 
+from types import SimpleNamespace
+
 from riplex.disc.analysis import _resolution_label, assess_title, classify_title
 from riplex.disc.makemkv import DiscTitle
+from riplex_app.screens.selection import _alternate_layout_detail
 
 
 def _make_title(index: int, duration: int, resolution: str = "720x480") -> DiscTitle:
@@ -68,3 +71,31 @@ def test_matched_episode_separates_identity_from_name():
     assert assessment.recommendation == "rip"
     assert assessment.identification == "Matched episode"
     assert assessment.name == "Murder? ... Anyone? ... Anyone? ... Bueller?"
+
+
+def test_alternate_layout_banner_names_next_metadata_disc():
+    analysis = SimpleNamespace(
+        recovered_carryover_indices={7},
+        assessments={
+            7: SimpleNamespace(
+                identification="Expected on Disc 2",
+                name="COG Blocked",
+            ),
+        },
+    )
+
+    assert _alternate_layout_detail(analysis) == "Expected on Disc 2: COG Blocked"
+
+
+def test_alternate_layout_banner_names_previous_metadata_disc():
+    analysis = SimpleNamespace(
+        recovered_carryover_indices={0},
+        assessments={
+            0: SimpleNamespace(
+                identification="Expected on Disc 1",
+                name="100 Clues",
+            ),
+        },
+    )
+
+    assert _alternate_layout_detail(analysis) == "Expected on Disc 1: 100 Clues"

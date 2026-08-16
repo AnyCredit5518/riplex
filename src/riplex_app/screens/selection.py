@@ -25,6 +25,18 @@ def _format_size(size_bytes: int) -> str:
     return f"{gb:.1f} GB"
 
 
+def _alternate_layout_detail(analysis) -> str:
+    """Describe recovered episode identities by their metadata disc."""
+    groups: dict[str, list[str]] = {}
+    for index in sorted(analysis.recovered_carryover_indices):
+        assessment = analysis.assessments[index]
+        groups.setdefault(assessment.identification, []).append(assessment.name)
+    return "; ".join(
+        f"{identification}: {', '.join(names)}"
+        for identification, names in groups.items()
+    )
+
+
 class SelectionScreen:
     def __init__(self, app):
         self.app = app
@@ -269,10 +281,7 @@ class SelectionScreen:
             year_str = f" ({tmdb_match.year})" if tmdb_match.year else ""
             match_label = f"{tmdb_match.title}{year_str}"
 
-        recovered_names = [
-            analysis.assessments[index].name
-            for index in sorted(analysis.recovered_carryover_indices)
-        ]
+        alternate_layout_detail = _alternate_layout_detail(analysis)
         alternate_layout_notice = ft.Container(
             content=ft.Row(
                 [
@@ -286,8 +295,7 @@ class SelectionScreen:
                                 color=ft.Colors.AMBER_200,
                             ),
                             ft.Text(
-                                "Expected on the previous disc: "
-                                + ", ".join(recovered_names),
+                                alternate_layout_detail,
                                 size=12,
                                 color=ft.Colors.GREY_300,
                             ),
@@ -301,7 +309,7 @@ class SelectionScreen:
             border=ft.Border.all(1, ft.Colors.AMBER_700),
             border_radius=6,
             bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.AMBER_700),
-            visible=bool(recovered_names),
+            visible=bool(alternate_layout_detail),
         )
 
         back_target = "disc_overview" if self.app.state.get("workflow") == "orchestrate" else "metadata"
