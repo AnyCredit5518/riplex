@@ -1092,7 +1092,11 @@ def classify_title(
             return f"Extended Cut ({res_label})"
 
     # Check if this is a play-all (dvdcompare total)
-    if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
+    if (
+        episode_count > 1
+        and total_episode_runtime > 0
+        and abs(dur - total_episode_runtime) < 120
+    ):
         same_res_individuals = [
             t for t in all_titles
             if t is not title
@@ -1566,12 +1570,14 @@ def _carryover_matches_entry(
 ) -> bool:
     """Match a persisted episode identity against raw or enriched metadata."""
     name, runtime, entry_type = entry
-    if entry_type != "episode" or abs(carryover.runtime_seconds - runtime) > 120:
+    if entry_type != "episode":
         return False
     carryover_key = _parse_se_key(carryover.name)
     entry_key = _parse_se_key(name)
     if carryover_key is not None and entry_key is not None:
         return carryover_key == entry_key
+    if abs(carryover.runtime_seconds - runtime) > 120:
+        return False
     clean_carryover = re.sub(
         r"^S\d+E\d+\s+-\s+", "", carryover.name, flags=re.IGNORECASE,
     )
@@ -1610,9 +1616,27 @@ def _match_next_disc_episode_overflow(
         next_entries, _, _ = enrich_dvd_entries_with_tmdb(
             next_entries, tmdb_episodes,
         )
+    tmdb_runtimes = {
+        (
+            int(getattr(episode, "season_number", 0) or 0),
+            int(getattr(episode, "episode_number", 0) or 0),
+        ): int(getattr(episode, "runtime_seconds", 0) or 0)
+        for episode in tmdb_episodes or []
+    }
     next_episodes = [
-        entry for entry in next_entries
-        if entry[2] == "episode" and entry[1] > 0
+        (
+            name,
+            (
+                tmdb_runtimes.get(_parse_se_key(name), 0)
+                if not re.search(
+                    r"\b(?:extended|director'?s)\b", name, re.IGNORECASE,
+                )
+                else 0
+            ) or runtime,
+            entry_type,
+        )
+        for name, runtime, entry_type in next_entries
+        if entry_type == "episode" and runtime > 0
     ]
     if not next_episodes:
         return []

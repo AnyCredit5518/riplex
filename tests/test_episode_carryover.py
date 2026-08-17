@@ -213,6 +213,92 @@ def test_next_disc_episode_overflow_is_borrowed_once(capsys):
     assert second.next_episode_carryover == []
 
 
+def test_next_disc_overflow_uses_canonical_runtime_for_standard_episode():
+    episode_titles = {
+        5: "COG Blocked",
+        6: "1967: A Psych Odyssey",
+        7: "Shawn and Gus Truck Things Up",
+        8: "A Touch of Sweevil",
+        9: "A Nightmare on State Street",
+        10: "The Break-Up",
+    }
+
+    def episode(number: int, runtime: int = 2580) -> PlannedEpisode:
+        return PlannedEpisode(
+            8, number, episode_titles[number], f"{runtime // 60}m", runtime,
+        )
+
+    metadata = [
+        EpisodeMetadata(8, number, episode_titles[number], 2580)
+        for number in range(5, 11)
+    ]
+    discs = [
+        PlannedDisc(
+            2,
+            "DVD",
+            episodes=[episode(5), episode(6), episode(7, 2520), episode(8)],
+            extras=[PlannedExtra("Was It Something I Said?", 199, "music video")],
+        ),
+        PlannedDisc(
+            3,
+            "DVD",
+            episodes=[PlannedEpisode(0, 0, "Psych: The Musical", "87m", 5231)],
+            extras=[
+                PlannedExtra(episode_titles[9], 2580, "(Director's Cut)"),
+                PlannedExtra(episode_titles[10], 2880),
+            ],
+        ),
+    ]
+    disc_two = DiscInfo(
+        "PSYCH",
+        "DVD",
+        [
+            _title(0, 199),
+            _title(1, 12816),
+            _title(2, 2565),
+            _title(3, 2529),
+            _title(4, 2566),
+            _title(5, 2575),
+            _title(6, 2581),
+        ],
+    )
+
+    second = analyze_disc(
+        disc_two,
+        discs,
+        disc_number=2,
+        is_movie=False,
+        tmdb_episodes=metadata,
+        episode_carryover=[EpisodeCarryover("S08E05 - COG Blocked", 2580, 2)],
+    )
+
+    assert second.classifications[1].startswith("Play-all of 5 titles")
+    assert [
+        second.classifications[index].split(" - ")[0]
+        for index in range(2, 7)
+    ] == ["S08E06", "S08E07", "S08E08", "S08E09", "S08E10"]
+    assert second.assessments[6].recommendation == "review"
+    assert second.assessments[6].identification == "Expected on Disc 3"
+    assert second.next_episode_carryover == [
+        EpisodeCarryover(
+            "S08E09 - A Nightmare on State Street (Director's Cut)", 2580, 3,
+        ),
+        EpisodeCarryover("S08E10 - The Break-Up", 2580, 3),
+    ]
+
+    third = analyze_disc(
+        DiscInfo("PSYCH", "DVD", [_title(0, 5231)]),
+        discs,
+        disc_number=3,
+        is_movie=False,
+        tmdb_episodes=metadata,
+        episode_carryover=second.next_episode_carryover,
+    )
+
+    assert third.classifications[0].startswith("Psych: The Musical")
+    assert third.next_episode_carryover == []
+
+
 def test_next_disc_overflow_rejects_duplicate_title():
     discs = [
         PlannedDisc(1, "DVD", episodes=[_episode(1)]),
