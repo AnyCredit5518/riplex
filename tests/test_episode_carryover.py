@@ -213,7 +213,7 @@ def test_next_disc_episode_overflow_is_borrowed_once(capsys):
     assert second.next_episode_carryover == []
 
 
-def test_next_disc_overflow_uses_canonical_runtime_for_standard_episode():
+def test_next_disc_overflow_does_not_invent_episode_from_canonical_runtime():
     episode_titles = {
         5: "COG Blocked",
         6: "1967: A Psych Odyssey",
@@ -242,10 +242,10 @@ def test_next_disc_overflow_uses_canonical_runtime_for_standard_episode():
         PlannedDisc(
             3,
             "DVD",
-            episodes=[PlannedEpisode(0, 0, "Psych: The Musical", "87m", 5231)],
+            episodes=[episode(10, 2880)],
             extras=[
                 PlannedExtra(episode_titles[9], 2580, "(Director's Cut)"),
-                PlannedExtra(episode_titles[10], 2880),
+                PlannedExtra("Psych: The Musical", 5231, "episode"),
             ],
         ),
     ]
@@ -272,22 +272,23 @@ def test_next_disc_overflow_uses_canonical_runtime_for_standard_episode():
         episode_carryover=[EpisodeCarryover("S08E05 - COG Blocked", 2580, 2)],
     )
 
-    assert second.classifications[1].startswith("Play-all of 5 titles")
     assert [
         second.classifications[index].split(" - ")[0]
-        for index in range(2, 7)
-    ] == ["S08E06", "S08E07", "S08E08", "S08E09", "S08E10"]
+        for index in range(2, 5)
+    ] == ["S08E06", "S08E07", "S08E08"]
+    assert second.classifications[5].startswith("Unmatched content")
+    assert second.classifications[6].startswith("S08E09")
+    assert "Director's Cut" in second.classifications[6]
     assert second.assessments[6].recommendation == "review"
     assert second.assessments[6].identification == "Expected on Disc 3"
     assert second.next_episode_carryover == [
         EpisodeCarryover(
             "S08E09 - A Nightmare on State Street (Director's Cut)", 2580, 3,
         ),
-        EpisodeCarryover("S08E10 - The Break-Up", 2580, 3),
     ]
 
     third = analyze_disc(
-        DiscInfo("PSYCH", "DVD", [_title(0, 5231)]),
+        DiscInfo("PSYCH", "DVD", [_title(0, 2581), _title(1, 5231)]),
         discs,
         disc_number=3,
         is_movie=False,
@@ -295,7 +296,8 @@ def test_next_disc_overflow_uses_canonical_runtime_for_standard_episode():
         episode_carryover=second.next_episode_carryover,
     )
 
-    assert third.classifications[0].startswith("Psych: The Musical")
+    assert third.classifications[0].startswith("S08E10 - The Break-Up")
+    assert third.classifications[1].startswith("Psych: The Musical")
     assert third.next_episode_carryover == []
 
 

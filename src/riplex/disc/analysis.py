@@ -943,7 +943,37 @@ def _assign_episodes_sequentially(
     assignments: dict[int, tuple[str, int, str]] = {}
     ordered = sorted(all_titles, key=lambda t: t.index)
 
+    # A named variant is better identified by its runtime than by first-fit
+    # order when a disc exposes both the broadcast and alternate cuts. Reserve
+    # the closest candidate before the normal sequential walk; otherwise a
+    # slightly shorter standard cut can steal a listed director's cut entry.
+    for ep_i, name, runtime in episodes:
+        if not re.search(
+            r"\b(?:extended|director'?s)\b", name, re.IGNORECASE,
+        ):
+            continue
+        candidates = [
+            title for title in ordered
+            if title.index not in assignments
+            and title.duration_seconds >= 120
+            and abs(title.duration_seconds - runtime) <= tolerance_seconds
+        ]
+        if not candidates:
+            continue
+        best = min(
+            candidates,
+            key=lambda title: (
+                abs(title.duration_seconds - runtime),
+                -title.duration_seconds,
+                title.index,
+            ),
+        )
+        assignments[best.index] = (name, runtime, "episode")
+        consumed.add(ep_i)
+
     for t in ordered:
+        if t.index in assignments:
+            continue
         dur = t.duration_seconds
         # Ignore obviously-short titles (menus, intros) so they don't
         # burn a slot they can't possibly fill.
@@ -1616,25 +1646,8 @@ def _match_next_disc_episode_overflow(
         next_entries, _, _ = enrich_dvd_entries_with_tmdb(
             next_entries, tmdb_episodes,
         )
-    tmdb_runtimes = {
-        (
-            int(getattr(episode, "season_number", 0) or 0),
-            int(getattr(episode, "episode_number", 0) or 0),
-        ): int(getattr(episode, "runtime_seconds", 0) or 0)
-        for episode in tmdb_episodes or []
-    }
     next_episodes = [
-        (
-            name,
-            (
-                tmdb_runtimes.get(_parse_se_key(name), 0)
-                if not re.search(
-                    r"\b(?:extended|director'?s)\b", name, re.IGNORECASE,
-                )
-                else 0
-            ) or runtime,
-            entry_type,
-        )
+        (name, runtime, entry_type)
         for name, runtime, entry_type in next_entries
         if entry_type == "episode" and runtime > 0
     ]
