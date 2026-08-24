@@ -5,29 +5,29 @@ The `lookup` command shows disc contents and recommended rip strategy *before* y
 ## Basic usage
 
 ```bash
-riplex lookup "Frozen Planet II"
+riplex lookup "Example Series"
 ```
 
 Output:
 
 ```
-Frozen Planet II (2022) [TV Show]
+Example Series (2024) [TV Show]
 ============================================================
 
 Recommended rip folder structure:
-  _MakeMKV/Frozen Planet II (2022)/Disc 1/ [Blu-ray 4K] (episodes)
-  _MakeMKV/Frozen Planet II (2022)/Disc 2/ [Blu-ray 4K] (episodes + extras)
-  _MakeMKV/Frozen Planet II (2022)/Disc 3/ [Blu-ray] (episodes)
-  _MakeMKV/Frozen Planet II (2022)/Disc 4/ [Blu-ray] (episodes)
+  _MakeMKV/Example Series (2024)/Disc 1/ [Blu-ray 4K] (episodes)
+  _MakeMKV/Example Series (2024)/Disc 2/ [Blu-ray 4K] (episodes + extras)
+  _MakeMKV/Example Series (2024)/Disc 3/ [Blu-ray] (episodes)
+  _MakeMKV/Example Series (2024)/Disc 4/ [Blu-ray] (episodes)
 
 Disc contents (4 disc(s)):
 ------------------------------------------------------------
 
   Disc 1 [Blu-ray 4K]
     Episodes (3, total 2:36:33):
-      Frozen Worlds (52:11)
-      Frozen Ocean (51:47)
-      Frozen Peaks (52:35)
+      Episode One (52:11)
+      Episode Two (51:47)
+      Episode Three (52:35)
   ...
 
 Rip tips:
@@ -42,15 +42,15 @@ Rip tips:
 Add `--create-folders` to create the recommended rip subfolders under your output root:
 
 ```bash
-riplex lookup "Blade Runner" --year 1982 --format "Blu-ray 4K" --create-folders
+riplex lookup "Example Movie" --year 2024 --format "Blu-ray 4K" --create-folders
 ```
 
-This creates folders like `<output_root>/_MakeMKV/Blade Runner (1982)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
+This creates folders like `<output_root>/_MakeMKV/Example Movie (2024)/Disc 1/` through `Disc 8/` so you can point MakeMKV's output at the correct disc subfolder as you rip.
 
 ## Movie with extras
 
 ```bash
-riplex lookup "Oppenheimer" --year 2023
+riplex lookup "Example Movie" --year 2024
 ```
 
 For movies, the guide identifies which disc has the main film vs extras, and labels play-all bonus groups appropriately.
@@ -62,13 +62,13 @@ The play-all tip is key: instead of ripping 4 individual episode titles per disc
 ## JSON output
 
 ```bash
-riplex lookup "Frozen Planet II" --json
+riplex lookup "Example Series" --json
 ```
 
 When combined with `--drive`, the JSON includes a `disc_analysis` object with per-title recommendations:
 
 ```bash
-riplex lookup "Frozen Planet II" --drive 0 --json
+riplex lookup "Example Series" --drive 0 --json
 ```
 
 ## Live disc analysis
@@ -76,7 +76,7 @@ riplex lookup "Frozen Planet II" --drive 0 --json
 Add `--drive` to read the physical disc in real time via makemkvcon and cross-reference its titles against dvdcompare metadata.
 
 ```bash
-riplex lookup "Frozen Planet II" --drive 0
+riplex lookup "Example Series" --drive 0
 ```
 
 The `--drive` flag accepts:
@@ -89,15 +89,15 @@ This appends a title-by-title analysis table after the dvdcompare guide:
 
 ```
 ============================================================
-Live disc analysis: Frozen Planet II - Disc 2
+Live disc analysis: Example Series - Disc 2
 ============================================================
 
     #   Duration      Size        Res   Ch  Recommendation
   ---  ---------  --------  ---------  ---  ----------------------------------------
     0      50:25   12.0 GB  1920x1080    5  Play-all (1080p) - skip (individual 4K titles available)
-    1      52:20   22.7 GB  3840x2160    6  Frozen Worlds (4K) - rip this
-    2      52:06   21.2 GB  3840x2160    6  Frozen Ocean (4K) - rip this
-    3      51:53   19.7 GB  3840x2160    6  Frozen Peaks (4K) - rip this
+    1      52:20   22.7 GB  3840x2160    6  Episode One (4K) - rip this
+    2      52:06   21.2 GB  3840x2160    6  Episode Two (4K) - rip this
+    3      51:53   19.7 GB  3840x2160    6  Episode Three (4K) - rip this
     4    2:36:21   63.6 GB  3840x2160   18  Play-all (4K, 18 ch, 3 segments) - skip (rip #1, #2, #3 individually)
 
   Rip titles: 1, 2, 3 (63.6 GB total)

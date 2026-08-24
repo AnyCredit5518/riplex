@@ -8,20 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical (e.g. *Shawn and Gus in Drag (Racing)*), or one that dvdcompare files under a disc's extras (e.g. an *(Extended Version)* listing such as *Romeo and Juliet and Juliet* or *Dual Spires*), was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly (e.g. Psych S5 E01/E05/E12).
+- **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical, or one that dvdcompare files under a disc's extras as an extended version, was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly.
 
 - **makemkvcon drive-listing timeout is now configurable (default raised to 120s).** `makemkvcon -r info list` previously timed out after a fixed 60 seconds; on some setups this fired even though the MakeMKV GUI worked fine. Raise `makemkv_list_timeout` in the config if a slow drive still times out. (#23)
-- **Disc and season detection for compact `SxDy` volume labels.** A label that glues the disc digit to the season token and trails a provider code — e.g. `EXPANSE_S3D1_UPB75` — now resolves to the correct title (*Expanse*), season (3) and disc (1). Previously the season was lost and disc detection fell through to duration matching, which could pick the wrong disc. (#18)
+- **Disc and season detection for compact `SxDy` volume labels.** A label that glues the disc digit to the season token and trails a provider code — e.g. `EXAMPLE_S3D1_CODE` — now resolves to the correct title (`Example`), season (3) and disc (1). Previously the season was lost and disc detection fell through to duration matching, which could pick the wrong disc. (#18)
 
 ### Added
 
 - **Durations on the organize preview.** Each matched file now shows its runtime next to the matched episode/target's expected runtime; a divergence of more than a minute is highlighted so an incorrect match is easy to spot before you execute.
 
+## 2026-08-23
+
+### Added
+
+- Published an anonymized production-code OCR potential-feature investigation, including real-disc findings, metadata-provider limitations, a conservative post-rip MVP design, and criteria for revisiting implementation.
+
+### Fixed
+
+- Corrected the MkDocs admonition extension name so the documentation site can build.
+
+### Changed
+
+- Replaced title-specific public documentation examples with fictional or generic placeholders.
+
 ## v1.0.1 — 2026-07-20
 
 ### Fixed
 
-- **Out-of-order episode matching.** When dvdcompare files an “(Extended Version)” of an episode under a disc's *extras*, TMDb enrichment promotes it to an episode but leaves it positioned after the real episode list, so the episode entries arrive out of broadcast order. Positional episode alignment now sorts episodes by their canonical `SxxEyy` number before matching disc titles, so a disc whose titles are in broadcast order maps correctly. Previously the misordered list could orphan a title to a generic “Episode” label and shift the following episodes by one (e.g. Psych S6 D3).
+- **Out-of-order episode matching.** When dvdcompare files an “(Extended Version)” of an episode under a disc's *extras*, TMDb enrichment promotes it to an episode but leaves it positioned after the real episode list, so the episode entries arrive out of broadcast order. Positional episode alignment now sorts episodes by their canonical `SxxEyy` number before matching disc titles, so a disc whose titles are in broadcast order maps correctly. Previously the misordered list could orphan a title to a generic “Episode” label and shift the following episodes by one on a multi-disc season release.
 
 ## v1.0.0 — 2026-07-18
 
@@ -78,7 +92,7 @@ routed to its correct Plex destination.
 
 ### Fixed
 
-- **TV: a single wrong dvdcompare episode runtime no longer mislabels two episodes.** When a disc's episode-length titles line up 1:1 with the dvdcompare episode list, riplex now assigns them by disc position instead of purely by runtime. Previously a bad listed runtime (e.g. Psych S6 D3 listing "Heeeeere's Lassie" at 43:10 when the disc title is 49:41) orphaned that episode to a generic "Episode" label and let a same-runtime neighbour steal its slot. Positional alignment fixes both; it only applies on an exact 1:1 count match with at most one runtime outlier, and defers to runtime matching on ragged or reordered discs.
+- **TV: a single wrong dvdcompare episode runtime no longer mislabels two episodes.** When a disc's episode-length titles line up 1:1 with the dvdcompare episode list, riplex now assigns them by disc position instead of purely by runtime. Previously a bad listed runtime could orphan that episode to a generic "Episode" label and let a same-runtime neighbour steal its slot. Positional alignment fixes both; it only applies on an exact 1:1 count match with at most one runtime outlier, and defers to runtime matching on ragged or reordered discs.
 - **GUI: cancelling a rip returns to the current disc, not the next one.** In an orchestrate session, stopping a rip mid-disc took you to the *next* disc's Insert Disc screen. It now returns to the current disc's Insert Disc screen so you can retry, skip, or eject — and the cancelled disc is no longer marked as ripped (no manifest written) or auto-ejected.
 - **GUI: Organize Rips scan-results footer now anchors to the bottom** like every other wizard screen. The results form now scrolls internally while the Back/Next buttons stay pinned at the window edge.
 - **GUI: Organize Rips Back button walks up the flow** instead of dropping to the Welcome screen. On the scan-results view it restores the multi-group picker (when the folder held several seasons or works) or otherwise returns to the folder input; the multi-group picker's Back button now returns to the folder input as well.
@@ -152,7 +166,7 @@ Summary: Plex-aligned movie version and edition support for combo-disc releases,
 
 ### Fixed
 
-- **Auto-detected disc labels with compact season/disc suffixes.** Volume labels such as `Hannibal St01bd1` and `HANNIBAL_S1_BD1` now strip the trailing season/disc marker before TMDb and dvdcompare lookup, so both the GUI and CLI start from the correct base title instead of searching for the raw disc label.
+- **Auto-detected disc labels with compact season/disc suffixes.** Volume labels such as `Example St01bd1` and `EXAMPLE_S1_BD1` now strip the trailing season/disc marker before TMDb and dvdcompare lookup, so both the GUI and CLI start from the correct base title instead of searching for the raw disc label.
 
 ## 2026-05-16
 

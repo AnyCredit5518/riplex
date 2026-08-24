@@ -22,13 +22,13 @@ riplex has four commands, each targeting a different stage of the disc ripping w
 pip install -e ".[dev]"
 
 # See what's on a disc set before ripping
-riplex lookup "Frozen Planet II"
+riplex lookup "Example Series"
 
 # After ripping, organize into Plex structure (dry-run by default)
-riplex organize path/to/rips/Oppenheimer
+riplex organize path/to/rips/MovieTitle
 
 # Actually move the files
-riplex organize path/to/rips/Oppenheimer --execute
+riplex organize path/to/rips/MovieTitle --execute
 ```
 
 See [Installation](getting-started/installation.md) for full setup instructions.

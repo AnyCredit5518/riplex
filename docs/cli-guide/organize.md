@@ -7,7 +7,7 @@ The `organize` command is the main pipeline. It scans MakeMKV rip folders, dedup
 ## Basic usage
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K"
+riplex organize path/to/rips/MovieTitle --year 2023 --format "Blu-ray 4K"
 ```
 
 This will:
@@ -23,20 +23,20 @@ This will:
 Add `--execute` to actually move the files:
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --year 2023 --format "Blu-ray 4K" --execute
+riplex organize path/to/rips/MovieTitle --year 2023 --format "Blu-ray 4K" --execute
 ```
 
 ## TV shows (multi-disc)
 
 ```bash
-riplex organize "path/to/rips/PLANET EARTH II" --type tv --format "Blu-ray 4K"
+riplex organize "path/to/rips/EXAMPLE MINISERIES" --type tv --format "Blu-ray 4K"
 ```
 
-Multi-disc rips in separate folders (e.g. "Planet Earth III - Disc 1", "Planet Earth III - Disc 2") are automatically grouped into a single title.
+Multi-disc rips in separate folders (e.g. "Example Series - Disc 1", "Example Series - Disc 2") are automatically grouped into a single title.
 
 ## Multi-work releases (TV series + bonus films)
 
-Some releases bundle more than one work — a classic example is *Psych: The Complete Series*, with the eight-season show on discs 1-30 and three standalone TV-movies on disc 31. `organize` detects this and splits the release into groups, planning each group against its own TMDb match:
+Some complete-series releases place the main show on one set of discs and standalone bonus films on later discs. `organize` detects these distinct works and splits the release into groups, planning each group against its own TMDb match:
 
 - The main-content discs organize into the TV show folder using the top-level match you searched for.
 - Each film disc's slot gets a best-guess TMDb match auto-filled from its dvdcompare title.
@@ -54,8 +54,8 @@ When the scanner detects that a file has chapter markers matching the number of 
 dvdcompare lists multiple regional releases. In interactive mode (the default when running in a terminal), you will be presented with all available releases to choose from. The line above the picker shows which dvdcompare film page was matched so you can spot a wrong pick (e.g. a season 1 page when the disc is season 2) before choosing a region:
 
 ```
-Matched dvdcompare film: Oppenheimer (2023) [film #12345]
-Select a dvdcompare release for Oppenheimer:
+Matched dvdcompare film: Example Movie (2024) [film #12345]
+Select a dvdcompare release for Example Movie:
   1. North America (4K Ultra HD) [4 discs] *
   2. United Kingdom (4K Ultra HD) [4 discs]
   3. Germany (4K Ultra HD) [3 discs]
@@ -67,8 +67,8 @@ Press Enter to accept the default (marked with `*`) or type a number.
 You can also specify a release directly:
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release uk
-riplex organize path/to/rips/Oppenheimer --format "Blu-ray 4K" --release 2
+riplex organize path/to/rips/MovieTitle --format "Blu-ray 4K" --release uk
+riplex organize path/to/rips/MovieTitle --format "Blu-ray 4K" --release 2
 ```
 
 Use `--auto` to skip the prompt and use the best-guess default (American release).
@@ -85,7 +85,7 @@ Files that cannot be confidently matched are handled by the `--unmatched` flag:
 | `extras` | Route files >= 60s to the Plex `Other/` extras folder, named `Extra 1.mkv`, `Extra 2.mkv`, etc. |
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --unmatched extras
+riplex organize path/to/rips/MovieTitle --unmatched extras
 ```
 
 ## Batch mode
@@ -104,14 +104,14 @@ After a successful `--execute`, each organized file is tagged with a `riplex` ma
 
 ```bash
 # First run organizes everything
-riplex organize path/to/rips/Oppenheimer --execute
+riplex organize path/to/rips/MovieTitle --execute
 
 # Second run skips already-organized files
-riplex organize path/to/rips/Oppenheimer
+riplex organize path/to/rips/MovieTitle
 # "Skipping 17 already-organized file(s)."
 
 # Force re-organize
-riplex organize path/to/rips/Oppenheimer --force
+riplex organize path/to/rips/MovieTitle --force
 ```
 
 ## Duplicate detection
@@ -134,7 +134,7 @@ Duplicate MKV files (same content ripped from different playlists) are automatic
 Every `organize` run writes detailed debug logs to the OS temp directory. Add `--verbose` to also print debug output to stderr:
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --year 2023 --verbose
+riplex organize path/to/rips/MovieTitle --year 2023 --verbose
 ```
 
 ## Options
@@ -169,7 +169,7 @@ When running in a terminal (stdin is a TTY), `organize` presents interactive pro
 To skip all prompts and use automatic defaults, pass `--auto`:
 
 ```bash
-riplex organize path/to/rips/Oppenheimer --auto
+riplex organize path/to/rips/MovieTitle --auto
 ```
 
 Non-TTY environments (piped input, cron jobs, CI) are automatically non-interactive.

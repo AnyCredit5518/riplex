@@ -24,8 +24,8 @@ Preferred structure:
 Examples:
 
 ```
-\Movies\Oppenheimer (2023)\Oppenheimer (2023).mkv
-\Movies\Top Gun (1986)\Top Gun (1986).mkv
+\Movies\Movie Name (2024)\Movie Name (2024).mkv
+\Movies\Another Movie (2023)\Another Movie (2023).mkv
 ```
 
 ### Optional movie extras folders
@@ -44,8 +44,8 @@ Use these when outputting extras skeletons:
 Example:
 
 ```
-\Movies\Top Gun Maverick (2022)\Featurettes\
-\Movies\Top Gun Maverick (2022)\Interviews\
+\Movies\Movie Name (2024)\Featurettes\
+\Movies\Movie Name (2024)\Interviews\
 ```
 
 ### Optional movie editions
@@ -59,7 +59,7 @@ Movie Name (Year) {edition-Edition Name}
 Example:
 
 ```
-Blade Runner (1982) {edition-Director's Cut}.mkv
+Movie Name (2024) {edition-Director's Cut}.mkv
 ```
 
 ## TV shows
@@ -74,8 +74,8 @@ Preferred structure:
 Examples:
 
 ```
-\TV Shows\A Perfect Planet (2021)\Season 01\A Perfect Planet (2021) - s01e01 - Volcano.mkv
-\TV Shows\Planet Earth III (2023)\Season 01\Planet Earth III (2023) - s01e03 - Deserts and Grasslands.mkv
+\TV Shows\Show Name (2024)\Season 01\Show Name (2024) - s01e01 - Episode One.mkv
+\TV Shows\Another Show (2023)\Season 01\Another Show (2023) - s01e03 - Episode Three.mkv
 ```
 
 ## TV specials
@@ -151,8 +151,8 @@ Output names must be Windows-safe:
 
 Examples:
 
-- `Top Gun: Maverick` becomes `Top Gun Maverick`
-- `X-Men: The Animated Series` becomes `X-Men The Animated Series`
+- `Movie Name: Extended Cut` becomes `Movie Name Extended Cut`
+- `Example Show: The Series` becomes `Example Show The Series`
 
 ## General output rules
 

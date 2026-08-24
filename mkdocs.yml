@@ -34,7 +34,7 @@ theme:
     - search.highlight
 
 markdown_extensions:
-  - admonitions
+  - admonition
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.tabbed:
@@ -60,4 +60,5 @@ nav:
   - Plex Naming Rules: naming-rules.md
   - Development:
       - Testing: development/testing.md
+      - Potential Feature - Production-Code OCR: development/production-code-ocr.md
   - Changelog: changelog.md
