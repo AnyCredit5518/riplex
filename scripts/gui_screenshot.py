@@ -140,10 +140,87 @@ def _override_organize_preview(app, scenario, tmp) -> None:
     app.state["_organize_plan"] = (plan, planned)
 
 
+def _override_alternate_layout(app, scenario, tmp) -> None:
+    """Seed a fictional TV disc whose physical layout crosses metadata discs."""
+    from riplex.disc.analysis import EpisodeCarryover
+    from riplex.disc.makemkv import DiscInfo, DiscTitle
+    from riplex.metadata.provider import (
+        EpisodeMetadata,
+        MetadataSearchResult,
+        SeasonMetadata,
+        ShowDetail,
+    )
+    from riplex.models import PlannedDisc, PlannedEpisode
+    from riplex_app.screens.selection import SelectionScreen
+
+    episode_titles = [
+        "The Empty Berth",
+        "Signals at Dawn",
+        "A Map of Tides",
+        "The Quiet Archive",
+        "Lanterns Offshore",
+        "The Glass Compass",
+        "Below the Breakwater",
+        "Safe Harbor",
+    ]
+    episodes = [
+        PlannedEpisode(1, number, title, "43m", 2580)
+        for number, title in enumerate(episode_titles, start=1)
+    ]
+    metadata = [
+        EpisodeMetadata(1, number, title, 2580)
+        for number, title in enumerate(episode_titles, start=1)
+    ]
+    durations = [2578, 2583, 2579, 2585, 2581]
+    app.state.update({
+        "title": "Harbor Casefiles",
+        "tmdb_match": MetadataSearchResult(
+            "tv:fixture", "Harbor Casefiles", 2024, "tv",
+        ),
+        "show_detail": ShowDetail(
+            "tv:fixture",
+            "Harbor Casefiles",
+            2024,
+            seasons=[SeasonMetadata(1, metadata, "Season 1")],
+        ),
+        "dvdcompare_discs": [
+            PlannedDisc(1, "DVD", episodes=episodes[:4], title="Season 1"),
+            PlannedDisc(2, "DVD", episodes=episodes[4:], title="Season 1"),
+        ],
+        "disc_info": DiscInfo(
+            "HARBOR_CASEFILES_S1_D2",
+            "DVD",
+            [
+                DiscTitle(
+                    index=index,
+                    name="",
+                    duration_seconds=duration,
+                    chapters=5,
+                    size_bytes=1_600_000_000 + index * 12_000_000,
+                    filename=f"title_t{index:02d}.mkv",
+                    playlist="",
+                    resolution="720x480",
+                    video_codec="Mpeg2",
+                )
+                for index, duration in enumerate(durations)
+            ],
+        ),
+        "disc_queue": [1, 2],
+        "_orchestrate_disc_number": 2,
+        "season_number": 1,
+        "episode_carryover": [
+            EpisodeCarryover("S01E04 - The Quiet Archive", 2580, 1),
+        ],
+        "episode_carryover_scope": ("tv:fixture", 1),
+    })
+    SelectionScreen._save_selection_snapshot = lambda *args, **kwargs: ""
+
+
 _OVERRIDES = {
     "update": _override_update,
     "season_select": _override_season_select,
     "organize_preview": _override_organize_preview,
+    "alternate_layout": _override_alternate_layout,
 }
 
 # Which fixture scenario backs each screen (default: a Psych season).
@@ -155,9 +232,22 @@ _SCENARIO = {
     "update": "psych-season-01",
     "metadata": "psych-season-01",
     "release": "psych-season-01",
+    "alternate_layout": "psych-season-01",
 }
 
-SHOTS = ["selection", "season_select", "disc_overview", "organize_preview", "update"]
+_SCREEN_TARGET = {"alternate_layout": "selection"}
+_OUTPUT_NAME = {
+    "alternate_layout": "v1.1.0_Alternate_Layout_Detection.png",
+}
+
+SHOTS = [
+    "selection",
+    "season_select",
+    "disc_overview",
+    "organize_preview",
+    "update",
+    "alternate_layout",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +266,7 @@ def _build_screen(page, scenario_name: str, screen: str) -> None:
     override = _OVERRIDES.get(screen)
     if override:
         override(app, scenario, tmp)
-    app.navigate(screen)
+    app.navigate(_SCREEN_TARGET.get(screen, screen))
     # Drop the floating bug-report button for a clean marketing shot.
     page.floating_action_button = None
     try:
@@ -287,7 +377,8 @@ def main() -> int:
     for screen in screens:
         scenario_name = args.scenario or _SCENARIO.get(screen, "psych-season-01")
         print(f"capturing {screen} ({scenario_name})...")
-        if not _capture(scenario_name, screen, out_dir / f"{screen}.png", args.settle_ms):
+        output_name = _OUTPUT_NAME.get(screen, f"{screen}.png")
+        if not _capture(scenario_name, screen, out_dir / output_name, args.settle_ms):
             ok = False
     return 0 if ok else 1
 

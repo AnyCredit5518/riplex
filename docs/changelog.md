@@ -6,12 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## v1.1.0 — 2026-08-29
+
+Summary: alternate TV disc layout detection now preserves episode identity
+when physical season discs break at different points than the metadata listing.
+Affected titles remain selected for review, carryover survives resume, and the
+organizer receives the corrected canonical episode sequence.
+
+### Added
+
+- **Alternate TV disc layout detection.** riplex can borrow an episode identity
+	from the adjacent metadata disc when the physical title sequence and runtime
+	evidence support it. The GUI displays an **Alternate disc layout inferred**
+	banner, the GUI and CLI identify affected titles for review, and unresolved
+	identities carry into the following physical disc.
+- **Persistent episode carryover.** Rip manifests retain cross-disc episode
+	identities so a resumed session produces the same title selection and
+	organization plan as an uninterrupted rip.
+- **Anonymized release screenshot.** Added a synthetic Select Titles capture
+	demonstrating the alternate-layout warning and review state without exposing
+	title-specific media data.
+
 ### Fixed
 
-- **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical, or one that dvdcompare files under a disc's extras as an extended version, was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly.
+- **Episode variants no longer shift the remaining disc sequence.** Explicitly
+	named alternate cuts are reserved for the closest physical title before
+	sequential assignment, while next-disc overflow uses release runtime evidence
+	instead of substituting a conflicting canonical runtime.
+- **Alternate-layout banner direction.** The warning now names the metadata disc
+	on which a recovered episode was expected.
+- **DVDCompare throttling across event loops.** Sequential GUI lookups no longer
+	fail when the shared throttle is reused from a new asyncio event loop.
+
+### Changed
+
+- Added `RELEASE_NOTES_v1.1.0.md` as the canonical annotated-tag and in-app
+	release text for this feature release.
+
+## v1.0.4 — 2026-08-15
+
+### Changed
+
+- Improved interrupted-rip recovery and title review, added the first persisted
+	episode-carryover path for alternate TV layouts, honored canonical manifest
+	episode identities during organize, and widened the organize confidence
+	column.
+
+## v1.0.3 — 2026-07-21
+
+### Fixed
 
 - **makemkvcon drive-listing timeout is now configurable (default raised to 120s).** `makemkvcon -r info list` previously timed out after a fixed 60 seconds; on some setups this fired even though the MakeMKV GUI worked fine. Raise `makemkv_list_timeout` in the config if a slow drive still times out. (#23)
 - **Disc and season detection for compact `SxDy` volume labels.** A label that glues the disc digit to the season token and trails a provider code — e.g. `EXAMPLE_S3D1_CODE` — now resolves to the correct title (`Example`), season (3) and disc (1). Previously the season was lost and disc detection fell through to duration matching, which could pick the wrong disc. (#18)
+
+## v1.0.2 — 2026-07-20
+
+### Fixed
+
+- **TV episodes with parenthetical titles (or filed under extras) no longer land in `Other/`.** When organizing a TV rip, the destination is now chosen from the authoritative `SxxEyy` classification recorded in each disc's rip manifest at rip time, taking priority over the re-derived dvdcompare match label. Previously an episode whose title contains a parenthetical, or one that dvdcompare files under a disc's extras as an extended version, was misread as an extra and dropped into `Other/` instead of its season folder — even though orchestrate had already classified it correctly.
 
 ### Added
 
