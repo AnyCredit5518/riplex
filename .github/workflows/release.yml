@@ -197,7 +197,7 @@ jobs:
           cp artifacts/riplex-macos/riplex-ui-macos.zip release/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # Auto-generate notes from commits and PRs since the previous tag,
           # then prepend the tag annotation (if any) as a header. Using just

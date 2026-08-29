@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+
+- **Release-note publishing.** Upgraded `softprops/action-gh-release` to its
+  supported Node 24 release so annotated-tag notes are prepended to GitHub's
+  generated changes on future releases.
+
 ## v1.1.0 — 2026-08-29
 
 Summary: alternate TV disc layout detection now preserves episode identity
