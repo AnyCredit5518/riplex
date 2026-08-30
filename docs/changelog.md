@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## v1.1.1 — 2026-08-29
+
 ### Added
 
 - **Linux integration CI.** Added an Ubuntu 24.04 workflow that runs the unit
@@ -21,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 	log directory instead of a shared temporary directory, avoiding failures
 	caused by a root-owned or other-user-owned `/tmp/riplex` directory on Linux.
 	Updated the CLI guide and reference with the new locations.
+- **Debug snapshot logs.** GUI rip snapshots now capture the GUI log while CLI
+	snapshots continue to capture the CLI log, avoiding stale or missing logs in
+	bug-report bundles.
 
 ## v1.1.0 — 2026-08-29
 
