@@ -20,6 +20,17 @@ def test_welcome_builds_without_crash(gui):
     assert d.has_text("Organize Rips")
 
 
+def test_harness_overrides_welcome_config_alias(gui, monkeypatch):
+    from riplex_app.screens import welcome as welcome_mod
+
+    monkeypatch.setattr(welcome_mod, "load_config", lambda: {})
+    d = gui("the-matrix-1999")
+
+    d.click("Organize Rips")
+
+    assert d.state["workflow"] == "organize"
+
+
 def test_welcome_rip_button_starts_orchestrate(gui):
     d = gui("the-matrix-1999")
 

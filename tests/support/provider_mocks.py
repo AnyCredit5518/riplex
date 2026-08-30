@@ -133,6 +133,7 @@ def _install_config(monkeypatch, config: dict | None) -> None:
     try:
         import riplex_app.screens.welcome as welcome_mod
 
+        monkeypatch.setattr(welcome_mod, "load_config", lambda: dict(cfg))
         monkeypatch.setattr(welcome_mod, "find_makemkvcon", lambda: Path("makemkvcon"))
         monkeypatch.setattr(welcome_mod, "find_ffprobe", lambda: Path("ffprobe"))
         monkeypatch.setattr(welcome_mod, "find_mkvmerge", lambda: Path("mkvmerge"), raising=False)
