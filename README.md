@@ -1,6 +1,6 @@
 # riplex
 
-Automatically organizes MKV files from physical disc collections into Plex-compatible folder structures with the right names, the right folders, and no manual work.
+Automatically rips & organizes MKV files from physical disc collections into Plex-compatible folder structures with the right names, the right folders, and no manual work.
 
 riplex includes both a desktop app for guided ripping and a full CLI for terminal-first and automated workflows.
 
