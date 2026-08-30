@@ -5,13 +5,11 @@ from __future__ import annotations
 import logging
 import random
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Callable
 
-
-LOG_DIR = Path(tempfile.gettempdir()) / "riplex"
+from riplex.log_path import get_cli_log_path
 
 
 _BAR_STYLES = [
@@ -63,13 +61,13 @@ def execute_hint(subcommand: str) -> str:
 def setup_logging(verbose: bool = False) -> Path:
     """Configure file-based debug logging for the entire package.
 
-    Always writes DEBUG-level output to a log file in the temp directory.
+    Always writes DEBUG-level output to the current user's log directory.
     When *verbose* is True, also prints DEBUG messages to stderr.
 
     Returns the path to the log file.
     """
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_file = LOG_DIR / "riplex.log"
+    log_file = get_cli_log_path()
+    log_file.parent.mkdir(parents=True, exist_ok=True)
 
     root = logging.getLogger("riplex")
     root.setLevel(logging.DEBUG)

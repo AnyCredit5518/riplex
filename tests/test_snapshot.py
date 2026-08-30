@@ -257,15 +257,11 @@ class TestGetDebugDir:
 
 class TestCopyDebugLog:
     def test_copies_existing_log(self, tmp_path, monkeypatch):
-        # Create a fake log file
-        fake_tmp = tmp_path / "tmp"
-        fake_tmp.mkdir()
-        log_dir = fake_tmp / "riplex"
-        log_dir.mkdir()
-        log_file = log_dir / "riplex.log"
+        log_file = tmp_path / "logs" / "riplex.log"
+        log_file.parent.mkdir()
         log_file.write_text("test log content", encoding="utf-8")
 
-        monkeypatch.setattr("tempfile.gettempdir", lambda: str(fake_tmp))
+        monkeypatch.setattr("riplex.snapshot.get_cli_log_path", lambda: log_file)
 
         debug_dir = tmp_path / "_riplex"
         debug_dir.mkdir()
@@ -275,10 +271,21 @@ class TestCopyDebugLog:
         assert result.exists()
         assert result.read_text(encoding="utf-8") == "test log content"
 
+    def test_copies_explicit_source_log(self, tmp_path):
+        log_file = tmp_path / "logs" / "riplex_app.log"
+        log_file.parent.mkdir()
+        log_file.write_text("GUI log content", encoding="utf-8")
+
+        debug_dir = tmp_path / "_riplex"
+        debug_dir.mkdir()
+        result = copy_debug_log(debug_dir, log_file)
+
+        assert result == debug_dir / "riplex.log"
+        assert result.read_text(encoding="utf-8") == "GUI log content"
+
     def test_returns_none_when_no_log(self, tmp_path, monkeypatch):
-        fake_tmp = tmp_path / "empty_tmp"
-        fake_tmp.mkdir()
-        monkeypatch.setattr("tempfile.gettempdir", lambda: str(fake_tmp))
+        log_file = tmp_path / "missing" / "riplex.log"
+        monkeypatch.setattr("riplex.snapshot.get_cli_log_path", lambda: log_file)
 
         debug_dir = tmp_path / "_riplex"
         debug_dir.mkdir()

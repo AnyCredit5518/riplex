@@ -6,7 +6,7 @@ Complete reference for all riplex subcommands and their options.
 
 - **Interactive by default**: When stdin is a terminal, `organize` and `rip` present numbered lists for ambiguous TMDb matches, dvdcompare release selection, and title confirmation. Pass `--auto` to skip all interactive prompts and use best-guess defaults. Non-TTY environments (piped input, cron jobs) are automatically non-interactive.
 - **Dry-run by default**: Both `organize` and `rip` preview changes without acting. Add `--execute` to apply.
-- **Logging**: Every `organize` run writes debug logs to the OS temp directory. Add `--verbose` for stderr output.
+- **Logging**: The `orchestrate`, `rip`, `organize`, and `lookup` commands write to the current user's platform log directory and print the exact path at startup. Add `--verbose` for stderr output.
 - **Caching**: dvdcompare responses are cached for 30 days, TMDb for 7 days. Use `--no-cache` to bypass.
 
 ## `orchestrate`

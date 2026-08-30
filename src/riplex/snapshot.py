@@ -16,6 +16,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from riplex.log_path import get_cli_log_path
 from riplex.models import ScannedDisc, ScannedFile
 from riplex.scanner import scan_folder
 
@@ -70,14 +71,13 @@ def get_debug_dir(output_dir: Path) -> Path:
     return debug_dir
 
 
-def copy_debug_log(debug_dir: Path) -> Path | None:
-    """Copy the current session's ``riplex.log`` into *debug_dir*.
+def copy_debug_log(debug_dir: Path, source_log: Path | None = None) -> Path | None:
+    """Copy the current session log into *debug_dir* as ``riplex.log``.
 
-    Returns the destination path, or ``None`` if the log wasn't found.
+    *source_log* defaults to the CLI log. Returns the destination path, or
+    ``None`` if the source log wasn't found.
     """
-    import tempfile
-
-    log_src = Path(tempfile.gettempdir()) / "riplex" / "riplex.log"
+    log_src = source_log if source_log is not None else get_cli_log_path()
     if not log_src.exists():
         log.debug("No debug log found at %s", log_src)
         return None
