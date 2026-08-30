@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+
+- **Annotated release notes.** Release builds now restore the annotated tag
+	object after checkout before extracting its message, preventing the tagged
+	commit subject from replacing the intended release introduction.
+
 ## v1.1.1 — 2026-08-29
 
 ### Added
@@ -16,9 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **Release-note publishing.** Upgraded `softprops/action-gh-release` to its
-  supported Node 24 release so annotated-tag notes are prepended to GitHub's
-  generated changes on future releases.
+- **Release action compatibility.** Upgraded `softprops/action-gh-release` to
+	its supported Node 24 release.
 - **CLI log permissions.** CLI debug logs now use the current user's platform
 	log directory instead of a shared temporary directory, avoiding failures
 	caused by a root-owned or other-user-owned `/tmp/riplex` directory on Linux.

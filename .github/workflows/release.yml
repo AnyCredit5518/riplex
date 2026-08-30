@@ -183,6 +183,10 @@ jobs:
       - name: Extract tag annotation
         id: tag_notes
         run: |
+          # checkout@v4 peels the fetched tag ref to its commit; restore the tag object.
+          git fetch --no-tags origin \
+            "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag
           BODY=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
           echo "body<<ENDOFNOTES" >> "$GITHUB_OUTPUT"
           echo "$BODY" >> "$GITHUB_OUTPUT"
