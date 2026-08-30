@@ -62,3 +62,6 @@ local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: offline fixture-driven CLI and GUI flow tests",
+]

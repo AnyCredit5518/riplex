@@ -6,11 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Added
+
+- **Linux integration CI.** Added an Ubuntu 24.04 workflow that runs the unit
+	suite, all offline fixture-driven CLI and GUI flows, and an installed-CLI
+	logging smoke test without accessing an optical drive or performing a rip.
+
 ### Fixed
 
 - **Release-note publishing.** Upgraded `softprops/action-gh-release` to its
   supported Node 24 release so annotated-tag notes are prepended to GitHub's
   generated changes on future releases.
+- **CLI log permissions.** CLI debug logs now use the current user's platform
+	log directory instead of a shared temporary directory, avoiding failures
+	caused by a root-owned or other-user-owned `/tmp/riplex` directory on Linux.
+	Updated the CLI guide and reference with the new locations.
 
 ## v1.1.0 — 2026-08-29
 
