@@ -116,4 +116,4 @@ Files are moved (and split if needed) into Plex folder structure. Each file gets
 - **Unmatched files**: Use `--unmatched extras` to route remaining files to the `Other/` extras folder
 - **Wrong release region**: Use `--release uk` or `--release 2` to pick a different dvdcompare release
 - **Re-organize**: Use `--force` to re-process files that were already tagged
-- **Debug**: Check `%TEMP%\riplex\riplex.log` or add `--verbose` for stderr output
+- **Debug**: Check the `Debug log:` path printed at startup or add `--verbose` for stderr output

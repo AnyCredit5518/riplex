@@ -216,6 +216,26 @@ class TestDriveListRaisesOnFatal:
             assert mk.drive_list() == []
 
 
+class TestDriveListTimeout:
+    def test_uses_configured_timeout(self, tmp_path):
+        from riplex.disc.makemkv import MakeMKV
+
+        fake_exe = tmp_path / "makemkvcon.exe"
+        fake_exe.write_text("")
+        mk = MakeMKV(fake_exe)
+
+        completed = MagicMock(stdout="", stderr="")
+        with (
+            patch("riplex.config.get_makemkv_list_timeout", return_value=300),
+            patch(
+                "riplex.disc.makemkv.subprocess.run", return_value=completed
+            ) as run_mock,
+        ):
+            mk.drive_list()
+
+        assert run_mock.call_args.kwargs["timeout"] == 300
+
+
 class TestMakemkvPreflight:
     def test_no_executable_found(self):
         with patch("riplex.disc.makemkv.find_makemkvcon", return_value=None):

@@ -455,14 +455,15 @@ class TestBuildExecuteCommand:
         result = _build_execute_command()
         assert result.count("--execute") == 1
 
-    def test_strips_exe_path(self, monkeypatch):
+    def test_strips_exe_path(self, monkeypatch, tmp_path):
+        executable = tmp_path / "riplex.exe"
         monkeypatch.setattr("sys.argv", [
-            "C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\riplex.exe",
+            str(executable),
             "organize", "folder",
         ])
         result = _build_execute_command()
         assert result.startswith("riplex ")
-        assert "C:\\Users" not in result
+        assert str(tmp_path) not in result
 
 
 class TestDryRunBanner:

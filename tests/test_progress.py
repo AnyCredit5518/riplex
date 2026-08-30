@@ -110,6 +110,26 @@ def test_auto_eject_failure_is_non_fatal(monkeypatch):
     assert any("Auto-eject failed" in getattr(c, "value", "") for c in screen.log.controls)
 
 
+def test_snapshot_copies_gui_log(monkeypatch, tmp_path):
+    debug_dir = tmp_path / "_riplex"
+    gui_log = tmp_path / "logs" / "riplex_app.log"
+    copied: list[tuple] = []
+    app = _App({"output_dir": str(tmp_path / "Disc 1")})
+
+    monkeypatch.setattr(progress_mod, "get_debug_dir", lambda _path: debug_dir)
+    monkeypatch.setattr(progress_mod, "save_rip_snapshot", lambda *a, **k: None)
+    monkeypatch.setattr(progress_mod, "get_log_path", lambda: gui_log)
+    monkeypatch.setattr(
+        progress_mod,
+        "copy_debug_log",
+        lambda *args: copied.append(args),
+    )
+
+    ProgressScreen(app)._write_snapshots([])
+
+    assert copied == [(debug_dir, gui_log)]
+
+
 # ---------------------------------------------------------------------------
 # Cancel behaviour — a cancelled rip returns to the CURRENT disc, not the next
 # ---------------------------------------------------------------------------

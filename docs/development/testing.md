@@ -22,6 +22,22 @@ pytest -m integration
 pytest -m "not integration"
 ```
 
+## Linux CI
+
+`.github/workflows/test-linux.yml` runs on an Ubuntu 24.04 GitHub-hosted VM for
+pull requests, pushes to `main`, and manual dispatches. It uses Python 3.12 and
+runs three checks:
+
+1. Unit tests with the integration marker excluded.
+2. Every offline fixture-driven CLI and GUI integration test.
+3. The installed `riplex` entry point with a root-owned `/tmp/riplex`
+  directory, proving CLI startup and per-user logging do not depend on a
+  writable shared temporary directory.
+
+The workflow does not access an optical drive, invoke a real rip, or call TMDb
+or dvdcompare. The integration harness supplies committed scenarios and mocks
+those external boundaries.
+
 ## GUI integration tests
 
 The integration suite builds a real `RiplexApp` on a fake page and clicks

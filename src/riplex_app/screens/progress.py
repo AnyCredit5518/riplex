@@ -9,6 +9,7 @@ import flet as ft
 
 from riplex.disc.makemkv import run_rip, RipProgress, RipResult
 from riplex.snapshot import copy_debug_log, get_debug_dir, save_rip_snapshot
+from riplex_app.crash_dump import get_log_path
 from riplex_app.keep_awake import keep_awake
 
 log = logging.getLogger(__name__)
@@ -276,7 +277,7 @@ class ProgressScreen:
                 ripped_titles=[r.title_index for r in results if r.success],
                 phase="complete",
             )
-            copy_debug_log(debug_dir)
+            copy_debug_log(debug_dir, get_log_path())
             self.app.state["debug_dir"] = str(debug_dir)
             log.info("Wrote debug snapshots to %s", debug_dir)
         except Exception as exc:

@@ -131,7 +131,13 @@ Duplicate MKV files (same content ripped from different playlists) are automatic
 
 ## Debug logging
 
-Every `organize` run writes detailed debug logs to the OS temp directory. Add `--verbose` to also print debug output to stderr:
+Every `organize` run writes detailed debug logs to the current user's log directory:
+
+- **Windows:** `%LOCALAPPDATA%\riplex\riplex\Logs\riplex.log`
+- **macOS:** `~/Library/Logs/riplex/riplex.log`
+- **Linux:** `~/.local/state/riplex/log/riplex.log`
+
+The CLI prints the exact path at startup. Add `--verbose` to also print debug output to stderr:
 
 ```bash
 riplex organize path/to/rips/MovieTitle --year 2023 --verbose
