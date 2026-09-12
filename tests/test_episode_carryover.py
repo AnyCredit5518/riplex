@@ -2,6 +2,8 @@
 
 import json
 
+from dvdcompare.models import Disc, Feature, Release
+
 from riplex.disc.analysis import (
     EpisodeCarryover,
     analyze_disc,
@@ -9,6 +11,7 @@ from riplex.disc.analysis import (
     print_disc_analysis,
 )
 from riplex.disc.makemkv import DiscInfo, DiscTitle
+from riplex.disc.provider import _convert_release
 from riplex.manifest import read_episode_carryover, serialize_episode_carryover
 from riplex.metadata.provider import EpisodeMetadata
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
@@ -211,6 +214,81 @@ def test_next_disc_episode_overflow_is_borrowed_once(capsys):
         for index in range(3)
     ] == [episode_titles[6], episode_titles[7], episode_titles[8]]
     assert second.next_episode_carryover == []
+
+
+def test_next_disc_overflow_uses_grouped_episode_before_standalone_episode():
+    titles = {
+        21: "Don't Bank on Herman",
+        22: "Dance With Me, Herman",
+        23: "Follow That Munster",
+        24: "Love Locked Out",
+        25: "Come Back Little Googie",
+        26: "Far Out Munsters",
+        27: "Munsters on the Move",
+        28: "Movie Star Munster",
+        29: "Herman the Rookie",
+        30: "Country Club Munsters",
+        31: "Love Comes to Mockingbird Heights",
+        32: "Mummy Munster",
+        33: "Lily Munster, Girl Model",
+        34: "Munster the Magnificent",
+    }
+
+    def feature(number: int) -> Feature:
+        return Feature(title=titles[number], runtime_seconds=1464)
+
+    release = Release(
+        name="DVD R2 United Kingdom",
+        discs=[
+            Disc(
+                number=4,
+                format="DVD",
+                features=[
+                    Feature(
+                        title="Episodes",
+                        children=[feature(number) for number in range(21, 28)],
+                    ),
+                ],
+            ),
+            Disc(
+                number=5,
+                format="DVD",
+                features=[
+                    Feature(
+                        title="Episodes",
+                        children=[feature(number) for number in range(28, 32)],
+                    ),
+                    *[feature(number) for number in range(32, 35)],
+                ],
+            ),
+        ],
+    )
+    metadata = [
+        EpisodeMetadata(1, number, titles[number], 1464)
+        for number in range(21, 35)
+    ]
+    live_disc = DiscInfo(
+        "THE_MUNSTERS",
+        "DVD",
+        [_title(index, 1525) for index in range(7)],
+    )
+
+    analysis = analyze_disc(
+        live_disc,
+        _convert_release(release),
+        disc_number=4,
+        is_movie=False,
+        tmdb_episodes=metadata,
+        episode_carryover=[
+            EpisodeCarryover("S01E21 - Don't Bank on Herman", 1464, 4),
+        ],
+    )
+
+    assert analysis.classifications[6].startswith("S01E28 - Movie Star Munster")
+    assert analysis.assessments[6].identification == "Expected on Disc 5"
+    assert analysis.next_episode_carryover == [
+        EpisodeCarryover("S01E28 - Movie Star Munster", 1464, 5),
+    ]
 
 
 def test_next_disc_overflow_does_not_invent_episode_from_canonical_runtime():

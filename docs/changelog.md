@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Annotated release notes.** Release builds now restore the annotated tag
 	object after checkout before extracting its message, preventing the tagged
 	commit subject from replacing the intended release introduction.
+- **Malformed DVDCompare episode lists.** Non-play-all groups explicitly titled
+	`Episodes` now remain episode candidates ahead of subsequent standalone
+	entries. This preserves source order when missing list markers split one
+	disc's episode list and prevents alternate-layout recovery from borrowing a
+	later episode identity.
 
 ## v1.1.1 — 2026-08-29
 

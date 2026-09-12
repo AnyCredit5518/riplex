@@ -8,7 +8,7 @@ import pytest
 
 from dvdcompare.models import Disc, Feature, FilmComparison, Release
 
-from riplex.disc.provider import _clean_feature_type, _convert_film
+from riplex.disc.provider import _clean_feature_type, _convert_film, _convert_release
 
 
 class TestRequestThrottle:
@@ -53,6 +53,22 @@ class TestRequestThrottle:
         assert errors == []
         assert set(calls) == {"first", "second", "third"}
         assert all(not thread.is_alive() for thread in threads)
+
+
+def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
+    import riplex.disc.provider as provider
+
+    calls = []
+    monkeypatch.setattr(provider, "_scraper_version", lambda: "0.1.18")
+    monkeypatch.setattr(
+        provider.cache,
+        "ensure_ns_version",
+        lambda namespace, version: calls.append((namespace, version)),
+    )
+
+    provider.DiscProvider()
+
+    assert calls == [("dvdcompare", "0.1.18|planned-disc-v2")]
 
 
 class TestCleanFeatureType:
@@ -241,6 +257,37 @@ class TestConvertFilmPlanetEarth:
         assert d.extras[0].title == "Episodes: Play All"
         assert d.extras[1].title == "Making of Planet Earth III"
         assert d.extras[1].feature_type == "behind-the-scenes montage"
+
+
+def test_non_play_all_episode_group_precedes_standalone_episodes():
+    release = Release(
+        name="DVD R2 United Kingdom",
+        discs=[
+            Disc(
+                number=5,
+                format="DVD",
+                features=[
+                    Feature(
+                        title="Episodes",
+                        children=[
+                            Feature(title="Movie Star Munster", runtime_seconds=1464),
+                            Feature(title="Herman the Rookie", runtime_seconds=1465),
+                        ],
+                    ),
+                    Feature(title="Mummy Munster", runtime_seconds=1463),
+                ],
+            ),
+        ],
+    )
+
+    disc = _convert_release(release)[0]
+
+    assert [episode.title for episode in disc.episodes] == [
+        "Movie Star Munster",
+        "Herman the Rookie",
+        "Mummy Munster",
+    ]
+    assert disc.extras == []
 
 
 class TestConvertFilmEdgeCases:

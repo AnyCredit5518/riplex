@@ -31,6 +31,7 @@ _DVDCOMPARE_TTL_DAYS = 30
 _DVDCOMPARE_NEG_TTL_DAYS = 7
 _DVDCOMPARE_HTTP_ERROR_TTL_SECONDS = 5 * 60  # 5 minutes
 _CACHE_NS = "dvdcompare"
+_PLANNED_DISC_CACHE_VERSION = 2
 
 # Global throttle: at most one dvdcompare network round-trip every N seconds
 # across the entire process, regardless of how many UI threads/tasks try to
@@ -52,6 +53,11 @@ def _scraper_version() -> str:
         return _pkg_version("dvdcompare-scraper")
     except PackageNotFoundError:
         return "unknown"
+
+
+def _cache_version() -> str:
+    """Version raw scraper data and riplex's converted disc-plan shape."""
+    return f"{_scraper_version()}|planned-disc-v{_PLANNED_DISC_CACHE_VERSION}"
 
 
 def _parse_retry_after(response: httpx.Response | None) -> int | None:
@@ -91,7 +97,7 @@ class DiscProvider:
         self.cache_ns = cache_ns
         self.ttl_days = ttl_days
         self.neg_ttl_days = neg_ttl_days
-        cache.ensure_ns_version(self.cache_ns, _scraper_version())
+        cache.ensure_ns_version(self.cache_ns, _cache_version())
 
     # -- lookup -----------------------------------------------------------
 
@@ -668,6 +674,7 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
     - Play-all groups whose feature_type is a featurette category
       (e.g. "featurettes") → children become **extras**
     - Other play-all groups with children → children become **episodes**
+        - Non-play-all groups titled "Episodes" → children become **episodes**
     - Standalone features with no feature_type and runtime >= 600s on
       non-film discs → **episodes** (these are actual TV episodes listed
       outside of any group)
@@ -716,6 +723,23 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                                 runtime_seconds=child.runtime_seconds or 0,
                             )
                         )
+            elif (
+                feature.children
+                and feature.title.lower().strip().rstrip(":") == "episodes"
+            ):
+                log.debug("Disc %d: episode group '%s' with %d children",
+                          disc_offset + dvc_disc.number, feature.title,
+                          len(feature.children))
+                for child in feature.children:
+                    episodes.append(
+                        PlannedEpisode(
+                            season_number=0,
+                            episode_number=len(episodes) + 1,
+                            title=child.title,
+                            runtime="",
+                            runtime_seconds=child.runtime_seconds or 0,
+                        )
+                    )
             elif feature.children:
                 log.debug("Disc %d: extras group '%s' with %d children",
                           disc_offset + dvc_disc.number, feature.title,
