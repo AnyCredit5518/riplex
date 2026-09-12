@@ -1,5 +1,13 @@
 # One Season at a Time (TV Rip Invariant)
 
+## Status
+
+Implemented in commit `d32ecb9`. Active TV selection and resume are scoped by
+season. `SessionWork.season_number` remains optional for backward compatibility
+and special multi-work/miniseries cases, so this document is retained as the
+design record rather than treated as an exact description of every persisted
+legacy session.
+
 ## Problem
 
 TV rip sessions today can span multiple seasons when a dvdcompare release

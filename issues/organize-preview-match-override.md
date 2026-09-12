@@ -1,5 +1,10 @@
 # GUI: override a wrong match on the organize preview
 
+## Status
+
+Proposed. The preview exposes enough information to identify a bad assignment,
+but it is still read-only.
+
 ## Problem
 
 The organize preview is the last checkpoint before files are moved into Plex

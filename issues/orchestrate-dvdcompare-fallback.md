@@ -1,5 +1,10 @@
 # Orchestrate: dvdcompare fallback for missing discs
 
+## Status
+
+Partially implemented. The GUI can continue through its fallback path, but the
+CLI `orchestrate` command still exits when dvdcompare has no usable disc list.
+
 ## Problem
 
 When `riplex orchestrate` can't find a disc on dvdcompare, it exits with a

@@ -1,5 +1,11 @@
 # Consolidate riplex debug artifacts
 
+## Status
+
+Partially implemented. MakeMKV summary parsing now prevents failed title saves
+from being reported as successful, but manifest status records, snapshot
+consolidation, and removal of the duplicate debug writers remain open.
+
 ## Problem
 
 riplex currently writes 11 distinct JSON/log artifacts across multiple

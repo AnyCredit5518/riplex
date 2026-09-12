@@ -2,6 +2,10 @@
 
 Tracking: GitHub issue #19.
 
+## Status
+
+Proposed. No TheDiscDB provider or parser is implemented yet.
+
 ## Problem
 
 dvdcompare.net is riplex's only structured disc source. It lists a disc's

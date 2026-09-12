@@ -1,5 +1,10 @@
 # GUI: manual rip and manual organize escape hatches
 
+## Status
+
+Partially implemented. The GUI can organize an existing MKV folder. Manual raw
+ripping and per-file assignment overrides remain open.
+
 ## Problem
 
 When riplex can't classify a disc — no dvdcompare match, ambiguous TMDb

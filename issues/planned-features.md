@@ -1,7 +1,28 @@
 # Planned Features
 
+This file holds smaller feature designs. Larger plans live in dedicated files
+so their decisions, phases, and acceptance criteria can evolve independently.
+
+## Tracked Plans
+
+| Plan | Status |
+|---|---|
+| [BDMV backup as a disc source](bdmv-backup-source.md) | Proposed |
+| [Consolidate debug artifacts](debug-artifacts-consolidation.md) | Partially implemented |
+| [Manual rip and organize escape hatches](manual-rip-and-organize-escape-hatch.md) | Partially implemented |
+| [Orchestrate dvdcompare fallback](orchestrate-dvdcompare-fallback.md) | GUI implemented; CLI pending |
+| [Organize preview match override](organize-preview-match-override.md) | Proposed |
+| [TheDiscDB metadata source](thediscdb-metadata-source.md) | Proposed |
+
+Implemented plans are removed from this active index. Design records may stay
+in `issues/` when they document compatibility behavior; for example,
+[One Season at a Time](one-season-at-a-time.md) is marked implemented in its
+own file.
+
 
 ## Multi-Resolution Support (4K + Standard Blu-ray)
+
+**Status:** Partially implemented for movies; TV behavior remains open.
 
 Many 4K boxsets include standard Blu-ray discs with the same content at 1080p.
 Some users may want to rip both so Plex can serve the lower-resolution version
@@ -23,12 +44,17 @@ episode collapsing.
 
 ## Interactive Lookup Command
 
-`riplex lookup` currently auto-picks the first TMDb match and default
-dvdcompare release without confirmation. Add interactive selection (reuse
-existing `_pick_best` prompt from planner). Keep `--auto` flag for scripting.
+**Status:** Partially implemented. TMDb selection is interactive; interactive
+dvdcompare release selection and the planned `--auto` behavior remain open.
+
+`riplex lookup` now prompts for the TMDb match, but still auto-picks the default
+dvdcompare release. Add interactive release selection and keep an `--auto`
+path for scripting.
 
 
 ## Multi-Language Track Selection
+
+**Status:** Proposed.
 
 Users in multilingual households want to keep multiple audio and subtitle
 tracks when ripping, not just the default/English track.
@@ -46,6 +72,8 @@ tracks when ripping, not just the default/English track.
 
 
 ## Smarter Duplicate Detection (Audio/Subtitle Comparison)
+
+**Status:** Proposed.
 
 Today, duplicate detection on the live disc compares only resolution,
 duration, and file size. Two titles with identical specs are flagged as
@@ -114,69 +142,9 @@ subtitle tracks differ, we should:
    suffixes (naming convention TBD).
 
 
-## Automated Contributors List Updater
-
-`CONTRIBUTORS.md` lists community members who have helped riplex by reporting
-bugs (and eventually other contribution categories). The Bug Bashers table used
-to be hand-edited, which meant it went stale fast and we forgot to credit
-people.
-
-### Status
-
-Implemented by `scripts/update_contributors.py`,
-`.github/contributors-overrides.json`, and
-`.github/workflows/update-contributors.yml`.
-
-The updater owns only the generated Bug Bashers table between
-`<!-- BUG_BASHERS:START -->` and `<!-- BUG_BASHERS:END -->`, while the
-surrounding prose stays hand-editable.
-
-### Implemented behavior
-
-1. **Script** — `scripts/update_contributors.py` that:
-   - Uses the GitHub REST API (via `httpx`) to enumerate closed issues in
-     `AnyCredit5518/riplex`.
-   - For each issue, checks whether it was referenced by a merged commit
-     on the default branch (search commit messages for `#N`, `fixes #N`,
-     `closes #N`, etc.) and counts closed issues labeled `bug` that led to an
-     actual fix.
-   - Supports manual include/exclude overrides for valid reports that the
-     strict commit-reference signal cannot infer, such as early unlabeled
-     reports or fixes made in a sibling dependency.
-   - Tallies issues per opener, excluding `AnyCredit5518` and any account
-     ending in `[bot]`.
-   - Maps tally to rank: 🧪 1+, 🐛 4+, 🔍 8+, 🛡️ 15+, 💎 25+ (matches
-     existing thresholds in `CONTRIBUTORS.md`).
-   - Renders the "Bug Bashers" table between two HTML comment markers
-     (`<!-- BUG_BASHERS:START -->` / `<!-- BUG_BASHERS:END -->`) so the
-     surrounding prose stays hand-editable.
-   - Sorts by issue count (desc), then username (asc) for stable diffs.
-   - Reads token from `GITHUB_TOKEN` env var; falls back to unauthenticated
-     requests (lower rate limit) for local runs without a token.
-   - Has unit tests covering rank mapping, exclusion rules, marker
-     replacement, overrides, dry-run behavior, issue-reference detection, and
-     mocked API responses.
-
-2. **Workflow** — `.github/workflows/update-contributors.yml`:
-   - Triggers: `schedule: cron '0 12 * * 1'` (every Monday 12:00 UTC) +
-     `workflow_dispatch` for on-demand runs.
-   - Runs `pytest tests/test_update_contributors.py -v` and
-     `python scripts/update_contributors.py`, then uses
-     `peter-evans/create-pull-request` to open a PR titled
-     `chore: refresh CONTRIBUTORS.md` if there's a diff.
-   - Uses the built-in `GITHUB_TOKEN` — no extra secrets needed.
-   - PR is opened against `main` so the maintainer can review additions
-     and rank promotions before merging.
-
-3. **Future contribution categories** (out of scope for v1, but design with
-   them in mind):
-   - Code contributors (PRs merged) — once external PRs start landing.
-   - Documentation contributors — `docs/` PRs merged.
-   - Each category gets its own marker block so the script touches only
-     what it owns; everything else in `CONTRIBUTORS.md` stays hand-editable.
-
-
 ## SKIP Reason Column on Selection Screen
+
+**Status:** Proposed.
 
 The Selection screen currently shows a `RIP` / `SKIP` badge next to each
 title, but doesn't tell the user *why* a title was marked SKIP. Users have
@@ -222,6 +190,10 @@ that's actually a legitimate menu loop).
 
 
 ## Boxset / Multi-Film Collection Support
+
+**Status:** Partially implemented. Multi-work disc routing and per-film
+organization exist; the remaining detection, UX, and linked-disc enrichment
+work is tracked below.
 
 Multi-film boxsets (Godfather Trilogy 50th Anniversary, LOTR Extended,
 Star Wars Original Trilogy, John Wick Collection, etc.) are currently
