@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## v1.1.2 — 2026-09-12
+
 ### Fixed
 
+- **DVDCompare HTTPS outages.** DVDCompare requests now prefer HTTPS but can
+	recover through the official site's HTTP endpoint when TLS, transport, or
+	server failures make HTTPS unavailable. The Welcome screen distinguishes
+	this degraded connection from a full outage.
 - **Annotated release notes.** Release builds now restore the annotated tag
 	object after checkout before extracting its message, preventing the tagged
 	commit subject from replacing the intended release introduction.

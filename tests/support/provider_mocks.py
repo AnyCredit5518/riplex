@@ -138,6 +138,16 @@ def _install_config(monkeypatch, config: dict | None) -> None:
         monkeypatch.setattr(welcome_mod, "find_ffprobe", lambda: Path("ffprobe"))
         monkeypatch.setattr(welcome_mod, "find_mkvmerge", lambda: Path("mkvmerge"), raising=False)
         monkeypatch.setattr(welcome_mod, "check_for_update", lambda: None)
+        from riplex.disc.provider import DvdcompareConnectivity
+
+        async def _probe_dvdcompare_connectivity():
+            return DvdcompareConnectivity(transport="https")
+
+        monkeypatch.setattr(
+            welcome_mod,
+            "probe_dvdcompare_connectivity",
+            _probe_dvdcompare_connectivity,
+        )
         # find_mkvmerge is imported lazily inside build(); patch the source too.
         import riplex.splitter as splitter_mod
 

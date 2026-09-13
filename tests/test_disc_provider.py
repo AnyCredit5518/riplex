@@ -71,6 +71,78 @@ def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
     assert calls == [("dvdcompare", "0.1.18|planned-disc-v2")]
 
 
+class TestDvdcompareConnectivity:
+    @pytest.mark.asyncio
+    async def test_uses_shared_request_throttle(self, monkeypatch):
+        import riplex.disc.provider as provider
+
+        events = []
+
+        async def _acquire():
+            events.append("acquire")
+
+        async def _probe():
+            events.append("probe")
+            return "https://www.dvdcompare.net"
+
+        class FakeLock:
+            def release(self):
+                events.append("release")
+
+        monkeypatch.setattr(provider, "_acquire_request_lock", _acquire)
+        monkeypatch.setattr(provider, "_probe_dvdcompare", _probe)
+        monkeypatch.setattr(provider, "_request_lock", FakeLock())
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+        monkeypatch.setattr(provider, "_last_request_at", 0.0)
+
+        result = await provider.probe_dvdcompare_connectivity()
+
+        assert result.transport == "https"
+        assert events == ["acquire", "probe", "release"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("origin", "transport"),
+        [
+            ("https://www.dvdcompare.net", "https"),
+            ("http://www.dvdcompare.net", "http"),
+        ],
+    )
+    async def test_classifies_effective_transport(
+        self,
+        monkeypatch,
+        origin,
+        transport,
+    ):
+        import riplex.disc.provider as provider
+
+        async def _probe():
+            return origin
+
+        monkeypatch.setattr(provider, "_probe_dvdcompare", _probe)
+
+        result = await provider.probe_dvdcompare_connectivity()
+
+        assert result.reachable is True
+        assert result.transport == transport
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_reports_probe_failure_without_raising(self, monkeypatch):
+        import riplex.disc.provider as provider
+
+        async def _probe():
+            raise RuntimeError("offline")
+
+        monkeypatch.setattr(provider, "_probe_dvdcompare", _probe)
+
+        result = await provider.probe_dvdcompare_connectivity()
+
+        assert result.reachable is False
+        assert result.transport is None
+        assert result.error == "RuntimeError: offline"
+
+
 class TestCleanFeatureType:
     def test_strips_parenthetical_annotations(self):
         assert _clean_feature_type("featurettes (with Play All)  (1080p)") == "featurettes"

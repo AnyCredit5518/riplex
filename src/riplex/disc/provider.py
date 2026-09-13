@@ -15,12 +15,19 @@ import re
 import threading
 import time
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from urllib.parse import urlsplit
 
 import httpx
 
 from dvdcompare.cli import select_releases
 from dvdcompare.models import FilmComparison
-from dvdcompare.scraper import find_film, get_film_by_url, search
+from dvdcompare.scraper import (
+    film_url as _dvdcompare_film_url,
+    find_film,
+    get_film_by_url,
+    probe as _probe_dvdcompare,
+    search,
+)
 
 from riplex import cache
 from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
@@ -75,6 +82,37 @@ def _parse_retry_after(response: httpx.Response | None) -> int | None:
         return max(0, int(raw.strip()))
     except (TypeError, ValueError):
         return None
+
+
+@dataclasses.dataclass(frozen=True)
+class DvdcompareConnectivity:
+    """Reachability and selected transport for dvdcompare.net."""
+
+    transport: str | None
+    error: str | None = None
+
+    @property
+    def reachable(self) -> bool:
+        return self.transport is not None
+
+
+async def probe_dvdcompare_connectivity() -> DvdcompareConnectivity:
+    """Probe DVDCompare using the scraper's HTTPS-first endpoint policy."""
+    try:
+        origin = await _throttled_probe_dvdcompare()
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        log.warning("dvdcompare connectivity check failed: %s", error)
+        return DvdcompareConnectivity(transport=None, error=error)
+
+    transport = urlsplit(origin).scheme.lower()
+    if transport not in {"http", "https"}:
+        error = f"unexpected endpoint returned by dvdcompare scraper: {origin}"
+        log.warning("dvdcompare connectivity check failed: %s", error)
+        return DvdcompareConnectivity(transport=None, error=error)
+    if transport == "http":
+        log.warning("dvdcompare is reachable only through the HTTP fallback")
+    return DvdcompareConnectivity(transport=transport)
 
 
 # ---------------------------------------------------------------------------
@@ -271,12 +309,10 @@ class DiscProvider:
 # Public URL / fid helpers
 # ---------------------------------------------------------------------------
 
-from dvdcompare.scraper import BASE_URL as _DVDCOMPARE_BASE_URL  # noqa: E402
-
 
 def film_url(film_id: int | str) -> str:
     """Return the public dvdcompare comparison URL for a film id."""
-    return f"{_DVDCOMPARE_BASE_URL}/comparisons/film.php?fid={film_id}"
+    return _dvdcompare_film_url(film_id)
 
 
 _FID_RE = re.compile(r"(?:fid=|film\.php\?fid=|^)(\d+)")
@@ -400,6 +436,24 @@ async def _throttled_get_film_by_url(url: str) -> FilmComparison:
             await asyncio.sleep(wait)
         try:
             return await get_film_by_url(url, resolve_pointers=True)
+        finally:
+            _last_request_at = time.monotonic()
+    finally:
+        _request_lock.release()
+
+
+async def _throttled_probe_dvdcompare() -> str:
+    """Probe DVDCompare under the same throttle as metadata requests."""
+    global _last_request_at
+    await _acquire_request_lock()
+    try:
+        now = time.monotonic()
+        wait = _MIN_INTERVAL_S - (now - _last_request_at)
+        if wait > 0:
+            log.debug("dvdcompare throttle: waiting %.2fs before probe", wait)
+            await asyncio.sleep(wait)
+        try:
+            return await _probe_dvdcompare()
         finally:
             _last_request_at = time.monotonic()
     finally:

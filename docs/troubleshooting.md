@@ -98,6 +98,24 @@ You'll still get duplicate filtering, 4K preference, play-all detection, and TMD
 > [!NOTE]
 > A fix to make `orchestrate` and `organize` handle missing dvdcompare data gracefully is planned.
 
+### dvdcompare works over HTTP but not HTTPS
+
+Riplex prefers HTTPS. If dvdcompare.net has a TLS or other transport failure,
+or its HTTPS endpoint returns a server error, Riplex retries the official site
+once over HTTP. The Welcome screen shows **dvdcompare.net (degraded)** in
+amber while this degraded connection is active. A restart tries HTTPS first
+again.
+
+HTTP is unencrypted, including DVDCompare search terms. To require HTTPS and
+disable automatic fallback, set `DVDCOMPARE_ALLOW_HTTP_FALLBACK=0` before
+launching Riplex. To skip a known-broken HTTPS endpoint temporarily, set
+`DVDCOMPARE_BASE_URL=http://www.dvdcompare.net` instead.
+
+If the Welcome screen reports DVDCompare as unreachable in red, check the
+Riplex debug log for the original HTTPS error and the HTTP retry result. A
+failure of both transports retains the normal five-minute retry cache so
+revisiting a screen does not repeatedly hit the service.
+
 ---
 
 ## macOS: "Browse" button does nothing (tkinter not installed)
