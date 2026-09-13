@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+from riplex_app.background import capture_screen_lease
 from riplex_app.screens.release import ReleaseScreen
 
 
@@ -9,9 +13,109 @@ class _App:
     def __init__(self, state):
         self.state = state
         self.navigated_to = None
+        self.navigation_calls: list[str] = []
+        self.page = MagicMock()
 
     def navigate(self, screen):
         self.navigated_to = screen
+        self.navigation_calls.append(screen)
+
+
+def test_loading_build_starts_one_lookup_worker(monkeypatch):
+    started: list = []
+
+    class _DeferredThread:
+        def __init__(self, *, target, daemon, name=None, args=()):
+            started.append((target, args))
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr("riplex_app.background.threading.Thread", _DeferredThread)
+    app = _App({"title": "Psych", "workflow": "rip"})
+    screen = ReleaseScreen(app)
+
+    screen.build()
+    screen.build()
+
+    assert len(started) == 1
+
+
+def test_late_lookup_completion_does_not_restore_release(monkeypatch):
+    workers: list = []
+
+    class _DeferredThread:
+        def __init__(self, *, target, daemon, name=None, args=()):
+            workers.append(target)
+
+        def start(self):
+            pass
+
+    film = SimpleNamespace(title="Psych", film_id=1, releases=[])
+
+    class _Provider:
+        async def fetch_film(self, _title, _format, *, year=None):
+            return film
+
+    monkeypatch.setattr("riplex_app.background.threading.Thread", _DeferredThread)
+    monkeypatch.setattr("riplex_app.screens.release.DiscProvider", _Provider)
+    app = _App({"title": "Psych", "workflow": "rip"})
+    app._current_screen_name = "release"
+    app._navigation_epoch = 5
+    screen = ReleaseScreen(app)
+    screen.build()
+
+    app._current_screen_name = "metadata"
+    app._navigation_epoch += 1
+    workers[0]()
+
+    assert "_dvdcompare_film" not in app.state
+    assert app.navigation_calls == []
+
+
+def test_late_manual_override_lookup_is_not_persisted(monkeypatch):
+    cache_writes = []
+    provider_calls = []
+    film = SimpleNamespace(title="Old Movie", film_id=42, releases=[])
+    new_film = SimpleNamespace(title="New Movie", film_id=84, releases=[])
+    app = _App({
+        "title": "Old Movie",
+        "workflow": "rip",
+        "_dvdcompare_film_id_override": 42,
+    })
+    app._current_screen_name = "release"
+    app._navigation_epoch = 5
+
+    class _Provider:
+        async def fetch_film_by_id(self, film_id):
+            provider_calls.append(("id", film_id))
+            if len(provider_calls) == 1:
+                app.state["title"] = "New Movie"
+                app._current_screen_name = "metadata"
+                app._navigation_epoch = 6
+            return film
+
+        async def fetch_film(self, title, _format, *, year=None):
+            provider_calls.append(("title", title))
+            return new_film
+
+    monkeypatch.setattr("riplex_app.screens.release.DiscProvider", _Provider)
+    monkeypatch.setattr(
+        "riplex_app.screens.release._cache.cache_set",
+        lambda *args: cache_writes.append(args),
+    )
+    screen = ReleaseScreen(app)
+    monkeypatch.setattr(screen, "_load_persisted_override", lambda: None)
+    lease = capture_screen_lease(app)
+
+    screen._lookup_dvdcompare("Old Movie", lease)
+    app._current_screen_name = "release"
+    app._navigation_epoch = 7
+    screen._lookup_dvdcompare("New Movie", capture_screen_lease(app))
+
+    assert cache_writes == []
+    assert "_dvdcompare_film_id_override" not in app.state
+    assert provider_calls == [("id", 42), ("title", "New Movie")]
 
 
 class TestReleaseSkipRouting:

@@ -1,7 +1,6 @@
 """Release selection screen - dvdcompare release picker."""
 
 import asyncio
-import threading
 import webbrowser
 
 import flet as ft
@@ -9,6 +8,13 @@ import flet as ft
 from riplex import cache as _cache
 from riplex.disc.provider import DiscProvider, _convert_release
 from riplex.disc.provider import detect_disc_format, film_url, parse_film_id, score_releases
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 
 _OVERRIDE_CACHE_NS = "dvdcompare_film_id_override"
@@ -163,10 +169,14 @@ class ReleaseScreen:
                 return fid
         return None
 
-    def _save_persisted_override(self, film_id: int) -> None:
+    def _save_persisted_override(
+        self,
+        film_id: int,
+        cache_key: str | None = None,
+    ) -> None:
         _cache.cache_set(
             _OVERRIDE_CACHE_NS,
-            self._override_cache_key(),
+            cache_key or self._override_cache_key(),
             {"film_id": film_id},
         )
 
@@ -387,11 +397,17 @@ class ReleaseScreen:
         prefill_release_name = self.app.state.get("_prefill_dvdcompare_release_name")
         prefill_failed = self.app.state.pop("_prefill_dvdcompare_failed", False)
         if prefill_fid and prefill_release_name and not prefill_failed:
-            threading.Thread(
-                target=self._resolve_prefill_dvdcompare,
-                args=(prefill_fid, prefill_release_name),
-                daemon=True,
-            ).start()
+            lease = capture_screen_lease(self.app)
+            start_background_once(
+                self.app,
+                screen_operation_key("dvdcompare-lookup", lease),
+                self._resolve_prefill_dvdcompare,
+                args=(
+                    prefill_fid,
+                    prefill_release_name,
+                    lease,
+                ),
+            )
             return ft.Column(
                 [
                     *self._build_film_heading(),
@@ -469,7 +485,13 @@ class ReleaseScreen:
         )
 
         # Start lookup in background
-        threading.Thread(target=self._lookup_dvdcompare, daemon=True).start()
+        lease = capture_screen_lease(self.app)
+        start_background_once(
+            self.app,
+            screen_operation_key("dvdcompare-lookup", lease),
+            self._lookup_dvdcompare,
+            args=(title, lease),
+        )
 
         return content
 
@@ -601,7 +623,12 @@ class ReleaseScreen:
             expand=True,
         )
 
-    def _resolve_prefill_dvdcompare(self, film_id: int, release_name: str):
+    def _resolve_prefill_dvdcompare(
+        self,
+        film_id: int,
+        release_name: str,
+        lease: ScreenLease | None = None,
+    ):
         """Resolve a prefilled dvdcompare film_id + release name straight
         to the ``PlannedDisc`` list.
 
@@ -617,6 +644,8 @@ class ReleaseScreen:
         try:
             provider = DiscProvider()
             film = asyncio.run(provider.fetch_film_by_id(film_id))
+            if not screen_lease_is_current(self.app, lease):
+                return
             if film and getattr(film, "film_id", None):
                 self.app.state["dvdcompare_film_id"] = film.film_id
             if film and getattr(film, "title", None):
@@ -645,22 +674,29 @@ class ReleaseScreen:
             self.app.state.pop("_prefill_dvdcompare_release_name", None)
             next_screen = self._next_screen
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.warning("dvdcompare prefill fetch failed: %s", exc)
             self.app.state["_prefill_dvdcompare_failed"] = True
             self.app.state["_prefill_dvdcompare_error"] = str(exc)
             next_screen = "release"
 
         async def _nav():
-            self.app.navigate(next_screen)
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate(next_screen)
 
         self.app.page.run_task(_nav)
 
-    def _lookup_dvdcompare(self):
+    def _lookup_dvdcompare(
+        self,
+        title: str | None = None,
+        lease: ScreenLease | None = None,
+    ):
         """Fetch dvdcompare releases in background."""
         import logging
         log = logging.getLogger(__name__)
 
-        title = self._current_search_title()
+        title = title or self._current_search_title()
         tmdb_match = self.app.state.get("tmdb_match")
 
         try:
@@ -670,6 +706,9 @@ class ReleaseScreen:
 
             # Per-session manual override (just submitted).
             session_fid = self.app.state.pop("_dvdcompare_film_id_override", None)
+            override_cache_key = (
+                self._override_cache_key() if session_fid is not None else None
+            )
             # Persisted override (set on a previous run for this title/format).
             persisted_fid = self._load_persisted_override() if session_fid is None else None
             override_fid = session_fid if session_fid is not None else persisted_fid
@@ -678,15 +717,20 @@ class ReleaseScreen:
                 log.info("dvdcompare lookup: using film id override fid=%s (source=%s)",
                          override_fid, "session" if session_fid is not None else "persisted")
                 film = asyncio.run(provider.fetch_film_by_id(override_fid))
-                # Persist on success so subsequent navigations / disc swaps
-                # auto-use the same fid.
-                if session_fid is not None:
-                    self._save_persisted_override(override_fid)
             else:
                 log.info("dvdcompare lookup: title=%r format=%r year=%r",
                          title, disc_format, year)
                 film = asyncio.run(provider.fetch_film(title, disc_format, year=year))
 
+            if not screen_lease_is_current(self.app, lease):
+                return
+            if session_fid is not None:
+                # Persist on success so subsequent navigations / disc swaps
+                # auto-use the same fid. Use the key captured before I/O.
+                self._save_persisted_override(
+                    session_fid,
+                    override_cache_key,
+                )
             log.info("dvdcompare lookup: found %r (fid=%s, %d releases)",
                      film.title if film else None,
                      film.film_id if film else None,
@@ -701,12 +745,15 @@ class ReleaseScreen:
                 self.app.state["dvdcompare_film_title"] = film.title
             _backfill_season_number_from_film_title(self.app.state, film)
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.warning("dvdcompare lookup failed: %s", exc)
             self.app.state["_dvdcompare_error"] = str(exc)
 
         # Schedule navigation on main event loop
         async def _nav():
-            self.app.navigate("release")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("release")
 
         self.app.page.run_task(_nav)
 

@@ -1,4 +1,5 @@
 import builtins
+from types import SimpleNamespace
 
 import certifi
 import flet as ft
@@ -171,3 +172,22 @@ def test_append_to_footer_row_appends_when_no_quit_present():
 
     assert handled is True
     assert footer.controls[-1] is injected
+
+
+def test_same_screen_navigation_starts_a_new_visit():
+    app = app_main.RiplexApp.__new__(app_main.RiplexApp)
+    app._current_screen_name = "metadata"
+    app._navigation_epoch = 4
+    app.screens = {
+        "metadata": SimpleNamespace(build=lambda: ft.Column([ft.Row([])])),
+    }
+    app.page = SimpleNamespace(
+        controls=[],
+        update=lambda: None,
+        floating_action_button=None,
+        appbar=None,
+    )
+
+    app.navigate("metadata")
+
+    assert app._navigation_epoch == 5

@@ -1,18 +1,52 @@
 """Progress screen - shows rip progress for each title."""
 
+from dataclasses import dataclass
 import logging
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 import flet as ft
 
 from riplex.disc.makemkv import run_rip, RipProgress, RipResult
 from riplex.snapshot import copy_debug_log, get_debug_dir, save_rip_snapshot
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    operations_for,
+    screen_lease_is_current,
+    start_background_once,
+)
 from riplex_app.crash_dump import get_log_path
 from riplex_app.keep_awake import keep_awake
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RipJob:
+    lease: ScreenLease
+    workflow: str | None
+    selected_titles: tuple[int, ...]
+    output_dir: Any
+    makemkvcon: Any
+    drive: Any
+    disc_info: Any
+    tmdb_match: Any
+    dvdcompare_discs: tuple[Any, ...]
+    movie_runtime: int | None
+    disc_number: int | None
+    release: Any
+    show_detail: Any
+    dvdcompare_film_title: str | None
+    episode_carryover: tuple[Any, ...]
+    dvdcompare_film_id: int | None
+    season_number: int | None
+    disc_queue: tuple[int, ...]
+    current_disc_idx: int
+    all_rip_results: dict[Any, list[RipResult]]
+    ripped_discs: frozenset[Any]
 
 
 def _format_eta(seconds: int) -> str:
@@ -32,7 +66,36 @@ class ProgressScreen:
         self.app = app
         self._cancel_event = threading.Event()
 
+    def _capture_rip_job(self) -> RipJob:
+        state = self.app.state
+        return RipJob(
+            lease=capture_screen_lease(self.app),
+            workflow=state.get("workflow"),
+            selected_titles=tuple(state.get("selected_titles") or ()),
+            output_dir=state.get("output_dir"),
+            makemkvcon=state.get("makemkvcon"),
+            drive=state.get("drive"),
+            disc_info=state.get("disc_info"),
+            tmdb_match=state.get("tmdb_match"),
+            dvdcompare_discs=tuple(state.get("dvdcompare_discs") or ()),
+            movie_runtime=state.get("movie_runtime"),
+            disc_number=state.get("_orchestrate_disc_number"),
+            release=state.get("release"),
+            show_detail=state.get("show_detail"),
+            dvdcompare_film_title=state.get("dvdcompare_film_title"),
+            episode_carryover=tuple(state.get("episode_carryover") or ()),
+            dvdcompare_film_id=state.get("dvdcompare_film_id"),
+            season_number=state.get("season_number"),
+            disc_queue=tuple(state.get("disc_queue") or ()),
+            current_disc_idx=state.get("current_disc_idx", 0),
+            all_rip_results=dict(state.get("all_rip_results") or {}),
+            ripped_discs=frozenset(state.get("ripped_discs") or ()),
+        )
+
     def build(self) -> ft.Control:
+        if operations_for(self.app).is_active("rip") and hasattr(self, "content"):
+            return self.content
+
         self._cancel_event.clear()
         selected = self.app.state["selected_titles"]
         disc_info = self.app.state["disc_info"]
@@ -113,20 +176,27 @@ class ProgressScreen:
         )
 
         # Start ripping in background
-        threading.Thread(target=self._run_rips, daemon=True).start()
+        self._rip_job = self._capture_rip_job()
+        start_background_once(
+            self.app,
+            "rip",
+            self._run_rips,
+            args=(self._rip_job,),
+        )
 
         return self.content
 
-    def _run_rips(self):
+    def _run_rips(self, job: RipJob | None = None):
         """Rip all selected titles sequentially."""
         with keep_awake("ripping titles"):
-            self._run_rips_inner()
+            self._run_rips_inner(job)
 
-    def _run_rips_inner(self):
-        selected = self.app.state["selected_titles"]
-        output_dir = self.app.state["output_dir"]
-        makemkvcon = self.app.state["makemkvcon"]
-        drive = self.app.state["drive"]
+    def _run_rips_inner(self, job: RipJob | None = None):
+        job = job or getattr(self, "_rip_job", None) or self._capture_rip_job()
+        selected = job.selected_titles
+        output_dir = job.output_dir
+        makemkvcon = job.makemkvcon
+        drive = job.drive
         results: list[RipResult] = []
 
         for i, title_idx in enumerate(selected):
@@ -187,21 +257,22 @@ class ProgressScreen:
 
         # Done
         cancelled = self._cancel_event.is_set()
-        self.app.state["rip_results"] = results
-        if cancelled:
-            self.overall_text.value = "Cancelled."
-        else:
-            self.overall_text.value = (
-                f"Complete: {sum(1 for r in results if r.success)}/{len(results)} successful"
-            )
-        self.current_title_text.value = ""
-        self.progress_bar.value = 1.0
-        self.progress_pct.value = "100%"
-        self.progress_size.value = ""
-        self.progress_speed.value = ""
-        self.progress_eta.value = ""
-        self.cancel_btn.visible = False
-        self._update()
+        if screen_lease_is_current(self.app, job.lease):
+            self.app.state["rip_results"] = results
+            if cancelled:
+                self.overall_text.value = "Cancelled."
+            else:
+                self.overall_text.value = (
+                    f"Complete: {sum(1 for r in results if r.success)}/{len(results)} successful"
+                )
+            self.current_title_text.value = ""
+            self.progress_bar.value = 1.0
+            self.progress_pct.value = "100%"
+            self.progress_size.value = ""
+            self.progress_speed.value = ""
+            self.progress_eta.value = ""
+            self.cancel_btn.visible = False
+            self._update()
 
         # Cancelled: do NOT mark this disc ripped, write a manifest (which
         # would flag it as completed for resume), auto-eject, or advance the
@@ -209,6 +280,8 @@ class ProgressScreen:
         # retry, skip, or eject — they aborted on purpose and may want any of
         # those. (Non-orchestrate rips just show the results summary.)
         if cancelled:
+            if not screen_lease_is_current(self.app, job.lease):
+                return
             self._log_message(
                 "Rip cancelled. Returning to disc options — retry, skip, or eject.",
                 ft.Colors.ORANGE,
@@ -216,25 +289,33 @@ class ProgressScreen:
             self._update()
             target = (
                 "disc_swap"
-                if self.app.state.get("workflow") == "orchestrate"
+                if job.workflow == "orchestrate"
                 else "done"
             )
 
             async def _nav_cancel():
-                self.app.navigate(target)
+                if screen_lease_is_current(self.app, job.lease):
+                    self.app.navigate(target)
 
             self.app.page.run_task(_nav_cancel)
             return
 
         # Write debug snapshots
-        self._write_snapshots(results)
+        self._write_snapshots(results, job)
 
         # Write rip manifest (for orchestrate resume support)
-        self._write_manifest(results)
+        self._write_manifest(results, job)
+
+        if not screen_lease_is_current(self.app, job.lease):
+            log.info("Finished an abandoned rip without changing the active workflow")
+            return
 
         # Auto-eject the finished disc so the user can swap discs (or knows
         # the rip is done) without reaching for the drive.
-        self._auto_eject(results)
+        self._auto_eject(results, job)
+
+        if not screen_lease_is_current(self.app, job.lease):
+            return
 
         # Brief pause then navigate
         time.sleep(1)
@@ -242,26 +323,34 @@ class ProgressScreen:
         # Navigation must run on the Flet event loop, not this bg thread,
         # or the client won't receive the new screen until the next OS event
         # (e.g. the user moving the window). See _update() note.
-        if self.app.state.get("workflow") == "orchestrate":
+        if not screen_lease_is_current(self.app, job.lease):
+            return
+        if job.workflow == "orchestrate":
             async def _nav_next():
-                self._advance_orchestrate(results)
+                if screen_lease_is_current(self.app, job.lease):
+                    self._advance_orchestrate(results, job)
             self.app.page.run_task(_nav_next)
         else:
             async def _nav_done():
-                self.app.navigate("done")
+                if screen_lease_is_current(self.app, job.lease):
+                    self.app.navigate("done")
             self.app.page.run_task(_nav_done)
 
-    def _write_snapshots(self, results: list[RipResult]):
+    def _write_snapshots(
+        self,
+        results: list[RipResult],
+        job: RipJob | None = None,
+    ):
         """Write debug snapshots to _riplex/ folder after rip."""
-        output_dir = self.app.state.get("output_dir")
+        output_dir = job.output_dir if job is not None else self.app.state.get("output_dir")
         if not output_dir:
             return
         try:
             debug_dir = get_debug_dir(Path(output_dir).parent)
 
-            disc_info = self.app.state.get("disc_info")
-            tmdb_match = self.app.state.get("tmdb_match")
-            discs = self.app.state.get("dvdcompare_discs", [])
+            disc_info = job.disc_info if job is not None else self.app.state.get("disc_info")
+            tmdb_match = job.tmdb_match if job is not None else self.app.state.get("tmdb_match")
+            discs = job.dvdcompare_discs if job is not None else self.app.state.get("dvdcompare_discs", [])
 
             canonical = tmdb_match.title if tmdb_match else ""
             year = tmdb_match.year if tmdb_match else None
@@ -273,23 +362,32 @@ class ProgressScreen:
                 canonical=canonical, year=year, is_movie=is_movie,
                 movie_runtime=movie_runtime,
                 discs=discs,
-                selected_titles=self.app.state.get("selected_titles", []),
+                selected_titles=(
+                    job.selected_titles
+                    if job is not None
+                    else self.app.state.get("selected_titles", [])
+                ),
                 ripped_titles=[r.title_index for r in results if r.success],
                 phase="complete",
             )
             copy_debug_log(debug_dir, get_log_path())
-            self.app.state["debug_dir"] = str(debug_dir)
+            if job is None or screen_lease_is_current(self.app, job.lease):
+                self.app.state["debug_dir"] = str(debug_dir)
             log.info("Wrote debug snapshots to %s", debug_dir)
         except Exception as exc:
             log.warning("Failed to write debug snapshots: %s", exc)
 
-    def _write_manifest(self, results: list[RipResult]):
+    def _write_manifest(
+        self,
+        results: list[RipResult],
+        job: RipJob | None = None,
+    ):
         """Write a rip manifest for resume support."""
         from riplex.manifest import build_rip_manifest, write_manifest
 
-        output_dir = self.app.state.get("output_dir")
-        disc_info = self.app.state.get("disc_info")
-        tmdb_match = self.app.state.get("tmdb_match")
+        output_dir = job.output_dir if job is not None else self.app.state.get("output_dir")
+        disc_info = job.disc_info if job is not None else self.app.state.get("disc_info")
+        tmdb_match = job.tmdb_match if job is not None else self.app.state.get("tmdb_match")
         if not output_dir or not disc_info or not tmdb_match:
             return
 
@@ -301,11 +399,11 @@ class ProgressScreen:
             canonical = tmdb_match.title
             year = tmdb_match.year or 0
             is_movie = getattr(tmdb_match, "media_type", "movie") != "tv"
-            movie_runtime = self.app.state.get("movie_runtime")
-            disc_number = self.app.state.get("_orchestrate_disc_number")
-            drive = self.app.state.get("drive")
+            movie_runtime = job.movie_runtime if job is not None else self.app.state.get("movie_runtime")
+            disc_number = job.disc_number if job is not None else self.app.state.get("_orchestrate_disc_number")
+            drive = job.drive if job is not None else self.app.state.get("drive")
             volume_label = drive.disc_label if drive else ""
-            release = self.app.state.get("release")
+            release = job.release if job is not None else self.app.state.get("release")
             release_name = release.name if release else ""
 
             # Get analysis data for classification
@@ -313,16 +411,24 @@ class ProgressScreen:
             disc_format = detect_disc_format(disc_info) if disc_info else None
 
             # Get dvd_entries info from the analysis stored during selection
-            dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
+            dvdcompare_discs = (
+                job.dvdcompare_discs
+                if job is not None
+                else self.app.state.get("dvdcompare_discs", [])
+            )
             from riplex.disc.analysis import (
                 analyze_disc,
                 collect_tmdb_episodes_for_disc,
             )
             tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
-                self.app.state.get("show_detail"),
+                job.show_detail if job is not None else self.app.state.get("show_detail"),
                 dvdcompare_discs,
                 disc_number,
-                film_title=self.app.state.get("dvdcompare_film_title"),
+                film_title=(
+                    job.dvdcompare_film_title
+                    if job is not None
+                    else self.app.state.get("dvdcompare_film_title")
+                ),
             )
             analysis = analyze_disc(
                 disc_info, dvdcompare_discs,
@@ -330,7 +436,11 @@ class ProgressScreen:
                 is_movie=is_movie,
                 movie_runtime=movie_runtime,
                 tmdb_episodes=tmdb_episodes,
-                episode_carryover=self.app.state.get("episode_carryover") or [],
+                episode_carryover=(
+                    job.episode_carryover
+                    if job is not None
+                    else self.app.state.get("episode_carryover") or []
+                ),
             )
 
             manifest = build_rip_manifest(
@@ -348,18 +458,31 @@ class ProgressScreen:
                 total_episode_runtime=analysis.total_episode_runtime,
                 episode_count=analysis.episode_count,
                 tmdb_source_id=getattr(tmdb_match, "source_id", None),
-                dvdcompare_film_id=self.app.state.get("dvdcompare_film_id"),
+                dvdcompare_film_id=(
+                    job.dvdcompare_film_id
+                    if job is not None
+                    else self.app.state.get("dvdcompare_film_id")
+                ),
                 dvdcompare_release_name=(release.name if release else None),
-                season_number=self.app.state.get("season_number"),
+                season_number=(
+                    job.season_number
+                    if job is not None
+                    else self.app.state.get("season_number")
+                ),
                 episode_carryover=analysis.next_episode_carryover,
             )
             manifest_path = write_manifest(Path(output_dir), manifest)
-            self.app.state["episode_carryover"] = analysis.next_episode_carryover
+            if job is None or screen_lease_is_current(self.app, job.lease):
+                self.app.state["episode_carryover"] = analysis.next_episode_carryover
             log.info("Wrote rip manifest: %s", manifest_path)
         except Exception as exc:
             log.warning("Failed to write rip manifest: %s", exc)
 
-    def _auto_eject(self, results: list[RipResult]):
+    def _auto_eject(
+        self,
+        results: list[RipResult],
+        job: RipJob | None = None,
+    ):
         """Eject the disc once ripping finishes, unless disabled in config.
 
         Best-effort: a failed eject is logged and surfaced in the activity
@@ -377,7 +500,7 @@ class ProgressScreen:
         if not any(r.success for r in results):
             return
 
-        drive = self.app.state.get("drive")
+        drive = job.drive if job is not None else self.app.state.get("drive")
         device = getattr(drive, "device", None)
         if not device:
             return
@@ -390,19 +513,31 @@ class ProgressScreen:
             log.warning("Auto-eject failed for %s: %s", device, exc)
             self._log_message(f"Auto-eject failed: {exc}", ft.Colors.ORANGE)
 
-    def _advance_orchestrate(self, results: list[RipResult]):
+    def _advance_orchestrate(
+        self,
+        results: list[RipResult],
+        job: RipJob | None = None,
+    ):
         """In orchestrate mode, store results and advance to next disc or finish."""
-        disc_number = self.app.state.get("_orchestrate_disc_number")
-        disc_queue = self.app.state.get("disc_queue", [])
-        current_idx = self.app.state.get("current_disc_idx", 0)
+        disc_number = job.disc_number if job is not None else self.app.state.get("_orchestrate_disc_number")
+        disc_queue = list(job.disc_queue) if job is not None else self.app.state.get("disc_queue", [])
+        current_idx = job.current_disc_idx if job is not None else self.app.state.get("current_disc_idx", 0)
 
         # Store results for this disc
-        all_results = self.app.state.get("all_rip_results", {})
+        all_results = (
+            dict(job.all_rip_results)
+            if job is not None
+            else dict(self.app.state.get("all_rip_results", {}))
+        )
         all_results[disc_number] = results
         self.app.state["all_rip_results"] = all_results
 
         # Track as ripped
-        ripped = self.app.state.get("ripped_discs", set())
+        ripped = (
+            set(job.ripped_discs)
+            if job is not None
+            else set(self.app.state.get("ripped_discs", set()))
+        )
         if any(r.success for r in results):
             ripped.add(disc_number)
         self.app.state["ripped_discs"] = ripped

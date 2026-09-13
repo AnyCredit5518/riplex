@@ -1,8 +1,14 @@
 """Tests for the folder-picker screen's title/season inference."""
 
 import json
+from types import SimpleNamespace
 
-from riplex_app.screens.folder_picker import _read_title_and_season_from_manifests
+from riplex_app import background
+from riplex_app.background import capture_screen_lease
+from riplex_app.screens.folder_picker import (
+    FolderPickerScreen,
+    _read_title_and_season_from_manifests,
+)
 
 
 def _write_manifest(folder, *, title, kind="tv"):
@@ -73,3 +79,49 @@ class TestReadTitleAndSeasonFromManifests:
         assert title == "Psych"
         assert s is None
         assert media_type == "tv"
+
+
+def test_duplicate_ffprobe_scan_starts_one_worker(monkeypatch, tmp_path):
+    started: list = []
+
+    class _DeferredThread:
+        def __init__(self, *, target, daemon, name=None, args=()):
+            started.append((target, args))
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(background.threading, "Thread", _DeferredThread)
+    app = SimpleNamespace(
+        state={},
+        page=SimpleNamespace(controls=[], update=lambda: None),
+    )
+    screen = FolderPickerScreen(app)
+
+    screen._start_ffprobe_scan(tmp_path)
+    progress_view = app.page.controls[-1]
+    screen._start_ffprobe_scan(tmp_path)
+
+    assert len(started) == 1
+    assert app.page.controls[-1] is progress_view
+
+
+def test_late_ffprobe_scan_does_not_restore_folder_picker(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "riplex_app.screens.folder_picker.scan_folder",
+        lambda *_args, **_kwargs: [],
+    )
+    app = SimpleNamespace(
+        state={},
+        _current_screen_name="folder_picker",
+        _navigation_epoch=3,
+        page=SimpleNamespace(run_task=lambda _handler: None),
+    )
+    screen = FolderPickerScreen(app)
+    lease = capture_screen_lease(app)
+
+    app._current_screen_name = "welcome"
+    app._navigation_epoch += 1
+    screen._do_scan(tmp_path, lease)
+
+    assert "_scan_result" not in app.state

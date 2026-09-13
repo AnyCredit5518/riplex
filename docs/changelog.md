@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+
+- **GUI background action feedback.** Metadata and release lookups, resume,
+        disc and folder scans, ripping, organizing, and self-update actions now
+        show an immediate busy state and reject repeated launches while work is
+        active.
+- **Stale GUI results.** Background work is tied to the screen visit that
+        started it, preventing abandoned lookups, reads, rips, and organize jobs
+        from overwriting or redirecting a newer workflow.
+
 ## v1.1.2 — 2026-09-12
 
 ### Fixed

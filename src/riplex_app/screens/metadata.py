@@ -1,13 +1,19 @@
 """Metadata screen - TMDb search and title selection."""
 
 import asyncio
-import threading
 
 import flet as ft
 
 from riplex.config import get_api_key
 from riplex.metadata.provider import MetadataSearchResult
 from riplex.metadata.sources.tmdb import TmdbProvider
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 
 class MetadataScreen:
@@ -15,6 +21,12 @@ class MetadataScreen:
         self.app = app
         self.tmdb_results: list[MetadataSearchResult] = []
         self._search_field: ft.TextField | None = None
+        self._search_button: ft.Control | None = None
+        self._result_back_button: ft.Control | None = None
+        self._next_button: ft.Control | None = None
+        self._busy_status: ft.Row | None = None
+        self._busy_status_text: ft.Text | None = None
+        self._submitting = False
 
     @property
     def _back_screen(self) -> str:
@@ -101,22 +113,23 @@ class MetadataScreen:
             disabled=searching,
             hint_text="Edit and press Enter to search again",
         )
+        self._search_button = ft.ElevatedButton(
+            "Search",
+            icon=ft.Icons.SEARCH,
+            on_click=self._on_search_click,
+            disabled=searching,
+        )
         return ft.Row(
             [
                 self._search_field,
-                ft.ElevatedButton(
-                    "Search",
-                    icon=ft.Icons.SEARCH,
-                    on_click=self._on_search_click,
-                    disabled=searching,
-                ),
+                self._search_button,
             ],
             spacing=10,
         )
 
     def _on_search_click(self, _e):
         """Re-run TMDb search with the edited title."""
-        if self._search_field is None:
+        if self._submitting or self._search_field is None:
             return
         new_title = (self._search_field.value or "").strip()
         if not new_title:
@@ -138,11 +151,13 @@ class MetadataScreen:
         prefill_source_id = self.app.state.get("_prefill_tmdb_source_id")
         prefill_failed = self.app.state.pop("_prefill_tmdb_failed", False)
         if prefill_source_id and not prefill_failed:
-            threading.Thread(
-                target=self._resolve_prefill_tmdb,
-                args=(prefill_source_id,),
-                daemon=True,
-            ).start()
+            lease = capture_screen_lease(self.app)
+            start_background_once(
+                self.app,
+                screen_operation_key("metadata-lookup", lease),
+                self._resolve_prefill_tmdb,
+                args=(prefill_source_id, lease),
+            )
             return self._layout(
                 header=[
                     ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
@@ -198,7 +213,13 @@ class MetadataScreen:
         )
 
         # Start search in background
-        threading.Thread(target=self._search_tmdb, daemon=True).start()
+        lease = capture_screen_lease(self.app)
+        start_background_once(
+            self.app,
+            screen_operation_key("metadata-lookup", lease),
+            self._search_tmdb,
+            args=(title, lease),
+        )
 
         return content
 
@@ -207,6 +228,7 @@ class MetadataScreen:
         if not self.tmdb_results:
             return self._build_error_view(title, "No results found. Try a different title.")
 
+        self._submitting = False
         self.radio_group = ft.RadioGroup(
             content=ft.Column(
                 [self._build_result_row(i, r) for i, r in enumerate(self.tmdb_results)],
@@ -239,6 +261,29 @@ class MetadataScreen:
                 ),
             ]
 
+        self._result_back_button = self._footer_button()
+        self._next_button = ft.ElevatedButton(
+            "Next",
+            icon=ft.Icons.ARROW_FORWARD,
+            on_click=self._next,
+            style=ft.ButtonStyle(
+                padding=ft.Padding(left=30, top=15, right=30, bottom=15),
+            ),
+        )
+        self._busy_status_text = ft.Text(
+            "Loading details...",
+            size=12,
+            color=ft.Colors.GREY_400,
+        )
+        self._busy_status = ft.Row(
+            [
+                ft.ProgressRing(width=18, height=18),
+                self._busy_status_text,
+            ],
+            spacing=8,
+            visible=False,
+        )
+
         return self._layout(
             header=[
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),
@@ -256,13 +301,9 @@ class MetadataScreen:
             ],
             body=[self.radio_group],
             footer=ft.Row([
-                self._footer_button(),
-                ft.ElevatedButton(
-                    "Next",
-                    icon=ft.Icons.ARROW_FORWARD,
-                    on_click=self._next,
-                    style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
-                ),
+                self._result_back_button,
+                self._next_button,
+                self._busy_status,
             ]),
         )
 
@@ -309,11 +350,17 @@ class MetadataScreen:
         # Go directly to selection (skip release/dvdcompare — no metadata to match against)
         self.app.navigate("selection")
 
-    def _search_tmdb(self):
+    def _search_tmdb(
+        self,
+        title: str | None = None,
+        lease: ScreenLease | None = None,
+    ):
         """Search TMDb in background, then re-navigate to show results."""
+        title = title or self.app.state["title"]
+        candidates = None
+        error = None
         try:
             api_key = get_api_key()
-            title = self.app.state["title"]
 
             async def _do_search():
                 provider = TmdbProvider(api_key)
@@ -330,14 +377,21 @@ class MetadataScreen:
                 exact = [r for r in candidates if r.title.lower() == query_lower]
                 auto_pick = exact[0] if exact else candidates[0]
                 candidates = [auto_pick] + [r for r in candidates if r is not auto_pick]
-            self.app.state["_tmdb_results"] = candidates
 
         except Exception as exc:
-            self.app.state["_tmdb_error"] = str(exc)
+            error = str(exc)
+
+        if not screen_lease_is_current(self.app, lease):
+            return
+        if error is not None:
+            self.app.state["_tmdb_error"] = error
+        else:
+            self.app.state["_tmdb_results"] = candidates
 
         # Schedule navigation on main event loop
         async def _nav():
-            self.app.navigate("metadata")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("metadata")
 
         self.app.page.run_task(_nav)
 
@@ -358,8 +412,16 @@ class MetadataScreen:
 
     def _next(self, e):
         """Store TMDb selection, fetch movie detail for runtime, and navigate."""
+        if self._submitting:
+            return
         idx = int(self.radio_group.value)
         selected = self.tmdb_results[idx]
+        status = (
+            "Loading movie details..."
+            if selected.media_type == "movie"
+            else "Loading seasons..."
+        )
+        self._set_submitting(status)
 
         # Scoped mode: we're picking a match for one DiscGroup (or one
         # FilmSlot within it) inside an already-resolved release. Don't
@@ -401,15 +463,32 @@ class MetadataScreen:
         self.app.state["show_detail"] = None
 
         # For movies, fetch full detail to get runtime before proceeding
+        lease = capture_screen_lease(self.app)
         if selected.media_type == "movie":
-            threading.Thread(target=self._fetch_movie_detail, daemon=True).start()
+            start_background_once(
+                self.app,
+                screen_operation_key(
+                    f"metadata-detail:{selected.source_id}",
+                    lease,
+                ),
+                self._fetch_movie_detail,
+                args=(selected, lease),
+            )
         else:
             self.app.state["movie_runtime"] = None
             # Fire-and-forget: the release picker and later selection
             # screens will read show_detail whenever it lands. If the
             # user gets to selection before the fetch completes,
             # enrichment is skipped and dvdcompare classification stands.
-            threading.Thread(target=self._fetch_show_detail, daemon=True).start()
+            start_background_once(
+                self.app,
+                screen_operation_key(
+                    f"metadata-detail:{selected.source_id}",
+                    lease,
+                ),
+                self._fetch_show_detail,
+                args=(selected,),
+            )
             # Route through season_select for multi-season TV so the
             # dvdcompare query gets biased with ``: Season N`` before
             # the release picker runs. season_select auto-skips (to
@@ -417,11 +496,41 @@ class MetadataScreen:
             # is a mini-series, or when the match isn't TV.
             self.app.navigate("season_select")
 
-    def _fetch_movie_detail(self):
+    def _set_submitting(self, status: str) -> None:
+        self._submitting = True
+        self.radio_group.disabled = True
+        if self._search_field is not None:
+            self._search_field.disabled = True
+        if self._search_button is not None:
+            self._search_button.disabled = True
+        if self._result_back_button is not None:
+            self._result_back_button.disabled = True
+        if self._next_button is not None:
+            self._next_button.disabled = True
+            self._next_button.content = "Loading..."
+        if self._busy_status is not None:
+            self._busy_status.visible = True
+        if self._busy_status_text is not None:
+            self._busy_status_text.value = status
+        page = getattr(self.app, "page", None)
+        if page is not None:
+            page.update()
+
+    def _fetch_movie_detail(
+        self,
+        selection: MetadataSearchResult | str | None = None,
+        lease: ScreenLease | None = None,
+    ):
         """Fetch movie runtime from TMDb in background."""
+        expected_match = selection if isinstance(selection, MetadataSearchResult) else None
+        source_id = (
+            selection
+            if isinstance(selection, str)
+            else (selection or self.app.state["tmdb_match"]).source_id
+        )
+        runtime = None
         try:
             api_key = get_api_key()
-            source_id = self.app.state["tmdb_match"].source_id
 
             async def _do_fetch():
                 provider = TmdbProvider(api_key)
@@ -431,16 +540,33 @@ class MetadataScreen:
                     await provider.close()
 
             detail = asyncio.run(_do_fetch())
-            self.app.state["movie_runtime"] = detail.runtime_seconds
+            runtime = detail.runtime_seconds
         except Exception:
-            self.app.state["movie_runtime"] = None
+            pass
+
+        current_match = self.app.state.get("tmdb_match")
+        if (
+            not screen_lease_is_current(self.app, lease)
+            or (
+                current_match is not expected_match
+                if expected_match is not None
+                else getattr(current_match, "source_id", None) != source_id
+            )
+        ):
+            return
+        self.app.state["movie_runtime"] = runtime
 
         async def _nav():
-            self.app.navigate("release")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("release")
 
         self.app.page.run_task(_nav)
 
-    def _resolve_prefill_tmdb(self, source_id: str):
+    def _resolve_prefill_tmdb(
+        self,
+        source_id: str,
+        lease: ScreenLease | None = None,
+    ):
         """Resolve a prefilled TMDb source_id straight to details.
 
         Populates ``tmdb_match`` (as a synthesised ``MetadataSearchResult``),
@@ -464,6 +590,8 @@ class MetadataScreen:
                     await provider.close()
 
             detail = asyncio.run(_do_fetch())
+            if not screen_lease_is_current(self.app, lease):
+                return
             title = detail.title
             year = getattr(detail, "year", None)
             self.app.state["tmdb_match"] = MetadataSearchResult(
@@ -486,6 +614,8 @@ class MetadataScreen:
                 self.app.state["movie_runtime"] = None
                 self.app.state["show_detail"] = detail
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             import logging as _log
             _log.getLogger(__name__).warning(
                 "TMDb prefill fetch failed for %s: %s", source_id, exc
@@ -499,6 +629,8 @@ class MetadataScreen:
             self.app.state.pop("_prefill_dvdcompare_release_name", None)
 
         async def _nav():
+            if not screen_lease_is_current(self.app, lease):
+                return
             # Prefill failure -> back to metadata search picker.
             # Success -> season_select (auto-skips for movies / when
             # season is already known / mini-series).
@@ -506,7 +638,10 @@ class MetadataScreen:
 
         self.app.page.run_task(_nav)
 
-    def _fetch_show_detail(self):
+    def _fetch_show_detail(
+        self,
+        selection: MetadataSearchResult | str | None = None,
+    ):
         """Fetch TMDb show detail (season + episode list) in background.
 
         The episode list is used downstream by ``analyze_disc`` to
@@ -516,9 +651,15 @@ class MetadataScreen:
         fire-and-forget — navigation to the release screen already
         happened on the UI thread.
         """
+        expected_match = selection if isinstance(selection, MetadataSearchResult) else None
+        source_id = (
+            selection
+            if isinstance(selection, str)
+            else (selection or self.app.state["tmdb_match"]).source_id
+        )
+        detail = None
         try:
             api_key = get_api_key()
-            source_id = self.app.state["tmdb_match"].source_id
 
             async def _do_fetch():
                 provider = TmdbProvider(api_key)
@@ -530,6 +671,13 @@ class MetadataScreen:
                     await provider.close()
 
             detail = asyncio.run(_do_fetch())
-            self.app.state["show_detail"] = detail
         except Exception:
-            self.app.state["show_detail"] = None
+            pass
+
+        current_match = self.app.state.get("tmdb_match")
+        if (
+            current_match is expected_match
+            if expected_match is not None
+            else getattr(current_match, "source_id", None) == source_id
+        ):
+            self.app.state["show_detail"] = detail

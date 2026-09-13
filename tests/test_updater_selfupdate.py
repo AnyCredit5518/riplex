@@ -5,10 +5,53 @@ from __future__ import annotations
 import hashlib
 import io
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from riplex import updater
+from riplex_app.screens.update import UpdateScreen
+
+
+def _run_page_task(handler, *args):
+    coroutine = handler(*args)
+    try:
+        coroutine.send(None)
+    except StopIteration:
+        pass
+
+
+@pytest.mark.parametrize("apply_result", [RuntimeError("locked"), None])
+def test_update_screen_recovers_when_apply_does_not_exit(
+    monkeypatch,
+    tmp_path,
+    apply_result,
+):
+    info = {"url": "https://github.com/AnyCredit5518/riplex/releases/tag/v2"}
+    app = SimpleNamespace(
+        state={"update_info": info},
+        page=SimpleNamespace(update=lambda: None, run_task=_run_page_task),
+    )
+    screen = UpdateScreen(app)
+    screen._updating = True
+    screen._progress = SimpleNamespace(visible=True, value=None)
+    screen._status = SimpleNamespace(value="", color=None)
+    screen._actions = SimpleNamespace(controls=[])
+    monkeypatch.setattr(updater, "stage_update", lambda *_args, **_kwargs: tmp_path / "new.exe")
+
+    def _apply(_staged):
+        if isinstance(apply_result, Exception):
+            raise apply_result
+        return apply_result
+
+    monkeypatch.setattr(updater, "apply_update_and_relaunch", _apply)
+
+    screen._run_self_update(info)
+
+    assert screen._updating is False
+    assert screen._progress.visible is False
+    assert "failed" in screen._status.value.lower()
+    assert screen._actions.controls
 
 
 # ---------------------------------------------------------------------------

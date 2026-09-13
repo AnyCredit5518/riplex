@@ -10,6 +10,7 @@ import pytest
 from riplex.disc.makemkv import DiscInfo, DiscTitle, DriveInfo, RipResult
 from riplex_app.screens import progress as progress_mod
 from riplex_app.screens.progress import ProgressScreen
+from riplex_app.screens.selection import SelectionScreen
 
 
 class _App:
@@ -128,6 +129,126 @@ def test_snapshot_copies_gui_log(monkeypatch, tmp_path):
     ProgressScreen(app)._write_snapshots([])
 
     assert copied == [(debug_dir, gui_log)]
+
+
+def test_repeated_build_preserves_active_rip_and_starts_one_worker(monkeypatch):
+    started: list = []
+
+    class _DeferredThread:
+        def __init__(self, *, target, daemon, name=None, args=()):
+            started.append((target, args))
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(progress_mod.threading, "Thread", _DeferredThread)
+    app = _App({
+        "selected_titles": [],
+        "disc_info": None,
+        "workflow": "rip",
+    })
+    screen = ProgressScreen(app)
+
+    first = screen.build()
+    second = screen.build()
+
+    assert second is first
+    assert len(started) == 1
+
+
+def test_late_rip_completion_does_not_mutate_new_workflow(monkeypatch, tmp_path):
+    monkeypatch.setattr(progress_mod.threading, "Thread", _NoThread)
+    app = _NavApp(_orchestrate_state(tmp_path))
+    app._current_screen_name = "progress"
+    app._navigation_epoch = 1
+    screen = ProgressScreen(app)
+    screen.build()
+
+    def _finish_after_workflow_changes(*_args, **_kwargs):
+        app._current_screen_name = "metadata"
+        app._navigation_epoch = 2
+        app.state["workflow"] = "rip"
+        app.state["rip_results"] = ["new workflow"]
+        return _ok()
+
+    monkeypatch.setattr(progress_mod, "run_rip", _finish_after_workflow_changes)
+    monkeypatch.setattr(screen, "_write_snapshots", lambda _results, _job=None: None)
+    monkeypatch.setattr(screen, "_write_manifest", lambda _results, _job=None: None)
+    monkeypatch.setattr(screen, "_auto_eject", lambda _results, _job=None: None)
+    monkeypatch.setattr(progress_mod.time, "sleep", lambda _seconds: None)
+
+    screen._run_rips_inner()
+
+    assert app.state["rip_results"] == ["new workflow"]
+    assert app.navigated == []
+
+
+def test_rip_finalization_uses_original_state_and_stops_stale_ui(monkeypatch, tmp_path):
+    monkeypatch.setattr(progress_mod.threading, "Thread", _NoThread)
+    app = _NavApp(_orchestrate_state(tmp_path / "old"))
+    app._current_screen_name = "progress"
+    app._navigation_epoch = 1
+    screen = ProgressScreen(app)
+    screen.build()
+    calls = []
+
+    monkeypatch.setattr(progress_mod, "run_rip", lambda *_args, **_kwargs: _ok())
+
+    def _write_snapshots(_results, job=None):
+        output_dir = job.output_dir if job is not None else app.state["output_dir"]
+        calls.append(("snapshot", output_dir))
+        app._current_screen_name = "metadata"
+        app._navigation_epoch = 2
+        app.state.update({
+            "workflow": "rip",
+            "output_dir": tmp_path / "new",
+            "rip_results": ["new workflow"],
+        })
+
+    def _write_manifest(_results, job=None):
+        output_dir = job.output_dir if job is not None else app.state["output_dir"]
+        calls.append(("manifest", output_dir))
+
+    monkeypatch.setattr(screen, "_write_snapshots", _write_snapshots)
+    monkeypatch.setattr(screen, "_write_manifest", _write_manifest)
+    monkeypatch.setattr(
+        screen,
+        "_auto_eject",
+        lambda *_args, **_kwargs: calls.append(("eject", None)),
+    )
+    monkeypatch.setattr(progress_mod.time, "sleep", lambda _seconds: None)
+
+    screen._run_rips_inner()
+
+    assert calls == [
+        ("snapshot", tmp_path / "old"),
+        ("manifest", tmp_path / "old"),
+    ]
+    assert app.state["rip_results"] == ["new workflow"]
+    assert app.navigated == []
+
+
+def test_duplicate_start_rip_navigates_once(monkeypatch, tmp_path):
+    app = _NavApp({})
+    screen = SelectionScreen(app)
+    screen._starting = False
+    screen.checkboxes = [SimpleNamespace(value=True, data=3)]
+    screen._start_btn = SimpleNamespace(disabled=False, content="Start Rip")
+    snapshots = []
+    monkeypatch.setattr(screen, "_build_output_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        screen,
+        "_save_selection_snapshot",
+        lambda selected, **kwargs: snapshots.append((selected, kwargs)),
+    )
+
+    screen._start_rip(None)
+    screen._start_rip(None)
+
+    assert app.navigated == ["progress"]
+    assert snapshots == [([3], {"phase": "selection"})]
+    assert screen._start_btn.disabled
+    assert screen._start_btn.content == "Starting..."
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 """Tests for the GUI-side disc-detection helpers that don't require Flet."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -107,6 +108,52 @@ def test_open_makemkv_launches_gui_next_to_console(monkeypatch, tmp_path):
     DiscDetectionScreen(app)._open_makemkv()
 
     popen.assert_called_once_with([str(gui_exe)], close_fds=True)
+
+
+def test_late_disc_read_does_not_mutate_new_workflow(monkeypatch):
+    workers = []
+
+    class _DeferredThread:
+        def __init__(self, *, target, args=(), daemon, name=None):
+            self.target = target
+            self.args = args
+            workers.append(self)
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(
+        "riplex_app.screens.disc_detection.threading.Thread",
+        _DeferredThread,
+    )
+    monkeypatch.setattr(
+        "riplex_app.screens.disc_detection.run_disc_info",
+        lambda *_args, **_kwargs: SimpleNamespace(titles=[object()]),
+    )
+    app = _FakeApp()
+    app._current_screen_name = "disc_detection"
+    app._navigation_epoch = 1
+    screen = DiscDetectionScreen(app)
+    screen.error_panel = SimpleNamespace(visible=True)
+    screen.spinner = SimpleNamespace(visible=False)
+    screen.status_text = SimpleNamespace(value="", color=None)
+    screen.drive_panel = SimpleNamespace(controls=[])
+    old_drive = _drive(has_disc=True, label="OLD_MOVIE", state="Disc: OLD_MOVIE")
+    new_drive = _drive(index=1, device="E:", has_disc=True, label="NEW_MOVIE")
+
+    screen._begin_read(old_drive)
+    app._current_screen_name = "metadata"
+    app._navigation_epoch = 2
+    app.state.update({
+        "drive": new_drive,
+        "disc_info": "new disc info",
+        "title": "New Movie",
+    })
+    workers[-1].target(*workers[-1].args)
+
+    assert app.state["drive"] is new_drive
+    assert app.state["disc_info"] == "new disc info"
+    assert app.state["title"] == "New Movie"
 
 
 
@@ -283,11 +330,11 @@ class TestPrepareTvSeasonPick:
         resume_calls: list = []
         monkeypatch.setattr(
             screen, "_prepare_tv_season_pick",
-            lambda s: prep_calls.append(s),
+            lambda s, _lease=None: prep_calls.append(s),
         )
         monkeypatch.setattr(
             screen, "_resume_session",
-            lambda s: resume_calls.append(s),
+            lambda s, _lease=None: resume_calls.append(s),
         )
 
         screen._route_after_read()
@@ -316,11 +363,11 @@ class TestPrepareTvSeasonPick:
         resume_calls: list = []
         monkeypatch.setattr(
             screen, "_prepare_tv_season_pick",
-            lambda s: prep_calls.append(s),
+            lambda s, _lease=None: prep_calls.append(s),
         )
         monkeypatch.setattr(
             screen, "_resume_session",
-            lambda s: resume_calls.append(s),
+            lambda s, _lease=None: resume_calls.append(s),
         )
 
         screen._route_after_read()

@@ -41,8 +41,11 @@ class SelectionScreen:
     def __init__(self, app):
         self.app = app
         self.checkboxes: list[ft.Checkbox] = []
+        self._starting = False
+        self._start_btn: ft.Control | None = None
 
     def build(self) -> ft.Control:
+        self._starting = False
         disc_info = self.app.state["disc_info"]
         top_tmdb_match = self.app.state["tmdb_match"]
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
@@ -314,7 +317,7 @@ class SelectionScreen:
 
         back_target = "disc_overview" if self.app.state.get("workflow") == "orchestrate" else "metadata"
         back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate(back_target))
-        start_btn = ft.ElevatedButton(
+        self._start_btn = ft.ElevatedButton(
             "Start Rip",
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._start_rip,
@@ -406,7 +409,7 @@ class SelectionScreen:
                 ft.Divider(height=10),
                 self.summary_text,
                 ft.Container(height=10),
-                ft.Row([back_btn, start_btn]),
+                ft.Row([back_btn, self._start_btn]),
             ],
             spacing=10,
             expand=True,
@@ -475,9 +478,17 @@ class SelectionScreen:
 
     def _start_rip(self, e):
         """Collect selected titles and proceed to rip."""
+        if self._starting:
+            return
         selected = [cb.data for cb in self.checkboxes if cb.value]
         if not selected:
             return
+
+        self._starting = True
+        if self._start_btn is not None:
+            self._start_btn.disabled = True
+            self._start_btn.content = "Starting..."
+            self.app.page.update()
 
         self.app.state["selected_titles"] = selected
 

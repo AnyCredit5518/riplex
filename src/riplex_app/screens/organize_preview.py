@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import re
-import threading
 from pathlib import Path
 
 import flet as ft
@@ -16,6 +15,14 @@ from riplex.models import PlannedMovie, SearchRequest
 from riplex.organize_by_group import apply_group_overrides, build_multi_group_plan
 from riplex.organizer import build_organize_plan, execute_plan
 from riplex.snapshot import save_from_scanned, save_organized_marker
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    operations_for,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 log = logging.getLogger(__name__)
 
@@ -44,11 +51,21 @@ class OrganizePreviewScreen:
         self.organize_plan = None
         self.planned = None
         self._progress_text: ft.Text | None = None
+        self._loading_content: ft.Control | None = None
+        self._executing = False
 
-    def _set_progress(self, msg: str) -> None:
+    def _set_progress(
+        self,
+        msg: str,
+        *,
+        lease: ScreenLease | None = None,
+        text: ft.Text | None = None,
+    ) -> None:
         """Thread-safe update of the loading status line."""
         log.info("organize progress: %s", msg)
-        text = self._progress_text
+        if not screen_lease_is_current(self.app, lease):
+            return
+        text = text or self._progress_text
         if text is None:
             return
         try:
@@ -59,6 +76,14 @@ class OrganizePreviewScreen:
             pass
 
     def build(self) -> ft.Control:
+        lease = capture_screen_lease(self.app)
+        operation_key = screen_operation_key("organize-plan", lease)
+        if (
+            operations_for(self.app).is_active(operation_key)
+            and self._loading_content is not None
+        ):
+            return self._loading_content
+
         # Check for pre-built plan (re-render after background work)
         cached_plan = self.app.state.pop("_organize_plan", None)
         if cached_plan is not None:
@@ -71,7 +96,7 @@ class OrganizePreviewScreen:
 
         # Loading state
         self._progress_text = ft.Text("Starting...", size=14)
-        content = ft.Column(
+        self._loading_content = ft.Column(
             [
                 ft.Text("Organize Preview", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text(
@@ -95,16 +120,28 @@ class OrganizePreviewScreen:
             expand=True,
         )
 
-        threading.Thread(target=self._build_plan, daemon=True).start()
-        return content
+        start_background_once(
+            self.app,
+            operation_key,
+            self._build_plan,
+            args=(lease, self._progress_text),
+        )
+        return self._loading_content
 
-    def _build_plan(self):
+    def _build_plan(
+        self,
+        lease: ScreenLease | None = None,
+        progress_text: ft.Text | None = None,
+    ):
         """Build the organize plan in a background thread.
 
         Uses the pass-3 per-group router when ``state['disc_groups']``
         is populated (multi-work releases, multi-film discs); falls
         back to the legacy single-plan path otherwise (single-work
         releases, organize-existing-folder without dvdcompare data)."""
+        def _progress(message: str) -> None:
+            self._set_progress(message, lease=lease, text=progress_text)
+
         try:
             tmdb_match = self.app.state["tmdb_match"]
             scanned = self.app.state["scanned"]
@@ -119,12 +156,16 @@ class OrganizePreviewScreen:
             if use_group_routing:
                 org_plan, planned = self._build_group_plan(
                     scanned, dvdcompare_discs, disc_groups, overrides,
-                    api_key, output_root,
+                    api_key, output_root, lease, _progress,
                 )
             else:
                 org_plan, planned = self._build_single_plan(
                     scanned, dvdcompare_discs, tmdb_match, api_key, output_root,
+                    _progress,
                 )
+
+            if not screen_lease_is_current(self.app, lease):
+                return
 
             # Save organize snapshot (like the CLI does)
             source_folder = self.app.state.get("source_folder")
@@ -132,29 +173,34 @@ class OrganizePreviewScreen:
                 source_path = Path(source_folder)
                 snapshot_out = source_path / f"{source_path.name}.snapshot.json"
                 if not snapshot_out.exists():
-                    self._set_progress("Saving snapshot...")
+                    _progress("Saving snapshot...")
                     try:
                         save_from_scanned(source_path, scanned, snapshot_out)
                         log.info("Organize snapshot saved: %s", snapshot_out)
                     except Exception as snap_exc:
                         log.warning("Failed to save organize snapshot: %s", snap_exc)
 
-            self._set_progress("Done. Rendering preview...")
+            _progress("Done. Rendering preview...")
             self.app.state["_organize_plan"] = (org_plan, planned)
 
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.exception("Organize plan build failed: %s", exc)
             self.app.state["_organize_plan_error"] = str(exc)
 
         async def _nav():
-            self.app.navigate("organize_preview")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("organize_preview")
 
         self.app.page.run_task(_nav)
 
     def _build_single_plan(
         self, scanned, dvdcompare_discs, tmdb_match, api_key, output_root,
+        progress=None,
     ):
         """Legacy single-plan path: one TMDb match covers the whole release."""
+        progress = progress or self._set_progress
         async def _do_plan():
             provider = TmdbProvider(api_key)
             try:
@@ -173,17 +219,17 @@ class OrganizePreviewScreen:
                 await provider.close()
 
         kind = "movie" if tmdb_match.media_type == "movie" else "show"
-        self._set_progress(f"Fetching TMDb {kind} details for \"{tmdb_match.title}\"...")
+        progress(f"Fetching TMDb {kind} details for \"{tmdb_match.title}\"...")
         planned = asyncio.run(_do_plan())
 
         n_files = sum(len(d.files) for d in scanned)
-        self._set_progress(
+        progress(
             f"Matching {n_files} disc file(s) against "
             f"{len(dvdcompare_discs) or 0} dvdcompare disc(s)..."
         )
         result = match_discs(scanned, dvdcompare_discs, planned)
 
-        self._set_progress("Building target paths...")
+        progress("Building target paths...")
         # Key by absolute path, not basename: makemkv can produce files
         # with identical basenames across sibling disc folders.
         file_map = {f.path: f.path for d in scanned for f in d.files}
@@ -200,13 +246,15 @@ class OrganizePreviewScreen:
 
     def _build_group_plan(
         self, scanned, dvdcompare_discs, disc_groups, overrides,
-        api_key, output_root,
+        api_key, output_root, lease: ScreenLease | None = None,
+        progress=None,
     ):
         """Group-aware path: each DiscGroup / FilmSlot organizes into its
         own Plex target. The overrides dict comes straight from the disc
         overview screen and gets layered on before routing."""
+        progress = progress or self._set_progress
         apply_group_overrides(disc_groups, overrides)
-        self._set_progress(
+        progress(
             f"Planning {len(disc_groups)} group(s) against TMDb..."
         )
 
@@ -223,7 +271,7 @@ class OrganizePreviewScreen:
                     scanned, dvdcompare_discs, disc_groups, provider,
                     output_root,
                     request_defaults=request,
-                    progress=self._set_progress,
+                    progress=progress,
                 )
             finally:
                 await provider.close()
@@ -250,11 +298,13 @@ class OrganizePreviewScreen:
         )
         # Stash the full per-group breakdown for the preview to render
         # provenance chips ("belongs to: Psych 2: Lassie Come Home").
-        self.app.state["_organize_group_plans"] = group_plans
+        if screen_lease_is_current(self.app, lease):
+            self.app.state["_organize_group_plans"] = group_plans
         return org_plan, planned
 
     def _build_preview_view(self) -> ft.Control:
         """Show the dry-run plan."""
+        self._executing = False
         plan = self.organize_plan
         move_count = len(plan.moves) + sum(len(s.chapter_destinations) for s in plan.splits)
         split_count = len(plan.splits)
@@ -455,26 +505,49 @@ class OrganizePreviewScreen:
 
     def _execute(self, e):
         """Execute the organize plan."""
+        if self._executing:
+            return
+        previous_disabled = self.organize_btn.disabled
+        previous_content = self.organize_btn.content
+        self._executing = True
         self.organize_btn.disabled = True
-        self.organize_btn.text = "Organizing..."
+        self.organize_btn.content = "Organizing..."
         self.organize_btn.update()
 
-        threading.Thread(target=self._do_execute, daemon=True).start()
+        started = start_background_once(
+            self.app,
+            "organize-execute",
+            self._do_execute,
+            args=(
+                capture_screen_lease(self.app),
+                self.organize_plan,
+                self.planned,
+                self.app.state.get("source_folder"),
+                self.app.state.get("title", ""),
+            ),
+        )
+        if not started:
+            self._executing = False
+            self.organize_btn.disabled = previous_disabled
+            self.organize_btn.content = previous_content
+            self.organize_btn.update()
 
-    def _do_execute(self):
+    def _do_execute(
+        self,
+        lease: ScreenLease | None,
+        organize_plan,
+        planned,
+        source_folder,
+        title: str,
+    ):
         """Run execute_plan in background thread."""
         try:
-            actions = execute_plan(self.organize_plan, dry_run=False)
-            self.app.state["organize_plan"] = self.organize_plan
-            self.app.state["organize_results"] = actions
-            self.app.state["_organize_planned"] = self.planned
+            actions = execute_plan(organize_plan, dry_run=False)
 
             # Write organized marker to source folder
-            source_folder = self.app.state.get("source_folder")
             if source_folder:
-                title = self.app.state.get("title", "")
-                move_count = len(self.organize_plan.moves) + sum(
-                    len(s.chapter_destinations) for s in self.organize_plan.splits
+                move_count = len(organize_plan.moves) + sum(
+                    len(s.chapter_destinations) for s in organize_plan.splits
                 )
                 save_organized_marker(
                     source_folder,
@@ -483,11 +556,18 @@ class OrganizePreviewScreen:
                     output_root=str(get_output_root()),
                 )
         except Exception as exc:
-            self.app.state["organize_results"] = [f"Error: {exc}"]
-            self.app.state["organize_plan"] = self.organize_plan
-            self.app.state["_organize_planned"] = self.planned
+            actions = [f"Error: {exc}"]
+
+        if not screen_lease_is_current(self.app, lease):
+            log.info("Discarding completion from an abandoned organize workflow")
+            return
+
+        self.app.state["organize_results"] = actions
+        self.app.state["organize_plan"] = organize_plan
+        self.app.state["_organize_planned"] = planned
 
         async def _nav():
-            self.app.navigate("organize_done")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("organize_done")
 
         self.app.page.run_task(_nav)

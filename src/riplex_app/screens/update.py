@@ -1,12 +1,12 @@
 """Update screen - shows release notes and link to download."""
 
 import logging
-import threading
 import webbrowser
 
 import flet as ft
 
 from riplex.updater import can_self_update, get_current_version
+from riplex_app.background import start_background_once
 
 log = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 class UpdateScreen:
     def __init__(self, app):
         self.app = app
+        self._updating = False
 
     def build(self) -> ft.Control:
         update_info = self.app.state.get("update_info")
@@ -132,6 +133,9 @@ class UpdateScreen:
 
     def _start_self_update(self, _e):
         """Kick off the in-place download + verify + swap in the background."""
+        if self._updating:
+            return
+        self._updating = True
         info = self.app.state.get("update_info") or {}
         self._progress.visible = True
         self._progress.value = None  # indeterminate until first byte
@@ -141,10 +145,28 @@ class UpdateScreen:
             ft.Row([ft.ProgressRing(width=18, height=18), ft.Text("Updating\u2026")], spacing=10),
         ]
         self.app.page.update()
-        threading.Thread(target=self._run_self_update, args=(info,), daemon=True).start()
+        start_background_once(
+            self.app,
+            "self-update",
+            self._run_self_update,
+            args=(info,),
+        )
 
     def _run_self_update(self, info: dict):
         from riplex import updater
+
+        def _report_failure(detail: str) -> None:
+            async def _fail():
+                self._updating = False
+                self._progress.visible = False
+                self._status.value = (
+                    f"Update failed: {detail}. Use the browser download instead."
+                )
+                self._status.color = ft.Colors.ORANGE
+                self._actions.controls = self._action_buttons(info.get("url", ""))
+                self.app.page.update()
+
+            self.app.page.run_task(_fail)
 
         def _on_progress(got: int, total: int):
             frac = got / total if total else None
@@ -164,17 +186,7 @@ class UpdateScreen:
             staged = updater.stage_update(info, progress=_on_progress)
         except Exception as exc:
             log.exception("in-place update failed")
-
-            async def _fail():
-                self._progress.visible = False
-                self._status.value = (
-                    f"Update failed: {exc}. Use the browser download instead."
-                )
-                self._status.color = ft.Colors.ORANGE
-                self._actions.controls = self._action_buttons(info.get("url", ""))
-                self.app.page.update()
-
-            self.app.page.run_task(_fail)
+            _report_failure(str(exc))
             return
 
         async def _apply():
@@ -185,7 +197,15 @@ class UpdateScreen:
 
         self.app.page.run_task(_apply)
         # Swap the exe and relaunch; this terminates the current process.
-        updater.apply_update_and_relaunch(staged)
+        try:
+            updater.apply_update_and_relaunch(staged)
+        except Exception as exc:
+            log.exception("failed to apply staged update")
+            _report_failure(str(exc))
+            return
+
+        log.error("apply_update_and_relaunch returned without exiting")
+        _report_failure("the updated app did not restart")
 
     def _go_back(self, e):
         self.app.navigate("welcome")

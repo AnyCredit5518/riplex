@@ -198,6 +198,19 @@ class TestPicker:
         assert app.state["dvdcompare_discs"] == []
         assert "_dvdcompare_film" not in app.state
 
+    def test_next_ignores_duplicate_click_while_transitioning(self):
+        app = _App({
+            "tmdb_match": _tmdb_match(),
+            "show_detail": _show_detail_multi_season(),
+        })
+        screen = SeasonSelectScreen(app)
+        screen.build()
+
+        screen._on_next(None)
+        screen._on_next(None)
+
+        assert app.navigated_to == ["release"]
+
     def test_next_ignores_click_before_selection(self):
         """Defensive: if radio_group somehow has no value we no-op
         instead of crashing on int(None)."""
@@ -293,14 +306,26 @@ class TestOrchestrateResumeOnPick:
         started: list = []
 
         class _FakeThread:
-            def __init__(self, *, target, args, daemon):
-                started.append((target, args))
+            def __init__(self, *, target, daemon, name=None, args=()):
+                self.target = target
+                self.args = args
+                started.append(self)
 
             def start(self):
                 pass
 
+            def run(self):
+                self.target(*self.args)
+
         import riplex_app.screens.season_select as ss_mod
         monkeypatch.setattr(ss_mod.threading, "Thread", _FakeThread)
+        resumed: list = []
+        monkeypatch.setattr(
+            "riplex_app.screens.disc_detection.perform_resume_fetch",
+            lambda resume_app, session, lease=None: resumed.append(
+                (resume_app, session)
+            ),
+        )
 
         app = _App({
             "workflow": "orchestrate",
@@ -318,10 +343,8 @@ class TestOrchestrateResumeOnPick:
         # Resume kicked off; no navigation to release.
         assert app.navigated_to == []
         assert len(started) == 1
-        target, args = started[0]
-        # Second arg is the session; verify it's the exact object we
-        # returned from find_existing_session.
-        assert args[1] is fake_session
+        started[0].run()
+        assert resumed == [(app, fake_session)]
         # The picker's in-progress scan calls find_existing_session
         # once per non-special season during build(), and _on_next
         # calls it once more for the picked season. What matters is

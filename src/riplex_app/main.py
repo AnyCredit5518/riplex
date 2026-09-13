@@ -60,6 +60,8 @@ class RiplexApp:
         self.page.window.width = 900
         self.page.window.height = 650
         self.page.padding = 30
+        self._current_screen_name: str | None = None
+        self._navigation_epoch = 0
         icon_path = _app_icon_path()
         if icon_path is not None:
             self.page.window.icon = str(icon_path)
@@ -123,6 +125,7 @@ class RiplexApp:
     def navigate(self, screen_name: str):
         """Switch to a named screen."""
         log.info("navigate -> %s", screen_name)
+        self._navigation_epoch += 1
         self._current_screen_name = screen_name
         self.page.controls.clear()
         screen = self.screens[screen_name]

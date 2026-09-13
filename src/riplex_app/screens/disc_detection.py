@@ -36,6 +36,13 @@ from riplex.disc.makemkv import (
     run_disc_info,
 )
 from riplex.title import parse_title_and_season, parse_volume_label
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 log = logging.getLogger(__name__)
 
@@ -370,6 +377,8 @@ class DiscDetectionScreen:
             return
         self._reading = True
         self._stop_polling()
+        lease = capture_screen_lease(self.app)
+        makemkvcon = self.app.state.get("makemkvcon")
 
         self.app.state["drive"] = drive
         self.error_panel.visible = False
@@ -382,9 +391,18 @@ class DiscDetectionScreen:
         self.drive_panel.controls.clear()
         _safe_update(self.app.page)
 
-        threading.Thread(target=self._read_disc, args=(drive,), daemon=True).start()
+        threading.Thread(
+            target=self._read_disc,
+            args=(drive, lease, makemkvcon),
+            daemon=True,
+        ).start()
 
-    def _read_disc(self, drive: DriveInfo) -> None:
+    def _read_disc(
+        self,
+        drive: DriveInfo,
+        lease: ScreenLease | None = None,
+        makemkvcon=None,
+    ) -> None:
         try:
             print(
                 f"[disc_detection] Reading disc info for drive {drive.index}\u2026",
@@ -392,13 +410,17 @@ class DiscDetectionScreen:
             )
             disc_info = run_disc_info(
                 drive.index,
-                makemkvcon=self.app.state.get("makemkvcon"),
+                makemkvcon=makemkvcon,
             )
             print(
                 f"[disc_detection] Got "
                 f"{len(disc_info.titles) if disc_info else 0} titles",
                 file=sys.stderr,
             )
+
+            if not screen_lease_is_current(self.app, lease):
+                log.info("Discarding result from an abandoned disc read")
+                return
 
             if disc_info is None or not disc_info.titles:
                 self._reading = False
@@ -422,9 +444,11 @@ class DiscDetectionScreen:
             # + re-search. Orchestrate resumes still short-circuit
             # here (TV -> season_select, movie -> disc_overview) so a
             # known session doesn't force an unnecessary TMDb round-trip.
-            self._route_after_read()
+            self._route_after_read(lease)
 
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.exception("disc read failed")
             self._reading = False
             self._show_error(
@@ -610,7 +634,7 @@ class DiscDetectionScreen:
         result = parse_volume_label(label)
         return result if result else label.replace("_", " ").strip().title()
 
-    def _route_after_read(self) -> None:
+    def _route_after_read(self, lease: ScreenLease | None = None) -> None:
         """Decide the next screen after a successful disc read.
 
         Orchestrate resumes short-circuit here so an in-progress
@@ -621,6 +645,9 @@ class DiscDetectionScreen:
         resume adapter. All other cases fall through to ``metadata``
         where the user can edit the title and re-search.
         """
+        if not screen_lease_is_current(self.app, lease):
+            return
+
         title = (self.app.state.get("title") or "").strip()
 
         if title and self.app.state.get("workflow") == "orchestrate":
@@ -633,22 +660,31 @@ class DiscDetectionScreen:
                     session.title, session.year, session.media_type,
                 )
                 if session.media_type == "tv":
-                    self._prepare_tv_season_pick(session)
+                    self._prepare_tv_season_pick(session, lease)
                     return
-                self._resume_session(session)
+                self._resume_session(session, lease)
                 return
 
         async def _nav():
-            self.app.navigate("metadata")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("metadata")
 
         self.app.page.run_task(_nav)
 
-    def _prepare_tv_season_pick(self, session):
+    def _prepare_tv_season_pick(
+        self,
+        session,
+        lease: ScreenLease | None = None,
+    ):
         """Preload just enough state for season_select to render, then
         navigate there. Full resume (dvdcompare film + discs) is
         deferred until the user picks a season on that screen.
         """
         from riplex.metadata.provider import MetadataSearchResult
+
+        lease = lease or capture_screen_lease(self.app)
+        if not screen_lease_is_current(self.app, lease):
+            return
 
         self.app.state["tmdb_match"] = MetadataSearchResult(
             source_id=session.source_id,
@@ -663,11 +699,15 @@ class DiscDetectionScreen:
 
         threading.Thread(
             target=self._fetch_show_detail_for_season_pick,
-            args=(session,),
+            args=(session, lease),
             daemon=True,
         ).start()
 
-    def _fetch_show_detail_for_season_pick(self, session):
+    def _fetch_show_detail_for_season_pick(
+        self,
+        session,
+        lease: ScreenLease | None = None,
+    ):
         """Fetch TMDb show_detail so season_select can list seasons,
         then navigate. show_detail is the same data the metadata
         screen fetches on the fresh flow (in background before nav to
@@ -679,18 +719,30 @@ class DiscDetectionScreen:
         if source_id:
             try:
                 detail = asyncio.run(_fetch_show_detail(source_id))
-                if detail is not None:
+                if (
+                    detail is not None
+                    and screen_lease_is_current(self.app, lease)
+                ):
                     self.app.state["show_detail"] = detail
             except Exception as exc:
                 log.warning("Resume: show_detail prefetch failed: %s", exc)
 
         async def _nav():
-            self.app.navigate("season_select")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("season_select")
 
         self.app.page.run_task(_nav)
 
-    def _resume_session(self, session):
+    def _resume_session(
+        self,
+        session,
+        lease: ScreenLease | None = None,
+    ):
         from riplex.metadata.provider import MetadataSearchResult
+
+        lease = lease or capture_screen_lease(self.app)
+        if not screen_lease_is_current(self.app, lease):
+            return
 
         # source_id comes from the session marker written at
         # orchestrate start. Legacy sessions (or sessions started before
@@ -704,13 +756,18 @@ class DiscDetectionScreen:
             media_type=session.media_type,
         )
 
-        threading.Thread(
-            target=self._fetch_dvdcompare_for_resume,
-            args=(session,),
-            daemon=True,
-        ).start()
+        start_background_once(
+            self.app,
+            screen_operation_key("resume-session", lease),
+            self._fetch_dvdcompare_for_resume,
+            args=(session, lease),
+        )
 
-    def _fetch_dvdcompare_for_resume(self, session):
+    def _fetch_dvdcompare_for_resume(
+        self,
+        session,
+        lease: ScreenLease | None = None,
+    ):
         """Rehydrate lookup state via the shared adapter and populate ``app.state``.
 
         Thin wrapper around :func:`perform_resume_fetch` so the resume
@@ -718,10 +775,14 @@ class DiscDetectionScreen:
         screen and ``season_select`` can start a resume without
         duplicating the adapter-to-state translation).
         """
-        perform_resume_fetch(self.app, session)
+        perform_resume_fetch(self.app, session, lease)
 
 
-def perform_resume_fetch(app, session) -> None:
+def perform_resume_fetch(
+    app,
+    session,
+    lease: ScreenLease | None = None,
+) -> None:
     """Rehydrate lookup state via the shared adapter and populate ``app.state``.
 
     All network / matching / backfill logic lives in
@@ -743,14 +804,20 @@ def perform_resume_fetch(app, session) -> None:
             resume_from_session(session, disc_info=disc_info)
         )
     except Exception as exc:
+        if not screen_lease_is_current(app, lease):
+            return
         log.warning("Resume: adapter failed: %s", exc)
         app.state["release"] = None
         app.state["dvdcompare_discs"] = []
 
         async def _nav_fail():
-            app.navigate("disc_overview")
+            if screen_lease_is_current(app, lease):
+                app.navigate("disc_overview")
 
         app.page.run_task(_nav_fail)
+        return
+
+    if not screen_lease_is_current(app, lease):
         return
 
     # Keep any TMDb rehydration the adapter did (legacy markers).
@@ -786,6 +853,7 @@ def perform_resume_fetch(app, session) -> None:
         )
 
     async def _nav():
-        app.navigate("disc_overview")
+        if screen_lease_is_current(app, lease):
+            app.navigate("disc_overview")
 
     app.page.run_task(_nav)

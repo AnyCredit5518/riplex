@@ -15,6 +15,14 @@ from riplex.manifest import build_scanned_from_manifests, read_prefill_ids_from_
 from riplex.scanner import scan_folder
 from riplex.snapshot import load_organized_marker
 from riplex.title import infer_title_from_scanned, parse_season_number
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    operations_for,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 
 _SEASON_ONLY_FOLDER_RE = re.compile(r"^Season\s+\d+$", re.IGNORECASE)
@@ -230,6 +238,11 @@ class FolderPickerScreen:
         self._start_ffprobe_scan(folder)
 
     def _start_ffprobe_scan(self, folder: Path):
+        lease = capture_screen_lease(self.app)
+        operation_key = screen_operation_key("folder-scan", lease)
+        if operations_for(self.app).is_active(operation_key):
+            return
+
         # Show scanning state with progress
         self._progress_text = ft.Text("Discovering files...", size=14)
         self._progress_bar = ft.ProgressBar(width=400)
@@ -253,9 +266,18 @@ class FolderPickerScreen:
         )
         self.app.page.update()
 
-        threading.Thread(target=self._do_scan, args=(folder,), daemon=True).start()
+        start_background_once(
+            self.app,
+            operation_key,
+            self._do_scan,
+            args=(folder, lease),
+        )
 
-    def _do_scan(self, folder: Path):
+    def _do_scan(
+        self,
+        folder: Path,
+        lease: ScreenLease | None = None,
+    ):
         """Run ffprobe scan in background."""
         log.info("scanning %s", folder)
 
@@ -263,6 +285,8 @@ class FolderPickerScreen:
             log.debug("scan discovered %d file(s)", total)
 
             async def _update():
+                if not screen_lease_is_current(self.app, lease):
+                    return
                 self._progress_text.value = f"Probing file 1 of {total}..."
                 self._progress_bar.value = 0
                 self._progress_detail.value = "This can take a moment for large files"
@@ -274,6 +298,8 @@ class FolderPickerScreen:
             log.debug("scan progress %d/%d %s", current, total, filename)
 
             async def _update():
+                if not screen_lease_is_current(self.app, lease):
+                    return
                 self._progress_text.value = f"Probing file {current} of {total}..."
                 self._progress_bar.value = current / total if total else 0
                 self._progress_detail.value = filename
@@ -283,14 +309,19 @@ class FolderPickerScreen:
 
         try:
             scanned = scan_folder(folder, on_progress=_on_progress, on_discover=_on_discover)
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.info("scan complete: %d disc(s)", len(scanned))
             self.app.state["_scan_result"] = scanned
         except Exception as exc:
+            if not screen_lease_is_current(self.app, lease):
+                return
             log.exception("scan failed")
             self.app.state["_scan_error"] = str(exc)
 
         async def _nav():
-            self.app.navigate("folder_picker")
+            if screen_lease_is_current(self.app, lease):
+                self.app.navigate("folder_picker")
 
         self.app.page.run_task(_nav)
 

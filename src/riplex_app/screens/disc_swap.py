@@ -10,6 +10,14 @@ from riplex.disc.analysis import build_season_labels
 from riplex.disc.makemkv import run_disc_info, run_drive_list, eject_disc
 from riplex.disc.provider import detect_disc_number, disc_content_summary
 from riplex.title import parse_volume_label
+from riplex_app.background import (
+    ScreenLease,
+    capture_screen_lease,
+    operations_for,
+    screen_lease_is_current,
+    screen_operation_key,
+    start_background_once,
+)
 
 log = logging.getLogger(__name__)
 
@@ -23,8 +31,14 @@ class DiscSwapScreen:
 
     def __init__(self, app):
         self.app = app
+        self._scanning = False
+        self.back_btn: ft.TextButton | None = None
 
     def build(self) -> ft.Control:
+        lease = capture_screen_lease(self.app)
+        self._scanning = operations_for(self.app).is_active(
+            screen_operation_key("disc-scan", lease)
+        )
         disc_number = self.app.state.get("_orchestrate_disc_number")
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
 
@@ -63,15 +77,24 @@ class DiscSwapScreen:
             ))
 
         self.status_text = ft.Text(
-            "Insert the disc and click 'Scan' when ready.",
+            (
+                "Scanning drive..."
+                if self._scanning
+                else "Insert the disc and click 'Scan' when ready."
+            ),
             size=14,
             color=ft.Colors.GREY_400,
         )
-        self.spinner = ft.ProgressRing(width=30, height=30, visible=False)
+        self.spinner = ft.ProgressRing(
+            width=30,
+            height=30,
+            visible=self._scanning,
+        )
         self.scan_btn = ft.ElevatedButton(
             "Scan Disc",
             icon=ft.Icons.DISC_FULL,
             on_click=self._scan,
+            disabled=self._scanning,
             style=ft.ButtonStyle(
                 padding=ft.Padding(left=30, top=15, right=30, bottom=15),
             ),
@@ -80,10 +103,12 @@ class DiscSwapScreen:
             "Eject Current Disc",
             icon=ft.Icons.EJECT,
             on_click=self._eject,
+            disabled=self._scanning,
         )
         self.skip_btn = ft.TextButton(
             "Skip This Disc",
             on_click=self._skip,
+            disabled=self._scanning,
         )
         # "Back to Overview" is only safe before anything has been
         # ripped in this session — once we're mid-queue, the disc list
@@ -92,11 +117,13 @@ class DiscSwapScreen:
         current_idx = self.app.state.get("current_disc_idx", 0)
         back_controls: list[ft.Control] = []
         if current_idx == 0:
-            back_controls.append(ft.TextButton(
+            self.back_btn = ft.TextButton(
                 "Back to Overview",
                 icon=ft.Icons.ARROW_BACK,
                 on_click=self._back_to_overview,
-            ))
+                disabled=self._scanning,
+            )
+            back_controls.append(self.back_btn)
 
         return ft.Column(
             [
@@ -135,10 +162,14 @@ class DiscSwapScreen:
     def _back_to_overview(self, e):
         """Return to Disc Overview so the user can change which disc
         is currently loaded before the first rip starts."""
+        if self._scanning:
+            return
         self.app.navigate("disc_overview")
 
     def _eject(self, e):
         """Eject the current disc."""
+        if self._scanning:
+            return
         drive = self.app.state.get("drive")
         if drive and drive.device:
             self.status_text.value = "Ejecting..."
@@ -161,53 +192,79 @@ class DiscSwapScreen:
 
     def _skip(self, e):
         """Skip this disc and move to the next in queue."""
+        if self._scanning:
+            return
         self._advance_queue()
 
     def _scan(self, e):
         """Scan the drive for the newly inserted disc."""
-        self.scan_btn.disabled = True
-        self.spinner.visible = True
+        if self._scanning:
+            return
+        self._set_scan_busy(True)
         self.status_text.value = "Scanning drive..."
         self.status_text.color = None
         self.app.page.update()
 
-        threading.Thread(target=self._do_scan, daemon=True).start()
+        lease = capture_screen_lease(self.app)
+        start_background_once(
+            self.app,
+            screen_operation_key("disc-scan", lease),
+            self._do_scan,
+            args=(lease,),
+        )
 
-    def _do_scan(self):
+    def _set_scan_busy(self, busy: bool) -> None:
+        self._scanning = busy
+        self.scan_btn.disabled = busy
+        self.eject_btn.disabled = busy
+        self.skip_btn.disabled = busy
+        if self.back_btn is not None:
+            self.back_btn.disabled = busy
+        self.spinner.visible = busy
+
+    def _do_scan(self, lease: ScreenLease | None = None):
         """Background: scan drive and verify disc."""
         makemkvcon = self.app.state.get("makemkvcon")
         disc_number = self.app.state.get("_orchestrate_disc_number")
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
 
+        def _is_current() -> bool:
+            return (
+                screen_lease_is_current(self.app, lease)
+                and self.app.state.get("_orchestrate_disc_number") == disc_number
+            )
+
         try:
             # Find drive with disc
             drives = run_drive_list(makemkvcon=makemkvcon)
+            if not _is_current():
+                return
             active = [d for d in drives if d.has_disc]
 
             if not active:
+                self._set_scan_busy(False)
                 self.status_text.value = "No disc found. Insert a disc and try again."
                 self.status_text.color = ft.Colors.ORANGE
-                self.scan_btn.disabled = False
-                self.spinner.visible = False
                 self.app.page.update()
                 return
 
             drive = active[0]
-            self.app.state["drive"] = drive
 
             self.status_text.value = f"Reading disc: {drive.disc_label}..."
             self.app.page.update()
 
             # Read disc info
             disc_info = run_disc_info(drive.index, makemkvcon=makemkvcon)
+            if not _is_current():
+                return
             if not disc_info or not disc_info.titles:
+                self._set_scan_busy(False)
                 self.status_text.value = "No titles found on disc. Try again."
                 self.status_text.color = ft.Colors.ORANGE
-                self.scan_btn.disabled = False
-                self.spinner.visible = False
                 self.app.page.update()
                 return
 
+            self.app.state["drive"] = drive
             self.app.state["disc_info"] = disc_info
 
             # Update title from new disc label
@@ -235,16 +292,18 @@ class DiscSwapScreen:
             self.spinner.visible = False
 
             async def _nav():
-                self.app.navigate("selection")
+                if screen_lease_is_current(self.app, lease):
+                    self.app.navigate("selection")
 
             self.app.page.run_task(_nav)
 
         except Exception as exc:
+            if not _is_current():
+                return
             log.error("Disc scan failed: %s", exc)
+            self._set_scan_busy(False)
             self.status_text.value = f"Error: {exc}"
             self.status_text.color = ft.Colors.RED
-            self.scan_btn.disabled = False
-            self.spinner.visible = False
             self.app.page.update()
 
     def _advance_queue(self):

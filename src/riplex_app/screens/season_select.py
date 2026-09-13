@@ -14,6 +14,12 @@ import threading
 
 import flet as ft
 
+from riplex_app.background import (
+    capture_screen_lease,
+    screen_operation_key,
+    start_background_once,
+)
+
 log = logging.getLogger(__name__)
 
 # Poll interval for the "waiting on show_detail" spinner. show_detail is
@@ -26,7 +32,11 @@ class SeasonSelectScreen:
     def __init__(self, app):
         self.app = app
         self._radio_group: ft.RadioGroup | None = None
-        self._resume_started = False
+        self._back_button: ft.TextButton | None = None
+        self._next_button: ft.FilledButton | None = None
+        self._busy_status: ft.Row | None = None
+        self._busy_status_text: ft.Text | None = None
+        self._submitting = False
         # Cached ordered list of non-special seasons for _next() lookup.
         self._non_special_seasons: list = []
 
@@ -92,6 +102,7 @@ class SeasonSelectScreen:
         )
 
     def _picker_view(self, show_detail, non_special: list) -> ft.Control:
+        self._submitting = False
         title = getattr(show_detail, "title", "") or self.app.state.get("title", "")
         year = getattr(show_detail, "year", None)
         header_line = title
@@ -182,6 +193,26 @@ class SeasonSelectScreen:
             padding=ft.Padding(left=2, top=8, right=0, bottom=0),
         )
 
+        self._back_button = ft.TextButton("Back", on_click=self._on_back)
+        self._next_button = ft.FilledButton(
+            "Next",
+            icon=ft.Icons.ARROW_FORWARD,
+            on_click=self._on_next,
+        )
+        self._busy_status_text = ft.Text(
+            "Preparing...",
+            size=12,
+            color=ft.Colors.GREY_400,
+        )
+        self._busy_status = ft.Row(
+            [
+                ft.ProgressRing(width=18, height=18),
+                self._busy_status_text,
+            ],
+            spacing=8,
+            visible=False,
+        )
+
         return ft.Column(
             [
                 ft.Text("Select Season", size=24, weight=ft.FontWeight.BOLD),
@@ -196,12 +227,9 @@ class SeasonSelectScreen:
                 ft.Container(expand=True),
                 ft.Row(
                     [
-                        ft.TextButton("Back", on_click=self._on_back),
-                        ft.FilledButton(
-                            "Next",
-                            icon=ft.Icons.ARROW_FORWARD,
-                            on_click=self._on_next,
-                        ),
+                        self._back_button,
+                        self._next_button,
+                        self._busy_status,
                     ],
                 ),
             ],
@@ -262,6 +290,9 @@ class SeasonSelectScreen:
         self.app.navigate("metadata")
 
     def _on_next(self, _e):
+        if self._submitting:
+            log.debug("season_select: transition already in progress; ignoring duplicate")
+            return
         if self._radio_group is None or self._radio_group.value is None:
             return
         try:
@@ -269,6 +300,7 @@ class SeasonSelectScreen:
         except (TypeError, ValueError):
             log.warning("season_select: non-integer radio value %r", self._radio_group.value)
             return
+        self._set_submitting(picked)
         self.app.state["season_number"] = picked
         # Invalidate any dvdcompare state now that the query bias changed.
         # (No-op on the first pass; matters if the user back-navigates from
@@ -296,10 +328,28 @@ class SeasonSelectScreen:
                         "'%s' season=%d — resuming",
                         title, picked,
                     )
+                    if self._busy_status_text is not None:
+                        self._busy_status_text.value = f"Resuming Season {picked}..."
+                        self.app.page.update()
                     self._start_resume(session)
                     return
 
         self.app.navigate(self._next_screen())
+
+    def _set_submitting(self, season_number: int) -> None:
+        self._submitting = True
+        if self._radio_group is not None:
+            self._radio_group.disabled = True
+        if self._back_button is not None:
+            self._back_button.disabled = True
+        if self._next_button is not None:
+            self._next_button.disabled = True
+            self._next_button.content = "Loading..."
+        if self._busy_status is not None:
+            self._busy_status.visible = True
+        if self._busy_status_text is not None:
+            self._busy_status_text.value = f"Preparing Season {season_number}..."
+        self.app.page.update()
 
     def _start_resume(self, session):
         """Kick off a full resume in a background thread. Reuses the
@@ -307,17 +357,15 @@ class SeasonSelectScreen:
         uses so both entry points converge on the same disc_overview
         state.
         """
-        if self._resume_started:
-            log.debug("season_select: resume already in progress; ignoring duplicate")
-            return
-        self._resume_started = True
         from riplex_app.screens.disc_detection import perform_resume_fetch
 
-        threading.Thread(
-            target=perform_resume_fetch,
-            args=(self.app, session),
-            daemon=True,
-        ).start()
+        lease = capture_screen_lease(self.app)
+        start_background_once(
+            self.app,
+            screen_operation_key("resume-session", lease),
+            perform_resume_fetch,
+            args=(self.app, session, lease),
+        )
 
     # -- helpers --------------------------------------------------------------
 
