@@ -64,8 +64,8 @@ jobs:
           assert result.rip_output == target
           assert str(target) in error
           assert "Permission denied" in error
-          assert not target.exists()
           PY
+          sudo test ! -e "$RIPLEX_DENIED_ROOT/Raw"
 
       - name: Verify installed CLI and per-user logging
         shell: bash
