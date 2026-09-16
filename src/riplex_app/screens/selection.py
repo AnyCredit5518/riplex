@@ -107,6 +107,7 @@ class SelectionScreen:
                     tmdb_match.title,
                     tmdb_match.year or 0,
                     season_number=season_number,
+                    rip_output=self.app.state.get("rip_output"),
                 )
                 episode_carryover = read_episode_carryover(
                     rip_root,
@@ -521,11 +522,12 @@ class SelectionScreen:
                 tmdb_match.title, tmdb_match.year or 0,
                 disc_number=disc_num,
                 season_number=season,
+                rip_output=self.app.state.get("rip_output"),
             )
 
         from pathlib import Path
 
-        rip_output = get_rip_output()
+        rip_output = self.app.state.get("rip_output") or get_rip_output()
         return Path(rip_output) / self.app.state["title"]
 
     def _debug_root_for_output_dir(self, output_dir):

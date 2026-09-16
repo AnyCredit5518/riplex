@@ -150,7 +150,9 @@ class OrganizePreviewScreen:
             overrides = self.app.state.get("group_tmdb_overrides") or {}
 
             api_key = get_api_key()
-            output_root = Path(get_output_root())
+            output_root = Path(
+                self.app.state.get("output_root") or get_output_root()
+            )
 
             use_group_routing = bool(disc_groups)
             if use_group_routing:
@@ -524,6 +526,7 @@ class OrganizePreviewScreen:
                 self.planned,
                 self.app.state.get("source_folder"),
                 self.app.state.get("title", ""),
+                str(self.app.state.get("output_root") or get_output_root()),
             ),
         )
         if not started:
@@ -539,6 +542,7 @@ class OrganizePreviewScreen:
         planned,
         source_folder,
         title: str,
+        output_root: str,
     ):
         """Run execute_plan in background thread."""
         try:
@@ -553,7 +557,7 @@ class OrganizePreviewScreen:
                     source_folder,
                     title=title,
                     file_count=move_count,
-                    output_root=str(get_output_root()),
+                    output_root=output_root,
                 )
         except Exception as exc:
             actions = [f"Error: {exc}"]

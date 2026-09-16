@@ -298,6 +298,23 @@ class TestRunRipMsgDetection:
         return proc
 
     @patch("riplex.disc.makemkv.subprocess.Popen")
+    def test_unusable_output_directory_is_a_structured_failure(
+        self, mock_popen, tmp_path,
+    ):
+        blocking_file = tmp_path / "Riplex"
+        blocking_file.write_text("not a directory", encoding="utf-8")
+        output_dir = blocking_file / "Raw" / "Disc 1"
+
+        result = run_rip(
+            0, 0, output_dir, makemkvcon=Path("fake_makemkvcon"),
+        )
+
+        assert result.success is False
+        assert str(output_dir) in result.error_message
+        assert "Cannot create rip output directory" in result.error_message
+        mock_popen.assert_not_called()
+
+    @patch("riplex.disc.makemkv.subprocess.Popen")
     def test_msg5_not_treated_as_error(self, mock_popen, tmp_path):
         """MSG:5xxx (info messages) should not cause failure."""
         lines = [

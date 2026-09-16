@@ -1,9 +1,16 @@
 """Tests for the config module."""
 
 import os
+from pathlib import Path
 from unittest import mock
 
-from riplex.config import get_api_key, load_config
+from riplex.config import (
+    get_api_key,
+    get_archive_root,
+    get_output_root,
+    get_rip_output,
+    load_config,
+)
 
 
 class TestGetApiKey:
@@ -58,3 +65,24 @@ class TestGetMakemkvListTimeout:
             from riplex.config import get_makemkv_list_timeout
 
             assert get_makemkv_list_timeout() == 120
+
+
+class TestOutputPaths:
+    def test_configured_roots_expand_user_home(self):
+        config = {
+            "output_root": "~/Videos",
+            "rip_output": "~/Riplex/Raw",
+            "archive_root": "~/Riplex/Archive",
+        }
+        with mock.patch.dict(os.environ, {"PLEX_ROOT": ""}, clear=False):
+            with mock.patch("riplex.config.load_config", return_value=config):
+                assert get_output_root() == str(Path.home() / "Videos")
+                assert get_rip_output() == str(Path.home() / "Riplex" / "Raw")
+                assert get_archive_root() == str(Path.home() / "Riplex" / "Archive")
+
+    def test_cli_rip_output_is_expanded_and_wins(self):
+        with mock.patch(
+            "riplex.config.load_config",
+            return_value={"rip_output": "/configured/rips"},
+        ):
+            assert get_rip_output("~/override") == str(Path.home() / "override")

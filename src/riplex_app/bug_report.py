@@ -127,7 +127,10 @@ def _find_debug_paths(state: dict) -> list[str]:
             season = state.get("season_number") \
                 if getattr(tmdb_match, "media_type", "movie") == "tv" else None
             rip_root = build_rip_path(
-                tmdb_match.title, tmdb_match.year or 0, season_number=season,
+                tmdb_match.title,
+                tmdb_match.year or 0,
+                season_number=season,
+                rip_output=state.get("rip_output"),
             )
             debug_dir = rip_root / "_riplex"
             if debug_dir.exists():

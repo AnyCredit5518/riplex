@@ -1,4 +1,6 @@
+from pathlib import Path
 from types import SimpleNamespace
+from typing import get_type_hints
 
 import pytest
 
@@ -9,6 +11,12 @@ from riplex.metadata.provider import (
     ShowDetail,
 )
 from riplex.models import PlannedSeason, PlannedShow, SearchRequest
+
+
+def test_lookup_metadata_annotations_resolve():
+    hints = get_type_hints(lookup_metadata)
+
+    assert hints["rip_output"] == str | Path | None
 
 
 class _StubProvider(MetadataProvider):
@@ -341,9 +349,13 @@ async def test_lookup_metadata_season_prompt_biases_default_to_in_progress(
     monkeypatch.setattr("riplex.lookup.select_dvdcompare_release", _fake_select_release)
     monkeypatch.setattr("riplex.lookup.is_interactive", lambda: True)
     monkeypatch.setattr("riplex.lookup.prompt_choice", _fake_prompt_choice)
+    def _fake_scan(_title, _seasons, *, rip_output=None):
+        recorded["rip_output"] = rip_output
+        return {2: "in progress (2/4 discs ripped)"}
+
     monkeypatch.setattr(
         "riplex.manifest.scan_in_progress_seasons",
-        lambda _title, _seasons: {2: "in progress (2/4 discs ripped)"},
+        _fake_scan,
     )
 
     show = ShowDetail(
@@ -358,6 +370,7 @@ async def test_lookup_metadata_season_prompt_biases_default_to_in_progress(
     result = await lookup_metadata(
         SearchRequest(title="Psych", media_type="tv"),
         _StubProviderWithShow(show),
+        rip_output="/override/rips",
     )
 
     # Season 2 is index 1 in the non-special list -- default shifts to it.
@@ -367,6 +380,7 @@ async def test_lookup_metadata_season_prompt_biases_default_to_in_progress(
     assert "2/4 discs ripped" in recorded["options"][1]
     assert "in progress" not in recorded["options"][0]
     assert "in progress" not in recorded["options"][2]
+    assert recorded["rip_output"] == "/override/rips"
     # And the returned lookup honors the biased default.
     assert result.season_number == 2
 

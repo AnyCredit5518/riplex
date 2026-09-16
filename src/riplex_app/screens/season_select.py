@@ -321,7 +321,18 @@ class SeasonSelectScreen:
             title = self.app.state.get("title")
             if title:
                 from riplex.manifest import find_existing_session
-                session = find_existing_session(title, season_number=picked)
+                rip_output = self.app.state.get("rip_output")
+                if rip_output:
+                    session = find_existing_session(
+                        title,
+                        season_number=picked,
+                        rip_output=rip_output,
+                    )
+                else:
+                    session = find_existing_session(
+                        title,
+                        season_number=picked,
+                    )
                 if session:
                     log.info(
                         "season_select: found existing session for "
@@ -408,5 +419,7 @@ class SeasonSelectScreen:
         """
         from riplex.manifest import scan_in_progress_seasons
         return scan_in_progress_seasons(
-            title, (s.season_number for s in self._non_special_seasons),
+            title,
+            (s.season_number for s in self._non_special_seasons),
+            rip_output=self.app.state.get("rip_output"),
         )

@@ -98,11 +98,27 @@ class DiscOverviewScreen:
         # which work-folder it's in.
         season_number = self.app.state.get("season_number")
         top_season = season_number if tmdb_match and tmdb_match.media_type == "tv" else None
-        rip_root = build_rip_path(canonical, year, season_number=top_season)
+        rip_output = self.app.state.get("rip_output")
+        rip_root = build_rip_path(
+            canonical,
+            year,
+            season_number=top_season,
+            rip_output=rip_output,
+        )
         # For TV shows, scope the session lookup to the picked season so
         # a Season 4 rip doesn't pull in Season 1's ripped-discs set
         # when both are in progress under the same title root.
-        existing = find_existing_session(canonical, season_number=top_season)
+        if rip_output:
+            existing = find_existing_session(
+                canonical,
+                season_number=top_season,
+                rip_output=rip_output,
+            )
+        else:
+            existing = find_existing_session(
+                canonical,
+                season_number=top_season,
+            )
         if existing and existing.all_ripped_discs:
             ripped_discs = set(existing.all_ripped_discs)
         else:
@@ -1222,7 +1238,15 @@ class DiscOverviewScreen:
             return
         release = self.app.state.get("release")
         release_name = release.name if release else ""
-        paths = write_session_marker(works, release_name=release_name)
+        rip_output = self.app.state.get("rip_output")
+        if rip_output:
+            paths = write_session_marker(
+                works,
+                release_name=release_name,
+                rip_output=rip_output,
+            )
+        else:
+            paths = write_session_marker(works, release_name=release_name)
         log.info("Wrote session marker to %d work-folder(s)", len(paths))
 
     def _begin_disc(self, disc_number: int):

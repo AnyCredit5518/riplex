@@ -5,6 +5,7 @@ import os
 import platform
 import subprocess
 import threading
+from pathlib import Path
 
 import flet as ft
 
@@ -50,6 +51,7 @@ def launch_organize_from_session(app, *, on_status=None, on_error=None):
             rip_root = build_rip_path(
                 tmdb_match.title, tmdb_match.year or 0,
                 season_number=season,
+                rip_output=app.state.get("rip_output"),
             )
 
             # Session marker fan-out: multi-work releases (e.g. Psych
@@ -60,7 +62,8 @@ def launch_organize_from_session(app, *, on_status=None, on_error=None):
             scanned = []
             if marker and marker.get("works"):
                 from riplex.manifest import _session_root
-                root = _session_root()
+                configured_root = app.state.get("rip_output")
+                root = Path(configured_root) if configured_root else _session_root()
                 for w in marker.get("works", []):
                     work_folder_name = w.get("folder", "")
                     if not work_folder_name:
@@ -127,7 +130,12 @@ class OrchestrateDoneScreen:
 
         season = self.app.state.get("season_number") \
             if tmdb_match and getattr(tmdb_match, "media_type", "movie") == "tv" else None
-        rip_root = build_rip_path(canonical, year, season_number=season)
+        rip_root = build_rip_path(
+            canonical,
+            year,
+            season_number=season,
+            rip_output=self.app.state.get("rip_output"),
+        )
 
         # Count results across all discs
         total_success = 0
@@ -147,10 +155,18 @@ class OrchestrateDoneScreen:
             icon = ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE, size=40)
             summary = f"{total_success} titles ripped, {total_failed} failed"
             summary_color = ft.Colors.ORANGE
+            completion_text = (
+                "Ripping finished with failures. Review the disc summary before "
+                "organizing the titles that completed successfully."
+            )
         else:
             icon = ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN, size=40)
             summary = f"All {total_success} titles ripped successfully"
             summary_color = ft.Colors.GREEN
+            completion_text = (
+                "All selected discs have been ripped. Click 'Organize into Library' "
+                "to match files to metadata and move them into your media library."
+            )
 
         # Per-disc breakdown
         disc_rows = []
@@ -230,8 +246,7 @@ class OrchestrateDoneScreen:
                 ft.Column(disc_rows, spacing=6),
                 ft.Container(height=10),
                 ft.Text(
-                    "All selected discs have been ripped. Click 'Organize into Library' "
-                    "to match files to metadata and move them into your media library.",
+                    completion_text,
                     size=13,
                     color=ft.Colors.GREY_500,
                 ),
@@ -251,7 +266,10 @@ class OrchestrateDoneScreen:
         season = self.app.state.get("season_number") \
             if getattr(tmdb_match, "media_type", "movie") == "tv" else None
         rip_root = build_rip_path(
-            tmdb_match.title, tmdb_match.year or 0, season_number=season,
+            tmdb_match.title,
+            tmdb_match.year or 0,
+            season_number=season,
+            rip_output=self.app.state.get("rip_output"),
         )
         path = str(rip_root)
         system = platform.system()

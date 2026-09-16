@@ -30,6 +30,7 @@ def build_rip_path(
     disc_number: int | None = None,
     *,
     season_number: int | None = None,
+    rip_output: str | Path | None = None,
 ) -> Path:
     """Build the output path for a rip, using config to resolve the base.
 
@@ -46,7 +47,8 @@ def build_rip_path(
     from riplex.normalize import sanitize_filename, season_folder_name
 
     folder_base = sanitize_filename(f"{canonical} ({year})")
-    rip_output = get_rip_output()
+    if rip_output is None:
+        rip_output = get_rip_output()
     if rip_output:
         work_root = Path(rip_output) / folder_base
     else:
@@ -249,6 +251,7 @@ def write_session_marker(
     works: list[SessionWork],
     *,
     release_name: str,
+    rip_output: str | Path | None = None,
 ) -> list[Path]:
     """Write ``_riplex_session.json`` into each work-folder of a session.
 
@@ -261,7 +264,7 @@ def write_session_marker(
     Idempotent: overwrites any existing marker with the same works list.
     Missing folders are created. Returns the paths that were written.
     """
-    root = _session_root()
+    root = Path(rip_output) if rip_output is not None else _session_root()
     payload = {
         "type": "riplex_session",
         "release_name": release_name,
@@ -369,7 +372,10 @@ def _iter_candidate_work_folders(root: Path):
 
 
 def find_existing_session(
-    title: str, *, season_number: int | None = None,
+    title: str,
+    *,
+    season_number: int | None = None,
+    rip_output: str | Path | None = None,
 ) -> ExistingSession | None:
     """Scan the rip output root for a session matching *title*.
 
@@ -396,7 +402,7 @@ def find_existing_session(
     present a unified resume queue. Legacy folders without a marker
     degrade to today's single-folder behavior.
     """
-    root = _session_root()
+    root = Path(rip_output) if rip_output is not None else _session_root()
 
     if not root.exists():
         return None
@@ -526,7 +532,10 @@ def find_existing_session(
 
 
 def scan_in_progress_seasons(
-    title: str, season_numbers,
+    title: str,
+    season_numbers,
+    *,
+    rip_output: str | Path | None = None,
 ) -> dict[int, str]:
     """Return ``{season_number: hint_text}`` for seasons of *title* that
     have an in-progress rip session on disk.
@@ -540,7 +549,14 @@ def scan_in_progress_seasons(
     result: dict[int, str] = {}
     try:
         for s in season_numbers:
-            sess = find_existing_session(title, season_number=s)
+            if rip_output is not None:
+                sess = find_existing_session(
+                    title,
+                    season_number=s,
+                    rip_output=rip_output,
+                )
+            else:
+                sess = find_existing_session(title, season_number=s)
             if sess is None:
                 continue
             ripped = len(sess.ripped_discs or set())

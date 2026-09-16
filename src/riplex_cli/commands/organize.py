@@ -704,7 +704,7 @@ async def organize_with_scanned(
             # configured rip output root, so a nested layout like
             # ``<rip_root>/<title>/Season NN`` doesn't leave the
             # empty ``<title>/`` shell behind after archiving.
-            rip_output = get_rip_output()
+            rip_output = getattr(args, "rip_output", None) or get_rip_output()
             prune_stop = Path(rip_output) if rip_output else None
             archive_dest = Path(archive_root) / source_folder.name
             if getattr(args, "auto", False):

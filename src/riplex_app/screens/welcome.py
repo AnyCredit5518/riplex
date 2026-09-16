@@ -9,9 +9,13 @@ from pathlib import Path
 
 import flet as ft
 
-from riplex.config import load_config, get_api_key
+from riplex.config import get_api_key, load_config
 from riplex.disc.makemkv import find_makemkvcon
 from riplex.disc.provider import DvdcompareConnectivity, probe_dvdcompare_connectivity
+from riplex.output_paths import (
+    preflight_configured_output_root,
+    preflight_configured_rip_outputs,
+)
 from riplex.scanner import find_ffprobe
 from riplex.updater import check_for_update, get_current_version
 
@@ -231,6 +235,12 @@ class WelcomeScreen:
             style=ft.ButtonStyle(padding=ft.Padding(left=30, top=15, right=30, bottom=15)),
             tooltip="Organize existing MKV rips into Plex-compatible folder structure.",
         )
+        self.output_path_error = ft.Text(
+            "",
+            size=12,
+            color=ft.Colors.RED,
+            visible=False,
+        )
 
         # Update banner (hidden until check completes)
         self.update_banner = ft.Container(
@@ -288,6 +298,7 @@ class WelcomeScreen:
                 setup_section,
                 ft.Container(expand=True),
                 ft.Text("What would you like to do?", size=16, weight=ft.FontWeight.BOLD),
+                self.output_path_error,
                 ft.Row([rip_button, organize_button], spacing=20),
             ],
             spacing=10,
@@ -697,6 +708,8 @@ class WelcomeScreen:
         )
 
         # Refresh the screen
+        self.app.state.pop("output_root", None)
+        self.app.state.pop("rip_output", None)
         self.app.state.pop("_show_setup", None)
         self.app.navigate("welcome")
 
@@ -712,6 +725,21 @@ class WelcomeScreen:
 
     def _start_rip(self, e):
         """Start the rip (orchestrate) workflow."""
+        output_paths = preflight_configured_rip_outputs(create=True)
+        if not output_paths.ok:
+            self.output_path_error.value = (
+                "Cannot start the rip. "
+                + "\n".join(output_paths.errors)
+                + "\nOpen Edit Settings and choose folders your user can write to."
+            )
+            self.output_path_error.visible = True
+            self.app.page.update()
+            return
+
+        assert output_paths.output_root is not None
+        assert output_paths.rip_output is not None
+        self.app.state["output_root"] = str(output_paths.output_root)
+        self.app.state["rip_output"] = str(output_paths.rip_output)
         self.app.state["workflow"] = "orchestrate"
         self.app.state["makemkvcon"] = find_makemkvcon()
         self.app.state["disc_queue"] = []
@@ -724,6 +752,19 @@ class WelcomeScreen:
 
     def _start_organize(self, e):
         """Start the organize workflow."""
+        output_path = preflight_configured_output_root(create=True)
+        if not output_path.ok:
+            self.output_path_error.value = (
+                "Cannot start organizing. "
+                + (output_path.error or "The output root is unavailable.")
+                + "\nOpen Edit Settings and choose folders your user can write to."
+            )
+            self.output_path_error.visible = True
+            self.app.page.update()
+            return
+
+        self.app.state["output_root"] = str(output_path.path)
+        self.app.state.pop("rip_output", None)
         self.app.state["workflow"] = "organize"
         self.app.state["source_folder"] = None
         self.app.state["scanned"] = None

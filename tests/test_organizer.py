@@ -1794,6 +1794,26 @@ class TestArchiveSourceFolder:
         assert dest.exists()
         assert not source.exists()
 
+    def test_mismatched_prune_stop_does_not_remove_source_parents(self, tmp_path):
+        from riplex.organizer import archive_source_folder
+
+        actual_root = tmp_path / "override"
+        source = actual_root / "Movie (2020)"
+        source.mkdir(parents=True)
+        (source / "file.mkv").write_text("x")
+        configured_root = tmp_path / "configured"
+        configured_root.mkdir()
+        archive_root = tmp_path / "archive"
+
+        archive_source_folder(
+            source,
+            str(archive_root),
+            prune_stop=configured_root,
+        )
+
+        assert actual_root.exists()
+        assert configured_root.exists()
+
     def test_empty_archive_root_returns_none(self, tmp_path):
         from riplex.organizer import archive_source_folder
 

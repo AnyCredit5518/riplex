@@ -217,6 +217,7 @@ class DoneScreen:
             scan_path = build_rip_path(
                 tmdb_match.title, tmdb_match.year or 0,
                 season_number=season,
+                rip_output=self.app.state.get("rip_output"),
             )
         else:
             scan_path = Path(output_dir)

@@ -25,7 +25,7 @@ riplex orchestrate [options]
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (auto-detected from disc resolution if omitted) |
 | `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
-| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--output` | Override both the media-library and MakeMKV rip output roots for this run |
 | `--execute` | Actually rip and organize (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files during organize: `ignore`, `move`, `delete`, or `extras` (default: `extras`) |
 | `--discs` | Comma-separated disc numbers to rip (e.g. `1,3`). Skips others. |
@@ -104,7 +104,7 @@ riplex rip <title> --drive <drive> [options]
 | `--type` | Force `movie`, `tv`, or `auto` (default: `auto`) |
 | `--format` | Disc format filter for dvdcompare (e.g. `Blu-ray 4K`) |
 | `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
-| `--output` | Output root directory (or set `PLEX_ROOT` env var, or config) |
+| `--output` | Override both the media-library and MakeMKV rip output roots for this run |
 | `--titles` | Comma-separated title indices to rip (e.g. `1,2,3`) |
 | `--all` | Rip all titles on the disc |
 | `--yes`, `-y` | Skip the final rip confirmation prompt |

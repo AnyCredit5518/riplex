@@ -13,6 +13,8 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from riplex.output_paths import resolve_output_path
+
 _FILE_NAME = "config.toml"
 _LOCAL_FILE_NAME = "riplex.toml"
 
@@ -69,14 +71,15 @@ def get_output_root(cli_value: str | None = None) -> str:
     Returns an empty string if none is set (caller decides the default).
     """
     if cli_value:
-        return cli_value
+        return str(resolve_output_path(cli_value))
 
     env_val = os.environ.get("PLEX_ROOT", "")
     if env_val:
-        return env_val
+        return str(resolve_output_path(env_val))
 
     cfg = load_config()
-    return cfg.get("output_root", "")
+    value = cfg.get("output_root", "")
+    return str(resolve_output_path(value)) if value else ""
 
 
 def get_rip_output(cli_value: str | None = None) -> str:
@@ -88,12 +91,12 @@ def get_rip_output(cli_value: str | None = None) -> str:
     Returns an empty string if neither rip_output nor output_root is set.
     """
     if cli_value:
-        return cli_value
+        return str(resolve_output_path(cli_value))
 
     cfg = load_config()
     rip_out = cfg.get("rip_output", "")
     if rip_out:
-        return rip_out
+        return str(resolve_output_path(rip_out))
 
     # Fall back to {output_root}/Rips
     output_root = get_output_root()
@@ -108,7 +111,8 @@ def get_archive_root() -> str:
     Returns an empty string if not set (archiving disabled).
     """
     cfg = load_config()
-    return cfg.get("archive_root", "")
+    value = cfg.get("archive_root", "")
+    return str(resolve_output_path(value)) if value else ""
 
 
 def get_auto_eject() -> bool:

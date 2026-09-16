@@ -108,7 +108,13 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
     app._navigation_epoch = 1
     old_source = tmp_path / "old"
     new_source = tmp_path / "new"
-    app.state.update({"source_folder": old_source, "title": "Old title"})
+    old_output = tmp_path / "old-library"
+    new_output = tmp_path / "new-library"
+    app.state.update({
+        "source_folder": old_source,
+        "title": "Old title",
+        "output_root": old_output,
+    })
     screen = OrganizePreviewScreen(app)
     old_plan = SimpleNamespace(moves=[object()], splits=[])
     new_plan = SimpleNamespace(moves=[], splits=[])
@@ -129,6 +135,7 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
         app.state.update({
             "source_folder": new_source,
             "title": "New title",
+            "output_root": new_output,
             "organize_results": ["new workflow"],
         })
         screen.organize_plan = new_plan
@@ -143,10 +150,6 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
         "riplex_app.screens.organize_preview.save_organized_marker",
         lambda source, **kwargs: markers.append((source, kwargs)),
     )
-    monkeypatch.setattr(
-        "riplex_app.screens.organize_preview.get_output_root",
-        lambda: tmp_path / "library",
-    )
     app.page.run_task = lambda _handler: None
 
     screen._execute(None)
@@ -159,7 +162,7 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
         {
             "title": "Old title",
             "file_count": 1,
-            "output_root": str(tmp_path / "library"),
+            "output_root": str(old_output),
         },
     )]
 

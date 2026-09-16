@@ -39,6 +39,34 @@ jobs:
       - name: Run fixture integration tests
         run: python -m pytest tests/integration --strict-markers -q
 
+      - name: Verify Linux output permission preflight
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/riplex-permission-home
+          RIPLEX_DENIED_ROOT: /tmp/riplex-permission-test
+        run: |
+          set -euo pipefail
+
+          sudo rm -rf "$RIPLEX_DENIED_ROOT"
+          sudo install -d -o root -g root -m 0700 "$RIPLEX_DENIED_ROOT"
+          python -c 'import os; from riplex.config import save_config; save_config(output_root=os.path.join(os.environ["RUNNER_TEMP"], "output"), rip_output=os.path.join(os.environ["RIPLEX_DENIED_ROOT"], "Raw"))'
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from riplex.output_paths import preflight_configured_rip_outputs
+
+          target = Path(os.environ["RIPLEX_DENIED_ROOT"]) / "Raw"
+          result = preflight_configured_rip_outputs(create=True)
+          error = "\n".join(result.errors)
+          print(error)
+          assert not result.ok
+          assert result.rip_output == target
+          assert str(target) in error
+          assert "Permission denied" in error
+          assert not target.exists()
+          PY
+
       - name: Verify installed CLI and per-user logging
         shell: bash
         env:

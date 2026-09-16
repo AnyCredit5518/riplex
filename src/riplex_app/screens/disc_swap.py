@@ -41,6 +41,7 @@ class DiscSwapScreen:
         )
         disc_number = self.app.state.get("_orchestrate_disc_number")
         dvdcompare_discs = self.app.state.get("dvdcompare_discs", [])
+        rip_failure = self.app.state.get("_rip_failure", "")
 
         # Find the target disc info from dvdcompare
         target_disc = next(
@@ -110,6 +111,24 @@ class DiscSwapScreen:
             on_click=self._skip,
             disabled=self._scanning,
         )
+        failure_notice = ft.Container(
+            ft.Row(
+                [
+                    ft.Icon(ft.Icons.ERROR, color=ft.Colors.RED),
+                    ft.Text(
+                        f"{rip_failure}\nCorrect the problem, then scan this disc to retry.",
+                        size=13,
+                        color=ft.Colors.RED,
+                        expand=True,
+                    ),
+                ],
+                spacing=8,
+            ),
+            visible=bool(rip_failure),
+            padding=12,
+            border=ft.Border.all(1, ft.Colors.RED_700),
+            border_radius=6,
+        )
         # "Back to Overview" is only safe before anything has been
         # ripped in this session — once we're mid-queue, the disc list
         # and per-group state may be inconsistent with a re-open of
@@ -128,6 +147,7 @@ class DiscSwapScreen:
         return ft.Column(
             [
                 ft.Text("Insert Disc", size=24, weight=ft.FontWeight.BOLD),
+                failure_notice,
                 ft.Divider(height=20),
                 ft.Container(
                     ft.Column([
@@ -194,6 +214,7 @@ class DiscSwapScreen:
         """Skip this disc and move to the next in queue."""
         if self._scanning:
             return
+        self.app.state.pop("_rip_failure", None)
         self._advance_queue()
 
     def _scan(self, e):
@@ -290,6 +311,7 @@ class DiscSwapScreen:
 
             # Navigate to selection for this disc
             self.spinner.visible = False
+            self.app.state.pop("_rip_failure", None)
 
             async def _nav():
                 if screen_lease_is_current(self.app, lease):

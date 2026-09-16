@@ -232,7 +232,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     rip_parser.add_argument(
         "--output", default=None,
-        help="Output root directory (or set PLEX_ROOT env var, or config).",
+        help="Override both media-library and MakeMKV rip output roots for this run.",
     )
     rip_parser.add_argument(
         "--titles", default=None,
@@ -310,7 +310,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     orch_parser.add_argument(
         "--output", default=None,
-        help="Output root directory (or set PLEX_ROOT env var, or config).",
+        help="Override both media-library and MakeMKV rip output roots for this run.",
     )
     orch_parser.add_argument(
         "--yes", "-y", action="store_true", default=False,

@@ -44,6 +44,22 @@ def test_welcome_rip_button_starts_orchestrate(gui):
     assert not d.crashed()
 
 
+def test_welcome_blocks_rip_when_output_folder_is_unusable(gui, tmp_path):
+    blocked_parent = tmp_path / "Riplex"
+    blocked_parent.write_text("not a directory", encoding="utf-8")
+    rip_output = blocked_parent / "Raw"
+    d = gui("the-matrix-1999", config={"rip_output": str(rip_output)})
+
+    d.click("Rip Disc")
+
+    assert d.current == "welcome"
+    assert d.has_text(str(rip_output))
+    assert d.has_text("Edit Settings")
+    assert d.state["workflow"] is None
+    assert d.state.get("disc_info") is None
+    assert not d.crashed()
+
+
 def test_welcome_organize_button_starts_organize(gui):
     d = gui("the-matrix-1999")
 
@@ -51,3 +67,21 @@ def test_welcome_organize_button_starts_organize(gui):
 
     assert d.state["workflow"] == "organize"
     assert not d.crashed()
+
+
+def test_welcome_organize_refreshes_stale_output_roots(gui, tmp_path):
+    output_root = tmp_path / "Current Media"
+    rip_output = tmp_path / "Current Rips"
+    d = gui("the-matrix-1999", config={
+        "output_root": str(output_root),
+        "rip_output": str(rip_output),
+    })
+    d.state["output_root"] = str(tmp_path / "Stale Media")
+    d.state["rip_output"] = str(tmp_path / "Stale Rips")
+
+    d.click("Organize Rips")
+
+    assert d.state["output_root"] == str(output_root.absolute())
+    assert "rip_output" not in d.state
+    assert not rip_output.exists()
+    assert d.state["workflow"] == "organize"

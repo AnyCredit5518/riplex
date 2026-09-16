@@ -4,6 +4,31 @@ Common issues and solutions reported by users.
 
 ---
 
+## "Permission denied" for the rip output folder
+
+**Symptom:** `riplex rip --execute` reports `Permission denied` while creating
+the configured rip folder, or the GUI cannot start a rip because an output
+folder is not writable.
+
+**Cause:** The configured `rip_output` or `output_root` is outside the current
+user's writable directories. For example, `/home/Riplex/Raw` tries to create a
+new system-level directory under `/home`; it is not the current user's home
+folder.
+
+**Solution:** Run `riplex setup` or use **Edit Settings** in the GUI and choose
+user-owned locations, for example:
+
+```toml
+output_root = "~/Videos"
+rip_output = "~/Riplex/Raw"
+```
+
+Riplex expands `~` to the current user's home directory and verifies both
+locations before an executed rip begins. Do not run riplex with `sudo`; doing
+so can leave media, configuration, or log files owned by root.
+
+---
+
 ## "makemkvcon not on PATH"
 
 **Symptom:** `riplex setup` warns that `makemkvcon` is not found, even though MakeMKV is installed.

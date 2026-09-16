@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from riplex.config import get_api_key, get_output_root, get_rip_output
+from riplex.config import get_api_key
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
@@ -36,7 +36,9 @@ from riplex.manifest import (
 )
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
+from riplex.output_paths import preflight_configured_rip_outputs
 from riplex.resume import resume_from_session
+from riplex.rip_outcome import summarize_rip_results
 from riplex.title import parse_title_and_season, parse_volume_label
 from riplex.ui import (
     is_interactive,
@@ -112,6 +114,20 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     if not exe:
         print("Error: makemkvcon not found. Install MakeMKV or ensure makemkvcon is on PATH.", file=sys.stderr)
         return 1
+
+    output_paths = preflight_configured_rip_outputs(
+        getattr(args, "output", None),
+        create=not dry_run,
+    )
+    if not output_paths.ok:
+        for error in output_paths.errors:
+            print(f"Error: {error}", file=sys.stderr)
+        print("Update the paths with 'riplex setup' and retry without sudo.", file=sys.stderr)
+        return 1
+    assert output_paths.output_root is not None
+    assert output_paths.rip_output is not None
+    output_val = str(output_paths.output_root)
+    rip_output_val = str(output_paths.rip_output)
 
     # Resolve drive
     drive_arg = getattr(args, "drive", "auto") or "auto"
@@ -230,7 +246,9 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # from the volume label), scope the lookup so a Season 4 rip
     # doesn't resume a stray Season 1 session under the same title.
     existing_resume = find_existing_session(
-        title_arg, season_number=getattr(args, "season_number", None),
+        title_arg,
+        season_number=getattr(args, "season_number", None),
+        rip_output=rip_output_val,
     )
     resumed = None
     if existing_resume is not None:
@@ -275,6 +293,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 disc_format=disc_format,
                 disc_info=disc_info,
                 preferred_release=release,
+                rip_output=rip_output_val,
             )
         except LookupError as exc:
             print(f"Error: {exc}", file=sys.stderr)
@@ -306,11 +325,6 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         return 1
 
     # Output directory
-    output_val = get_output_root(getattr(args, "output", None))
-    if not output_val:
-        print("Error: --output or output_root config required.", file=sys.stderr)
-        return 1
-
     folder_base = f"{canonical} ({year})"  # noqa: kept for display/logging
     # Nest TV rips under Season NN so different seasons of the same show don't
     # collide on Disc N. Movies (and TV without a known season) stay flat.
@@ -323,7 +337,12 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         if not is_movie
         else None
     )
-    rip_root = build_rip_path(canonical, year, season_number=season_number)
+    rip_root = build_rip_path(
+        canonical,
+        year,
+        season_number=season_number,
+        rip_output=rip_output_val,
+    )
 
     # Detect which disc is currently inserted
     current_disc_num = detect_disc_number(disc_info, discs)
@@ -331,7 +350,11 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
     # Resume: detect already-ripped discs from manifest files, aggregating
     # across sibling work-folders when a multi-work session marker exists.
     # Season-scoped so a Season 4 rip doesn't count Season 1's discs.
-    existing = find_existing_session(canonical, season_number=season_number)
+    existing = find_existing_session(
+        canonical,
+        season_number=season_number,
+        rip_output=rip_output_val,
+    )
     if existing and existing.all_ripped_discs:
         ripped_discs = set(existing.all_ripped_discs)
     else:
@@ -352,7 +375,11 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 ),
                 season_number=season_number,
             )]
-            write_session_marker(works, release_name=release_name or "")
+            write_session_marker(
+                works,
+                release_name=release_name or "",
+                rip_output=rip_output_val,
+            )
         except Exception as exc:
             log.warning("Failed to write session marker: %s", exc)
 
@@ -653,14 +680,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 print(f"  Done: {rip_result.output_file} ({format_seconds(int(elapsed))})")
             else:
                 print(f"  FAILED: {rip_result.error_message}", file=sys.stderr)
-                any_failed = True
 
         # Disc rip summary
         total_elapsed = time.monotonic() - rip_start
+        outcome = summarize_rip_results(results)
         succeeded = [r for r in results if r.success]
-        failed = [r for r in results if not r.success]
+        if outcome.failed:
+            any_failed = True
 
-        print(f"\nDisc {disc.number}: {len(succeeded)} succeeded, {len(failed)} failed"
+        print(f"\nDisc {disc.number}: {outcome.succeeded} succeeded, {outcome.failed} failed"
               f" ({format_seconds(int(total_elapsed))})")
 
         # Write rip manifest
@@ -709,7 +737,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
 
     if not any_ripped and not ripped_discs:
         print("\nNo discs were ripped. Nothing to organize.", file=sys.stderr)
-        return 0
+        return 1 if any_failed else 0
 
     if dry_run and not rip_root.exists():
         print(f"\n{'=' * 60}")
@@ -748,6 +776,7 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         force=False,
         snapshot=None,
         auto=True,
+        rip_output=rip_output_val,
     )
     org_result = await run_organize(organize_args)
 

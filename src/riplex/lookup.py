@@ -15,6 +15,7 @@ import dataclasses
 import logging
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from riplex.disc.analysis import group_release_discs
 from riplex.disc.provider import DiscProvider, select_dvdcompare_release
@@ -64,6 +65,8 @@ async def _maybe_prompt_for_season(
     request: SearchRequest,
     match: MetadataSearchResult,
     provider: MetadataProvider,
+    *,
+    rip_output: str | Path | None = None,
 ) -> SearchRequest:
     """Prompt the user to pick which season is on the disc.
 
@@ -103,7 +106,9 @@ async def _maybe_prompt_for_season(
     # default-selection bias.
     from riplex.manifest import scan_in_progress_seasons
     in_progress = scan_in_progress_seasons(
-        match.title, (s.season_number for s in non_special),
+        match.title,
+        (s.season_number for s in non_special),
+        rip_output=rip_output,
     )
     default_index = 0
     for i, s in enumerate(non_special):
@@ -142,6 +147,7 @@ async def lookup_metadata(
     disc_info: object | None = None,
     preferred_release: str | None = None,
     skip_dvdcompare: bool = False,
+    rip_output: str | Path | None = None,
 ) -> LookupResult:
     """Run TMDb metadata lookup, optionally followed by dvdcompare disc lookup.
 
@@ -172,7 +178,12 @@ async def lookup_metadata(
         and request.season_number is None
         and is_interactive()
     ):
-        request = await _maybe_prompt_for_season(request, match, provider)
+        request = await _maybe_prompt_for_season(
+            request,
+            match,
+            provider,
+            rip_output=rip_output,
+        )
 
     if match.media_type == "movie":
         result = await _plan_movie(match, provider, request)

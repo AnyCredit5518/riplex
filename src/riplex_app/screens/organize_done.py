@@ -41,7 +41,7 @@ class OrganizeDoneScreen:
         )
 
         # Determine output folder
-        output_root = get_output_root()
+        output_root = self.app.state.get("output_root") or get_output_root()
         output_folder = None
         if planned and output_root:
             if isinstance(planned, PlannedMovie):
@@ -115,7 +115,7 @@ class OrganizeDoneScreen:
             source_folder = Path(source_folder)
         archive_root = get_archive_root()
         if source_folder and archive_root and source_folder.exists():
-            rip_output = get_rip_output()
+            rip_output = self.app.state.get("rip_output") or get_rip_output()
             prune_stop = Path(rip_output) if rip_output else None
             archive_dest = archive_source_folder(
                 source_folder, archive_root, prune_stop=prune_stop,

@@ -653,7 +653,11 @@ class DiscDetectionScreen:
         if title and self.app.state.get("workflow") == "orchestrate":
             from riplex.manifest import find_existing_session
 
-            session = find_existing_session(title)
+            rip_output = self.app.state.get("rip_output")
+            if rip_output:
+                session = find_existing_session(title, rip_output=rip_output)
+            else:
+                session = find_existing_session(title)
             if session:
                 log.info(
                     "Found existing session for '%s' (%d) \u2014 media_type=%s",

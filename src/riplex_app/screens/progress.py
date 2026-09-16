@@ -10,6 +10,7 @@ from typing import Any
 import flet as ft
 
 from riplex.disc.makemkv import run_rip, RipProgress, RipResult
+from riplex.rip_outcome import summarize_rip_results
 from riplex.snapshot import copy_debug_log, get_debug_dir, save_rip_snapshot
 from riplex_app.background import (
     ScreenLease,
@@ -497,7 +498,7 @@ class ProgressScreen:
             return
         if self._cancel_event.is_set():
             return
-        if not any(r.success for r in results):
+        if not summarize_rip_results(results).has_successes:
             return
 
         drive = job.drive if job is not None else self.app.state.get("drive")
@@ -519,6 +520,9 @@ class ProgressScreen:
         job: RipJob | None = None,
     ):
         """In orchestrate mode, store results and advance to next disc or finish."""
+        if job is not None and not screen_lease_is_current(self.app, job.lease):
+            return
+
         disc_number = job.disc_number if job is not None else self.app.state.get("_orchestrate_disc_number")
         disc_queue = list(job.disc_queue) if job is not None else self.app.state.get("disc_queue", [])
         current_idx = job.current_disc_idx if job is not None else self.app.state.get("current_disc_idx", 0)
@@ -532,13 +536,27 @@ class ProgressScreen:
         all_results[disc_number] = results
         self.app.state["all_rip_results"] = all_results
 
+        outcome = summarize_rip_results(results)
+        if outcome.all_failed:
+            errors = list(dict.fromkeys(
+                result.error_message for result in results if result.error_message
+            ))
+            detail = "; ".join(errors) or "No selected title was ripped."
+            self.app.state["_rip_failure"] = (
+                f"Disc {disc_number} was not ripped: {detail}"
+            )
+            self.app.navigate("disc_swap")
+            return
+
+        self.app.state.pop("_rip_failure", None)
+
         # Track as ripped
         ripped = (
             set(job.ripped_discs)
             if job is not None
             else set(self.app.state.get("ripped_discs", set()))
         )
-        if any(r.success for r in results):
+        if outcome.has_successes:
             ripped.add(disc_number)
         self.app.state["ripped_discs"] = ripped
 

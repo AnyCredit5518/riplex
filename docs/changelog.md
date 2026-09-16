@@ -4,10 +4,15 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
+## v1.1.3 — 2026-09-15
 
 ### Fixed
 
+- **Output path permission handling.** Rip and orchestrate now expand `~` in
+	configured paths and write-test both the media-library and MakeMKV output
+	folders before scanning a disc. CLI failures identify the unusable path
+	without a traceback, while the GUI keeps the current disc retryable instead
+	of reporting an all-failed rip as complete.
 - **GUI background action feedback.** Metadata and release lookups, resume,
         disc and folder scans, ripping, organizing, and self-update actions now
         show an immediate busy state and reject repeated launches while work is

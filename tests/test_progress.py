@@ -362,3 +362,17 @@ def test_cancel_does_not_write_manifest(monkeypatch, tmp_path):
     assert called["manifest"] is False
     assert called["eject"] is False
 
+
+def test_all_failed_disc_stays_on_current_queue_item(tmp_path):
+    app = _NavApp(_orchestrate_state(tmp_path))
+    screen = ProgressScreen(app)
+
+    screen._advance_orchestrate([_fail()])
+
+    assert app.navigated == ["disc_swap"]
+    assert app.state["current_disc_idx"] == 0
+    assert app.state["_orchestrate_disc_number"] == 3
+    assert app.state["ripped_discs"] == set()
+    assert app.state["all_rip_results"][3][0].error_message == "boom"
+    assert "boom" in app.state["_rip_failure"]
+

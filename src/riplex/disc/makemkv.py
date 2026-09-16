@@ -605,7 +605,17 @@ class MakeMKV:
         exe = self._require_exe()
         source = self._resolve_source(drive)
 
-        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return RipResult(
+                title_index=title_index,
+                success=False,
+                output_file="",
+                error_message=(
+                    f"Cannot create rip output directory '{output_dir}': {exc}"
+                ),
+            )
         cmd = [str(exe), "-r", "--progress=-same", "mkv", source,
                str(title_index), str(output_dir)]
         log.info("Running: %s", " ".join(cmd))

@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from riplex.config import get_api_key, get_output_root, get_rip_output
+from riplex.config import get_api_key
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
@@ -29,6 +29,7 @@ from riplex.lookup import lookup_metadata
 from riplex.manifest import build_rip_manifest, build_rip_path, write_manifest
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
+from riplex.output_paths import preflight_configured_rip_outputs
 from riplex.snapshot import (
     copy_debug_log,
     get_debug_dir,
@@ -71,6 +72,20 @@ async def run_rip(args: argparse.Namespace) -> int:
         print("Error: makemkvcon not found. Install MakeMKV or ensure makemkvcon is on PATH.", file=sys.stderr)
         return 1
     mkv = MakeMKV(exe)
+
+    output_paths = preflight_configured_rip_outputs(
+        getattr(args, "output", None),
+        create=not dry_run,
+    )
+    if not output_paths.ok:
+        for error in output_paths.errors:
+            print(f"Error: {error}", file=sys.stderr)
+        print("Update the paths with 'riplex setup' and retry without sudo.", file=sys.stderr)
+        return 1
+    assert output_paths.output_root is not None
+    assert output_paths.rip_output is not None
+    output_val = str(output_paths.output_root)
+    rip_output_val = str(output_paths.rip_output)
 
     # Resolve drive
     drive_arg = getattr(args, "drive", "auto") or "auto"
@@ -148,6 +163,7 @@ async def run_rip(args: argparse.Namespace) -> int:
             disc_format=disc_format,
             disc_info=disc_info,
             preferred_release=release,
+            rip_output=rip_output_val,
         )
     except LookupError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -237,11 +253,6 @@ async def run_rip(args: argparse.Namespace) -> int:
         return 0
 
     # Output directory
-    output_val = get_output_root(getattr(args, "output", None))
-    if not output_val:
-        print("Error: --output or output_root config required.", file=sys.stderr)
-        return 1
-
     if not disc_number:
         disc_number = 1
         if discs and len(discs) > 1:
@@ -251,6 +262,7 @@ async def run_rip(args: argparse.Namespace) -> int:
     output_dir = build_rip_path(
         canonical, year, disc_number,
         season_number=getattr(args, "season_number", None) if not is_movie else None,
+        rip_output=rip_output_val,
     )
 
     # Confirmation
@@ -388,6 +400,7 @@ async def run_rip(args: argparse.Namespace) -> int:
             no_cache=getattr(args, "no_cache", False),
             force=False,
             snapshot=None,
+            rip_output=rip_output_val,
         )
         return await run_organize(organize_args)
 

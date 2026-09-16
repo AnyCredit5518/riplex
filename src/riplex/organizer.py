@@ -946,6 +946,18 @@ def archive_source_folder(
         return None
 
     stop = prune_stop.resolve() if prune_stop else None
+    try:
+        parent_resolved = parent.resolve()
+    except OSError:
+        return dest
+    if stop is not None and not parent_resolved.is_relative_to(stop):
+        log.warning(
+            "Skipping parent pruning: %s is outside rip root %s",
+            parent,
+            prune_stop,
+        )
+        return dest
+
     current = parent
     for _ in range(4):  # bounded walk; TV is at most 2 hops
         try:

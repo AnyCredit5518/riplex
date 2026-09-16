@@ -104,6 +104,22 @@ class TestWriteSessionMarker:
         )
         assert data["works"][0]["source_id"] == "tv:1447"
 
+    def test_explicit_rip_output_overrides_configured_root(self, rip_root, tmp_path):
+        override = tmp_path / "override"
+        works = [SessionWork(
+            title="X", year=2020, media_type="movie",
+            folder="X (2020)", disc_numbers=[1],
+        )]
+
+        written = write_session_marker(
+            works,
+            release_name="rel",
+            rip_output=override,
+        )
+
+        assert written == [override / "X (2020)" / SESSION_MARKER_NAME]
+        assert not (rip_root / "X (2020)").exists()
+
 
 class TestReadSessionMarker:
     def test_returns_none_when_missing(self, tmp_path):
@@ -129,6 +145,19 @@ class TestReadSessionMarker:
 
 
 class TestFindExistingSessionAggregation:
+    def test_explicit_rip_output_ignores_configured_sessions(
+        self, rip_root, tmp_path,
+    ):
+        _write_manifest(rip_root / "Configured (2020)", 1, "Movie", 2020)
+        override = tmp_path / "override"
+        _write_manifest(override / "Override (2020)", 2, "Movie", 2020)
+
+        session = find_existing_session("Movie", rip_output=override)
+
+        assert session is not None
+        assert session.rip_root == override / "Override (2020)"
+        assert session.ripped_discs == {2}
+
     def test_legacy_single_work_returns_local_ripped(self, rip_root):
         folder = rip_root / "Solo (2020)"
         _write_manifest(folder, 1, "Solo", 2020)
@@ -285,6 +314,15 @@ class TestBuildRipPathSeasonNesting:
         # layout so we don't force a bogus ``Season 00`` folder.
         p = build_rip_path("Some Show", 2020, disc_number=1)
         assert p == _fake_rip_output / "Some Show (2020)" / "Disc 1"
+
+    def test_explicit_rip_output_overrides_config(self, _fake_rip_output, tmp_path):
+        override = tmp_path / "override"
+
+        p = build_rip_path(
+            "Some Show", 2020, disc_number=1, rip_output=override,
+        )
+
+        assert p == override / "Some Show (2020)" / "Disc 1"
 
 
 class TestIterCandidateWorkFolders:
@@ -645,6 +683,22 @@ class TestScanInProgressSeasons:
     def test_empty_when_no_sessions(self, rip_root):
         from riplex.manifest import scan_in_progress_seasons
         assert scan_in_progress_seasons("Psych", [1, 2, 3]) == {}
+
+    def test_explicit_rip_output_ignores_configured_sessions(
+        self, rip_root, tmp_path,
+    ):
+        self._write_marker_only(rip_root, "Psych", 2006, 1, [1, 2])
+        override = tmp_path / "override"
+        self._write_marker_only(override, "Psych", 2006, 2, [1, 2, 3])
+
+        from riplex.manifest import scan_in_progress_seasons
+        hints = scan_in_progress_seasons(
+            "Psych",
+            [1, 2],
+            rip_output=override,
+        )
+
+        assert set(hints) == {2}
 
     def test_swallows_exceptions(self, rip_root, monkeypatch):
         # Simulate a disk error mid-scan; helper must return {} rather
