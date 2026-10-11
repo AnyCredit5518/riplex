@@ -42,7 +42,7 @@ jobs:
             --hidden-import riplex_cli.commands.setup ^
             --hidden-import certifi ^
             --collect-data certifi ^
-            --collect-data dvdcompare_scraper ^
+            --copy-metadata dvdcompare-scraper ^
             src/riplex_cli/main.py
         shell: cmd
 
@@ -69,7 +69,7 @@ jobs:
             --collect-all flet ^
             --collect-all flet_desktop ^
             --collect-data certifi ^
-            --collect-data dvdcompare_scraper ^
+            --copy-metadata dvdcompare-scraper ^
             --add-data "src/riplex_app/assets/riplex-icon.ico;riplex_app/assets" ^
             --add-data "%FLET_CLIENT_CACHE%\flet;flet_client" ^
             src/riplex_app/main.py
@@ -124,7 +124,7 @@ jobs:
             --hidden-import riplex_cli.commands.setup \
             --hidden-import certifi \
             --collect-data certifi \
-            --collect-data dvdcompare_scraper \
+            --copy-metadata dvdcompare-scraper \
             src/riplex_cli/main.py
 
       - name: Build GUI app bundle
@@ -149,7 +149,7 @@ jobs:
             --collect-all flet \
             --collect-all flet_desktop \
             --collect-data certifi \
-            --collect-data dvdcompare_scraper \
+            --copy-metadata dvdcompare-scraper \
             --add-data "$FLET_CLIENT_ARCHIVE:flet_desktop/app" \
             src/riplex_app/main.py
 
