@@ -37,6 +37,7 @@ from riplex.snapshot import (
     save_rip_snapshot,
 )
 from riplex.title import parse_title_and_season, parse_volume_label
+from riplex.title_selection import select_title_indices
 from riplex.ui import prompt_confirm, prompt_proceed_or_edit, prompt_rip_selection, prompt_text
 
 from riplex_cli.formatting import (
@@ -243,10 +244,19 @@ async def run_rip(args: argparse.Namespace) -> int:
         if not rip_titles:
             print("Error: none of the specified title indices exist on disc.", file=sys.stderr)
             return 1
-    elif getattr(args, "rip_all", False):
-        rip_titles = list(disc_info.titles)
     else:
-        rip_titles = analysis.rippable_titles
+        title_policy = (
+            "all" if getattr(args, "rip_all", False)
+            else getattr(args, "title_policy", None) or "recommended"
+        )
+        rip_indices = select_title_indices(
+            disc_info.titles, analysis, title_policy,
+        )
+        selected_indices = set(rip_indices)
+        rip_titles = [
+            title for title in disc_info.titles
+            if title.index in selected_indices
+        ]
 
     if not rip_titles:
         print("\nNo titles to rip.", file=sys.stderr)
@@ -284,6 +294,13 @@ async def run_rip(args: argparse.Namespace) -> int:
                     disc_info.titles,
                     [t.index for t in rip_titles],
                     analysis.classifications,
+                    recommended_indices=select_title_indices(
+                        disc_info.titles, analysis, "recommended",
+                    ),
+                    primary_indices=select_title_indices(
+                        disc_info.titles, analysis, "primary",
+                    ),
+                    primary_label="main film" if is_movie else "episodes",
                 )
                 if new is None:
                     continue

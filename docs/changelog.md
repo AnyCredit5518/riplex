@@ -4,6 +4,15 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.2.0 — 2026-10-10
+
+### Added
+
+- **Shared title-selection presets.** Documented the GUI and interactive CLI
+	presets for All, Recommended, Primary (main film or identified TV episodes),
+	and Clear all, plus unattended `--title-policy` usage for `rip` and
+	`orchestrate`.
+
 ## v1.1.3 — 2026-09-15
 
 ### Fixed

@@ -329,6 +329,39 @@ class TestPromptRipSelection:
         result = prompt_rip_selection(_titles(1, 2, 3), [2])
         assert result == [2]
 
+    def test_recommended_preset_restores_analyzer_selection(self, monkeypatch):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["recommended", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        result = prompt_rip_selection(
+            _titles(1, 2, 3),
+            [1, 2, 3],
+            recommended_indices=[1, 3],
+            primary_indices=[1],
+            primary_label="main film",
+        )
+
+        assert result == [1, 3]
+
+    def test_primary_preset_selects_episodes(self, monkeypatch, capsys):
+        _patch_interactive(monkeypatch, True)
+        inputs = iter(["episodes", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        result = prompt_rip_selection(
+            _titles(1, 2, 3),
+            [1, 2, 3],
+            recommended_indices=[1, 2],
+            primary_indices=[2],
+            primary_label="episodes",
+        )
+
+        assert result == [2]
+        output = capsys.readouterr().out
+        assert "'recommended' (2)" in output
+        assert "'primary' (episodes: 1)" in output
+
     def test_cancel_returns_none(self, monkeypatch):
         _patch_interactive(monkeypatch, True)
         monkeypatch.setattr("builtins.input", lambda _: "cancel")

@@ -40,6 +40,7 @@ from riplex.output_paths import preflight_configured_rip_outputs
 from riplex.resume import resume_from_session
 from riplex.rip_outcome import summarize_rip_results
 from riplex.title import parse_title_and_season, parse_volume_label
+from riplex.title_selection import select_title_indices
 from riplex.ui import (
     is_interactive,
     prompt_choice,
@@ -560,7 +561,15 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
         dvd_entries = analysis.dvd_entries
         total_episode_runtime = analysis.total_episode_runtime
         episode_count = analysis.episode_count
-        rip_titles = analysis.rippable_titles
+        title_policy = getattr(args, "title_policy", None) or "recommended"
+        rip_indices = select_title_indices(
+            disc_info.titles, analysis, title_policy,
+        )
+        selected_indices = set(rip_indices)
+        rip_titles = [
+            title for title in disc_info.titles
+            if title.index in selected_indices
+        ]
 
         current_disc_entries = [d for d in discs if d.number == disc.number]
         print_disc_analysis(
@@ -582,7 +591,14 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             )
 
         if not rip_titles:
-            print(f"\nNo titles to rip on Disc {disc.number}.", file=sys.stderr)
+            print(
+                f"\nNo titles selected by the {title_policy!r} policy "
+                f"on Disc {disc.number}.",
+                file=sys.stderr,
+            )
+            if not dry_run and not snapshot_mode and drive_device:
+                print("Ejecting skipped disc ...", file=sys.stderr)
+                eject_disc(drive_device)
             continue
 
         total_size = sum(t.size_bytes for t in rip_titles) / (1024 ** 3)
@@ -626,6 +642,13 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                         disc_info.titles,
                         [t.index for t in rip_titles],
                         analysis.classifications,
+                        recommended_indices=select_title_indices(
+                            disc_info.titles, analysis, "recommended",
+                        ),
+                        primary_indices=select_title_indices(
+                            disc_info.titles, analysis, "primary",
+                        ),
+                        primary_label="main film" if is_movie else "episodes",
                     )
                     if new is None:
                         continue

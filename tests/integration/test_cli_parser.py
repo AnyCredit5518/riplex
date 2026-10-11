@@ -57,3 +57,26 @@ def test_every_subcommand_parses(command, tmp_path):
     args = parse_args(argv)
 
     assert args.command == command
+
+
+@pytest.mark.parametrize("command", ["rip", "orchestrate"])
+@pytest.mark.parametrize("policy", ["all", "recommended", "primary"])
+def test_title_policy_parses_for_rip_commands(command, policy):
+    args = parse_args([command, "--title-policy", policy])
+
+    assert args.title_policy == policy
+
+
+@pytest.mark.parametrize("command", ["rip", "orchestrate"])
+def test_title_policy_defaults_to_recommended(command):
+    args = parse_args([command])
+
+    assert args.title_policy == "recommended"
+
+
+@pytest.mark.parametrize("command", ["rip", "orchestrate"])
+def test_unknown_title_policy_is_rejected(command):
+    with pytest.raises(SystemExit) as exc:
+        parse_args([command, "--title-policy", "extras"])
+
+    assert exc.value.code == 2

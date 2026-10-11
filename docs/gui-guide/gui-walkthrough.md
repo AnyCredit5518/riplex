@@ -71,8 +71,13 @@ This is the most important decision point in the GUI. riplex analyzes the disc, 
 
 What you do here:
 - review the recommended titles before starting the rip
+- use **All**, **Recommended**, **Main film** / **Episodes**, or **Clear all** to reset the checkboxes in one click; each selection preset shows its title count
 - keep the main feature, episodes, or useful extras selected
 - deselect obvious junk, duplicates, or play-all titles if needed
+
+Recommended includes useful matched extras. Main film / Episodes keeps only the
+primary program content. You can still adjust individual checkboxes after
+applying any preset, and Start Rip remains disabled while nothing is selected.
 
 Why this screen matters:
 - MakeMKV exposes raw titles and durations, but not what those titles actually are

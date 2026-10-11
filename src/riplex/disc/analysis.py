@@ -1822,6 +1822,7 @@ class DiscAnalysis:
     total_episode_runtime: int
     episode_count: int
     rippable_titles: list
+    primary_title_indices: set[int] = field(default_factory=set)
     classifications: dict[int, str] = field(default_factory=dict)
     assessments: dict[int, TitleAssessment] = field(default_factory=dict)
     recovered_carryover_indices: set[int] = field(default_factory=set)
@@ -1999,6 +2000,20 @@ def analyze_disc(
     ) else set()
 
     rippable_indices = {title.index for title in rippable}
+    if is_movie:
+        primary_title_indices = {
+            title.index for title in titles
+            if title.index in rippable_indices
+            and _looks_like_main_feature_edition(
+                title.duration_seconds, is_movie, effective_movie_runtime,
+            )
+        }
+    else:
+        primary_title_indices = {
+            index for index in assignments
+            if index in rippable_indices
+        }
+
     assessments = {}
     for index, label in classifications.items():
         assessment = assess_title(label, is_rippable=index in rippable_indices)
@@ -2040,6 +2055,7 @@ def analyze_disc(
         total_episode_runtime=total_episode_runtime,
         episode_count=episode_count,
         rippable_titles=rippable,
+        primary_title_indices=primary_title_indices,
         classifications=classifications,
         assessments=assessments,
         recovered_carryover_indices=recovered_carryover_indices,

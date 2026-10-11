@@ -15,6 +15,7 @@ from riplex.disc.analysis import (
     reconcile_bonus_films,
 )
 from riplex.disc.makemkv import DiscTitle
+from riplex.title_selection import select_title_indices
 
 log = logging.getLogger(__name__)
 
@@ -154,7 +155,12 @@ class SelectionScreen:
             episode_carryover=episode_carryover,
         )
         self._analysis = analysis  # store for _start_rip
-        rippable_indices = {t.index for t in analysis.rippable_titles}
+        selection_presets = {
+            policy: select_title_indices(titles, analysis, policy)
+            for policy in ("all", "recommended", "primary")
+        }
+        self._selection_presets = selection_presets
+        rippable_indices = set(selection_presets["recommended"])
         classifications = analysis.classifications
 
         log.info("Detected disc number: %s", analysis.disc_number)
@@ -172,7 +178,7 @@ class SelectionScreen:
                      marker, t.index, format_seconds(t.duration_seconds),
                      t.size_bytes/(1024**3), t.resolution, classifications[t.index])
 
-        recommended_titles = [t.index for t in analysis.rippable_titles]
+        recommended_titles = selection_presets["recommended"]
         debug_dir = self._save_selection_snapshot(recommended_titles, phase="selection")
 
         self.checkboxes = []
@@ -249,14 +255,15 @@ class SelectionScreen:
 
         # Summary
         total_selected = sum(1 for cb in self.checkboxes if cb.value)
+        sizes_by_index = {title.index: title.size_bytes for title in titles}
         total_size = sum(
-            titles[i].size_bytes
-            for i, cb in enumerate(self.checkboxes)
+            sizes_by_index.get(cb.data, 0)
+            for cb in self.checkboxes
             if cb.value
         )
 
         self.summary_text = ft.Text(
-            f"{total_selected} titles selected ({_format_size(total_size)})",
+            self._summary_value(total_selected, total_size),
             size=14,
             weight=ft.FontWeight.BOLD,
         )
@@ -318,14 +325,48 @@ class SelectionScreen:
 
         back_target = "disc_overview" if self.app.state.get("workflow") == "orchestrate" else "metadata"
         back_btn = ft.TextButton("Back", on_click=lambda _: self.app.navigate(back_target))
-        self._start_btn = ft.ElevatedButton(
+        self._start_btn = ft.Button(
             "Start Rip",
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._start_rip,
+            disabled=total_selected == 0,
             style=ft.ButtonStyle(
                 padding=ft.Padding(left=30, top=15, right=30, bottom=15),
                 bgcolor=ft.Colors.GREEN_700,
             ),
+        )
+        primary_label = "Main film" if is_movie else "Episodes"
+        self._preset_buttons = {
+            "all": ft.TextButton(
+                f"All ({len(selection_presets['all'])})",
+                icon=ft.Icons.SELECT_ALL,
+                on_click=lambda _: self._apply_selection(selection_presets["all"]),
+            ),
+            "recommended": ft.TextButton(
+                f"Recommended ({len(selection_presets['recommended'])})",
+                icon=ft.Icons.RECOMMEND,
+                on_click=lambda _: self._apply_selection(selection_presets["recommended"]),
+            ),
+            "primary": ft.TextButton(
+                f"{primary_label} ({len(selection_presets['primary'])})",
+                icon=ft.Icons.MOVIE if is_movie else ft.Icons.TV,
+                disabled=not selection_presets["primary"],
+                on_click=lambda _: self._apply_selection(selection_presets["primary"]),
+            ),
+            "clear": ft.TextButton(
+                "Clear all",
+                icon=ft.Icons.DESELECT,
+                on_click=lambda _: self._apply_selection([]),
+            ),
+        }
+        preset_row = ft.Row(
+            [
+                ft.Text("Select:", size=12, color=ft.Colors.GREY_500),
+                *self._preset_buttons.values(),
+            ],
+            spacing=4,
+            wrap=True,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         # Disc number indicator for orchestrate mode
@@ -405,6 +446,7 @@ class SelectionScreen:
                     color=ft.Colors.GREY_600,
                 ) if debug_dir else ft.Container(),
                 ft.Divider(height=20),
+                preset_row,
                 header,
                 ft.Column(title_rows, spacing=4, scroll=ft.ScrollMode.AUTO, expand=True),
                 ft.Divider(height=10),
@@ -416,17 +458,34 @@ class SelectionScreen:
             expand=True,
         )
 
+    @staticmethod
+    def _summary_value(total_selected: int, total_size: int) -> str:
+        if not total_selected:
+            return "No titles selected"
+        noun = "title" if total_selected == 1 else "titles"
+        return f"{total_selected} {noun} selected ({_format_size(total_size)})"
+
+    def _apply_selection(self, selected_indices: list[int]) -> None:
+        """Apply a bulk-selection preset and refresh dependent controls."""
+        selected = set(selected_indices)
+        for checkbox in self.checkboxes:
+            checkbox.value = checkbox.data in selected
+        self._update_summary(None)
+
     def _update_summary(self, e):
         """Update the summary text when checkboxes change."""
         disc_info = self.app.state["disc_info"]
         titles = disc_info.titles if disc_info else []
+        sizes_by_index = {title.index: title.size_bytes for title in titles}
         total_selected = sum(1 for cb in self.checkboxes if cb.value)
         total_size = sum(
-            titles[i].size_bytes
-            for i, cb in enumerate(self.checkboxes)
-            if cb.value and i < len(titles)
+            sizes_by_index.get(cb.data, 0)
+            for cb in self.checkboxes
+            if cb.value
         )
-        self.summary_text.value = f"{total_selected} titles selected ({_format_size(total_size)})"
+        self.summary_text.value = self._summary_value(total_selected, total_size)
+        if self._start_btn is not None:
+            self._start_btn.disabled = total_selected == 0
         self.app.page.update()
 
     def _build_bonus_films_section(self, bonus_films: list) -> ft.Control:

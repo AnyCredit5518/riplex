@@ -13,6 +13,7 @@ import sys
 
 from riplex import __version__
 from riplex.config import load_config
+from riplex.title_selection import TITLE_SELECTION_POLICIES
 from riplex.ui import set_auto_mode
 from riplex.updater import check_for_update_cached, format_update_notice
 
@@ -243,6 +244,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Rip all titles (skip recommendation filter).",
     )
     rip_parser.add_argument(
+        "--title-policy",
+        choices=TITLE_SELECTION_POLICIES,
+        default="recommended",
+        help=(
+            "Title preset: all, recommended, or primary "
+            "(main film for movies; identified episodes for TV)."
+        ),
+    )
+    rip_parser.add_argument(
         "--yes", "-y", action="store_true", default=False,
         help="Skip confirmation prompt.",
     )
@@ -311,6 +321,15 @@ def _build_parser() -> argparse.ArgumentParser:
     orch_parser.add_argument(
         "--output", default=None,
         help="Override both media-library and MakeMKV rip output roots for this run.",
+    )
+    orch_parser.add_argument(
+        "--title-policy",
+        choices=TITLE_SELECTION_POLICIES,
+        default="recommended",
+        help=(
+            "Title preset: all, recommended, or primary "
+            "(main film for movies; identified episodes for TV)."
+        ),
     )
     orch_parser.add_argument(
         "--yes", "-y", action="store_true", default=False,

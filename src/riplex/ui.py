@@ -273,6 +273,10 @@ def prompt_rip_selection(
     titles: list,
     default_indices: list[int],
     classifications: dict[int, str] | None = None,
+    *,
+    recommended_indices: list[int] | None = None,
+    primary_indices: list[int] | None = None,
+    primary_label: str = "primary",
 ) -> list[int] | None:
     """Interactive checkbox-style picker for makemkvcon titles.
 
@@ -282,8 +286,10 @@ def prompt_rip_selection(
 
     * ``3,5-7`` — toggle these title indices
     * ``all`` — select every title on the disc
+    * ``recommended`` — restore analyzer recommendations
+    * ``primary`` — select the main film or TV episodes
     * ``none`` — deselect everything
-    * ``default`` — restore the analyzer's recommendation
+    * ``default`` — alias for ``recommended``
     * ``done`` / Enter — accept the current selection
     * ``cancel`` — abort the edit (returns ``None``)
 
@@ -298,7 +304,10 @@ def prompt_rip_selection(
 
     classifications = classifications or {}
     all_indices = [t.index for t in titles]
-    default_set = set(default_indices)
+    recommended_set = set(
+        default_indices if recommended_indices is None else recommended_indices
+    )
+    primary_set = set(primary_indices or [])
     selected: set[int] = set(default_indices)
 
     while True:
@@ -317,8 +326,11 @@ def prompt_rip_selection(
         ) / (1024 ** 3)
         print(f"\n  Selected: {len(selected)} title(s) ({total_size_gb:.1f} GB)")
         print(
-            "\n  Commands: <indices> to toggle (e.g. '3,5-7'), "
-            "'all', 'none', 'default',\n"
+            "\n  Presets: "
+            f"'all' ({len(all_indices)}), "
+            f"'recommended' ({len(recommended_set)}), "
+            f"'primary' ({primary_label}: {len(primary_set)}), 'none'\n"
+            "  Commands: <indices> to toggle (e.g. '3,5-7'), "
             "            Enter or 'done' to accept, 'cancel' to abort."
         )
         try:
@@ -337,8 +349,11 @@ def prompt_rip_selection(
         if raw == "none":
             selected = set()
             continue
-        if raw == "default":
-            selected = set(default_set)
+        if raw in ("recommended", "default"):
+            selected = set(recommended_set)
+            continue
+        if raw in ("primary", "main", "main-film", "main film", "episodes"):
+            selected = set(primary_set)
             continue
 
         try:

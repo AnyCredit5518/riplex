@@ -36,7 +36,7 @@ If you prefer more control, you can use the individual commands separately.
 Before inserting any disc, run `lookup` to see what is on the release:
 
 ```bash
-riplex lookup "Example Series"
+riplex lookup "Planet Earth II"
 ```
 
 This shows every disc in the set, what episodes and extras are on each disc, and how long each item is. It also gives tips about play-all titles you can rip instead of individual episodes.
@@ -44,7 +44,7 @@ This shows every disc in the set, what episodes and extras are on each disc, and
 If a disc is already in the drive, add `--drive` to include live disc analysis:
 
 ```bash
-riplex lookup "Example Series" --drive 0
+riplex lookup "Planet Earth II" --drive 0
 ```
 
 This reads the disc's title list and cross-references it against dvdcompare metadata, showing which titles to rip and which to skip (play-all compilations, lower-resolution duplicates, etc.).
@@ -54,15 +54,15 @@ This reads the disc's title list and cross-references it against dvdcompare meta
 Add `--create-folders` to pre-create the rip subfolders under your output root:
 
 ```bash
-riplex lookup "Example Series" --create-folders
+riplex lookup "Planet Earth II" --create-folders
 ```
 
 This creates folders like:
 
 ```
-<rip_output>/Example Series (2024)/Disc 1/
-<rip_output>/Example Series (2024)/Disc 2/
-<rip_output>/Example Series (2024)/Disc 3/
+<rip_output>/Planet Earth II (2016)/Disc 1/
+<rip_output>/Planet Earth II (2016)/Disc 2/
+<rip_output>/Planet Earth II (2016)/Disc 3/
 ```
 
 This step is optional when using `riplex rip`, which creates output folders automatically.
@@ -72,7 +72,7 @@ This step is optional when using `riplex rip`, which creates output folders auto
 Use the `rip` subcommand to read the disc, auto-select the right titles, and rip them:
 
 ```bash
-riplex rip "Example Series" --drive 0
+riplex rip "Planet Earth II" --drive 0
 ```
 
 This will:
@@ -83,9 +83,9 @@ This will:
 5. Show a disc analysis table with rip recommendations
 6. Prompt for confirmation, then rip the selected titles
 
-At the final `Proceed? [Y/n/e(dit)]` prompt, press `e` to open an interactive title picker. The picker shows every title on the disc with `[x]`/`[ ]` marks reflecting the current selection and lets you toggle by index (`3`), comma-separated list (`1,4`), or range (`3-7`). Type `all` or `none` to select or clear everything, `default` to restore the analyzer's recommendation, `done` (or Enter) to accept, or `cancel` to abort the edit. This is the CLI equivalent of the GUI selection screen, so you no longer need to abort and re-run with `--titles 1,3,5` to fix a wrong recommendation.
+At the final `Proceed? [Y/n/e(dit)]` prompt, press `e` to open an interactive title picker. The picker shows every title with `[x]`/`[ ]` marks and lets you toggle by index (`3`), comma-separated list (`1,4`), or range (`3-7`). Its counted presets are `all`, `recommended`, `primary` (main film or episodes), and `none`; `default` remains an alias for `recommended`. Use `done` (or Enter) to accept or `cancel` to abort the edit.
 
-Add `--yes` to skip the final rip confirmation prompt (and the edit picker with it). Use `--auto` to also skip all interactive selection prompts (title, TMDb, release, season, edit). Use `--titles 1,2,3` to override the auto-selection non-interactively, or `--all` to rip everything. Add `--organize` to automatically run the organize step after ripping.
+Add `--yes` to skip the final rip confirmation prompt (and the edit picker with it). Use `--auto` to also skip all interactive selection prompts (title, TMDb, release, season, edit). Set `--title-policy all`, `recommended`, or `primary` for an unattended preset. Use `--titles 1,2,3` for exact indices, or the legacy `--all` shortcut to rip everything. Add `--organize` to automatically run the organize step after ripping.
 
 Repeat for each disc in the set, swapping discs between runs.
 
@@ -96,7 +96,7 @@ Repeat for each disc in the set, swapping discs between runs.
 Once all discs are ripped, run `organize` in dry-run mode (the default):
 
 ```bash
-riplex organize "path/to/rips/Example Series"
+riplex organize "path/to/rips/Planet Earth II"
 ```
 
 This scans the MKV files, deduplicates, looks up metadata, matches files to episodes and extras, and prints a preview of where each file will be moved.
@@ -106,7 +106,7 @@ This scans the MKV files, deduplicates, looks up metadata, matches files to epis
 If the preview looks correct, add `--execute`:
 
 ```bash
-riplex organize "path/to/rips/Example Series" --execute
+riplex organize "path/to/rips/Planet Earth II" --execute
 ```
 
 Files are moved (and split if needed) into Plex folder structure. Each file gets tagged so re-runs skip it automatically.
@@ -116,4 +116,4 @@ Files are moved (and split if needed) into Plex folder structure. Each file gets
 - **Unmatched files**: Use `--unmatched extras` to route remaining files to the `Other/` extras folder
 - **Wrong release region**: Use `--release uk` or `--release 2` to pick a different dvdcompare release
 - **Re-organize**: Use `--force` to re-process files that were already tagged
-- **Debug**: Check the `Debug log:` path printed at startup or add `--verbose` for stderr output
+- **Debug**: Check `%TEMP%\riplex\riplex.log` or add `--verbose` for stderr output

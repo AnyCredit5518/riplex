@@ -16,7 +16,7 @@ This will:
 3. Look up TMDb for canonical metadata
 4. Look up dvdcompare for full disc breakdown (contents per disc)
 5. Show which discs are in the release and let you select which to rip
-6. For each disc: show a live analysis table, rip recommended titles
+6. For each disc: show a live analysis table, rip titles selected by the active policy
 7. Prompt to swap discs between each disc in the set
 8. After all discs are ripped, run the organize pipeline to move files into Plex layout
 9. Optionally archive the rip folder
@@ -29,10 +29,10 @@ In interactive mode, orchestrate presents prompts at each decision point:
 
 - **Title confirmation**: auto-detected title shown for confirmation or correction
 - **TMDb disambiguation**: if multiple matches, pick the correct one
-- **Season selection** (TV multi-season shows only): when the show has more than one season on TMDb, pick which season is on the disc. The picked season is used both to narrow the plan and to bias the dvdcompare query (e.g. `Example Show: Season 2`) so it lands on the correct per-season film page. Season 0 (Specials) is never shown in the picker but is always retained in the plan so extras on the disc that match a curated TMDb special can still route to `Season 00/`. Mini-series with only one non-special season skip this prompt entirely.
+- **Season selection** (TV multi-season shows only): when the show has more than one season on TMDb, pick which season is on the disc. The picked season is used both to narrow the plan and to bias the dvdcompare query (e.g. `Psych: Season 2`) so it lands on the correct per-season film page. Season 0 (Specials) is never shown in the picker but is always retained in the plan so extras on the disc that match a curated TMDb special can still route to `Season 00/`. Mini-series (only one non-special season, e.g. *Planet Earth II*) skip this prompt entirely.
 - **dvdcompare release selection**: choose the regional release (default: America)
 - **Disc selection**: pick which discs to rip (skip standard Blu-ray copies, bonus discs, etc.)
-- **Title selection**: after the per-disc analysis, the `Proceed? [Y/n/e(dit)]` prompt accepts `e` to open an interactive picker that lets you toggle titles by index, range (`3-7`), or list (`1,4,6`); type `all`, `none`, `default` to reset, or `done` / Enter to accept. This is the CLI equivalent of the GUI selection screen.
+- **Title selection**: after the per-disc analysis, the `Proceed? [Y/n/e(dit)]` prompt accepts `e` to open an interactive picker. Toggle titles by index, range (`3-7`), or list (`1,4,6`), or apply the counted `all`, `recommended`, `primary`, and `none` presets. Primary is labeled as main film or episodes for the current media type. `default` remains an alias for `recommended`.
 - **Disc swap**: after each disc, prompted to insert the next one
 - **Archive**: after organize, prompted to archive the rip folder (if `archive_root` is configured)
 
@@ -45,6 +45,18 @@ riplex orchestrate --execute --auto
 ```
 
 Uses best-guess defaults: first TMDb match, first American dvdcompare release, all discs, auto title selection per disc.
+
+Choose the unattended title preset explicitly with `--title-policy`:
+
+```bash
+riplex orchestrate --execute --auto --title-policy all
+riplex orchestrate --execute --auto --title-policy recommended
+riplex orchestrate --execute --auto --title-policy primary
+```
+
+Recommended includes matched extras. Primary keeps main-film variants for
+movies or identified episodes for TV. A bonus disc with no primary titles is skipped; the
+policy never falls back to Recommended.
 
 ## Disc selection
 

@@ -26,6 +26,7 @@ riplex orchestrate [options]
 | `--format` | Disc format filter for dvdcompare (auto-detected from disc resolution if omitted) |
 | `--release` | Regional release: 1-based index or name keyword (default: auto-detect) |
 | `--output` | Override both the media-library and MakeMKV rip output roots for this run |
+| `--title-policy` | Select `all`, `recommended` (default), or `primary` titles. Primary means main-film variants for movies and identified episodes for TV. |
 | `--execute` | Actually rip and organize (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files during organize: `ignore`, `move`, `delete`, or `extras` (default: `extras`) |
 | `--discs` | Comma-separated disc numbers to rip (e.g. `1,3`). Skips others. |
@@ -107,6 +108,7 @@ riplex rip <title> --drive <drive> [options]
 | `--output` | Override both the media-library and MakeMKV rip output roots for this run |
 | `--titles` | Comma-separated title indices to rip (e.g. `1,2,3`) |
 | `--all` | Rip all titles on the disc |
+| `--title-policy` | Select `all`, `recommended` (default), or `primary` titles. Primary means main-film variants for movies and identified episodes for TV. |
 | `--yes`, `-y` | Skip the final rip confirmation prompt |
 | `--execute` | Actually rip (default: dry-run preview only) |
 | `--auto` | Skip interactive prompts (title, TMDb, release selection), use best-guess defaults |
@@ -116,7 +118,11 @@ riplex rip <title> --drive <drive> [options]
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--api-key` | TMDb API key |
 
-When neither `--titles` nor `--all` is specified, the command auto-selects titles using disc analysis (skipping play-all compilations, lower-resolution duplicates, and very short titles).
+`--titles` has highest precedence, followed by the legacy `--all` shortcut and
+then `--title-policy`. Recommended selection skips play-all compilations,
+duplicates, and very short titles while retaining matched extras. Primary keeps
+only main-film variants or identified TV episodes. If no primary titles are identified,
+nothing is selected; riplex does not silently fall back to Recommended.
 
 ## `setup`
 
