@@ -199,8 +199,8 @@ class DiscDetectionScreen:
         self.preflight_text.color = ft.Colors.GREY_400
         _safe_update(self.app.page)
 
-        self._poll_once(initial=True)
-        self._start_polling()
+        if self._poll_once(initial=True):
+            self._start_polling()
 
     def _start_polling(self) -> None:
         if self._poll_thread and self._poll_thread.is_alive():
@@ -238,7 +238,7 @@ class DiscDetectionScreen:
             daemon=True,
         ).start()
 
-    def _poll_once(self, *, initial: bool) -> None:
+    def _poll_once(self, *, initial: bool) -> bool:
         try:
             mk = MakeMKV(self.app.state.get("makemkvcon"))
             drives = mk.drive_list()
@@ -255,7 +255,7 @@ class DiscDetectionScreen:
                 install_hint=True,
                 key_hint=True,
             )
-            return
+            return False
         except Exception as exc:
             log.warning("drive_list failed: %s", exc)
             if initial:
@@ -263,13 +263,14 @@ class DiscDetectionScreen:
                     "Couldn\u2019t list drives",
                     f"makemkvcon failed: {exc}",
                 )
-            return
+            return True
 
         if not diff_drive_lists(self._last_drives, drives):
-            return
+            return True
         self._last_drives = drives
         self._render_drives(drives)
         self._maybe_auto_pick(drives)
+        return True
 
     # ------------------------------------------------------------------
     # Rendering.

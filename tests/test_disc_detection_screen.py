@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from riplex.disc.makemkv import DriveInfo
+from riplex.disc.makemkv import DriveInfo, MakeMKVError
 from riplex_app.screens.disc_detection import DiscDetectionScreen, diff_drive_lists
 
 
@@ -108,6 +108,39 @@ def test_open_makemkv_launches_gui_next_to_console(monkeypatch, tmp_path):
     DiscDetectionScreen(app)._open_makemkv()
 
     popen.assert_called_once_with([str(gui_exe)], close_fds=True)
+
+
+def test_fatal_makemkv_refusal_does_not_start_polling(monkeypatch):
+    class _RefusingMakeMKV:
+        def __init__(self, _exe):
+            pass
+
+        def drive_list(self):
+            raise MakeMKVError("version is too old", code=5021)
+
+    app = _FakeApp()
+    screen = DiscDetectionScreen(app)
+    screen.preflight_text = SimpleNamespace(value="", color=None)
+    screen._show_error = MagicMock()
+    screen._start_polling = MagicMock()
+    monkeypatch.setattr(
+        "riplex_app.screens.disc_detection.makemkv_preflight",
+        lambda _exe: SimpleNamespace(
+            exe="makemkvcon64.exe",
+            version="v1.18.3",
+            available=True,
+            error="",
+        ),
+    )
+    monkeypatch.setattr(
+        "riplex_app.screens.disc_detection.MakeMKV",
+        _RefusingMakeMKV,
+    )
+
+    screen._initial_scan()
+
+    screen._show_error.assert_called_once()
+    screen._start_polling.assert_not_called()
 
 
 def test_late_disc_read_does_not_mutate_new_workflow(monkeypatch):
