@@ -21,12 +21,7 @@ def _run_page_task(handler, *args):
         pass
 
 
-@pytest.mark.parametrize("apply_result", [RuntimeError("locked"), None])
-def test_update_screen_recovers_when_apply_does_not_exit(
-    monkeypatch,
-    tmp_path,
-    apply_result,
-):
+def test_update_screen_recovers_when_apply_fails(monkeypatch, tmp_path):
     info = {"url": "https://github.com/AnyCredit5518/riplex/releases/tag/v2"}
     app = SimpleNamespace(
         state={"update_info": info},
@@ -40,9 +35,7 @@ def test_update_screen_recovers_when_apply_does_not_exit(
     monkeypatch.setattr(updater, "stage_update", lambda *_args, **_kwargs: tmp_path / "new.exe")
 
     def _apply(_staged):
-        if isinstance(apply_result, Exception):
-            raise apply_result
-        return apply_result
+        raise RuntimeError("locked")
 
     monkeypatch.setattr(updater, "apply_update_and_relaunch", _apply)
 
@@ -52,6 +45,30 @@ def test_update_screen_recovers_when_apply_does_not_exit(
     assert screen._progress.visible is False
     assert "failed" in screen._status.value.lower()
     assert screen._actions.controls
+
+
+def test_update_screen_closes_cleanly_after_relaunch(monkeypatch, tmp_path):
+    info = {"url": "https://github.com/AnyCredit5518/riplex/releases/tag/v2"}
+    closed = []
+    app = SimpleNamespace(
+        state={"update_info": info},
+        page=SimpleNamespace(
+            update=lambda: None,
+            run_task=_run_page_task,
+            window=SimpleNamespace(close=lambda: closed.append(True)),
+        ),
+    )
+    screen = UpdateScreen(app)
+    screen._updating = True
+    screen._progress = SimpleNamespace(visible=True, value=None)
+    screen._status = SimpleNamespace(value="", color=None)
+    screen._actions = SimpleNamespace(controls=[])
+    monkeypatch.setattr(updater, "stage_update", lambda *_args, **_kwargs: tmp_path / "new.exe")
+    monkeypatch.setattr(updater, "apply_update_and_relaunch", lambda _staged: None)
+
+    screen._run_self_update(info)
+
+    assert closed == [True]
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +232,38 @@ class TestSwapExecutable:
         updater.swap_executable(current, staged)
 
         assert current.read_bytes() == b"NEW2"
+
+
+class TestApplyUpdateAndRelaunch:
+    def test_uses_fresh_bundle_environment(self, monkeypatch, tmp_path):
+        current = tmp_path / "riplex-ui.exe"
+        staged = tmp_path / "riplex-ui.exe.new"
+        bundle = tmp_path / "_MEI123"
+        launched = {}
+        monkeypatch.setattr(updater, "running_executable", lambda: current)
+        monkeypatch.setattr(updater, "swap_executable", lambda *_args: tmp_path / "riplex-ui.exe.old")
+        monkeypatch.setattr(updater.sys, "platform", "win32")
+        monkeypatch.setattr(updater.sys, "_MEIPASS", str(bundle), raising=False)
+        monkeypatch.setenv("FLET_VIEW_PATH", str(bundle / "flet_client"))
+        monkeypatch.setenv("SSL_CERT_FILE", str(bundle / "certifi" / "cacert.pem"))
+        monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(bundle / "certifi" / "cacert.pem"))
+        monkeypatch.setenv("RIPLEX_TEST_VALUE", "preserved")
+
+        def _popen(args, **kwargs):
+            launched["args"] = args
+            launched.update(kwargs)
+            return SimpleNamespace()
+
+        monkeypatch.setattr(updater.subprocess, "Popen", _popen)
+
+        updater.apply_update_and_relaunch(staged)
+
+        assert launched["args"] == [str(current)]
+        assert launched["creationflags"] == 0x00000008 | 0x00000200
+        assert launched["env"]["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
+        assert launched["env"]["RIPLEX_TEST_VALUE"] == "preserved"
+        for name in updater._BUNDLE_PATH_ENV_VARS:
+            assert name not in launched["env"]
 
 
 class TestCleanupStaleUpdate:

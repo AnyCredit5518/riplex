@@ -196,16 +196,15 @@ class UpdateScreen:
             self.app.page.update()
 
         self.app.page.run_task(_apply)
-        # Swap the exe and relaunch; this terminates the current process.
+        # Swap the exe and launch the replacement, then let Flet close cleanly
+        # so its bundled desktop runtime releases the PyInstaller temp folder.
         try:
             updater.apply_update_and_relaunch(staged)
+            self.app.page.window.close()
         except Exception as exc:
             log.exception("failed to apply staged update")
             _report_failure(str(exc))
             return
-
-        log.error("apply_update_and_relaunch returned without exiting")
-        _report_failure("the updated app did not restart")
 
     def _go_back(self, e):
         self.app.navigate("welcome")

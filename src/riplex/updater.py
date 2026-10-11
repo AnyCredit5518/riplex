@@ -206,6 +206,11 @@ from pathlib import Path
 _TRUSTED_HOSTS = ("github.com", "githubusercontent.com")
 _BACKUP_SUFFIX = ".old"
 _STAGING_SUFFIX = ".new"
+_BUNDLE_PATH_ENV_VARS = (
+    "FLET_VIEW_PATH",
+    "REQUESTS_CA_BUNDLE",
+    "SSL_CERT_FILE",
+)
 
 
 def is_frozen() -> bool:
@@ -384,10 +389,11 @@ def swap_executable(current: Path, staged: Path) -> Path:
 
 
 def apply_update_and_relaunch(staged: Path) -> None:
-    """Swap in *staged*, relaunch the app, and terminate this process.
+    """Swap in *staged* and launch it as an independent frozen process.
 
-    This does not return on success. Callers should have already downloaded and
-    verified *staged* via :func:`stage_update`.
+    Callers should have already downloaded and verified *staged* via
+    :func:`stage_update`. This returns after launching the replacement so the
+    caller can shut down its UI normally and release bundled runtime files.
     """
     current = running_executable()
     swap_executable(current, staged)
@@ -397,8 +403,27 @@ def apply_update_and_relaunch(staged: Path) -> None:
         # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP so the child outlives us.
         creationflags = 0x00000008 | 0x00000200
 
-    subprocess.Popen([str(current)], close_fds=True, creationflags=creationflags)
-    os._exit(0)
+    env = os.environ.copy()
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        bundle_root = Path(bundle_root).resolve()
+        for name in _BUNDLE_PATH_ENV_VARS:
+            value = env.get(name)
+            if not value:
+                continue
+            try:
+                Path(value).resolve().relative_to(bundle_root)
+            except (OSError, ValueError):
+                continue
+            env.pop(name)
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+
+    subprocess.Popen(
+        [str(current)],
+        close_fds=True,
+        creationflags=creationflags,
+        env=env,
+    )
 
 
 def cleanup_stale_update(exe: Path | None = None) -> None:
