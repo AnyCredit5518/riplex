@@ -2,7 +2,9 @@
 
 from types import SimpleNamespace
 
+from riplex.organizer import FileMove, OrganizePlan
 from riplex_app.background import capture_screen_lease, start_background_once
+from riplex_app.screens.organize_done import OrganizeDoneScreen
 from riplex_app.screens.organize_preview import OrganizePreviewScreen, _natural_sort_key
 
 
@@ -50,6 +52,26 @@ def test_natural_order_handles_unpadded_numbers():
     ]
 
 
+def test_existing_destination_defaults_conflict_choice_to_skip(tmp_path):
+    destination = tmp_path / "library" / "Movie.mkv"
+    destination.parent.mkdir()
+    destination.write_text("existing", encoding="utf-8")
+    screen = OrganizePreviewScreen(_App())
+    screen.organize_plan = OrganizePlan(moves=[
+        FileMove(
+            source=str(tmp_path / "rip" / "source.mkv"),
+            destination=str(destination),
+            label="Movie (movie)",
+            confidence="high",
+        ),
+    ])
+
+    screen._build_preview_view()
+
+    assert screen._conflict_policy is not None
+    assert screen._conflict_policy.value == "skip"
+
+
 def test_repeated_loading_build_starts_one_plan_worker(monkeypatch):
     _DeferredThread.created = []
     monkeypatch.setattr("riplex_app.background.threading.Thread", _DeferredThread)
@@ -78,6 +100,31 @@ def test_duplicate_organize_click_starts_one_execution_worker(monkeypatch):
     assert len(_DeferredThread.created) == 1
     assert screen.organize_btn.disabled
     assert screen.organize_btn.content == "Organizing..."
+
+
+def test_selected_conflict_policy_is_passed_to_execution_worker(monkeypatch):
+    captured = {}
+
+    def _start_background_once(app, key, target, *, args):
+        captured["args"] = args
+        return True
+
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_preview.start_background_once",
+        _start_background_once,
+    )
+    screen = OrganizePreviewScreen(_App())
+    screen.organize_plan = OrganizePlan()
+    screen._conflict_policy = SimpleNamespace(value="overwrite")
+    screen.organize_btn = SimpleNamespace(
+        disabled=False,
+        content="Organize",
+        update=lambda: None,
+    )
+
+    screen._execute(None)
+
+    assert captured["args"][-1] == "overwrite"
 
 
 def test_rejected_organize_launch_restores_button(monkeypatch):
@@ -127,9 +174,10 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
     )
     markers = []
 
-    def _execute_plan(plan, *, dry_run):
+    def _execute_plan(plan, *, dry_run, conflict_policy):
         assert plan is old_plan
         assert dry_run is False
+        assert conflict_policy == "error"
         app._current_screen_name = "folder_picker"
         app._navigation_epoch = 2
         app.state.update({
@@ -165,6 +213,135 @@ def test_late_organize_execution_does_not_mutate_new_workflow(monkeypatch, tmp_p
             "output_root": str(old_output),
         },
     )]
+
+
+def test_skip_execution_records_conflict_separately(tmp_path):
+    app = _App()
+    app._current_screen_name = "organize_preview"
+    app._navigation_epoch = 1
+    app.page.run_task = lambda _handler: None
+    source = tmp_path / "source.mkv"
+    destination = tmp_path / "destination.mkv"
+    source.write_text("new rip", encoding="utf-8")
+    destination.write_text("existing", encoding="utf-8")
+    plan = OrganizePlan(moves=[
+        FileMove(
+            source=str(source),
+            destination=str(destination),
+            label="Movie (movie)",
+            confidence="high",
+        ),
+    ])
+    screen = OrganizePreviewScreen(app)
+
+    screen._do_execute(
+        capture_screen_lease(app),
+        plan,
+        None,
+        None,
+        "Movie",
+        str(tmp_path),
+        "skip",
+    )
+
+    assert app.state["_organize_executed_count"] == 0
+    assert app.state["_organize_skipped_conflict_count"] == 1
+    assert app.state["_organize_error"] is None
+
+
+def test_skip_execution_does_not_mark_source_as_fully_organized(
+    monkeypatch, tmp_path,
+):
+    app = _App()
+    app._current_screen_name = "organize_preview"
+    app._navigation_epoch = 1
+    app.page.run_task = lambda _handler: None
+    source_folder = tmp_path / "rip"
+    source_folder.mkdir()
+    source = source_folder / "source.mkv"
+    destination = tmp_path / "library" / "destination.mkv"
+    destination.parent.mkdir()
+    source.write_text("new rip", encoding="utf-8")
+    destination.write_text("existing", encoding="utf-8")
+    plan = OrganizePlan(moves=[
+        FileMove(
+            source=str(source),
+            destination=str(destination),
+            label="Movie (movie)",
+            confidence="high",
+        ),
+    ])
+    markers = []
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_preview.save_organized_marker",
+        lambda *args, **kwargs: markers.append((args, kwargs)),
+    )
+    screen = OrganizePreviewScreen(app)
+
+    screen._do_execute(
+        capture_screen_lease(app),
+        plan,
+        None,
+        source_folder,
+        "Movie",
+        str(tmp_path / "library"),
+        "skip",
+    )
+
+    assert markers == []
+
+
+def test_skipped_conflict_does_not_archive_source(monkeypatch, tmp_path):
+    source_folder = tmp_path / "rip"
+    source_folder.mkdir()
+    app = _App()
+    app.state.update({
+        "organize_plan": OrganizePlan(),
+        "organize_results": [],
+        "_organize_error": None,
+        "_organize_executed_count": 0,
+        "_organize_skipped_conflict_count": 1,
+        "source_folder": source_folder,
+    })
+    archived = []
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_done.get_archive_root",
+        lambda: tmp_path / "archive",
+    )
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_done.archive_source_folder",
+        lambda *args, **kwargs: archived.append((args, kwargs)),
+    )
+
+    OrganizeDoneScreen(app).build()
+
+    assert archived == []
+
+
+def test_failed_execution_does_not_archive_source(monkeypatch, tmp_path):
+    source_folder = tmp_path / "rip"
+    source_folder.mkdir()
+    app = _App()
+    app.state.update({
+        "organize_plan": OrganizePlan(),
+        "organize_results": ["Error: disk failed"],
+        "_organize_error": "disk failed",
+        "source_folder": source_folder,
+    })
+    archived = []
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_done.get_archive_root",
+        lambda: tmp_path / "archive",
+    )
+    monkeypatch.setattr(
+        "riplex_app.screens.organize_done.archive_source_folder",
+        lambda *args, **kwargs: archived.append((args, kwargs)),
+    )
+
+    view = OrganizeDoneScreen(app).build()
+
+    assert view.controls[0].value == "Organize Failed"
+    assert archived == []
 
 
 def test_late_plan_does_not_restore_organize_preview(monkeypatch, tmp_path):

@@ -98,6 +98,19 @@ Important note:
 - riplex currently handles one film or one TV show per session
 - multi-film box sets still need to be ripped one film at a time
 
+## 7. Organize preview
+
+Before moving files, riplex compares every planned destination with the media
+library. If one or more files already exist, the preview highlights the
+conflict and asks whether to:
+
+- **Skip existing files** (default), preserving both the library files and the
+	new rips
+- **Overwrite existing library files** with the new rips
+
+The choice applies only to the listed conflicts. A filesystem error stops the
+organize operation and leaves the source folder unarchived for recovery.
+
 ## What comes next
 
 After title selection, riplex starts the rip, shows progress, and then summarizes the results when it finishes.

@@ -17,10 +17,13 @@ from riplex.metadata.provider import MetadataProvider
 from riplex.models import (
     DiscGroup,
     FilmSlot,
+    OrganizeResult,
     PlannedDisc,
+    PlannedMovie,
     ScannedDisc,
     ScannedFile,
 )
+from riplex.organizer import FileMove, OrganizePlan
 from riplex_cli.commands.organize import organize_with_scanned
 
 
@@ -159,6 +162,130 @@ async def test_organize_routes_multi_work_release_through_group_planner(
     # capfd here; we simply verify the code path completed without falling
     # back to the single-plan branch, which would crash on the film disc
     # because there's no film episode in the (nonexistent) planned show.)
+
+
+@pytest.mark.asyncio
+async def test_auto_execute_skips_existing_destination_by_default(
+    monkeypatch, tmp_path,
+):
+    source = tmp_path / "rip" / "source.mkv"
+    destination = tmp_path / "library" / "Movie.mkv"
+    source.parent.mkdir()
+    destination.parent.mkdir()
+    source.write_text("new rip", encoding="utf-8")
+    destination.write_text("existing library file", encoding="utf-8")
+    planned = PlannedMovie(
+        canonical_title="Movie",
+        year=2020,
+        runtime="1h 40m",
+        runtime_seconds=6000,
+    )
+
+    async def _lookup(request, provider, **kwargs):
+        return LookupResult(
+            planned=planned,
+            canonical="Movie",
+            year=2020,
+            is_movie=True,
+            movie_runtime=0,
+            discs=[],
+            release_name="",
+            tmdb_match=None,
+        )
+
+    async def _resolve(meta, provider):
+        return []
+
+    monkeypatch.setattr("riplex_cli.commands.organize.lookup_metadata", _lookup)
+    monkeypatch.setattr("riplex_cli.commands.organize.resolve_disc_groups", _resolve)
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.match_discs",
+        lambda *args, **kwargs: OrganizeResult(),
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.build_organize_plan",
+        lambda *args, **kwargs: OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Movie (movie)",
+                confidence="high",
+            ),
+        ]),
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.prompt_choice",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.prompt_confirm",
+        lambda *args, **kwargs: True,
+    )
+    tagged = []
+    monkeypatch.setattr(
+        "riplex.tagger.tag_organized",
+        lambda *args: tagged.append(args),
+    )
+    markers = []
+    archived = []
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.save_organized_marker",
+        lambda *args, **kwargs: markers.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.get_archive_root",
+        lambda: tmp_path / "archive",
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.get_rip_output",
+        lambda: tmp_path / "rip",
+    )
+    monkeypatch.setattr(
+        "riplex_cli.commands.organize.archive_source_folder",
+        lambda *args, **kwargs: archived.append((args, kwargs)),
+    )
+    scanned = [ScannedDisc(
+        folder_name="Disc 1",
+        files=[ScannedFile(
+            name=source.name,
+            path=str(source),
+            duration_seconds=6000,
+            stream_count=2,
+            stream_fingerprint="h264:1920x1080|ac3:eng:6ch",
+        )],
+    )]
+    args = argparse.Namespace(
+        title="Movie",
+        year=2020,
+        season_number=None,
+        media_type="movie",
+        disc_format="Blu-ray",
+        release=None,
+        execute=True,
+        force=True,
+        unmatched="ignore",
+        on_conflict=None,
+        verbose=False,
+        no_cache=True,
+        snapshot=None,
+        auto=True,
+    )
+
+    rc = await organize_with_scanned(
+        scanned,
+        "Movie",
+        args,
+        tmp_path / "library",
+        _NullProvider(),
+        source_folder=source.parent,
+    )
+
+    assert rc == 0
+    assert source.read_text(encoding="utf-8") == "new rip"
+    assert destination.read_text(encoding="utf-8") == "existing library file"
+    assert tagged == []
+    assert markers == []
+    assert archived == []
 
 
 class _RecordingProvider(MetadataProvider):

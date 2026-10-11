@@ -1,6 +1,9 @@
 """Tests for organizer module."""
 
+import errno
 from pathlib import Path
+
+import pytest
 
 from riplex.models import (
     MatchCandidate,
@@ -11,7 +14,7 @@ from riplex.models import (
     PlannedShow,
     ScannedFile,
 )
-from riplex.organizer import OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder, _extras_folder
+from riplex.organizer import FileMove, OrganizePlan, SplitMove, build_organize_plan, execute_plan, _infer_extras_folder, _extras_folder
 
 
 class TestExtrasFolder:
@@ -1005,6 +1008,189 @@ class TestBuildOrganizePlanShow:
 
 
 class TestExecutePlan:
+    def test_existing_destination_aborts_without_changing_files(self, tmp_path):
+        source = tmp_path / "source.mkv"
+        destination = tmp_path / "destination.mkv"
+        source.write_text("new rip", encoding="utf-8")
+        destination.write_text("existing library file", encoding="utf-8")
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Test Movie (movie)",
+                confidence="high",
+            ),
+        ])
+
+        with pytest.raises(FileExistsError):
+            execute_plan(op, dry_run=False)
+
+        assert source.read_text(encoding="utf-8") == "new rip"
+        assert destination.read_text(encoding="utf-8") == "existing library file"
+
+    def test_skip_conflict_preserves_source_and_destination(self, tmp_path):
+        source = tmp_path / "source.mkv"
+        destination = tmp_path / "destination.mkv"
+        source.write_text("new rip", encoding="utf-8")
+        destination.write_text("existing library file", encoding="utf-8")
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Test Movie (movie)",
+                confidence="high",
+            ),
+        ])
+
+        execute_plan(op, dry_run=False, conflict_policy="skip")
+
+        assert source.read_text(encoding="utf-8") == "new rip"
+        assert destination.read_text(encoding="utf-8") == "existing library file"
+
+    def test_overwrite_conflict_replaces_destination(self, tmp_path):
+        source = tmp_path / "source.mkv"
+        destination = tmp_path / "destination.mkv"
+        source.write_text("new rip", encoding="utf-8")
+        destination.write_text("existing library file", encoding="utf-8")
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Test Movie (movie)",
+                confidence="high",
+            ),
+        ])
+
+        execute_plan(op, dry_run=False, conflict_policy="overwrite")
+
+        assert not source.exists()
+        assert destination.read_text(encoding="utf-8") == "new rip"
+
+    def test_conflict_preflight_aborts_before_any_move(self, tmp_path):
+        first_source = tmp_path / "first-source.mkv"
+        first_destination = tmp_path / "first-destination.mkv"
+        conflict_source = tmp_path / "conflict-source.mkv"
+        conflict_destination = tmp_path / "conflict-destination.mkv"
+        first_source.write_text("first", encoding="utf-8")
+        conflict_source.write_text("new rip", encoding="utf-8")
+        conflict_destination.write_text("existing", encoding="utf-8")
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(first_source),
+                destination=str(first_destination),
+                label="First",
+                confidence="high",
+            ),
+            FileMove(
+                source=str(conflict_source),
+                destination=str(conflict_destination),
+                label="Conflict",
+                confidence="high",
+            ),
+        ])
+
+        with pytest.raises(FileExistsError):
+            execute_plan(op, dry_run=False)
+
+        assert first_source.read_text(encoding="utf-8") == "first"
+        assert not first_destination.exists()
+        assert conflict_source.read_text(encoding="utf-8") == "new rip"
+        assert conflict_destination.read_text(encoding="utf-8") == "existing"
+
+    def test_duplicate_planned_destination_aborts_before_any_move(self, tmp_path):
+        first_source = tmp_path / "first-source.mkv"
+        second_source = tmp_path / "second-source.mkv"
+        destination = tmp_path / "destination.mkv"
+        first_source.write_text("first", encoding="utf-8")
+        second_source.write_text("second", encoding="utf-8")
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(first_source),
+                destination=str(destination),
+                label="First",
+                confidence="high",
+            ),
+            FileMove(
+                source=str(second_source),
+                destination=str(destination),
+                label="Second",
+                confidence="high",
+            ),
+        ])
+
+        with pytest.raises(ValueError, match="same destination"):
+            execute_plan(op, dry_run=False, conflict_policy="overwrite")
+
+        assert first_source.read_text(encoding="utf-8") == "first"
+        assert second_source.read_text(encoding="utf-8") == "second"
+        assert not destination.exists()
+
+    def test_cross_device_overwrite_stages_before_replacing(
+        self, monkeypatch, tmp_path,
+    ):
+        source = tmp_path / "source.mkv"
+        destination = tmp_path / "destination.mkv"
+        source.write_text("new rip", encoding="utf-8")
+        destination.write_text("existing library file", encoding="utf-8")
+        original_replace = Path.replace
+
+        def _replace(path, target):
+            if path == source:
+                raise OSError(errno.EXDEV, "cross-device link")
+            return original_replace(path, target)
+
+        monkeypatch.setattr(Path, "replace", _replace)
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Test Movie (movie)",
+                confidence="high",
+            ),
+        ])
+
+        execute_plan(op, dry_run=False, conflict_policy="overwrite")
+
+        assert not source.exists()
+        assert destination.read_text(encoding="utf-8") == "new rip"
+        assert list(tmp_path.glob("*.riplex-tmp")) == []
+
+    def test_interrupted_staged_overwrite_preserves_existing_file(
+        self, monkeypatch, tmp_path,
+    ):
+        source = tmp_path / "source.mkv"
+        destination = tmp_path / "destination.mkv"
+        source.write_text("new rip", encoding="utf-8")
+        destination.write_text("existing library file", encoding="utf-8")
+        original_replace = Path.replace
+
+        def _replace(path, target):
+            if path == source:
+                raise OSError(errno.EXDEV, "cross-device link")
+            return original_replace(path, target)
+
+        def _interrupted_copy(source_path, staging_path):
+            Path(staging_path).write_text("partial copy", encoding="utf-8")
+            raise OSError("copy interrupted")
+
+        monkeypatch.setattr(Path, "replace", _replace)
+        monkeypatch.setattr("riplex.organizer.shutil.copy2", _interrupted_copy)
+        op = OrganizePlan(moves=[
+            FileMove(
+                source=str(source),
+                destination=str(destination),
+                label="Test Movie (movie)",
+                confidence="high",
+            ),
+        ])
+
+        with pytest.raises(OSError, match="copy interrupted"):
+            execute_plan(op, dry_run=False, conflict_policy="overwrite")
+
+        assert source.read_text(encoding="utf-8") == "new rip"
+        assert destination.read_text(encoding="utf-8") == "existing library file"
+        assert list(tmp_path.glob("*.riplex-tmp")) == []
+
     def test_dry_run(self):
         result = OrganizeResult(
             matched=[

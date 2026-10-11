@@ -59,6 +59,18 @@ def test_every_subcommand_parses(command, tmp_path):
     assert args.command == command
 
 
+@pytest.mark.parametrize("policy", ["error", "skip", "overwrite"])
+def test_organize_conflict_policy_parses(policy, tmp_path):
+    args = parse_args([
+        "organize",
+        str(tmp_path),
+        "--on-conflict",
+        policy,
+    ])
+
+    assert args.on_conflict == policy
+
+
 @pytest.mark.parametrize("command", ["rip", "orchestrate"])
 @pytest.mark.parametrize("policy", ["all", "recommended", "primary"])
 def test_title_policy_parses_for_rip_commands(command, policy):

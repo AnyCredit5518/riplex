@@ -88,6 +88,25 @@ Files that cannot be confidently matched are handled by the `--unmatched` flag:
 riplex organize path/to/rips/MovieTitle --unmatched extras
 ```
 
+## Existing destination policy
+
+Before execution, `organize` lists any destination files that already exist.
+Interactive runs ask whether to skip those files, overwrite them, or cancel.
+Skipped files remain in the rip folder and existing library files are left
+unchanged. Non-interactive runs default to `skip`.
+
+Set the behavior explicitly with `--on-conflict`:
+
+```bash
+riplex organize path/to/rips/MovieTitle --execute --on-conflict skip
+riplex organize path/to/rips/MovieTitle --execute --on-conflict overwrite
+```
+
+The available values are `error`, `skip`, and `overwrite`. Overwrites use an
+atomic rename when possible; cross-filesystem moves are copied to a temporary
+file beside the destination and replace the existing file only after the copy
+finishes successfully.
+
 ## Batch mode
 
 Point `organize` at a parent folder containing multiple rip subfolders. The tool auto-detects title groups, infers format from resolution, and processes each title in sequence:
@@ -156,6 +175,7 @@ riplex organize path/to/rips/MovieTitle --year 2023 --verbose
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
+| `--on-conflict` | Policy for existing destinations: `error`, `skip`, or `overwrite` (interactive prompt; non-interactive default: `skip`) |
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--force` | Re-organize files even if already tagged as organized |
@@ -171,6 +191,7 @@ When running in a terminal (stdin is a TTY), `organize` presents interactive pro
 1. **Title confirmation**: After inferring the title from the folder name or MKV metadata, you can confirm or correct it.
 2. **TMDb disambiguation**: If multiple TMDb matches exist for the title, a numbered list is shown for selection.
 3. **dvdcompare release**: If multiple regional releases exist, a numbered list is shown (defaults to the American release).
+4. **Existing destinations**: If planned output files already exist, choose skip, overwrite, or cancel (defaults to skip).
 
 To skip all prompts and use automatic defaults, pass `--auto`:
 

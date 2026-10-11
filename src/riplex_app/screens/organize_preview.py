@@ -13,7 +13,12 @@ from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.metadata.planner import _plan_movie, _plan_show
 from riplex.models import PlannedMovie, SearchRequest
 from riplex.organize_by_group import apply_group_overrides, build_multi_group_plan
-from riplex.organizer import build_organize_plan, execute_plan
+from riplex.organizer import (
+    ConflictPolicy,
+    build_organize_plan,
+    execute_plan,
+    find_destination_conflicts,
+)
 from riplex.snapshot import save_from_scanned, save_organized_marker
 from riplex_app.background import (
     ScreenLease,
@@ -52,6 +57,7 @@ class OrganizePreviewScreen:
         self.planned = None
         self._progress_text: ft.Text | None = None
         self._loading_content: ft.Control | None = None
+        self._conflict_policy: ft.RadioGroup | None = None
         self._executing = False
 
     def _set_progress(
@@ -312,6 +318,10 @@ class OrganizePreviewScreen:
         split_count = len(plan.splits)
         unmatched_count = len(plan.unmatched)
         missing_count = len(plan.missing)
+        conflicts = find_destination_conflicts(plan)
+        conflicting_destinations = {
+            Path(conflict.destination) for conflict in conflicts
+        }
 
         # Summary
         summary_parts = [f"{move_count} file{'s' if move_count != 1 else ''} to organize"]
@@ -321,6 +331,11 @@ class OrganizePreviewScreen:
             summary_parts.append(f"{unmatched_count} unmatched")
         if missing_count:
             summary_parts.append(f"{missing_count} missing")
+        if conflicts:
+            summary_parts.append(
+                f"{len(conflicts)} existing destination"
+                f"{'s' if len(conflicts) != 1 else ''}"
+            )
         summary = ", ".join(summary_parts)
 
         # Move rows
@@ -337,6 +352,7 @@ class OrganizePreviewScreen:
             src_name = f"{src_parent}/{src_path.name}" if src_parent else src_path.name
             dest_name = Path(move.destination).name
             dest_folder = Path(move.destination).parent.name
+            has_conflict = Path(move.destination) in conflicting_destinations
             conf_color = {
                 "high": ft.Colors.GREEN,
                 "medium": ft.Colors.YELLOW,
@@ -368,12 +384,23 @@ class OrganizePreviewScreen:
             tgt_dur_text = f"({_fmt_duration(tgt_dur)})" if tgt_dur else ""
             move_rows.append(
                 ft.Row([
-                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=conf_color, size=16),
+                    ft.Icon(
+                        ft.Icons.WARNING_AMBER if has_conflict else ft.Icons.CHECK_CIRCLE,
+                        color=ft.Colors.AMBER_700 if has_conflict else conf_color,
+                        size=16,
+                    ),
                     conf_chip,
                     ft.Text(f"{src_name}", size=13, width=220, no_wrap=True),
                     ft.Text(src_dur_text, size=12, width=62, no_wrap=True, color=dur_color),
                     ft.Icon(ft.Icons.ARROW_FORWARD, size=14, color=ft.Colors.GREY_500),
-                    ft.Text(f"{dest_folder}/{dest_name}", size=13, expand=True, no_wrap=True),
+                    ft.Text(
+                        f"{dest_folder}/{dest_name}",
+                        size=13,
+                        expand=True,
+                        no_wrap=True,
+                        color=ft.Colors.AMBER_700 if has_conflict else None,
+                        weight=ft.FontWeight.BOLD if has_conflict else None,
+                    ),
                     ft.Text(tgt_dur_text, size=12, width=62, no_wrap=True, color=dur_color),
                 ], spacing=8)
             )
@@ -384,9 +411,17 @@ class OrganizePreviewScreen:
             split_parent = split_path.parent.name
             src_name = f"{split_parent}/{split_path.name}" if split_parent else split_path.name
             dest_count = len(split.chapter_destinations)
+            has_conflict = any(
+                Path(destination) in conflicting_destinations
+                for destination in split.chapter_destinations
+            )
             move_rows.append(
                 ft.Row([
-                    ft.Icon(ft.Icons.CONTENT_CUT, color=ft.Colors.BLUE, size=16),
+                    ft.Icon(
+                        ft.Icons.WARNING_AMBER if has_conflict else ft.Icons.CONTENT_CUT,
+                        color=ft.Colors.AMBER_700 if has_conflict else ft.Colors.BLUE,
+                        size=16,
+                    ),
                     ft.Text(f"{src_name}", size=12, width=250, no_wrap=True),
                     ft.Icon(ft.Icons.ARROW_FORWARD, size=14, color=ft.Colors.GREY_500),
                     ft.Text(f"Split into {dest_count} files", size=12, expand=True),
@@ -431,6 +466,54 @@ class OrganizePreviewScreen:
             ft.Divider(height=20),
             ft.Text(summary, size=14, weight=ft.FontWeight.BOLD),
         ]
+
+        self._conflict_policy = None
+        if conflicts:
+            self._conflict_policy = ft.RadioGroup(
+                value="skip",
+                content=ft.Column(
+                    [
+                        ft.Radio(
+                            value="skip",
+                            label="Skip existing files and keep the new rips in place",
+                        ),
+                        ft.Radio(
+                            value="overwrite",
+                            label="Overwrite existing library files with the new rips",
+                        ),
+                    ],
+                    spacing=2,
+                ),
+            )
+            sections.append(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.WARNING_AMBER,
+                                        color=ft.Colors.AMBER_700,
+                                        size=20,
+                                    ),
+                                    ft.Text(
+                                        f"{len(conflicts)} destination file"
+                                        f"{'s already exist' if len(conflicts) != 1 else ' already exists'}",
+                                        size=13,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                ],
+                                spacing=8,
+                            ),
+                            self._conflict_policy,
+                        ],
+                        spacing=6,
+                    ),
+                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.AMBER),
+                    border_radius=4,
+                    padding=12,
+                )
+            )
 
         if move_rows:
             sections.append(ft.Text("Matched files:", size=13, weight=ft.FontWeight.BOLD))
@@ -516,6 +599,13 @@ class OrganizePreviewScreen:
         self.organize_btn.content = "Organizing..."
         self.organize_btn.update()
 
+        conflict_policy: ConflictPolicy = "error"
+        if (
+            self._conflict_policy is not None
+            and self._conflict_policy.value in ("skip", "overwrite")
+        ):
+            conflict_policy = self._conflict_policy.value
+
         started = start_background_once(
             self.app,
             "organize-execute",
@@ -527,6 +617,7 @@ class OrganizePreviewScreen:
                 self.app.state.get("source_folder"),
                 self.app.state.get("title", ""),
                 str(self.app.state.get("output_root") or get_output_root()),
+                conflict_policy,
             ),
         )
         if not started:
@@ -543,23 +634,39 @@ class OrganizePreviewScreen:
         source_folder,
         title: str,
         output_root: str,
+        conflict_policy: ConflictPolicy,
     ):
         """Run execute_plan in background thread."""
+        planned_count = len(organize_plan.moves) + sum(
+            len(split.chapter_destinations) for split in organize_plan.splits
+        )
+        conflicts = (
+            find_destination_conflicts(organize_plan)
+            if conflict_policy == "skip"
+            else []
+        )
+        skipped_conflict_count = len(conflicts)
+        executed_count = planned_count - skipped_conflict_count
+        execution_error = None
         try:
-            actions = execute_plan(organize_plan, dry_run=False)
+            actions = execute_plan(
+                organize_plan,
+                dry_run=False,
+                conflict_policy=conflict_policy,
+            )
 
             # Write organized marker to source folder
-            if source_folder:
-                move_count = len(organize_plan.moves) + sum(
-                    len(s.chapter_destinations) for s in organize_plan.splits
-                )
+            if source_folder and skipped_conflict_count == 0:
                 save_organized_marker(
                     source_folder,
                     title=title,
-                    file_count=move_count,
+                    file_count=executed_count,
                     output_root=output_root,
                 )
         except Exception as exc:
+            log.exception("Organize execution failed: %s", exc)
+            execution_error = str(exc)
+            executed_count = 0
             actions = [f"Error: {exc}"]
 
         if not screen_lease_is_current(self.app, lease):
@@ -569,6 +676,9 @@ class OrganizePreviewScreen:
         self.app.state["organize_results"] = actions
         self.app.state["organize_plan"] = organize_plan
         self.app.state["_organize_planned"] = planned
+        self.app.state["_organize_executed_count"] = executed_count
+        self.app.state["_organize_skipped_conflict_count"] = skipped_conflict_count
+        self.app.state["_organize_error"] = execution_error
 
         async def _nav():
             if screen_lease_is_current(self.app, lease):

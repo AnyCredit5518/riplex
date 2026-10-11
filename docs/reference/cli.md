@@ -57,6 +57,7 @@ riplex organize <folder> [options]
 | `--output` | Output root directory (or set `PLEX_ROOT` env var, or `output_root` in config) |
 | `--execute` | Actually move files (default: dry-run preview only) |
 | `--unmatched` | Policy for unmatched files: `ignore` (default), `move`, `delete`, or `extras` |
+| `--on-conflict` | Policy for existing destinations: `error`, `skip`, or `overwrite` (non-interactive default: `skip`) |
 | `--verbose`, `-v` | Print debug logging to stderr (log file is always written) |
 | `--no-cache` | Bypass cached dvdcompare and TMDb responses |
 | `--force` | Re-organize files even if already tagged as organized |

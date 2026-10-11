@@ -24,6 +24,11 @@ class OrganizeDoneScreen:
         plan = self.app.state.get("organize_plan")
         actions = self.app.state.get("organize_results", [])
         planned = self.app.state.get("_organize_planned")
+        execution_error = self.app.state.get("_organize_error")
+        skipped_conflict_count = self.app.state.get(
+            "_organize_skipped_conflict_count",
+            0,
+        )
 
         # Compute stats
         move_count = 0
@@ -36,8 +41,12 @@ class OrganizeDoneScreen:
             unmatched_count = len(plan.unmatched)
             missing_count = len(plan.missing)
 
-        total_organized = move_count + sum(
+        planned_count = move_count + sum(
             len(s.chapter_destinations) for s in (plan.splits if plan else [])
+        )
+        total_organized = self.app.state.get(
+            "_organize_executed_count",
+            planned_count,
         )
 
         # Determine output folder
@@ -67,6 +76,18 @@ class OrganizeDoneScreen:
                     ft.Text(f"{total_organized} file{'s' if total_organized != 1 else ''} organized", size=14),
                 ], spacing=8)
             )
+        if skipped_conflict_count:
+            stat_rows.append(
+                ft.Row([
+                    ft.Icon(ft.Icons.SKIP_NEXT, color=ft.Colors.AMBER_700, size=18),
+                    ft.Text(
+                        f"{skipped_conflict_count} file"
+                        f"{'s' if skipped_conflict_count != 1 else ''} skipped "
+                        "(destination already exists)",
+                        size=14,
+                    ),
+                ], spacing=8)
+            )
         if split_count:
             stat_rows.append(
                 ft.Row([
@@ -89,12 +110,37 @@ class OrganizeDoneScreen:
                 ], spacing=8)
             )
 
+        if execution_error:
+            status_message = f"No source files were archived. {execution_error}"
+            status_color = ft.Colors.RED_400
+        elif skipped_conflict_count and total_organized:
+            status_message = (
+                "Files without conflicts were organized. Skipped rips remain "
+                "in the source folder."
+            )
+            status_color = ft.Colors.GREY_500
+        elif skipped_conflict_count:
+            status_message = (
+                "No library files were changed. Skipped rips remain in the "
+                "source folder."
+            )
+            status_color = ft.Colors.GREY_500
+        else:
+            status_message = (
+                "Files have been moved into the Plex-compatible folder structure."
+            )
+            status_color = ft.Colors.GREY_500
+
         sections = [
-            ft.Text("Organize Complete", size=24, weight=ft.FontWeight.BOLD),
             ft.Text(
-                "Files have been moved into the Plex-compatible folder structure.",
+                "Organize Failed" if execution_error else "Organize Complete",
+                size=24,
+                weight=ft.FontWeight.BOLD,
+            ),
+            ft.Text(
+                status_message,
                 size=13,
-                color=ft.Colors.GREY_500,
+                color=status_color,
             ),
             ft.Divider(height=20),
         ]
@@ -114,7 +160,13 @@ class OrganizeDoneScreen:
         if source_folder:
             source_folder = Path(source_folder)
         archive_root = get_archive_root()
-        if source_folder and archive_root and source_folder.exists():
+        if (
+            not execution_error
+            and not skipped_conflict_count
+            and source_folder
+            and archive_root
+            and source_folder.exists()
+        ):
             rip_output = self.app.state.get("rip_output") or get_rip_output()
             prune_stop = Path(rip_output) if rip_output else None
             archive_dest = archive_source_folder(
@@ -203,6 +255,9 @@ class OrganizeDoneScreen:
         self.app.state["scanned"] = None
         self.app.state["organize_plan"] = None
         self.app.state["organize_results"] = None
+        self.app.state["_organize_error"] = None
+        self.app.state["_organize_executed_count"] = None
+        self.app.state["_organize_skipped_conflict_count"] = 0
         self.app.state["tmdb_match"] = None
         self.app.state["dvdcompare_discs"] = []
         self.app.state["title"] = ""

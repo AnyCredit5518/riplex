@@ -89,6 +89,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Policy for files that can't be matched: ignore (default), move to _Unmatched folder, delete, or extras (route to Other/ folder).",
     )
     org_parser.add_argument(
+        "--on-conflict",
+        choices=["error", "skip", "overwrite"],
+        default=None,
+        help=(
+            "Policy when a destination already exists: error, skip, or "
+            "overwrite. Interactive runs prompt; non-interactive runs skip."
+        ),
+    )
+    org_parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         default=False,

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import errno
 import logging
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Sequence
+from typing import Literal, Sequence
 
 from riplex.models import (
     MatchCandidate,
@@ -28,6 +30,8 @@ from riplex.normalize import (
 from riplex.splitter import split_by_chapters
 
 log = logging.getLogger(__name__)
+
+ConflictPolicy = Literal["error", "skip", "overwrite"]
 
 # Regex to extract edition name from rip-time classification strings
 # e.g. "Theatrical Cut (4K)" -> "Theatrical Cut"
@@ -176,6 +180,112 @@ class OrganizePlan:
     splits: list[SplitMove] = field(default_factory=list)
     unmatched: list[ScannedFile] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class DestinationConflict:
+    """A planned output whose destination already exists."""
+
+    source: str
+    destination: str
+    label: str
+
+
+def _planned_outputs(
+    organize_plan: OrganizePlan,
+    unmatched_policy: str,
+    unmatched_dir: Path | None,
+) -> list[DestinationConflict]:
+    outputs = [
+        DestinationConflict(move.source, move.destination, move.label)
+        for move in organize_plan.moves
+    ]
+    for split in organize_plan.splits:
+        outputs.extend(
+            DestinationConflict(split.source, destination, label)
+            for destination, label in zip(
+                split.chapter_destinations,
+                split.chapter_labels,
+            )
+        )
+    if unmatched_policy == "move" and unmatched_dir is not None:
+        outputs.extend(
+            DestinationConflict(f.path, str(unmatched_dir / f.name), f.name)
+            for f in organize_plan.unmatched
+        )
+    return outputs
+
+
+def find_destination_conflicts(
+    organize_plan: OrganizePlan,
+    unmatched_policy: str = "ignore",
+    unmatched_dir: Path | None = None,
+) -> list[DestinationConflict]:
+    """Return all existing destinations without changing the filesystem."""
+    return [
+        output
+        for output in _planned_outputs(
+            organize_plan,
+            unmatched_policy,
+            unmatched_dir,
+        )
+        if Path(output.destination).exists()
+    ]
+
+
+def _find_duplicate_destinations(
+    organize_plan: OrganizePlan,
+    unmatched_policy: str,
+    unmatched_dir: Path | None,
+) -> list[DestinationConflict]:
+    seen: set[Path] = set()
+    duplicates: list[DestinationConflict] = []
+    for output in _planned_outputs(
+        organize_plan,
+        unmatched_policy,
+        unmatched_dir,
+    ):
+        destination = Path(output.destination)
+        if destination in seen:
+            duplicates.append(output)
+        else:
+            seen.add(destination)
+    return duplicates
+
+
+def _replace_file(source: Path, destination: Path) -> None:
+    """Replace *destination* without exposing a partially copied file."""
+    try:
+        source.replace(destination)
+        return
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+
+    with tempfile.NamedTemporaryFile(
+        dir=destination.parent,
+        prefix=f".{destination.name}.",
+        suffix=".riplex-tmp",
+        delete=False,
+    ) as staging_file:
+        staging_path = Path(staging_file.name)
+
+    try:
+        shutil.copy2(source, staging_path)
+        staging_path.replace(destination)
+        source.unlink()
+    finally:
+        staging_path.unlink(missing_ok=True)
+
+
+def _move_file(source: str | Path, destination: str | Path, *, overwrite: bool) -> None:
+    source_path = Path(source)
+    destination_path = Path(destination)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    if overwrite and destination_path.exists():
+        _replace_file(source_path, destination_path)
+    else:
+        shutil.move(source_path, destination_path)
 
 
 def _extras_folder(feature_type: str) -> str:
@@ -756,6 +866,8 @@ def execute_plan(
     dry_run: bool = True,
     unmatched_policy: str = "ignore",
     unmatched_dir: Path | None = None,
+    *,
+    conflict_policy: ConflictPolicy = "error",
 ) -> list[str]:
     """Execute file moves. Returns a list of action descriptions.
 
@@ -765,26 +877,69 @@ def execute_plan(
     - ``"ignore"``: leave in place (default)
     - ``"move"``: move to *unmatched_dir*
     - ``"delete"``: remove the file
+
+    *conflict_policy* controls existing destinations. ``"error"`` aborts
+    before changing any files, ``"skip"`` leaves both files untouched, and
+    ``"overwrite"`` explicitly replaces the destination.
     """
+    if conflict_policy not in ("error", "skip", "overwrite"):
+        raise ValueError(f"Unknown conflict policy: {conflict_policy}")
+
+    conflicts: list[DestinationConflict] = []
+    if not dry_run:
+        duplicate_destinations = _find_duplicate_destinations(
+            organize_plan,
+            unmatched_policy,
+            unmatched_dir,
+        )
+        if duplicate_destinations:
+            first = duplicate_destinations[0]
+            raise ValueError(
+                f"{len(duplicate_destinations) + 1} planned outputs target the "
+                f"same destination; first duplicate: {first.destination}"
+            )
+        conflicts = find_destination_conflicts(
+            organize_plan,
+            unmatched_policy=unmatched_policy,
+            unmatched_dir=unmatched_dir,
+        )
+        if conflicts and conflict_policy == "error":
+            first = conflicts[0]
+            raise FileExistsError(
+                f"{len(conflicts)} organize destination(s) already exist; "
+                f"first conflict: {first.destination}"
+            )
+    conflicting_destinations = {Path(item.destination) for item in conflicts}
+
     # --- Execute moves/splits first ---
     for move in organize_plan.moves:
         if not dry_run:
             dest = Path(move.destination)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(move.source, dest)
+            if conflict_policy == "skip" and dest in conflicting_destinations:
+                log.info("Skipped existing destination: %s", dest)
+                continue
+            _move_file(
+                move.source,
+                dest,
+                overwrite=conflict_policy == "overwrite",
+            )
             log.info("Moved: %s -> %s ([%s] %s)", move.source, move.destination, move.confidence, move.label)
 
     for split in organize_plan.splits:
         if not dry_run:
-            import tempfile
-
             output_names = [Path(d).name for d in split.chapter_destinations]
             with tempfile.TemporaryDirectory() as tmp:
                 split_files = split_by_chapters(split.source, tmp, output_names)
                 for sf, dest in zip(split_files, split.chapter_destinations):
                     dest_path = Path(dest)
-                    dest_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(sf, dest_path)
+                    if conflict_policy == "skip" and dest_path in conflicting_destinations:
+                        log.info("Skipped existing split destination: %s", dest_path)
+                        continue
+                    _move_file(
+                        sf,
+                        dest_path,
+                        overwrite=conflict_policy == "overwrite",
+                    )
             log.info("Split: %s -> %d files", split.source, len(split.chapter_destinations))
 
     # Handle unmatched files
@@ -792,8 +947,14 @@ def execute_plan(
         if unmatched_policy == "move" and unmatched_dir is not None:
             dest = unmatched_dir / f.name
             if not dry_run:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(f.path, dest)
+                if conflict_policy == "skip" and dest in conflicting_destinations:
+                    log.info("Skipped existing unmatched destination: %s", dest)
+                    continue
+                _move_file(
+                    f.path,
+                    dest,
+                    overwrite=conflict_policy == "overwrite",
+                )
                 log.info("Moved unmatched: %s -> %s", f.path, dest)
         elif unmatched_policy == "delete":
             if not dry_run:
@@ -801,7 +962,13 @@ def execute_plan(
                 log.info("Deleted unmatched: %s", f.path)
 
     # --- Build grouped output ---
-    return format_organize_plan(organize_plan, dry_run, unmatched_policy, unmatched_dir)
+    actions = format_organize_plan(organize_plan, dry_run, unmatched_policy, unmatched_dir)
+    if not dry_run and conflict_policy == "skip":
+        actions.extend(
+            f"Skipped existing destination: {conflict.destination}"
+            for conflict in conflicts
+        )
+    return actions
 
 
 def format_organize_plan(

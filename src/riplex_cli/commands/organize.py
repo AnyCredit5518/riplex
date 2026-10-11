@@ -20,9 +20,11 @@ from riplex.matcher import (
 from riplex.metadata.sources.tmdb import TmdbProvider
 from riplex.models import SearchRequest
 from riplex.organizer import (
+    ConflictPolicy,
     archive_source_folder,
     build_organize_plan,
     execute_plan,
+    find_destination_conflicts,
     format_organize_plan,
 )
 from riplex.scanner import scan_folder
@@ -37,7 +39,7 @@ from riplex.title import (
     parse_season_number,
     strip_year_from_title,
 )
-from riplex.ui import prompt_confirm, prompt_text
+from riplex.ui import prompt_choice, prompt_confirm, prompt_text
 
 from riplex_cli.formatting import (
     dry_run_banner,
@@ -658,37 +660,104 @@ async def organize_with_scanned(
     for line in preview_lines:
         print(line)
 
+    conflicts = find_destination_conflicts(
+        org_plan,
+        unmatched_policy=unmatched_policy,
+        unmatched_dir=unmatched_dir,
+    )
+    if conflicts:
+        print(
+            f"\n{len(conflicts)} destination file"
+            f"{'s already exist' if len(conflicts) != 1 else ' already exists'}:",
+            file=sys.stderr,
+        )
+        for conflict in conflicts[:10]:
+            print(f"  {conflict.destination}", file=sys.stderr)
+        if len(conflicts) > 10:
+            print(f"  ... and {len(conflicts) - 10} more", file=sys.stderr)
+
     if dry_run:
         print(f"\n{execute_hint('organize')}")
         return 0
+
+    requested_policy = getattr(args, "on_conflict", None)
+    conflict_policy: ConflictPolicy = "error"
+    if requested_policy in ("error", "skip", "overwrite"):
+        conflict_policy = requested_policy
+    elif conflicts:
+        choice = prompt_choice(
+            "Existing destination files:",
+            [
+                "Skip them and keep the new rips in place",
+                "Overwrite them with the new rips",
+                "Cancel organize",
+            ],
+            default=0,
+        )
+        if choice == 2:
+            print("Organize cancelled.", file=sys.stderr)
+            return 0
+        conflict_policy = "skip" if choice == 0 else "overwrite"
+
+    if conflicts and conflict_policy == "error":
+        print(
+            "Error: organize stopped because destination files already exist. "
+            "Use --on-conflict skip or --on-conflict overwrite.",
+            file=sys.stderr,
+        )
+        return 1
 
     if not prompt_confirm("\nProceed with organize?", default=True):
         print("Organize cancelled.", file=sys.stderr)
         return 0
 
-    execute_plan(
-        org_plan, dry_run=False,
-        unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir,
+    try:
+        execute_plan(
+            org_plan, dry_run=False,
+            unmatched_policy=unmatched_policy, unmatched_dir=unmatched_dir,
+            conflict_policy=conflict_policy,
+        )
+    except OSError as exc:
+        print(f"Error organizing files: {exc}", file=sys.stderr)
+        return 1
+
+    skipped_destinations = (
+        {Path(conflict.destination) for conflict in conflicts}
+        if conflict_policy == "skip"
+        else set()
     )
 
     # Tag organized files after successful execute
     from riplex.tagger import tag_organized
     tagged = 0
     for move in org_plan.moves:
+        if Path(move.destination) in skipped_destinations:
+            continue
         if tag_organized(move.destination, move.label):
             tagged += 1
     for split in org_plan.splits:
         for dest, label in zip(split.chapter_destinations, split.chapter_labels):
+            if Path(dest) in skipped_destinations:
+                continue
             if tag_organized(dest, label):
                 tagged += 1
     if tagged:
         log.info("Tagged %d file(s) as organized", tagged)
 
     # Write organized marker to source folder
-    if source_folder:
+    if source_folder and not skipped_destinations:
+        planned_destinations = {
+            Path(move.destination) for move in org_plan.moves
+        }
+        planned_destinations.update(
+            Path(destination)
+            for split in org_plan.splits
+            for destination in split.chapter_destinations
+        )
         move_count = len(org_plan.moves) + sum(
             len(s.chapter_destinations) for s in org_plan.splits
         )
+        move_count -= len(planned_destinations & skipped_destinations)
         save_organized_marker(
             source_folder,
             title=title,
@@ -697,7 +766,12 @@ async def organize_with_scanned(
         )
 
     # Archive source folder if configured
-    if source_folder:
+    if source_folder and skipped_destinations:
+        print(
+            "Source folder left in place because destination conflicts were skipped.",
+            file=sys.stderr,
+        )
+    elif source_folder:
         archive_root = get_archive_root()
         if archive_root and source_folder.exists():
             # Prune empty parents up to (but not including) the

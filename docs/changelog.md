@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Windows self-update relaunch.** Frozen GUI updates now start with a fresh
 	PyInstaller environment and close Flet normally, preventing stale bundled
 	paths and locked temporary runtime files from breaking the replacement app.
+- **Existing organize destinations.** The organize preview now detects output
+	files that already exist and offers explicit skip or overwrite policies in
+	the GUI and CLI. Skip is the unattended default, all conflicts are checked
+	before any move begins, and cross-filesystem overwrites stage a complete copy
+	before replacing the library file. Failed or skipped operations leave the
+	source folder available for recovery or retry.
 
 ## v1.2.0 — 2026-10-10
 
