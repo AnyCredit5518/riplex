@@ -54,6 +54,62 @@ class TestRequestThrottle:
         assert set(calls) == {"first", "second", "third"}
         assert all(not thread.is_alive() for thread in threads)
 
+    @pytest.mark.asyncio
+    async def test_format_lookup_retries_dvdcompare_article_order(self, monkeypatch):
+        import riplex.disc.provider as provider
+
+        calls: list[str] = []
+
+        async def _fake_find(title, _disc_format, _year):
+            calls.append(title)
+            if title.startswith("The "):
+                raise LookupError("no results")
+            return FilmComparison(title=title, releases=[])
+
+        monkeypatch.setattr(provider, "_find_film_prefer_format", _fake_find)
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+        monkeypatch.setattr(provider, "_last_request_at", 0.0)
+
+        film = await provider._throttled_find_film(
+            "The Fast and the Furious: Tokyo Drift",
+            "Blu-ray 4K",
+            year=2006,
+        )
+
+        assert calls == [
+            "The Fast and the Furious: Tokyo Drift",
+            "Fast and the Furious (The): Tokyo Drift",
+        ]
+        assert film.title == "Fast and the Furious (The): Tokyo Drift"
+
+    @pytest.mark.asyncio
+    async def test_no_format_lookup_retries_dvdcompare_article_order(self, monkeypatch):
+        import riplex.disc.provider as provider
+
+        calls: list[str] = []
+
+        async def _fake_find(title, _disc_format, *, year, resolve_pointers):
+            calls.append(title)
+            if title.startswith("The "):
+                raise LookupError("no results")
+            return FilmComparison(title=title, releases=[])
+
+        monkeypatch.setattr(provider, "find_film", _fake_find)
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+        monkeypatch.setattr(provider, "_last_request_at", 0.0)
+
+        film = await provider._throttled_find_film(
+            "The Lego Movie 2: The Second Part",
+            None,
+            year=2019,
+        )
+
+        assert calls == [
+            "The Lego Movie 2: The Second Part",
+            "Lego Movie 2 (The): The Second Part",
+        ]
+        assert film.title == "Lego Movie 2 (The): The Second Part"
+
 
 def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
     import riplex.disc.provider as provider
@@ -69,6 +125,63 @@ def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
     provider.DiscProvider()
 
     assert calls == [("dvdcompare", "0.1.18|planned-disc-v2")]
+
+
+@pytest.mark.asyncio
+async def test_film_lookup_ignores_legacy_negative_cache_key(monkeypatch):
+    import riplex.disc.provider as provider
+
+    title = "The Fast and the Furious: Tokyo Drift"
+    legacy_key = provider.cache.hash_key(
+        f"film|{title}|Blu-ray 4K|2006"
+    )
+    fetched: list[str] = []
+
+    def _fake_cache_get(_namespace, key, *, ttl_days):
+        if key == legacy_key:
+            return {
+                "_negative": True,
+                "_kind": "noresults",
+                "_message": "",
+                "_expires_at": time.time() + 3600,
+            }
+        return None
+
+    async def _fake_find(query, _disc_format, *, year):
+        fetched.append(query)
+        return FilmComparison(title=query, releases=[])
+
+    monkeypatch.setattr(provider.cache, "ensure_ns_version", lambda *_args: None)
+    monkeypatch.setattr(provider.cache, "cache_get", _fake_cache_get)
+    monkeypatch.setattr(provider.cache, "cache_set", lambda *_args: None)
+    monkeypatch.setattr(provider, "_throttled_find_film", _fake_find)
+
+    film = await provider.DiscProvider().fetch_film(
+        title, "Blu-ray 4K", year=2006,
+    )
+
+    assert fetched == [title]
+    assert film.title == title
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        ("The Matrix", ["The Matrix", "Matrix (The)"]),
+        (
+            "The Fast and the Furious: Tokyo Drift",
+            [
+                "The Fast and the Furious: Tokyo Drift",
+                "Fast and the Furious (The): Tokyo Drift",
+            ],
+        ),
+        ("There Will Be Blood", ["There Will Be Blood"]),
+    ],
+)
+def test_dvdcompare_title_variants(title, expected):
+    from riplex.disc.provider import _dvdcompare_title_variants
+
+    assert _dvdcompare_title_variants(title) == expected
 
 
 class TestDvdcompareConnectivity:

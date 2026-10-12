@@ -21,6 +21,7 @@ class MetadataScreen:
         self.app = app
         self.tmdb_results: list[MetadataSearchResult] = []
         self._search_field: ft.TextField | None = None
+        self._search_draft = ""
         self._search_button: ft.Control | None = None
         self._result_back_button: ft.Control | None = None
         self._next_button: ft.Control | None = None
@@ -105,10 +106,12 @@ class MetadataScreen:
 
     def _build_search_bar(self, title: str, *, searching: bool) -> ft.Control:
         """Search field + button so the user can refine the query in place."""
+        self._search_draft = title
         self._search_field = ft.TextField(
             label="Search title",
             value=title,
             expand=True,
+            on_change=self._on_search_change,
             on_submit=self._on_search_click,
             disabled=searching,
             hint_text="Edit and press Enter to search again",
@@ -127,11 +130,15 @@ class MetadataScreen:
             spacing=10,
         )
 
+    def _on_search_change(self, event):
+        """Keep client-side edits available to the separate Search button."""
+        self._search_draft = event.control.value or ""
+
     def _on_search_click(self, _e):
         """Re-run TMDb search with the edited title."""
         if self._submitting or self._search_field is None:
             return
-        new_title = (self._search_field.value or "").strip()
+        new_title = self._search_draft.strip()
         if not new_title:
             return
         self.app.state["title"] = new_title
@@ -225,10 +232,10 @@ class MetadataScreen:
 
     def _build_results_view(self, title: str) -> ft.Control:
         """Build the view showing TMDb results."""
+        self._submitting = False
         if not self.tmdb_results:
             return self._build_error_view(title, "No results found. Try a different title.")
 
-        self._submitting = False
         self.radio_group = ft.RadioGroup(
             content=ft.Column(
                 [self._build_result_row(i, r) for i, r in enumerate(self.tmdb_results)],
@@ -309,6 +316,7 @@ class MetadataScreen:
 
     def _build_error_view(self, title: str, error: str) -> ft.Control:
         """Build the error view with option to continue without metadata."""
+        self._submitting = False
         return self._layout(
             header=[
                 ft.Text("Metadata Lookup", size=24, weight=ft.FontWeight.BOLD),

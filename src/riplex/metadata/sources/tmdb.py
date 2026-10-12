@@ -27,6 +27,33 @@ from riplex.metadata.provider import (
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 _TMDB_TTL_DAYS = 7
+_TRAILING_MASTERING_CODE_RE = re.compile(
+    r"[\s_-]+UP[A-Z]\d+(?:[\s_-]+GLOBAL)?\s*$",
+    re.IGNORECASE,
+)
+_LETTER_NUMBER_BOUNDARY_RE = re.compile(
+    r"(?<=[A-Za-z])(?=\d)|(?<=\d)(?=[A-Za-z])",
+)
+_CAMEL_CASE_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _search_title_variants(query: str) -> list[str]:
+    """Return the original TMDb query plus one conservative fallback.
+
+    The fallback removes a trailing optical-disc mastering code, normalizes
+    underscores, and separates adjacent letter/number runs. The original is
+    always first so stylized titles such as ``M3GAN`` remain unchanged when
+    TMDb already recognizes them.
+    """
+    variants = [query]
+    fallback = _TRAILING_MASTERING_CODE_RE.sub("", query)
+    fallback = fallback.replace("_", " ")
+    fallback = _CAMEL_CASE_BOUNDARY_RE.sub(" ", fallback)
+    fallback = _LETTER_NUMBER_BOUNDARY_RE.sub(" ", fallback)
+    fallback = " ".join(fallback.split())
+    if fallback and fallback != query:
+        variants.append(fallback)
+    return variants
 
 
 def _normalize_for_match(text: str) -> str:
@@ -147,23 +174,32 @@ class TmdbProvider(MetadataProvider):
         year: int | None = None,
         media_type: Literal["movie", "tv", "auto"] = "auto",
     ) -> list[MetadataSearchResult]:
-        results: list[MetadataSearchResult]
+        results: list[MetadataSearchResult] = []
+        ranking_query = query
 
-        if media_type == "auto" and year is None:
-            # No media-type or year constraint: use TMDb's /search/multi, the
-            # same endpoint the website's search box uses. It applies a
-            # server-side relevance score across movies and TV in one ranked
-            # list, which avoids the cross-endpoint merge problem (a single
-            # "movie" + "tv" merge has no shared score to order by).
-            results = await self._search_multi(query)
-        else:
-            # Explicit media type, or a year filter (which the dedicated
-            # endpoints support server-side but /search/multi does not).
-            results = []
-            if media_type in ("movie", "auto"):
-                results.extend(await self._search_movies(query, year))
-            if media_type in ("tv", "auto"):
-                results.extend(await self._search_tv(query, year))
+        for search_query in _search_title_variants(query):
+            if media_type == "auto" and year is None:
+                # No media-type or year constraint: use TMDb's /search/multi,
+                # the same endpoint the website's search box uses. It applies
+                # a server-side relevance score across movies and TV in one
+                # ranked list, which avoids the cross-endpoint merge problem.
+                results = await self._search_multi(search_query)
+            else:
+                # Explicit media type, or a year filter (which the dedicated
+                # endpoints support server-side but /search/multi does not).
+                results = []
+                if media_type in ("movie", "auto"):
+                    results.extend(await self._search_movies(search_query, year))
+                if media_type in ("tv", "auto"):
+                    results.extend(await self._search_tv(search_query, year))
+            if search_query != query and not any(
+                _title_match_tier(search_query, result.title) > 0
+                for result in results
+            ):
+                results = []
+            if results:
+                ranking_query = search_query
+                break
 
         # Rank by literal title-match quality first, then popularity. TMDb's
         # results are fuzzy (a "Tron" search returns unrelated high-popularity
@@ -171,7 +207,7 @@ class TmdbProvider(MetadataProvider):
         # still using popularity to order within a tier. Applying it uniformly
         # also gives a deterministic, offline-testable final ordering.
         results.sort(
-            key=lambda r: (_title_match_tier(query, r.title), r.popularity),
+            key=lambda r: (_title_match_tier(ranking_query, r.title), r.popularity),
             reverse=True,
         )
         return results

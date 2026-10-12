@@ -3,6 +3,7 @@ import pytest
 from riplex.metadata.sources.tmdb import (
     TmdbProvider,
     _looks_like_read_access_token,
+    _search_title_variants,
     _title_match_tier,
 )
 
@@ -95,6 +96,22 @@ class TestTitleMatchTier:
             reverse=True,
         )
         assert ranked[0] == original
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        (
+            "2fast2furious Upk1 Global",
+            ["2fast2furious Upk1 Global", "2 fast 2 furious"],
+        ),
+        ("DISTRICT9", ["DISTRICT9", "DISTRICT 9"]),
+        ("JurassicPark_UPK75", ["JurassicPark_UPK75", "Jurassic Park"]),
+        ("Blade Runner 2049", ["Blade Runner 2049"]),
+    ],
+)
+def test_search_title_variants(query, expected):
+    assert _search_title_variants(query) == expected
 
 
 # Minimal /search/multi payload mirroring TMDb's real shape for "Tron":
@@ -208,4 +225,84 @@ class TestSearchMulti:
             await provider.close()
 
         assert calls == ["/search/tv"]
+
+    @pytest.mark.asyncio
+    async def test_empty_search_retries_compact_word_number_variant(self, monkeypatch):
+        provider = TmdbProvider(api_key=_SAMPLE_API_KEY)
+        queries: list[str] = []
+
+        async def fake_get_json(path, params=None, cache_ns=None, cache_key=None):
+            query = params["query"]
+            queries.append(query)
+            if query == "2 fast 2 furious":
+                return {
+                    "results": [{
+                        "id": 584,
+                        "media_type": "movie",
+                        "title": "2 Fast 2 Furious",
+                        "release_date": "2003-06-05",
+                    }],
+                }
+            return {"results": []}
+
+        monkeypatch.setattr(provider, "_get_json", fake_get_json)
+        try:
+            results = await provider.search("2fast2furious Upk1 Global")
+        finally:
+            await provider.close()
+
+        assert queries == [
+            "2fast2furious Upk1 Global",
+            "2 fast 2 furious",
+        ]
+        assert results[0].source_id == "movie:584"
+
+    @pytest.mark.asyncio
+    async def test_successful_stylized_title_does_not_try_fallback(self, monkeypatch):
+        provider = TmdbProvider(api_key=_SAMPLE_API_KEY)
+        queries: list[str] = []
+
+        async def fake_get_json(path, params=None, cache_ns=None, cache_key=None):
+            queries.append(params["query"])
+            return {
+                "results": [{
+                    "id": 536554,
+                    "media_type": "movie",
+                    "title": "M3GAN",
+                    "release_date": "2022-12-28",
+                }],
+            }
+
+        monkeypatch.setattr(provider, "_get_json", fake_get_json)
+        try:
+            results = await provider.search("M3GAN")
+        finally:
+            await provider.close()
+
+        assert queries == ["M3GAN"]
+        assert results[0].title == "M3GAN"
+
+    @pytest.mark.asyncio
+    async def test_fallback_rejects_unrelated_fuzzy_results(self, monkeypatch):
+        provider = TmdbProvider(api_key=_SAMPLE_API_KEY)
+
+        async def fake_get_json(path, params=None, cache_ns=None, cache_key=None):
+            if params["query"] == "3 DAYS 2 KILL":
+                return {
+                    "results": [{
+                        "id": 1181692,
+                        "media_type": "movie",
+                        "title": "Three Days in the Woods 2: Killin' Time",
+                        "release_date": "2022-10-01",
+                    }],
+                }
+            return {"results": []}
+
+        monkeypatch.setattr(provider, "_get_json", fake_get_json)
+        try:
+            results = await provider.search("3DAYS2KILL")
+        finally:
+            await provider.close()
+
+        assert results == []
 

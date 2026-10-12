@@ -4,6 +4,19 @@ All notable changes to the riplex documentation are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.2.2 — 2026-10-12
+
+### Fixed
+
+- **Metadata title searches.** Manual GUI searches now submit the visible title
+	and remain available when the metadata screen is reused. Automatic TMDb
+	lookup retries compact disc labels with guarded title variants while
+	preserving recognized stylized titles.
+- **DVDCompare leading articles.** Movie titles beginning with `The` retry in
+	DVDCompare's trailing-article form, such as `Matrix (The)`, across GUI and CLI
+	lookups. Versioned film cache keys bypass stale negative results created by
+	the previous single-query behavior.
+
 ## v1.2.1 — 2026-10-10
 
 ### Fixed

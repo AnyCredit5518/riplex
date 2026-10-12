@@ -39,6 +39,7 @@ _DVDCOMPARE_NEG_TTL_DAYS = 7
 _DVDCOMPARE_HTTP_ERROR_TTL_SECONDS = 5 * 60  # 5 minutes
 _CACHE_NS = "dvdcompare"
 _PLANNED_DISC_CACHE_VERSION = 2
+_FILM_LOOKUP_CACHE_VERSION = 2
 
 # Global throttle: at most one dvdcompare network round-trip every N seconds
 # across the entire process, regardless of how many UI threads/tasks try to
@@ -193,7 +194,9 @@ class DiscProvider:
         - All real network requests are funnelled through a process-wide
           throttle so we never burst dvdcompare with parallel calls.
         """
-        cache_key = cache.hash_key(f"film|{title}|{disc_format}|{year}")
+        cache_key = cache.hash_key(
+            f"film-v{_FILM_LOOKUP_CACHE_VERSION}|{title}|{disc_format}|{year}"
+        )
 
         # Check the negative cache (short, custom expiry).
         neg = _read_negative_cache(self.cache_ns, cache_key)
@@ -404,6 +407,50 @@ async def _throttled_find_film(
     page. We work around that by doing the search ourselves and ranking
     format-match above year-match when a disc format is known.
     """
+    variants = _dvdcompare_title_variants(title)
+    last_error: LookupError | None = None
+    for query in variants:
+        try:
+            return await _throttled_find_film_once(
+                query, disc_format, year=year,
+            )
+        except LookupError as exc:
+            last_error = exc
+            if query != variants[-1]:
+                log.debug(
+                    "dvdcompare no results for %r; retrying article-order variant",
+                    query,
+                )
+
+    if len(variants) == 1 and last_error is not None:
+        raise last_error
+    raise LookupError(f"No dvdcompare results for '{title}'") from last_error
+
+
+def _dvdcompare_title_variants(title: str) -> list[str]:
+    """Return canonical and dvdcompare-style leading-article queries."""
+    variants = [title]
+    stripped = title.strip()
+    if not stripped.lower().startswith("the "):
+        return variants
+
+    body = stripped[4:]
+    lead, separator, subtitle = body.partition(":")
+    if not lead.strip():
+        return variants
+
+    alternate = f"{lead.strip()} (The)"
+    if separator:
+        alternate += f": {subtitle.strip()}"
+    if alternate != title:
+        variants.append(alternate)
+    return variants
+
+
+async def _throttled_find_film_once(
+    title: str, disc_format: str | None, *, year: int | None = None
+) -> FilmComparison:
+    """Run one dvdcompare film lookup under the process-wide throttle."""
     global _last_request_at
     await _acquire_request_lock()
     try:

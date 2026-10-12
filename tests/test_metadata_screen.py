@@ -52,6 +52,37 @@ def test_loading_build_starts_one_search_worker(monkeypatch):
     assert len(started) == 1
 
 
+def test_search_button_submits_client_side_title_edit():
+    app = _App({"title": "2fast2furious Upk1 Global"})
+    screen = MetadataScreen(app)
+    screen._build_error_view("2fast2furious Upk1 Global", "No results found")
+
+    assert screen._search_field.on_change is not None
+    screen._search_field.on_change(
+        MagicMock(control=MagicMock(value="2 Fast 2 Furious")),
+    )
+    screen._on_search_click(None)
+
+    assert app.state["title"] == "2 Fast 2 Furious"
+    assert app.navigation_calls == ["metadata"]
+
+
+def test_empty_results_clear_stale_submission_before_manual_search():
+    app = _App({"title": "Fftokyodrift Uhd Upk75"})
+    screen = MetadataScreen(app)
+    screen._submitting = True
+    screen.tmdb_results = []
+
+    screen._build_results_view("Fftokyodrift Uhd Upk75")
+    screen._search_field.on_change(
+        MagicMock(control=MagicMock(value="The Fast and the Furious: Tokyo Drift")),
+    )
+    screen._on_search_click(None)
+
+    assert app.state["title"] == "The Fast and the Furious: Tokyo Drift"
+    assert app.navigation_calls == ["metadata"]
+
+
 def test_late_search_completion_does_not_restore_metadata(monkeypatch):
     workers: list = []
 
