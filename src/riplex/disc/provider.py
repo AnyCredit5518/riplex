@@ -38,7 +38,7 @@ _DVDCOMPARE_TTL_DAYS = 30
 _DVDCOMPARE_NEG_TTL_DAYS = 7
 _DVDCOMPARE_HTTP_ERROR_TTL_SECONDS = 5 * 60  # 5 minutes
 _CACHE_NS = "dvdcompare"
-_PLANNED_DISC_CACHE_VERSION = 2
+_PLANNED_DISC_CACHE_VERSION = 3
 _FILM_LOOKUP_CACHE_VERSION = 3
 
 # Global throttle: at most one dvdcompare network round-trip every N seconds
@@ -732,6 +732,19 @@ def _is_featurette_type(feature_type: str | None) -> bool:
     return cleaned in _FEATURETTE_TYPES
 
 
+def _is_episode_group(feature) -> bool:
+    """Recognize explicit episode headings, not bonus headings mentioning episodes."""
+    return bool(
+        feature.children
+        and not _is_featurette_type(feature.feature_type)
+        and re.fullmatch(
+            r"(?:\d+\s+)?episodes?\s*:?",
+            feature.title.strip(),
+            re.IGNORECASE,
+        )
+    )
+
+
 async def lookup_discs(
     title: str,
     disc_format: str | None = None,
@@ -790,7 +803,8 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
     - Play-all groups whose feature_type is a featurette category
       (e.g. "featurettes") → children become **extras**
     - Other play-all groups with children → children become **episodes**
-        - Non-play-all groups titled "Episodes" → children become **episodes**
+        - Explicit groups titled "Episodes" or "2 Episodes" → children become
+            **episodes**, even when their runtimes are unknown
     - Standalone features with no feature_type and runtime >= 600s on
       non-film discs → **episodes** (these are actual TV episodes listed
       outside of any group)
@@ -839,10 +853,7 @@ def _convert_release(rel: object, disc_offset: int = 0) -> list[PlannedDisc]:
                                 runtime_seconds=child.runtime_seconds or 0,
                             )
                         )
-            elif (
-                feature.children
-                and feature.title.lower().strip().rstrip(":") == "episodes"
-            ):
+            elif _is_episode_group(feature):
                 log.debug("Disc %d: episode group '%s' with %d children",
                           disc_offset + dvc_disc.number, feature.title,
                           len(feature.children))
@@ -920,8 +931,8 @@ def _convert_box_set(releases: list, disc_offset: int = 0) -> list[PlannedDisc]:
 
     Used for multi-volume box sets (e.g. X-Men Animated Series Vol 1-4)
     where each volume is a separate release containing season discs.
-    Groups titled "Episodes" become episodes; other groups and standalone
-    features become extras.
+    Explicit episode groups (including counted headings) become episodes;
+    other groups and standalone features become extras.
     """
     discs: list[PlannedDisc] = []
     offset = disc_offset
@@ -931,16 +942,15 @@ def _convert_box_set(releases: list, disc_offset: int = 0) -> list[PlannedDisc]:
             extras: list[PlannedExtra] = []
 
             for feature in dvc_disc.features:
-                title_lower = feature.title.lower().strip().rstrip(":")
-                if feature.children and title_lower == "episodes":
+                if _is_episode_group(feature):
                     log.debug("Disc %d: episode group '%s' with %d children",
                               offset + dvc_disc.number, feature.title,
                               len(feature.children))
-                    for i, child in enumerate(feature.children, 1):
+                    for child in feature.children:
                         episodes.append(
                             PlannedEpisode(
                                 season_number=0,
-                                episode_number=i,
+                                episode_number=len(episodes) + 1,
                                 title=child.title,
                                 runtime="",
                                 runtime_seconds=child.runtime_seconds or 0,

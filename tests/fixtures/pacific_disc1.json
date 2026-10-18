@@ -1,0 +1,119 @@
+{
+  "disc_name": "The Pacific Disc 1",
+  "disc_type": "Blu-ray disc",
+  "titles": [
+    {"index": 0, "duration_seconds": 3124, "chapters": 8, "size_bytes": 15112237056, "playlist": "00800.mpls", "resolution": "1920x1080", "segment_count": 1, "segment_map": "1"},
+    {"index": 1, "duration_seconds": 3018, "chapters": 8, "size_bytes": 14449287168, "playlist": "00801.mpls", "resolution": "1920x1080", "segment_count": 1, "segment_map": "68"},
+    {"index": 2, "duration_seconds": 245, "chapters": 35, "size_bytes": 137465856, "playlist": "00963.mpls", "resolution": "1920x1080", "segment_count": 1, "segment_map": "89"},
+    {"index": 3, "duration_seconds": 171, "chapters": 4, "size_bytes": 378353664, "playlist": "00020.mpls", "resolution": "1920x1080", "segment_count": 2, "segment_map": "4,5"},
+    {"index": 4, "duration_seconds": 4404, "chapters": 129, "size_bytes": 9939265536, "playlist": "00252.mpls", "resolution": "1280x720", "segment_count": 65, "segment_map": "17,18,1015,1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,1027,1028,1029,1030,1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043,1044,1045,1046,1047,1048,1049,1050,1051,1052,1053,1054,1055,1056,1057,1058,1059,1060,1061,1062,1063,1064,1065,1066,1067,1068,1069,1070,1071,1072,1073,1074,1075,1076,1077"},
+    {"index": 5, "duration_seconds": 259, "chapters": 37, "size_bytes": 145121280, "playlist": "00053.mpls", "resolution": "1920x1080", "segment_count": 2, "segment_map": "88,89"},
+    {"index": 6, "duration_seconds": 3124, "chapters": 0, "size_bytes": 15112237056, "playlist": "00001.m2ts", "resolution": "1920x1080", "segment_count": 1, "segment_map": "1"},
+    {"index": 7, "duration_seconds": 132, "chapters": 0, "size_bytes": 299126784, "playlist": "00018.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "18"},
+    {"index": 8, "duration_seconds": 3018, "chapters": 0, "size_bytes": 14449287168, "playlist": "00068.m2ts", "resolution": "1920x1080", "segment_count": 1, "segment_map": "68"},
+    {"index": 9, "duration_seconds": 172, "chapters": 0, "size_bytes": 642877440, "playlist": "00070.m2ts", "resolution": "1920x1080", "segment_count": 1, "segment_map": "70"},
+    {"index": 10, "duration_seconds": 162, "chapters": 0, "size_bytes": 603396096, "playlist": "00071.m2ts", "resolution": "1920x1080", "segment_count": 1, "segment_map": "71"},
+    {"index": 11, "duration_seconds": 209, "chapters": 0, "size_bytes": 472363008, "playlist": "01018.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1018"},
+    {"index": 12, "duration_seconds": 141, "chapters": 0, "size_bytes": 319764480, "playlist": "01023.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1023"},
+    {"index": 13, "duration_seconds": 121, "chapters": 0, "size_bytes": 275189760, "playlist": "01031.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1031"},
+    {"index": 14, "duration_seconds": 168, "chapters": 0, "size_bytes": 381634560, "playlist": "01032.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1032"},
+    {"index": 15, "duration_seconds": 126, "chapters": 0, "size_bytes": 285757440, "playlist": "01035.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1035"},
+    {"index": 16, "duration_seconds": 177, "chapters": 0, "size_bytes": 400521216, "playlist": "01051.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1051"},
+    {"index": 17, "duration_seconds": 129, "chapters": 0, "size_bytes": 292583424, "playlist": "01054.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1054"},
+    {"index": 18, "duration_seconds": 122, "chapters": 0, "size_bytes": 277211136, "playlist": "01057.m2ts", "resolution": "1280x720", "segment_count": 1, "segment_map": "1057"}
+  ],
+  "dvdcompare": {
+    "film_id": 27242,
+    "film_title": "Pacific (The) (Mini-series)",
+    "release_name": "Blu-ray ALL America - HBO",
+    "discs": [
+      {
+        "number": 1, "format": "",
+        "features": [
+          {"title": "2 Episodes", "children": [{"title": "Guadalcanal/Leckie"}, {"title": "Basilone"}]},
+          {"title": "Historical Background", "feature_type": "featurettes"},
+          {"title": "Field Guide", "feature_type": "interactive feature"},
+          {"title": "Enhanced Viewing", "feature_type": "interactive bonus view feature"}
+        ]
+      },
+      {
+        "number": 2, "format": "",
+        "features": [
+          {"title": "2 Episodes", "children": [{"title": "Melbourne"}, {"title": "Gloucester/Pavuvu/Banika"}]},
+          {"title": "Historical Background", "feature_type": "featurettes"},
+          {"title": "Field Guide", "feature_type": "interactive feature"},
+          {"title": "Enhanced Viewing", "feature_type": "interactive bonus view feature"}
+        ]
+      },
+      {
+        "number": 3, "format": "",
+        "features": [
+          {"title": "2 Episodes", "children": [{"title": "Peleliu Landing"}, {"title": "Peleliu Airfield"}]},
+          {"title": "Historical Background", "feature_type": "featurettes"},
+          {"title": "Field Guide", "feature_type": "interactive feature"},
+          {"title": "Enhanced Viewing", "feature_type": "interactive bonus view feature"}
+        ]
+      },
+      {
+        "number": 4, "format": "",
+        "features": [
+          {"title": "2 Episodes", "children": [{"title": "Peleliu Hills"}, {"title": "Iwo Jima"}]},
+          {"title": "Historical Background", "feature_type": "featurettes"},
+          {"title": "Field Guide", "feature_type": "interactive feature"},
+          {"title": "Enhanced Viewing", "feature_type": "interactive bonus view feature"}
+        ]
+      },
+      {
+        "number": 5, "format": "",
+        "features": [
+          {"title": "2 Episodes", "children": [{"title": "Okinawa"}, {"title": "Home"}]},
+          {"title": "Historical Background", "feature_type": "featurettes"},
+          {"title": "Field Guide", "feature_type": "interactive feature"},
+          {"title": "Enhanced Viewing", "feature_type": "interactive bonus view feature"}
+        ]
+      },
+      {
+        "number": 6, "format": "",
+        "features": [
+          {"title": "Profiles of 'The Pacific'", "children": [
+            {"title": "John Basilone", "runtime_seconds": 595},
+            {"title": "Eugene Sledge", "runtime_seconds": 611},
+            {"title": "Robert Leckie", "runtime_seconds": 537},
+            {"title": "Sidney Phillips", "runtime_seconds": 369},
+            {"title": "R.V. Burgin", "runtime_seconds": 440},
+            {"title": "Chuck Tatum", "runtime_seconds": 357}
+          ]},
+          {"title": "Making 'The Pacific'", "runtime_seconds": 1356, "feature_type": "featurette"},
+          {"title": "Anatomy of the Pacific War", "runtime_seconds": 599, "feature_type": "featurette"}
+        ]
+      }
+    ]
+  },
+  "tmdb": {
+    "source_id": "tv:16997", "title": "The Pacific", "year": 2010,
+    "seasons": [
+      {"season_number": 0, "episodes": [
+        {"season_number": 0, "episode_number": 1, "title": "Profiles of the Pacific", "runtime_seconds": 2880},
+        {"season_number": 0, "episode_number": 2, "title": "Making 'The Pacific'", "runtime_seconds": 1320},
+        {"season_number": 0, "episode_number": 3, "title": "Anatomy of the Pacific War", "runtime_seconds": 600}
+      ]},
+      {"season_number": 1, "episodes": [
+        {"season_number": 1, "episode_number": 1, "title": "Guadalcanal/Leckie", "runtime_seconds": 3120},
+        {"season_number": 1, "episode_number": 2, "title": "Basilone", "runtime_seconds": 3000},
+        {"season_number": 1, "episode_number": 3, "title": "Melbourne", "runtime_seconds": 3360},
+        {"season_number": 1, "episode_number": 4, "title": "Gloucester/Pavuvu/Banika", "runtime_seconds": 3060},
+        {"season_number": 1, "episode_number": 5, "title": "Peleliu Landing", "runtime_seconds": 2940},
+        {"season_number": 1, "episode_number": 6, "title": "Peleliu Airfield", "runtime_seconds": 3000},
+        {"season_number": 1, "episode_number": 7, "title": "Peleliu Hills", "runtime_seconds": 3060},
+        {"season_number": 1, "episode_number": 8, "title": "Iwo Jima", "runtime_seconds": 3360},
+        {"season_number": 1, "episode_number": 9, "title": "Okinawa", "runtime_seconds": 3480},
+        {"season_number": 1, "episode_number": 10, "title": "Home", "runtime_seconds": 3660}
+      ]}
+    ]
+  },
+  "expected": {
+    "rip_indices": [0, 1],
+    "primary_indices": [0, 1],
+    "episode_names": {"0": "S01E01 - Guadalcanal/Leckie", "1": "S01E02 - Basilone"}
+  }
+}

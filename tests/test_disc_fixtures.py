@@ -4,94 +4,11 @@ Uses JSON fixtures that capture disc info + dvdcompare data to test
 the full classification pipeline without needing a physical disc.
 """
 
-import json
-from pathlib import Path
-
 import pytest
 
-from riplex.disc.analysis import analyze_disc, format_seconds
-from riplex.disc.makemkv import DiscInfo, DiscTitle
-from riplex.disc.provider import _convert_release
-from riplex.models import PlannedDisc, PlannedEpisode, PlannedExtra
-
-
-FIXTURES = Path(__file__).parent / "fixtures"
-
-
-def _load_disc_fixture(name: str):
-    """Load a disc fixture JSON and return (DiscInfo, dvdcompare_discs, expected).
-
-    The fixture contains:
-    - disc_info: raw DiscInfo with titles from makemkvcon
-    - dvdcompare: raw dvdcompare feature tree (pre-conversion)
-    - expected: expected classification results
-    """
-    path = FIXTURES / name
-    data = json.loads(path.read_text(encoding="utf-8"))
-
-    # Build DiscInfo
-    titles = []
-    for t in data["titles"]:
-        titles.append(DiscTitle(
-            index=t["index"],
-            name=t.get("name", f"Title {t['index']}"),
-            duration_seconds=t["duration_seconds"],
-            chapters=t.get("chapters", 1),
-            size_bytes=t["size_bytes"],
-            filename=t.get("filename", f"title_t{t['index']:02d}.mkv"),
-            playlist=t.get("playlist", ""),
-            resolution=t["resolution"],
-            video_codec=t.get("video_codec", ""),
-            segment_count=t.get("segment_count", 1),
-            segment_map=t.get("segment_map", ""),
-        ))
-    disc_info = DiscInfo(
-        disc_name=data.get("disc_name", ""),
-        disc_type=data.get("disc_type", "Blu-ray disc"),
-        titles=titles,
-    )
-
-    # Build dvdcompare PlannedDisc objects by converting raw features
-    # through _convert_release (same path as the real app)
-    from dvdcompare.models import Disc as DvcDisc, Feature, Release
-
-    dvdcompare_data = data.get("dvdcompare", {})
-    dvc_discs = []
-    for disc_data in dvdcompare_data.get("discs", []):
-        features = _build_features(disc_data.get("features", []))
-        dvc_discs.append(DvcDisc(
-            number=disc_data["number"],
-            format=disc_data.get("format", "Blu-ray"),
-            is_film=disc_data.get("is_film", False),
-            features=features,
-        ))
-
-    release = Release(
-        name=dvdcompare_data.get("release_name", "Test Release"),
-        discs=dvc_discs,
-    )
-    planned_discs = _convert_release(release)
-
-    expected = data.get("expected", {})
-
-    return disc_info, planned_discs, expected
-
-
-def _build_features(features_data: list) -> list:
-    """Recursively build dvdcompare Feature objects from JSON."""
-    from dvdcompare.models import Feature
-
-    features = []
-    for f in features_data:
-        children = _build_features(f.get("children", []))
-        features.append(Feature(
-            title=f["title"],
-            runtime_seconds=f.get("runtime_seconds"),
-            feature_type=f.get("feature_type"),
-            is_play_all=f.get("is_play_all", False),
-            children=children,
-        ))
-    return features
+from riplex.disc.analysis import analyze_disc, collect_tmdb_episodes_for_disc
+from tests.support.disc_fixtures import load_disc_fixture as _load_disc_fixture
+from tests.support.disc_fixtures import load_show_detail
 
 
 class TestChernobylDisc1:
@@ -240,3 +157,45 @@ class TestChernobylDisc1:
                 f"Title #{idx} (1080p featurette with no 4K counterpart) "
                 f"should NOT be skipped: {analysis.classifications[idx]}"
             )
+
+
+class TestPacificDisc1:
+    """Counted, untimed episode groups from the captured six-disc HBO release."""
+
+    def test_conversion_preserves_all_ten_untimed_episodes(self):
+        _info, discs, _expected = _load_disc_fixture("pacific_disc1.json")
+
+        assert [len(disc.episodes) for disc in discs] == [2, 2, 2, 2, 2, 0]
+        assert [len(disc.extras) for disc in discs] == [3, 3, 3, 3, 3, 8]
+        assert all(episode.runtime_seconds == 0 for disc in discs for episode in disc.episodes)
+
+    def test_real_analysis_identifies_only_the_two_main_episodes(self, caplog):
+        info, discs, expected = _load_disc_fixture("pacific_disc1.json")
+        detail = load_show_detail("pacific_disc1.json")
+        episodes = collect_tmdb_episodes_for_disc(
+            detail, discs, 1, film_title="Pacific (The) (Mini-series)",
+        )
+        assert len(episodes) == 13
+        caplog.set_level("DEBUG", logger="riplex.disc.analysis")
+
+        analysis = analyze_disc(info, discs, is_movie=False, tmdb_episodes=episodes)
+
+        assert analysis.disc_number == 1
+        assert analysis.episode_count == 2
+        assert analysis.total_episode_runtime == 6120
+        assert [title.index for title in analysis.rippable_titles] == expected["rip_indices"]
+        assert sorted(analysis.primary_title_indices) == expected["primary_indices"]
+        for index, name in expected["episode_names"].items():
+            assert analysis.classifications[int(index)] == f"{name} (1080p)"
+            assert analysis.assessments[int(index)].identification == "Matched episode"
+            assert analysis.assessments[int(index)].recommendation == "rip"
+        for title in info.titles[2:]:
+            assessment = analysis.assessments[title.index]
+            assert assessment.recommendation == "skip"
+            assert assessment.identification not in {"Matched episode", "Possible episode"}
+        assert analysis.assessments[6].identification == "Duplicate"
+        assert analysis.assessments[8].identification == "Duplicate"
+        assert analysis.assessments[4].name == "Unknown"
+        assert all(episode.runtime_seconds == 0 for disc in discs for episode in disc.episodes)
+        assert "TMDb runtime fallback" in caplog.text
+        assert "primary=[0, 1]" in caplog.text

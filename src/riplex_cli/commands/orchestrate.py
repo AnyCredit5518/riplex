@@ -12,6 +12,7 @@ from riplex.config import get_api_key
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
+    collect_tmdb_episodes_for_disc,
     derive_episode_carryover_from_manifest,
     format_seconds,
     print_disc_analysis,
@@ -537,6 +538,11 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
             continue
 
         # Analyze disc titles using the known disc number
+        show_detail = getattr(meta, "show_detail", None) or getattr(meta, "planned", None)
+        tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
+            show_detail, discs, disc.number,
+            film_title=getattr(meta, "dvdcompare_film_title", None),
+        )
         episode_carryover = read_episode_carryover(
             rip_root,
             before_disc=disc.number,
@@ -550,12 +556,17 @@ async def run_orchestrate(args: argparse.Namespace) -> int:
                 episode_carryover = derive_episode_carryover_from_manifest(
                     prior_manifest,
                     discs,
+                    collect_tmdb_episodes_for_disc(
+                        show_detail, discs, prior_manifest.get("disc_number"),
+                        film_title=getattr(meta, "dvdcompare_film_title", None),
+                    ) if not is_movie else [],
                 )
         analysis = analyze_disc(
             disc_info, discs,
             disc_number=disc.number,
             is_movie=is_movie,
             movie_runtime=movie_runtime,
+            tmdb_episodes=tmdb_episodes,
             episode_carryover=episode_carryover,
         )
         dvd_entries = analysis.dvd_entries

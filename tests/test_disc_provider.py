@@ -8,7 +8,12 @@ import pytest
 
 from dvdcompare.models import Disc, Feature, FilmComparison, Release
 
-from riplex.disc.provider import _clean_feature_type, _convert_film, _convert_release
+from riplex.disc.provider import (
+    _clean_feature_type,
+    _convert_box_set,
+    _convert_film,
+    _convert_release,
+)
 
 
 class TestRequestThrottle:
@@ -210,7 +215,7 @@ def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
 
     provider.DiscProvider()
 
-    assert calls == [("dvdcompare", "0.1.18|planned-disc-v2")]
+    assert calls == [("dvdcompare", "0.1.18|planned-disc-v3")]
 
 
 @pytest.mark.asyncio
@@ -618,6 +623,64 @@ def test_non_play_all_episode_group_precedes_standalone_episodes():
         "Mummy Munster",
     ]
     assert disc.extras == []
+
+
+@pytest.mark.parametrize("box_set", [False, True])
+@pytest.mark.parametrize("heading", ["Episodes", "2 Episodes", " 2  EPISODES : ", "1 Episode:"])
+def test_episode_group_headings_preserve_unknown_and_short_runtimes(box_set, heading):
+    release = Release(
+        name="Test release",
+        discs=[Disc(number=1, format="Blu-ray", features=[
+            Feature(title=heading, children=[
+                Feature(title="First", runtime_seconds=None),
+                Feature(title="Second", runtime_seconds=437),
+            ]),
+        ])],
+    )
+
+    discs = _convert_box_set([release]) if box_set else _convert_release(release)
+
+    assert [(ep.title, ep.runtime_seconds, ep.episode_number) for ep in discs[0].episodes] == [
+        ("First", 0, 1), ("Second", 437, 2),
+    ]
+    assert discs[0].extras == []
+
+
+@pytest.mark.parametrize("box_set", [False, True])
+@pytest.mark.parametrize("heading", ["Inside the Episodes", "Episode Guide", "2 Episodes: Deleted Scenes"])
+def test_episode_words_in_bonus_headings_do_not_create_episodes(box_set, heading):
+    release = Release(
+        name="Test release",
+        discs=[Disc(number=1, format="Blu-ray", features=[
+            Feature(title=heading, children=[Feature(title="Pilot", runtime_seconds=120)]),
+        ])],
+    )
+
+    discs = _convert_box_set([release]) if box_set else _convert_release(release)
+
+    assert discs[0].episodes == []
+    assert [extra.title for extra in discs[0].extras] == ["Pilot"]
+
+
+@pytest.mark.parametrize("box_set", [False, True])
+@pytest.mark.parametrize("play_all", [False, True])
+@pytest.mark.parametrize("heading", ["Episodes", "2 Episodes"])
+def test_explicit_featurette_type_overrides_episode_heading(box_set, play_all, heading):
+    release = Release(
+        name="Test release",
+        discs=[Disc(number=1, format="Blu-ray", features=[
+            Feature(
+                title=heading, feature_type="featurettes (1080p)",
+                is_play_all=play_all,
+                children=[Feature(title="Pilot", runtime_seconds=None)],
+            ),
+        ])],
+    )
+
+    discs = _convert_box_set([release]) if box_set else _convert_release(release)
+
+    assert discs[0].episodes == []
+    assert [extra.title for extra in discs[0].extras] == ["Pilot"]
 
 
 class TestConvertFilmEdgeCases:

@@ -6,6 +6,7 @@ rip/skip recommendations.  Used by both ``rip-guide`` and ``rip``.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -13,6 +14,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from riplex.models import PlannedDisc, PlannedExtra
     from riplex.models import DiscGroup
+
+
+log = logging.getLogger(__name__)
 
 
 # Edition patterns in dvdcompare feature titles
@@ -480,8 +484,9 @@ def collect_tmdb_episodes_for_disc(
     (parsed from ``build_season_labels``). Falls back to concatenating
     every episode from every season on the show when the label doesn't
     resolve — the enricher only consumes each entry once, so a
-    superset is safe. Returns an empty list when no ``ShowDetail`` is
-    available.
+    superset is safe. Accepts either ``ShowDetail`` or ``PlannedShow``
+    (both expose seasons and episodes), so CLI and GUI callers can use
+    metadata they already loaded. Returns an empty list when none is available.
     """
     if show_detail is None:
         return []
@@ -723,13 +728,16 @@ def enrich_dvd_entries_with_tmdb(
     * **Enrich** matched episode names with an ``SxxEyy - `` prefix so
       the Select Titles screen shows canonical Plex-style labels and
       downstream organizer can pick up the S/E numbers.
+        * **Fill missing runtimes** from the matched TMDb episode when
+            DVDCompare provides no positive runtime. Positive DVDCompare
+            runtimes remain authoritative; raw source metadata is not changed.
     * **Preserve** all non-matching entries verbatim (extras,
       featurettes, deleted scenes, unlisted bonus content) so nothing
       gets silently dropped.
 
-    Each TMDb episode is used at most once (first-come, best-similarity
-    within a single pass), preventing the same episode name from
-    landing on two features when their titles happen to be identical.
+    Each TMDb episode is used at most once (best similarity, then longest
+    runtime), preventing the same episode name from landing on two features
+    when their titles happen to be identical.
 
     Returns ``(enriched_entries, total_episode_runtime, episode_count)``
     with counts reflecting any promotions.
@@ -789,6 +797,21 @@ def enrich_dvd_entries_with_tmdb(
             ) else ""
             if variant:
                 enriched_name = f"{enriched_name} {variant}"
+            runtime_source = "DVDCompare" if runtime > 0 else "unknown"
+            if runtime <= 0:
+                runtime = 0
+                tmdb_runtime = getattr(ep, "runtime_seconds", 0) or 0
+                if tmdb_runtime > 0:
+                    runtime = tmdb_runtime
+                    runtime_source = "TMDb"
+                    log.debug(
+                        "TMDb runtime fallback: %s - %s -> %ds",
+                        se, name, runtime,
+                    )
+            log.debug(
+                "Episode cross-reference: %r -> %s runtime=%ds source=%s",
+                name, se, runtime, runtime_source,
+            )
             enriched.append((enriched_name, runtime, "episode"))
         elif etype == "episode" and entry_idx in entry_strong_match:
             # dvdcompare said "episode" and the name matches a TMDb
@@ -803,6 +826,11 @@ def enrich_dvd_entries_with_tmdb(
 
     total_episode_runtime = sum(rt for _, rt, et in enriched if et == "episode")
     episode_count = sum(1 for _, _, et in enriched if et == "episode")
+    log.debug(
+        "Episode enrichment: entries=%d TMDb=%d matched=%d episodes=%d untimed=%d",
+        len(dvd_entries), len(tmdb_episodes), len(entry_to_tmdb), episode_count,
+        sum(1 for _, runtime, etype in enriched if etype == "episode" and runtime <= 0),
+    )
     return enriched, total_episode_runtime, episode_count
 
 
@@ -926,16 +954,27 @@ def _assign_episodes_sequentially(
     are left out and handled by the duration-only path in
     ``classify_title`` / ``is_skip_title``.
     """
-    episodes = [
+    episode_entries = [
         (i, name, runtime)
         for i, (name, runtime, etype) in enumerate(dvd_entries)
-        if etype == "episode" and runtime > 0
+        if etype == "episode"
     ]
+    # Do not step over an untimed slot and attach a later episode's name
+    # to the earlier physical title. Only the known prefix is safe to walk;
+    # later entries stay reviewable until their order can be resolved.
+    episodes = []
+    for entry in episode_entries:
+        if entry[2] <= 0:
+            break
+        episodes.append(entry)
     if not episodes or not all_titles:
         return {}
 
     # Plan A: trust disc order when the episode-length titles line up 1:1.
-    positional = _positional_episode_alignment(all_titles, episodes, tolerance_seconds)
+    positional = (
+        _positional_episode_alignment(all_titles, episodes, tolerance_seconds)
+        if len(episodes) == len(episode_entries) else None
+    )
     if positional is not None:
         return positional
 
@@ -1050,8 +1089,12 @@ def _matches_unclaimed_episode_runtime(
     all_titles: list,
     dvd_entries: list[tuple[str, int, str]],
 ) -> bool:
-    """Return whether an unmatched title plausibly fills a remaining slot."""
-    remaining = [entry for entry in dvd_entries if entry[2] == "episode" and entry[1] > 0]
+    """Return whether an unmatched title plausibly fills a remaining slot.
+
+    An untimed episode is still an open slot, not evidence that all episodes
+    were assigned. It cannot establish identity, but must not force a skip.
+    """
+    remaining = [entry for entry in dvd_entries if entry[2] == "episode"]
     assignments = _assign_episodes_sequentially(all_titles, dvd_entries)
     for assigned in assignments.values():
         if assigned[2] != "episode":
@@ -1062,7 +1105,8 @@ def _matches_unclaimed_episode_runtime(
             pass
 
     return any(
-        abs(title.duration_seconds - runtime) <= max(180, round(runtime * 0.1))
+        runtime <= 0
+        or abs(title.duration_seconds - runtime) <= max(180, round(runtime * 0.1))
         for _, runtime, _ in remaining
     )
 
@@ -1080,6 +1124,9 @@ def classify_title(
     dur = title.duration_seconds
     is_4k = "3840" in (title.resolution or "")
     res_label = _resolution_label(title.resolution)
+    has_untimed_episodes = any(
+        etype == "episode" and runtime <= 0 for _, runtime, etype in dvd_entries
+    )
 
     # Check for same-resolution duplicate (earlier title with identical duration/size)
     for t in all_titles:
@@ -1121,9 +1168,10 @@ def classify_title(
                 return f"{edition_name} ({res_label})"
             return f"Extended Cut ({res_label})"
 
-    # Check if this is a play-all (dvdcompare total)
+    # A partial sum with untimed episodes cannot identify a play-all.
     if (
         episode_count > 1
+        and not has_untimed_episodes
         and total_episode_runtime > 0
         and abs(dur - total_episode_runtime) < 120
     ):
@@ -1196,7 +1244,7 @@ def classify_title(
 
     # When dvdcompare data exists and no match was found, this is unmatched content
     # Don't call it "Episode" if it's much shorter than known episodes
-    if dvd_entries and episode_count > 0:
+    if dvd_entries and episode_count > 0 and not has_untimed_episodes:
         avg_episode = total_episode_runtime / episode_count
         if dur < avg_episode * 0.3:
             return f"Unmatched content ({res_label}, {format_seconds(dur)})"
@@ -1260,6 +1308,10 @@ def is_skip_title(
     """Return True if this title should be skipped."""
     dur = title.duration_seconds
     is_4k = "3840" in (title.resolution or "")
+    has_untimed_episodes = any(
+        etype == "episode" and runtime <= 0
+        for _, runtime, etype in dvd_entries or []
+    )
 
     # Always skip very short titles
     if dur < 120:
@@ -1309,7 +1361,12 @@ def is_skip_title(
                     return True
 
     # Skip dvdcompare-based play-all if individual episodes exist at same resolution
-    if total_episode_runtime > 0 and abs(dur - total_episode_runtime) < 120:
+    if (
+        episode_count > 1
+        and not has_untimed_episodes
+        and total_episode_runtime > 0
+        and abs(dur - total_episode_runtime) < 120
+    ):
         same_res_individuals = [
             t for t in all_titles
             if t is not title
@@ -1351,9 +1408,10 @@ def is_skip_title(
     if dvd_entries and episode_count > 0:
         match = _get_effective_match(title, all_titles, dvd_entries)
         if not match:
-            avg_episode = total_episode_runtime / episode_count
-            if dur < avg_episode * 0.3:
-                return True
+            if not has_untimed_episodes:
+                avg_episode = total_episode_runtime / episode_count
+                if dur < avg_episode * 0.3:
+                    return True
             # Symmetric: also skip unmatched titles that are longer than
             # any known episode. On TV discs these are almost always
             # partial play-alls (e.g. episodes 1+2 concatenated,
@@ -1366,7 +1424,11 @@ def is_skip_title(
                 rt for _, rt, etype in dvd_entries
                 if etype == "episode" and rt > 0
             ]
-            if episode_runtimes and dur > max(episode_runtimes) * 1.5:
+            if (
+                not has_untimed_episodes
+                and episode_runtimes
+                and dur > max(episode_runtimes) * 1.5
+            ):
                 return True
             if not _matches_unclaimed_episode_runtime(title, all_titles, dvd_entries):
                 return True
@@ -1863,7 +1925,8 @@ def analyze_disc(
         Movie runtime in seconds (used for main-feature classification).
     tmdb_episodes:
         Optional list of ``EpisodeMetadata`` (or duck-typed equivalents
-        with ``.title``, ``.season_number``, ``.episode_number``) for
+        with ``.title``, ``.season_number``, ``.episode_number`` and an
+        optional ``.runtime_seconds`` fallback) for
         the season(s) covered by this disc. When provided on a TV
         release, dvdcompare features are cross-referenced against these
         entries so canonical S/E numbers land in the classification
@@ -1896,6 +1959,14 @@ def analyze_disc(
 
     dvd_entries, total_episode_runtime, episode_count = build_dvd_entries(
         current_disc_entries
+    )
+    log.debug(
+        "Disc analysis inputs: disc=%s titles=%d source_entries=%d "
+        "episodes=%d untimed=%d TMDb=%d movie=%s",
+        disc_number, len(disc_info.titles) if disc_info else 0,
+        len(dvd_entries), episode_count,
+        sum(1 for _, runtime, etype in dvd_entries if etype == "episode" and runtime <= 0),
+        len(tmdb_episodes or []), is_movie,
     )
 
     # Cross-reference with TMDb episode list for TV releases so
@@ -2048,6 +2119,18 @@ def analyze_disc(
             next_episode_carryover.append(
                 EpisodeCarryover(entry[0], entry[1], disc_number),
             )
+
+    log.debug(
+        "Disc analysis result: disc=%s episodes=%d untimed=%d "
+        "assigned=%d recommended=%s primary=%s",
+        disc_number, episode_count,
+        sum(1 for _, runtime, etype in dvd_entries if etype == "episode" and runtime <= 0),
+        len(assignments), sorted(rippable_indices), sorted(primary_title_indices),
+    )
+    log.debug(
+        "Episode assignments: %s",
+        [(index, entry[0]) for index, entry in sorted(assignments.items())],
+    )
 
     return DiscAnalysis(
         disc_number=disc_number,

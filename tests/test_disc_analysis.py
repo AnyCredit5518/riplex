@@ -1,5 +1,7 @@
 """Tests for disc_analysis module."""
 
+import pytest
+
 from riplex.disc.analysis import (
     _detect_edition_name,
     analyze_disc,
@@ -726,6 +728,45 @@ class _FakeShowDetail:
 
 
 class TestEnrichDvdEntriesWithTmdb:
+    @pytest.mark.parametrize("source_runtime", [0, -1])
+    def test_missing_episode_runtime_uses_matched_tmdb_runtime(self, source_runtime, caplog):
+        entries = [("Guadalcanal/Leckie", source_runtime, "episode")]
+        episode = _FakeTmdbEpisode(1, 1, "Guadalcanal/Leckie", 3120)
+        caplog.set_level("DEBUG", logger="riplex.disc.analysis")
+
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, [episode])
+
+        assert enriched == [("S01E01 - Guadalcanal/Leckie", 3120, "episode")]
+        assert (total, count) == (3120, 1)
+        assert entries == [("Guadalcanal/Leckie", source_runtime, "episode")]
+        assert episode.runtime_seconds == 3120
+        assert "TMDb runtime fallback" in caplog.text
+
+    def test_positive_dvdcompare_runtime_takes_precedence(self):
+        entries = [("Basilone", 3018, "episode")]
+        tmdb = [_FakeTmdbEpisode(1, 2, "Basilone", 3000)]
+
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+
+        assert enriched == [("S01E02 - Basilone", 3018, "episode")]
+        assert (total, count) == (3018, 1)
+
+    @pytest.mark.parametrize("tmdb_runtime", [None, 0, -1])
+    def test_episode_runtime_stays_unknown_without_a_positive_fallback(self, tmdb_runtime):
+        entries = [("Basilone", 0, "episode")]
+        tmdb = [_FakeTmdbEpisode(1, 2, "Basilone", tmdb_runtime)]
+
+        enriched, total, count = enrich_dvd_entries_with_tmdb(entries, tmdb)
+
+        assert enriched == [("S01E02 - Basilone", 0, "episode")]
+        assert (total, count) == (0, 1)
+
+    def test_untimed_extra_is_not_promoted_or_given_an_episode_runtime(self):
+        entries = [("Basilone", 0, "featurette")]
+        tmdb = [_FakeTmdbEpisode(1, 2, "Basilone", 3000)]
+
+        assert enrich_dvd_entries_with_tmdb(entries, tmdb) == (entries, 0, 0)
+
     def test_extended_episode_does_not_invent_standard_version(self):
         entries = [
             ("S.E.I.Z.E. the Day", 2580, "episode"),
@@ -896,6 +937,106 @@ class TestEnrichDvdEntriesWithTmdb:
         )
         assert "S01E01" in analysis.classifications[0]
         assert "S01E02" in analysis.classifications[1]
+
+
+class TestUntimedEpisodeAnalysis:
+    def test_later_episode_cannot_step_over_an_untimed_slot(self):
+        titles = [
+            _make_title(0, 2580, size=10_000_000_000),
+            _make_title(1, 2590, size=11_000_000_000),
+        ]
+        disc = PlannedDisc(1, "Blu-ray", episodes=[
+            PlannedEpisode(0, 1, "First", ""),
+            PlannedEpisode(0, 2, "Second", ""),
+        ])
+
+        analysis = analyze_disc(
+            DiscInfo("SHOW_D1", "Blu-ray disc", titles), [disc],
+            disc_number=1, is_movie=False,
+            tmdb_episodes=[
+                _FakeTmdbEpisode(1, 1, "First", 0),
+                _FakeTmdbEpisode(1, 2, "Second", 2580),
+            ],
+        )
+
+        assert analysis.primary_title_indices == set()
+        assert [title.index for title in analysis.rippable_titles] == [0, 1]
+        assert all(assessment.recommendation == "review" for assessment in analysis.assessments.values())
+        assert all(assessment.name == "Unknown" for assessment in analysis.assessments.values())
+
+    def test_single_recovered_episode_is_not_a_play_all_of_bonus_titles(self):
+        titles = [
+            _make_title(0, 3000, size=10_000_000_000),
+            _make_title(1, 300, size=1_000_000_000),
+        ]
+        disc = PlannedDisc(
+            1, "Blu-ray",
+            episodes=[PlannedEpisode(0, 1, "Pilot", "")],
+            extras=[PlannedExtra("Making Of", 300, "featurette")],
+        )
+
+        analysis = analyze_disc(
+            DiscInfo("SHOW_D1", "Blu-ray disc", titles), [disc],
+            disc_number=1, is_movie=False,
+            tmdb_episodes=[_FakeTmdbEpisode(1, 1, "Pilot", 3000)],
+        )
+
+        assert analysis.primary_title_indices == {0}
+        assert [title.index for title in analysis.rippable_titles] == [0, 1]
+        assert analysis.classifications[0] == "S01E01 - Pilot (4K)"
+        assert analysis.assessments[0].recommendation == "rip"
+
+    @pytest.mark.parametrize("known_runtime,unknown_duration", [(3120, 3018), (600, 3000), (3600, 600)])
+    def test_untimed_slot_stays_reviewable_without_inventing_identity(
+        self, known_runtime, unknown_duration,
+    ):
+        from types import SimpleNamespace
+
+        titles = [
+            _make_title(0, known_runtime, size=10_000_000_000),
+            _make_title(1, unknown_duration, size=11_000_000_000),
+        ]
+        disc = SimpleNamespace(
+            number=1, is_film=False, extras=[],
+            episodes=[
+                SimpleNamespace(title="Known", runtime_seconds=known_runtime),
+                SimpleNamespace(title="Untimed", runtime_seconds=0),
+            ],
+        )
+
+        analysis = analyze_disc(
+            DiscInfo("SHOW_D1", "Blu-ray disc", titles), [disc],
+            disc_number=1, is_movie=False,
+        )
+
+        assert [title.index for title in analysis.rippable_titles] == [0, 1]
+        assert analysis.classifications[0] == "Known (4K)"
+        assert analysis.assessments[1].recommendation == "review"
+        assert analysis.assessments[1].name == "Unknown"
+        assert analysis.primary_title_indices == {0}
+
+    def test_all_unknown_runtimes_do_not_mean_all_slots_are_exhausted(self):
+        from types import SimpleNamespace
+
+        titles = [_make_title(0, 3124), _make_title(1, 3018)]
+        disc = SimpleNamespace(
+            number=1, is_film=False, extras=[],
+            episodes=[
+                SimpleNamespace(title="First", runtime_seconds=0),
+                SimpleNamespace(title="Second", runtime_seconds=0),
+            ],
+        )
+
+        analysis = analyze_disc(
+            DiscInfo("SHOW_D1", "Blu-ray disc", titles), [disc],
+            disc_number=1, is_movie=False,
+        )
+
+        assert analysis.episode_count == 2
+        assert [title.index for title in analysis.rippable_titles] == [0, 1]
+        assert analysis.primary_title_indices == set()
+        assert all(assessment.recommendation == "review" for assessment in analysis.assessments.values())
+        assert all(assessment.name == "Unknown" for assessment in analysis.assessments.values())
 
 
 class TestParseSeasonNumber:

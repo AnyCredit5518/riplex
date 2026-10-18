@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from riplex.disc.makemkv import DiscTitle
 from riplex_app.screens import selection as selection_module
 from riplex_app.screens.selection import SelectionScreen
+from tests.support.disc_fixtures import load_disc_fixture, load_show_detail
 from tests.support.fake_page import FakePage
 
 
@@ -101,3 +102,46 @@ def test_tv_primary_preset_is_labeled_episodes(monkeypatch):
     screen, _page = _build_screen(monkeypatch, media_type="tv")
 
     assert screen._preset_buttons["primary"].content == "Episodes (1)"
+
+
+def test_pacific_real_analysis_populates_episode_names_and_presets(monkeypatch):
+    info, discs, _expected = load_disc_fixture("pacific_disc1.json")
+    detail = load_show_detail("pacific_disc1.json")
+    app = SimpleNamespace(
+        page=FakePage(),
+        state={
+            "workflow": "orchestrate",
+            "disc_info": info,
+            "tmdb_match": SimpleNamespace(
+                media_type="tv", title=detail.title, year=detail.year,
+                source_id=detail.source_id,
+            ),
+            "dvdcompare_discs": discs,
+            "dvdcompare_film_title": "Pacific (The) (Mini-series)",
+            "show_detail": detail,
+            "_orchestrate_disc_number": 1,
+            "disc_queue": [1, 2, 3, 4, 5, 6],
+            "episode_carryover_scope": (detail.source_id, None),
+            "episode_carryover": [],
+        },
+        navigate=lambda _route: None,
+    )
+    screen = SelectionScreen(app)
+    monkeypatch.setattr(screen, "_save_selection_snapshot", lambda *_args, **_kwargs: None)
+
+    screen.build()
+
+    assert screen._preset_buttons["all"].content == "All (19)"
+    assert screen._preset_buttons["recommended"].content == "Recommended (2)"
+    assert screen._preset_buttons["primary"].content == "Episodes (2)"
+    assert not screen._preset_buttons["primary"].disabled
+    assert [cb.data for cb in screen.checkboxes if cb.value] == [0, 1]
+    assert screen._analysis.assessments[0].name == "Guadalcanal/Leckie"
+    assert screen._analysis.assessments[1].name == "Basilone"
+    assert screen._analysis.assessments[4].name == "Unknown"
+
+    screen._preset_buttons["all"].on_click(None)
+    assert all(cb.value for cb in screen.checkboxes)
+    screen._preset_buttons["primary"].on_click(None)
+    assert [cb.data for cb in screen.checkboxes if cb.value] == [0, 1]
+    assert screen.summary_text.value == "2 titles selected (27.5 GB)"

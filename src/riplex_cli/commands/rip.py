@@ -12,6 +12,7 @@ from riplex.config import get_api_key
 from riplex.detect import infer_media_type
 from riplex.disc.analysis import (
     analyze_disc,
+    collect_tmdb_episodes_for_disc,
     detect_bonus_films,
     format_seconds,
     print_disc_analysis,
@@ -24,6 +25,7 @@ from riplex.disc.makemkv import (
 )
 from riplex.disc.provider import (
     detect_disc_format,
+    detect_disc_number,
 )
 from riplex.lookup import lookup_metadata
 from riplex.manifest import build_rip_manifest, build_rip_path, write_manifest
@@ -191,10 +193,16 @@ async def run_rip(args: argparse.Namespace) -> int:
         print(f"  Selected release: {release_name}", file=sys.stderr)
 
     # Analyze disc and determine which titles to rip
+    disc_number = detect_disc_number(disc_info, discs)
+    tmdb_episodes = [] if is_movie else collect_tmdb_episodes_for_disc(
+        meta.planned, discs, disc_number,
+    )
     analysis = analyze_disc(
         disc_info, discs,
+        disc_number=disc_number,
         is_movie=is_movie,
         movie_runtime=movie_runtime,
+        tmdb_episodes=tmdb_episodes,
     )
     dvd_entries = analysis.dvd_entries
     total_episode_runtime = analysis.total_episode_runtime
@@ -205,7 +213,10 @@ async def run_rip(args: argparse.Namespace) -> int:
     current_disc_entries = (
         [d for d in discs if d.number == disc_number] if disc_number else discs
     )
-    print_disc_analysis(disc_info, current_disc_entries, is_movie, movie_runtime)
+    print_disc_analysis(
+        disc_info, current_disc_entries, is_movie, movie_runtime,
+        analysis=analysis,
+    )
 
     # Detect multiple feature-length films on the same disc (e.g. box-set
     # movie collections). Alert the user before ripping so they know each
