@@ -28,6 +28,24 @@ def test_app_icon_path_returns_none_when_asset_is_missing(tmp_path):
     assert _app_icon_path(tmp_path) is None
 
 
+def test_app_icon_path_uses_package_not_frozen_entrypoint(monkeypatch, tmp_path):
+    package_dir = tmp_path / "riplex_app"
+    assets_dir = package_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    icon_path = assets_dir / "riplex-icon.ico"
+    icon_path.write_bytes(b"icon")
+    monkeypatch.setattr(app_main, "__file__", str(tmp_path / "main.py"))
+    import importlib.resources
+
+    def package_files(name):
+        assert name == "riplex_app"
+        return package_dir
+
+    monkeypatch.setattr(importlib.resources, "files", package_files)
+
+    assert _app_icon_path() == icon_path
+
+
 def test_configure_tls_certificates_sets_ssl_env_when_unset():
     env = {}
 

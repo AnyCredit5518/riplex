@@ -1,5 +1,6 @@
 """Update screen - shows release notes and link to download."""
 
+import asyncio
 import logging
 import webbrowser
 
@@ -195,16 +196,18 @@ class UpdateScreen:
             self._status.color = ft.Colors.GREEN
             self.app.page.update()
 
+            # Keep filesystem/process work off the UI loop, then await Flet's
+            # native close request so the old desktop runtime actually exits
+            # and releases the PyInstaller temp folder.
+            try:
+                await asyncio.to_thread(updater.apply_update_and_relaunch, staged)
+                log.info("Replacement launched; closing current update window")
+                await self.app.page.window.close()
+            except Exception as exc:
+                log.exception("failed to apply staged update or close current window")
+                _report_failure(str(exc))
+
         self.app.page.run_task(_apply)
-        # Swap the exe and launch the replacement, then let Flet close cleanly
-        # so its bundled desktop runtime releases the PyInstaller temp folder.
-        try:
-            updater.apply_update_and_relaunch(staged)
-            self.app.page.window.close()
-        except Exception as exc:
-            log.exception("failed to apply staged update")
-            _report_failure(str(exc))
-            return
 
     def _go_back(self, e):
         self.app.navigate("welcome")

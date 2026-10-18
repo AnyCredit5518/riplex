@@ -6,6 +6,7 @@ import sys
 import threading
 import traceback as tb_module
 import webbrowser
+from importlib import resources
 from pathlib import Path
 
 try:
@@ -30,7 +31,10 @@ log = logging.getLogger("riplex_app")
 
 def _app_icon_path(base_dir: Path | None = None) -> Path | None:
     """Return the packaged Windows window icon when available."""
-    icon_path = (base_dir or Path(__file__).resolve().parent) / "assets" / "riplex-icon.ico"
+    # PyInstaller puts this entry-point script at the bundle root, not inside
+    # riplex_app. Resolve assets from the package rather than this __file__.
+    package_dir = base_dir if base_dir is not None else Path(str(resources.files("riplex_app")))
+    icon_path = package_dir / "assets" / "riplex-icon.ico"
     return icon_path if icon_path.is_file() else None
 
 from riplex_app.screens.welcome import WelcomeScreen
@@ -65,6 +69,9 @@ class RiplexApp:
         icon_path = _app_icon_path()
         if icon_path is not None:
             self.page.window.icon = str(icon_path)
+            log.debug("Window icon: %s", icon_path)
+        elif sys.platform == "win32":
+            log.warning("Packaged window icon not found; using desktop runtime default")
 
         # Shared state passed between screens
         self.state = {

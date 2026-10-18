@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -14,11 +16,11 @@ from riplex_app.screens.update import UpdateScreen
 
 
 def _run_page_task(handler, *args):
-    coroutine = handler(*args)
     try:
-        coroutine.send(None)
-    except StopIteration:
-        pass
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(handler(*args))
+    return loop.create_task(handler(*args))
 
 
 def test_update_screen_recovers_when_apply_fails(monkeypatch, tmp_path):
@@ -49,13 +51,13 @@ def test_update_screen_recovers_when_apply_fails(monkeypatch, tmp_path):
 
 def test_update_screen_closes_cleanly_after_relaunch(monkeypatch, tmp_path):
     info = {"url": "https://github.com/AnyCredit5518/riplex/releases/tag/v2"}
-    closed = []
+    close = AsyncMock()
     app = SimpleNamespace(
         state={"update_info": info},
         page=SimpleNamespace(
             update=lambda: None,
             run_task=_run_page_task,
-            window=SimpleNamespace(close=lambda: closed.append(True)),
+            window=SimpleNamespace(close=close),
         ),
     )
     screen = UpdateScreen(app)
@@ -68,7 +70,7 @@ def test_update_screen_closes_cleanly_after_relaunch(monkeypatch, tmp_path):
 
     screen._run_self_update(info)
 
-    assert closed == [True]
+    close.assert_awaited_once_with()
 
 
 # ---------------------------------------------------------------------------
