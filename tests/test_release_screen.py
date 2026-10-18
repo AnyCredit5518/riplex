@@ -118,6 +118,144 @@ def test_late_manual_override_lookup_is_not_persisted(monkeypatch):
     assert provider_calls == [("id", 42), ("title", "New Movie")]
 
 
+def test_lookup_only_infers_season_after_a_release_is_accepted(monkeypatch):
+    from riplex.models import PlannedDisc
+
+    release = SimpleNamespace(name="Season 3", discs=[object()])
+    film = SimpleNamespace(
+        title="Psych: Season 3 (TV)", film_id=66233, releases=[release],
+    )
+
+    class _Provider:
+        async def fetch_film(self, _title, _format, *, year=None):
+            return film
+
+    app = _App({
+        "title": "Psych", "workflow": "orchestrate",
+        "tmdb_match": SimpleNamespace(title="Psych", media_type="tv", year=2006),
+    })
+    screen = ReleaseScreen(app)
+    monkeypatch.setattr("riplex_app.screens.release.DiscProvider", _Provider)
+    monkeypatch.setattr(screen, "_load_persisted_override", lambda: None)
+    monkeypatch.setattr(
+        "riplex_app.screens.release._convert_release",
+        lambda _release: [PlannedDisc(number=1, disc_format="Blu-ray")],
+    )
+
+    screen._lookup_dvdcompare("Psych")
+
+    assert "season_number" not in app.state
+    screen._use_release(release)
+    assert app.state["season_number"] == 3
+
+
+def test_build_preserves_film_context_for_filtering_and_disc_overview(monkeypatch):
+    from riplex.models import PlannedDisc
+
+    release = SimpleNamespace(name="Season 1", discs=[object()])
+    film = SimpleNamespace(
+        title="Psych: Season 1 (TV)", film_id=66231, releases=[release],
+    )
+    discs = [
+        PlannedDisc(number=1, disc_format="Blu-ray"),
+        PlannedDisc(number=2, disc_format="Blu-ray", title="Season 2"),
+        PlannedDisc(number=3, disc_format="Blu-ray"),
+    ]
+    monkeypatch.setattr(
+        "riplex_app.screens.release._convert_release", lambda _release: discs,
+    )
+    app = _App({
+        "title": "Psych", "workflow": "orchestrate", "season_number": 1,
+        "tmdb_match": SimpleNamespace(title="Psych", media_type="tv"),
+        "_dvdcompare_film": film,
+    })
+    screen = ReleaseScreen(app)
+
+    screen.build()
+
+    assert [disc.number for disc in app.state["dvdcompare_discs"]] == [1]
+    assert app.state["hidden_disc_numbers"] == [2, 3]
+    assert app.state["_dvdcompare_film"] is film
+    assert app.navigated_to == "disc_overview"
+
+
+def test_manual_override_clears_obsolete_prefill_and_film_heading(caplog):
+    app = _App({
+        "title": "The Pacific", "workflow": "orchestrate",
+        "dvdcompare_film_id": 44020,
+        "dvdcompare_film_title": "Hell in the Pacific",
+        "_prefill_dvdcompare_film_id": 44020,
+        "_prefill_dvdcompare_release_name": "Wrong release",
+    })
+    screen = ReleaseScreen(app)
+    screen.film_comparison = SimpleNamespace(title="Hell in the Pacific")
+    screen._fid_field = SimpleNamespace(
+        value="https://www.dvdcompare.net/comparisons/film.php?fid=27242",
+    )
+    caplog.set_level("INFO", logger="riplex_app.screens.release")
+
+    screen._on_fid_override_submit(None)
+
+    assert app.state["_dvdcompare_film_id_override"] == 27242
+    assert "_prefill_dvdcompare_film_id" not in app.state
+    assert "_prefill_dvdcompare_release_name" not in app.state
+    assert "dvdcompare_film_id" not in app.state
+    assert screen._film_display_title() is None
+    assert "manual-override" in caplog.text
+    assert "27242" in caplog.text
+
+
+def test_edited_search_drops_old_film_and_pending_manual_override():
+    app = _App({
+        "title": "Old title", "workflow": "orchestrate",
+        "dvdcompare_film_id": 44020,
+        "dvdcompare_film_title": "Old title",
+        "_dvdcompare_film_id_override": 44020,
+        "_prefill_dvdcompare_film_id": 44020,
+        "_prefill_dvdcompare_release_name": "Old release",
+    })
+    screen = ReleaseScreen(app)
+    screen.film_comparison = SimpleNamespace(title="Old title")
+    screen._search_field = SimpleNamespace(value="The Pacific")
+
+    screen._on_search_click(None)
+
+    assert app.state["dvdcompare_title_override"] == "The Pacific"
+    assert "_dvdcompare_film_id_override" not in app.state
+    assert "_prefill_dvdcompare_film_id" not in app.state
+    assert screen._film_display_title() is None
+    assert app.navigated_to == "release"
+
+
+def test_failed_manifest_prefill_cannot_reuse_previous_film(monkeypatch):
+    class _Provider:
+        async def fetch_film_by_id(self, _fid):
+            raise LookupError("offline")
+
+    old_film = SimpleNamespace(title="Previous movie", film_id=42)
+    app = _App({
+        "title": "New movie", "_dvdcompare_film": old_film,
+        "dvdcompare_film_id": 42, "dvdcompare_film_title": old_film.title,
+        "release": object(), "dvdcompare_discs": [object()],
+        "_prefill_dvdcompare_film_id": 27242,
+        "_prefill_dvdcompare_release_name": "Saved release",
+    })
+    screen = ReleaseScreen(app)
+    screen.film_comparison = old_film
+    monkeypatch.setattr("riplex_app.screens.release.DiscProvider", _Provider)
+
+    screen._resolve_prefill_dvdcompare(27242, "Saved release")
+
+    assert "_dvdcompare_film" not in app.state
+    assert "dvdcompare_film_id" not in app.state
+    assert "dvdcompare_film_title" not in app.state
+    assert app.state["release"] is None
+    assert app.state["dvdcompare_discs"] == []
+    assert "_prefill_dvdcompare_film_id" not in app.state
+    assert "_prefill_dvdcompare_release_name" not in app.state
+    assert screen.film_comparison is None
+
+
 class TestReleaseSkipRouting:
     def test_rip_workflow_continues_to_selection(self):
         app = _App({"workflow": "rip"})

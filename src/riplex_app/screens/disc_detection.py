@@ -701,6 +701,13 @@ class DiscDetectionScreen:
         self.app.state.pop("season_number", None)
         self.app.state.pop("release", None)
         self.app.state.pop("dvdcompare_discs", None)
+        for key in (
+            "_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_error", "_dvdcompare_force_picker",
+            "_dvdcompare_film_id_override", "dvdcompare_title_override",
+            "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+        ):
+            self.app.state.pop(key, None)
 
         threading.Thread(
             target=self._fetch_show_detail_for_season_pick,
@@ -803,6 +810,17 @@ def perform_resume_fetch(
     """
     from riplex.resume import resume_from_session
 
+    if not screen_lease_is_current(app, lease):
+        return
+    # A resume replaces the previous lookup, including when it degrades or
+    # fails. Back-navigation must never resurrect another title's film.
+    for key in (
+        "_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title",
+        "_dvdcompare_error", "_dvdcompare_force_picker",
+        "_dvdcompare_film_id_override", "dvdcompare_title_override",
+        "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+    ):
+        app.state.pop(key, None)
     disc_info = app.state.get("disc_info")
     try:
         result = asyncio.run(

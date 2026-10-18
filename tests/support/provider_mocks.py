@@ -25,6 +25,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from dvdcompare.models import Disc
+
 from riplex.disc.makemkv import RipResult
 from riplex.disc.provider import DiscProvider
 from riplex.metadata.sources.tmdb import TmdbProvider
@@ -39,7 +41,7 @@ from .fixtures import Scenario
 @dataclass
 class FakeRelease:
     name: str
-    discs: list[Any] = field(default_factory=lambda: [object()])
+    discs: list[Any] = field(default_factory=lambda: [Disc(number=1, format="Blu-ray")])
 
 
 @dataclass
@@ -190,7 +192,14 @@ def _install_tmdb(monkeypatch, scenario, rec, tmdb_results, tmdb_error) -> None:
 # ---------------------------------------------------------------------------
 
 def _install_dvdcompare(monkeypatch, scenario, rec, dvdcompare_error) -> None:
-    release = FakeRelease(name=scenario.release_name() or "Default Release")
+    planned = scenario.planned_discs()
+    release = FakeRelease(
+        name=scenario.release_name() or "Default Release",
+        discs=[
+            Disc(number=d.number, format=d.disc_format, title=d.title, is_film=d.is_film)
+            for d in planned
+        ],
+    )
     film = FakeFilm(title=scenario.title, film_id=12345, releases=[release])
 
     async def _fetch_film(self, title, disc_format, *, year=None):
@@ -220,7 +229,6 @@ def _install_dvdcompare(monkeypatch, scenario, rec, dvdcompare_error) -> None:
     # The release screen converts a picked release into PlannedDiscs via a
     # module-level helper — return the scenario's discs so the flow proceeds
     # deterministically without a real dvdcompare page.
-    planned = scenario.planned_discs()
     try:
         import riplex_app.screens.release as release_mod
 

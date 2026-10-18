@@ -101,6 +101,38 @@ def test_main_configures_tls_before_starting_flet(monkeypatch, tmp_path):
     assert calls == ["tls", "flet"]
 
 
+def test_main_enables_local_gui_debug_telemetry(monkeypatch, tmp_path):
+    import logging
+
+    app_logger = logging.getLogger("riplex_app")
+    lib_logger = logging.getLogger("riplex")
+    old_handlers = list(app_logger.handlers)
+    monkeypatch.setattr(app_logger, "level", logging.INFO)
+    monkeypatch.setattr(lib_logger, "level", lib_logger.level)
+    log_path = tmp_path / "riplex.log"
+    monkeypatch.setattr("riplex_app.crash_dump.get_log_path", lambda: log_path)
+    monkeypatch.setattr(app_main, "_configure_tls_certificates", lambda: None)
+    monkeypatch.setattr(app_main, "_configure_flet_view_path", lambda: None)
+
+    def _flet_app(*, target):
+        app_logger.debug("release-debug-marker")
+        for handler in app_logger.handlers:
+            handler.flush()
+
+    monkeypatch.setattr(app_main.ft, "app", _flet_app)
+    try:
+        app_main.main()
+        text = log_path.read_text(encoding="utf-8")
+        assert "release-debug-marker" in text
+        assert "GUI runtime:" in text
+        assert "frozen=" in text
+        assert "MainThread" in text
+    finally:
+        for handler in list(app_logger.handlers):
+            if handler not in old_handlers:
+                app_logger.removeHandler(handler)
+                lib_logger.removeHandler(handler)
+                handler.close()
 def test_configure_flet_view_path_uses_bundled_windows_client(tmp_path):
     client_dir = tmp_path / "flet_client"
     client_dir.mkdir()
@@ -209,3 +241,39 @@ def test_same_screen_navigation_starts_a_new_visit():
     app.navigate("metadata")
 
     assert app._navigation_epoch == 5
+
+
+def test_redirect_during_build_does_not_append_the_obsolete_screen(caplog):
+    from tests.support.fake_page import FakePage, control_label, iter_tree
+
+    app = app_main.RiplexApp.__new__(app_main.RiplexApp)
+    app._current_screen_name = "metadata"
+    app._navigation_epoch = 4
+    app.page = FakePage()
+
+    def _release_build():
+        app.navigate("disc_overview")
+        return ft.Column([ft.Text("Obsolete release build"), ft.Row([])])
+
+    app.screens = {
+        "release": SimpleNamespace(build=_release_build),
+        "disc_overview": SimpleNamespace(
+            build=lambda: ft.Column([ft.Text("Current overview"), ft.Row([])]),
+        ),
+    }
+    caplog.set_level("DEBUG", logger="riplex_app")
+
+    app.navigate("release")
+
+    labels = [
+        control_label(control)
+        for root in app.page.controls for control in iter_tree(root)
+    ]
+    assert app._current_screen_name == "disc_overview"
+    assert len(app.page.controls) == 1
+    assert "Current overview" in labels
+    assert "Obsolete release build" not in labels
+    assert app.page.update_count == 1
+    assert "metadata -> release" in caplog.text
+    assert "release -> disc_overview" in caplog.text
+    assert "superseded" in caplog.text

@@ -309,6 +309,12 @@ class SeasonSelectScreen:
         self.app.state["dvdcompare_discs"] = []
         self.app.state.pop("_dvdcompare_film", None)
         self.app.state.pop("_dvdcompare_error", None)
+        for key in (
+            "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_force_picker", "_dvdcompare_film_id_override",
+            "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+        ):
+            self.app.state.pop(key, None)
         log.info("season_select: picked season=%d", picked)
 
         # Orchestrate resume disambiguation: if a session exists for

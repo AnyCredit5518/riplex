@@ -1,6 +1,8 @@
 """Release selection screen - dvdcompare release picker."""
 
 import asyncio
+import logging
+import time
 import webbrowser
 
 import flet as ft
@@ -17,6 +19,7 @@ from riplex_app.background import (
 )
 
 
+log = logging.getLogger(__name__)
 _OVERRIDE_CACHE_NS = "dvdcompare_film_id_override"
 
 
@@ -51,6 +54,7 @@ def _backfill_season_number_from_film_title(state: dict, film) -> None:
     parsed = parse_season_number(title)
     if parsed is not None:
         state["season_number"] = parsed
+        log.info("release season inferred: season=%s film=%r", parsed, title)
 
 
 def _apply_season_filter(state: dict, discs: list, film) -> list:
@@ -215,14 +219,27 @@ class ReleaseScreen:
         new_title = (self._search_field.value or "").strip()
         if not new_title:
             return
+        log.info("release action: search query=%r previous_fid=%s",
+                 new_title, self.app.state.get("dvdcompare_film_id"))
         self.app.state["dvdcompare_title_override"] = new_title
-        # Clear any previously-selected release so we don't auto-skip the
-        # lookup with the old data.
+        self._reset_release_selection()
+        self.app.navigate("release")
+
+    def _reset_release_selection(self, *, keep_film: bool = False) -> None:
+        """Open an explicit picker, discarding obsolete lookup/prefill state."""
         self.app.state["release"] = None
         self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
-        self.app.navigate("release")
+        self.app.state["_dvdcompare_force_picker"] = True
+        for key in (
+            "_dvdcompare_error", "_dvdcompare_film_id_override",
+            "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+            "_prefill_dvdcompare_failed", "_prefill_dvdcompare_error",
+        ):
+            self.app.state.pop(key, None)
+        if not keep_film:
+            self.film_comparison = None
+            for key in ("_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title"):
+                self.app.state.pop(key, None)
 
     # -- film URL / manual fid override UI --------------------------------
 
@@ -360,6 +377,7 @@ class ReleaseScreen:
         raw = (self._fid_field.value or "").strip()
         fid = parse_film_id(raw)
         if fid is None:
+            log.info("release action: manual-override rejected (invalid film id)")
             if self._fid_error is not None:
                 self._fid_error.value = (
                     "Couldn't parse a film id from that input. "
@@ -370,24 +388,32 @@ class ReleaseScreen:
                 self.app.page.update()
             return
         # Stash for the next lookup pass and trigger a refresh.
+        log.info("release action: manual-override fid=%s previous_fid=%s",
+                 fid, self.app.state.get("dvdcompare_film_id"))
+        self._reset_release_selection()
         self.app.state["_dvdcompare_film_id_override"] = fid
-        self.app.state["release"] = None
-        self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
         self.app.navigate("release")
 
     def _on_clear_override(self, _e):
+        log.info("release action: clear-saved-override query=%r", self._current_search_title())
         self._clear_persisted_override()
-        self.app.state["release"] = None
-        self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
+        self._reset_release_selection()
         self.app.navigate("release")
 
 
     def build(self) -> ft.Control:
         title = self._current_search_title()
+        self.film_comparison = self.app.state.get("_dvdcompare_film")
+        log.debug(
+            "release build: query=%r workflow=%s season=%s fid=%s selected=%r "
+            "film_loaded=%s force_picker=%s epoch=%s",
+            title, self.app.state.get("workflow"), self.app.state.get("season_number"),
+            self.app.state.get("dvdcompare_film_id"),
+            getattr(self.app.state.get("release"), "name", None),
+            self.film_comparison is not None,
+            bool(self.app.state.get("_dvdcompare_force_picker")),
+            getattr(self.app, "_navigation_epoch", None),
+        )
 
         # Fast path: manifest recorded the dvdcompare film_id + release
         # name at rip time. Fetch the film directly, match the release by
@@ -433,21 +459,10 @@ class ReleaseScreen:
                 expand=True,
             )
 
-        # Check if dvdcompare data already fetched (re-render after background lookup)
-        cached_film = self.app.state.pop("_dvdcompare_film", None)
-        if cached_film is not None:
-            self.film_comparison = cached_film
-            releases = self.film_comparison.releases if self.film_comparison else []
-            if not releases:
-                return self._build_no_releases_view(title=title)
-            if len(releases) == 1:
-                self._use_release(releases[0])
-                return ft.Column()  # will navigate away
-            return self._build_releases_view(releases)
-
         # Error/skip state
         dvdc_error = self.app.state.pop("_dvdcompare_error", None)
         if dvdc_error:
+            log.info("release view: lookup-error message=%r", dvdc_error)
             return self._build_no_releases_view(dvdc_error, title=title)
 
         # If we already have a release selected (e.g. user came back from a
@@ -456,7 +471,21 @@ class ReleaseScreen:
         existing_release = self.app.state.get("release")
         existing_discs = self.app.state.get("dvdcompare_discs")
         if existing_release is not None and existing_discs:
+            log.debug("release view: selected-summary name=%r", existing_release.name)
             return self._build_current_release_view(existing_release, existing_discs)
+
+        # Keep the film available for repeated picker builds, season filtering,
+        # and the overview. A correction must not auto-accept a sole release.
+        if self.film_comparison is not None:
+            releases = self.film_comparison.releases
+            if not releases:
+                return self._build_no_releases_view(title=title)
+            if len(releases) == 1 and not self.app.state.get("_dvdcompare_force_picker"):
+                log.info("release auto-select: fid=%s name=%r reason=only-release",
+                         self.film_comparison.film_id, releases[0].name)
+                self._use_release(releases[0])
+                return ft.Column()  # will navigate away
+            return self._build_releases_view(releases)
 
         # Loading state
         content = ft.Column(
@@ -498,6 +527,11 @@ class ReleaseScreen:
     def _build_releases_view(self, releases) -> ft.Control:
         """Build view showing release options."""
         rec_idx = self._score_releases(releases)
+        log.debug(
+            "release view: picker fid=%s recommended_index=%s options=%s",
+            getattr(self.film_comparison, "film_id", None), rec_idx,
+            [(i, rel.name, len(rel.discs)) for i, rel in enumerate(releases)],
+        )
 
         # Filter out releases with no discs (no useful data)
         indexed_releases = [(i, rel) for i, rel in enumerate(releases) if rel.discs]
@@ -527,13 +561,14 @@ class ReleaseScreen:
         self.release_radio_group = ft.RadioGroup(
             content=ft.Column(release_rows, spacing=2),
             value=default_value,
+            on_change=self._on_release_change,
         )
 
         film_link = self._build_film_link(self.film_comparison)
         header_children = [
             *self._build_film_heading(),
             ft.Text(
-                "Multiple releases were found on dvdcompare.net. Pick the one "
+                "Choose the release on dvdcompare.net "
                 "that matches your physical disc (region, edition, distributor).",
                 size=13,
                 color=ft.Colors.GREY_500,
@@ -568,6 +603,7 @@ class ReleaseScreen:
         return ft.Column(
             [
                 *header_children,
+                self._build_search_bar(self._current_search_title(), searching=False),
                 ft.Text("Select your disc release:", size=14),
                 self.release_radio_group,
                 ft.Divider(height=20),
@@ -638,19 +674,15 @@ class ReleaseScreen:
         and re-navigates to the release screen, which falls back to the
         normal title-based lookup and picker.
         """
-        import logging
-        log = logging.getLogger(__name__)
+        started_at = time.monotonic()
+        log.info("dvdcompare prefill start: fid=%s release=%r epoch=%s",
+             film_id, release_name, getattr(lease, "epoch", None))
 
         try:
             provider = DiscProvider()
             film = asyncio.run(provider.fetch_film_by_id(film_id))
             if not screen_lease_is_current(self.app, lease):
                 return
-            if film and getattr(film, "film_id", None):
-                self.app.state["dvdcompare_film_id"] = film.film_id
-            if film and getattr(film, "title", None):
-                self.app.state["dvdcompare_film_title"] = film.title
-            _backfill_season_number_from_film_title(self.app.state, film)
 
             match = next(
                 (r for r in film.releases if r.name == release_name),
@@ -666,17 +698,35 @@ class ReleaseScreen:
                 raise LookupError(
                     f"saved release {release_name!r} contained no usable disc data"
                 )
+            _backfill_season_number_from_film_title(self.app.state, film)
             discs = _apply_season_filter(self.app.state, discs, film)
 
+            self.film_comparison = film
+            self.app.state["_dvdcompare_film"] = film
+            self.app.state["dvdcompare_film_id"] = film.film_id
+            self.app.state["dvdcompare_film_title"] = film.title
             self.app.state["release"] = match
             self.app.state["dvdcompare_discs"] = discs
             self.app.state.pop("_prefill_dvdcompare_film_id", None)
             self.app.state.pop("_prefill_dvdcompare_release_name", None)
+            self.app.state.pop("_dvdcompare_force_picker", None)
             next_screen = self._next_screen
+            log.info("dvdcompare prefill restored: fid=%s release=%r discs=%s elapsed=%.3fs",
+                     film.film_id, match.name, [d.number for d in discs],
+                     time.monotonic() - started_at)
         except Exception as exc:
             if not screen_lease_is_current(self.app, lease):
                 return
-            log.warning("dvdcompare prefill fetch failed: %s", exc)
+            log.warning("dvdcompare prefill fetch failed: %s", exc, exc_info=True)
+            self.film_comparison = None
+            self.app.state["release"] = None
+            self.app.state["dvdcompare_discs"] = []
+            for key in ("_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title"):
+                self.app.state.pop(key, None)
+            # A rejected saved release must not restart after the fallback
+            # title lookup finishes and rebuilds this screen.
+            self.app.state.pop("_prefill_dvdcompare_film_id", None)
+            self.app.state.pop("_prefill_dvdcompare_release_name", None)
             self.app.state["_prefill_dvdcompare_failed"] = True
             self.app.state["_prefill_dvdcompare_error"] = str(exc)
             next_screen = "release"
@@ -693,9 +743,7 @@ class ReleaseScreen:
         lease: ScreenLease | None = None,
     ):
         """Fetch dvdcompare releases in background."""
-        import logging
-        log = logging.getLogger(__name__)
-
+        started_at = time.monotonic()
         title = title or self._current_search_title()
         tmdb_match = self.app.state.get("tmdb_match")
 
@@ -712,14 +760,18 @@ class ReleaseScreen:
             # Persisted override (set on a previous run for this title/format).
             persisted_fid = self._load_persisted_override() if session_fid is None else None
             override_fid = session_fid if session_fid is not None else persisted_fid
+            source = (
+                "session" if session_fid is not None
+                else "persisted" if persisted_fid is not None else "title"
+            )
+            log.info(
+                "dvdcompare lookup start: query=%r format=%r year=%s fid=%s source=%s epoch=%s",
+                title, disc_format, year, override_fid, source, getattr(lease, "epoch", None),
+            )
 
             if override_fid is not None:
-                log.info("dvdcompare lookup: using film id override fid=%s (source=%s)",
-                         override_fid, "session" if session_fid is not None else "persisted")
                 film = asyncio.run(provider.fetch_film_by_id(override_fid))
             else:
-                log.info("dvdcompare lookup: title=%r format=%r year=%r",
-                         title, disc_format, year)
                 film = asyncio.run(provider.fetch_film(title, disc_format, year=year))
 
             if not screen_lease_is_current(self.app, lease):
@@ -731,23 +783,22 @@ class ReleaseScreen:
                     session_fid,
                     override_cache_key,
                 )
-            log.info("dvdcompare lookup: found %r (fid=%s, %d releases)",
+            log.info("dvdcompare lookup: found %r (fid=%s, %d releases, elapsed=%.3fs)",
                      film.title if film else None,
                      film.film_id if film else None,
-                     len(film.releases) if film else 0)
+                     len(film.releases) if film else 0,
+                     time.monotonic() - started_at)
             self.app.state["_dvdcompare_film"] = film
-            # Persist film_id so the "View on dvdcompare.net" link on the
-            # current-release view survives re-navigation (film_comparison
-            # is popped out of state on each build).
+            # Keep the film identity available to restored/current-release views.
             if film and getattr(film, "film_id", None):
                 self.app.state["dvdcompare_film_id"] = film.film_id
             if film and getattr(film, "title", None):
                 self.app.state["dvdcompare_film_title"] = film.title
-            _backfill_season_number_from_film_title(self.app.state, film)
         except Exception as exc:
             if not screen_lease_is_current(self.app, lease):
                 return
-            log.warning("dvdcompare lookup failed: %s", exc)
+            log.warning("dvdcompare lookup failed after %.3fs: %s",
+                        time.monotonic() - started_at, exc, exc_info=True)
             self.app.state["_dvdcompare_error"] = str(exc)
 
         # Schedule navigation on main event loop
@@ -757,22 +808,34 @@ class ReleaseScreen:
 
         self.app.page.run_task(_nav)
 
+    def _on_release_change(self, _e):
+        """Record radio selection separately from committing it with Next."""
+        idx = int(self.release_radio_group.value)
+        release = self.film_comparison.releases[idx]
+        log.debug("release action: highlight index=%s fid=%s name=%r",
+                  idx, self.film_comparison.film_id, release.name)
+
     def _next(self, e):
         """Convert selected release and proceed."""
         idx = int(self.release_radio_group.value)
         release = self.film_comparison.releases[idx]
+        log.info("release action: choose index=%s fid=%s name=%r",
+                  idx, self.film_comparison.film_id, release.name)
         self._use_release(release)
 
     def _continue(self, _e):
         """Proceed to the next screen using the already-selected release."""
+        log.info("release action: continue fid=%s name=%r -> %s",
+                 self.app.state.get("dvdcompare_film_id"),
+                 getattr(self.app.state.get("release"), "name", None), self._next_screen)
         self.app.navigate(self._next_screen)
 
     def _change_release(self, _e):
-        """Clear the current dvdcompare selection and re-trigger lookup."""
-        self.app.state["release"] = None
-        self.app.state["dvdcompare_discs"] = []
-        self.app.state.pop("_dvdcompare_film", None)
-        self.app.state.pop("_dvdcompare_error", None)
+        """Open the editable release picker, including for a single release."""
+        log.info("release action: change-release fid=%s name=%r",
+                 self.app.state.get("dvdcompare_film_id"),
+                 getattr(self.app.state.get("release"), "name", None))
+        self._reset_release_selection(keep_film=True)
         self.app.navigate("release")
 
     def _build_current_release_view(self, release, discs) -> ft.Control:
@@ -808,6 +871,8 @@ class ReleaseScreen:
                         weight=ft.FontWeight.W_500,
                     ),
                 ], spacing=10),
+                ft.Divider(height=20),
+                self._build_fid_override_section(),
                 ft.Container(expand=True),
                 ft.Row([
                     ft.TextButton("Back", on_click=lambda _: self.app.navigate("metadata")),
@@ -825,12 +890,17 @@ class ReleaseScreen:
                 ]),
             ],
             spacing=10,
+            scroll=ft.ScrollMode.AUTO,
             expand=True,
         )
 
     def _skip(self, e):
         """Proceed without dvdcompare data."""
+        log.info("release action: skip workflow=%s fid=%s",
+                 self.app.state.get("workflow"), self.app.state.get("dvdcompare_film_id"))
+        self.app.state["release"] = None
         self.app.state["dvdcompare_discs"] = []
+        self.app.state.pop("_dvdcompare_force_picker", None)
         self.app.navigate(self._skip_next_screen())
 
     def _use_release(self, release):
@@ -838,6 +908,8 @@ class ReleaseScreen:
         try:
             discs = _convert_release(release)
         except Exception as exc:
+            log.exception("release conversion failed: fid=%s name=%r",
+                          self.app.state.get("dvdcompare_film_id"), release.name)
             self.app.state["release"] = None
             self.app.state["dvdcompare_discs"] = []
             self.app.state["_dvdcompare_error"] = (
@@ -847,6 +919,8 @@ class ReleaseScreen:
             return
 
         if not discs:
+            log.warning("release conversion returned no discs: fid=%s name=%r",
+                        self.app.state.get("dvdcompare_film_id"), release.name)
             self.app.state["release"] = None
             self.app.state["dvdcompare_discs"] = []
             self.app.state["_dvdcompare_error"] = (
@@ -856,11 +930,16 @@ class ReleaseScreen:
             self.app.navigate("release")
             return
 
-        discs = _apply_season_filter(
-            self.app.state, discs, self.app.state.get("_dvdcompare_film"),
-        )
+        film = self.app.state.get("_dvdcompare_film")
+        _backfill_season_number_from_film_title(self.app.state, film)
+        discs = _apply_season_filter(self.app.state, discs, film)
         self.app.state["release"] = release
         self.app.state["dvdcompare_discs"] = discs
+        self.app.state.pop("_dvdcompare_force_picker", None)
+        log.info("release selected: fid=%s name=%r discs=%s hidden=%s season=%s -> %s",
+                 getattr(film, "film_id", None), release.name, [d.number for d in discs],
+                 self.app.state.get("hidden_disc_numbers"),
+                 self.app.state.get("season_number"), self._next_screen)
         self.app.navigate(self._next_screen)
 
     def _score_releases(self, releases) -> int:

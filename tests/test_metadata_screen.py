@@ -228,6 +228,12 @@ class TestMetadataNextClearsStaleDvdcompare:
             "_dvdcompare_film": object(),
             "_dvdcompare_error": "stale error",
             "dvdcompare_title_override": "The Last Reef",
+            "dvdcompare_film_id": 42,
+            "dvdcompare_film_title": "The Last Reef",
+            "_dvdcompare_force_picker": True,
+            "_dvdcompare_film_id_override": 42,
+            "_prefill_dvdcompare_film_id": 42,
+            "_prefill_dvdcompare_release_name": "Previous release",
         })
         screen = MetadataScreen(app)
         screen.tmdb_results = [_result("The Patriot")]
@@ -241,6 +247,12 @@ class TestMetadataNextClearsStaleDvdcompare:
         assert "_dvdcompare_film" not in app.state
         assert "_dvdcompare_error" not in app.state
         assert "dvdcompare_title_override" not in app.state
+        for key in (
+            "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_force_picker", "_dvdcompare_film_id_override",
+            "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+        ):
+            assert key not in app.state
         assert app.state["tmdb_match"].title == "The Patriot"
         # A TV match routes through season_select so the dvdcompare query
         # can be biased with ": Season N" before the release picker runs.

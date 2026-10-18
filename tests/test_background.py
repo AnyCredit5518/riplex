@@ -42,7 +42,7 @@ def test_rejects_duplicate_until_worker_finishes():
     assert background.start_background_once(app, "lookup", calls.append, args=("retry",))
 
 
-def test_releases_operation_after_worker_failure():
+def test_releases_operation_after_worker_failure(caplog):
     app = SimpleNamespace()
 
     def _fail():
@@ -52,6 +52,8 @@ def test_releases_operation_after_worker_failure():
     with pytest.raises(RuntimeError, match="failed"):
         _DeferredThread.created[0].run()
 
+    assert "background operation lookup failed" in caplog.text
+    assert "RuntimeError: failed" in caplog.text
     assert background.start_background_once(app, "lookup", lambda: None)
 
 
@@ -76,3 +78,27 @@ def test_screen_operation_key_changes_for_new_visit():
 
     assert background.screen_operation_key("lookup", first) == "lookup:4"
     assert background.screen_operation_key("lookup", second) == "lookup:6"
+
+
+def test_logs_worker_lifecycle_with_elapsed_time(caplog):
+    caplog.set_level("DEBUG", logger=background.__name__)
+    app = SimpleNamespace()
+
+    background.start_background_once(app, "dvdcompare-lookup:4", lambda: None)
+    _DeferredThread.created[0].run()
+
+    assert "background operation dvdcompare-lookup:4 started" in caplog.text
+    assert "background operation dvdcompare-lookup:4 finished (elapsed=" in caplog.text
+
+
+def test_logs_discarded_screen_completion_with_visit_identity(caplog):
+    caplog.set_level("DEBUG", logger=background.__name__)
+    app = SimpleNamespace(_current_screen_name="metadata", _navigation_epoch=6)
+
+    assert not background.screen_lease_is_current(
+        app, background.ScreenLease("release", 4),
+    )
+
+    assert "discarding stale screen completion" in caplog.text
+    assert "screen=release epoch=4" in caplog.text
+    assert "current=metadata epoch=6" in caplog.text

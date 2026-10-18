@@ -184,6 +184,12 @@ class TestPicker:
             "release": object(),  # stale from a prior forward-back cycle
             "dvdcompare_discs": [object()],
             "_dvdcompare_film": object(),
+            "dvdcompare_film_id": 42,
+            "dvdcompare_film_title": "Previous season",
+            "_dvdcompare_force_picker": True,
+            "_dvdcompare_film_id_override": 42,
+            "_prefill_dvdcompare_film_id": 42,
+            "_prefill_dvdcompare_release_name": "Previous release",
         })
         screen = SeasonSelectScreen(app)
         screen.build()
@@ -197,6 +203,12 @@ class TestPicker:
         assert app.state["release"] is None
         assert app.state["dvdcompare_discs"] == []
         assert "_dvdcompare_film" not in app.state
+        for key in (
+            "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_force_picker", "_dvdcompare_film_id_override",
+            "_prefill_dvdcompare_film_id", "_prefill_dvdcompare_release_name",
+        ):
+            assert key not in app.state
 
     def test_next_ignores_duplicate_click_while_transitioning(self):
         app = _App({

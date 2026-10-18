@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 import threading
+import time
 from typing import Any
 
 
@@ -32,13 +33,20 @@ def screen_lease_is_current(app: Any, lease: ScreenLease | None) -> bool:
     if lease is None:
         return True
     current_epoch = getattr(app, "_navigation_epoch", None)
-    if lease.epoch is not None and current_epoch is not None:
-        return (
-            current_epoch == lease.epoch
-            and getattr(app, "_current_screen_name", None) == lease.screen_name
-        )
     current_screen = getattr(app, "_current_screen_name", None)
-    return current_screen is None or current_screen == lease.screen_name
+    if lease.epoch is not None and current_epoch is not None:
+        current = (
+            current_epoch == lease.epoch
+            and current_screen == lease.screen_name
+        )
+    else:
+        current = current_screen is None or current_screen == lease.screen_name
+    if not current:
+        log.debug(
+            "discarding stale screen completion: screen=%s epoch=%s; current=%s epoch=%s",
+            lease.screen_name, lease.epoch, current_screen, current_epoch,
+        )
+    return current
 
 
 def screen_operation_key(base: str, lease: ScreenLease) -> str:
@@ -75,11 +83,18 @@ class BackgroundOperations:
             self._active.add(key)
 
         def _run() -> None:
+            started_at = time.monotonic()
+            log.debug("background operation %s started", key)
             try:
                 target(*args, **(kwargs or {}))
+            except Exception:
+                log.exception("background operation %s failed", key)
+                raise
             finally:
                 with self._lock:
                     self._active.discard(key)
+                log.debug("background operation %s finished (elapsed=%.3fs)",
+                          key, time.monotonic() - started_at)
 
         try:
             thread = threading.Thread(

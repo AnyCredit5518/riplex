@@ -288,6 +288,39 @@ class TestResumeStashesFilmMetadata:
         assert "dvdcompare_film_id" not in app.state
 
 
+    @pytest.mark.parametrize("adapter_raises", [False, True])
+    def test_failed_resume_cannot_restore_previous_films_release(
+        self, monkeypatch, adapter_raises,
+    ):
+        from riplex.resume import ResumedLookup
+
+        async def _resume(_session, *, disc_info):
+            if adapter_raises:
+                raise LookupError("offline")
+            return ResumedLookup(
+                canonical="New movie", year=2020, is_movie=True,
+                media_type="movie", tmdb_match=None,
+                dvdcompare_error=LookupError("offline"),
+            )
+
+        monkeypatch.setattr("riplex.resume.resume_from_session", _resume)
+        app = _FakeApp()
+        app.state.update({
+            "_dvdcompare_film": object(), "dvdcompare_film_id": 42,
+            "dvdcompare_film_title": "Previous movie",
+            "_dvdcompare_force_picker": True,
+            "_dvdcompare_film_id_override": 42,
+        })
+
+        DiscDetectionScreen(app)._fetch_dvdcompare_for_resume(_FakeSession())
+
+        for key in (
+            "_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_force_picker", "_dvdcompare_film_id_override",
+        ):
+            assert key not in app.state
+
+
 class TestPrepareTvSeasonPick:
     """TV orchestrate resumes route through season_select rather than
     jumping straight to disc_overview. This lets the user pick a
@@ -320,6 +353,11 @@ class TestPrepareTvSeasonPick:
         app.state["season_number"] = 1
         app.state["release"] = object()
         app.state["dvdcompare_discs"] = ["stale"]
+        app.state["_dvdcompare_film"] = object()
+        app.state["dvdcompare_film_id"] = 42
+        app.state["dvdcompare_film_title"] = "Previous title"
+        app.state["_dvdcompare_force_picker"] = True
+        app.state["_dvdcompare_film_id_override"] = 42
 
         screen = DiscDetectionScreen(app)
         # _prepare_tv_season_pick no longer touches any UI widgets —
@@ -340,6 +378,11 @@ class TestPrepareTvSeasonPick:
         assert "season_number" not in app.state
         assert app.state.get("release") is None
         assert app.state.get("dvdcompare_discs") is None
+        for key in (
+            "_dvdcompare_film", "dvdcompare_film_id", "dvdcompare_film_title",
+            "_dvdcompare_force_picker", "_dvdcompare_film_id_override",
+        ):
+            assert key not in app.state
         assert started["count"] == 1
 
     def test_search_routes_tv_session_via_season_pick(self, monkeypatch):

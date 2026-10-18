@@ -131,12 +131,20 @@ class RiplexApp:
 
     def navigate(self, screen_name: str):
         """Switch to a named screen."""
-        log.info("navigate -> %s", screen_name)
+        previous_screen = self._current_screen_name
         self._navigation_epoch += 1
+        epoch = self._navigation_epoch
         self._current_screen_name = screen_name
+        log.info("navigate: %s -> %s (epoch=%s)", previous_screen, screen_name, epoch)
         self.page.controls.clear()
         screen = self.screens[screen_name]
         built = screen.build()
+        if self._navigation_epoch != epoch:
+            log.debug(
+                "discarding superseded screen build: %s epoch=%s; current=%s epoch=%s",
+                screen_name, epoch, self._current_screen_name, self._navigation_epoch,
+            )
+            return
         # Every non-welcome screen gets a globally-injected Quit
         # button. We try to append it to the screen's own footer Row
         # so it sits alongside the screen-specific buttons; if the
@@ -531,14 +539,25 @@ def main():
 
     app_logger = logging.getLogger("riplex_app")
     lib_logger = logging.getLogger("riplex")
+    # Flet may already have configured logging. Ensure screen DEBUG records
+    # reach the local file regardless of the inherited/root logger level.
+    app_logger.setLevel(logging.DEBUG)
     log_path = get_log_path()
     fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)-5s [%(name)s] %(message)s", datefmt="%H:%M:%S"))
+    fh.setFormatter(logging.Formatter(
+        "%(asctime)s.%(msecs)03d %(levelname)-5s [%(name)s] [%(threadName)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
     app_logger.addHandler(fh)
     lib_logger.addHandler(fh)
     lib_logger.setLevel(logging.DEBUG)
     app_logger.info("Log file: %s", log_path)
+    from riplex import __version__
+
+    app_logger.info("GUI runtime: riplex=%s python=%s frozen=%s pid=%s",
+                    __version__, sys.version.split()[0],
+                    bool(getattr(sys, "frozen", False)), os.getpid())
     ft.app(target=RiplexApp)
 
 
