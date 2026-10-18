@@ -39,7 +39,7 @@ _DVDCOMPARE_NEG_TTL_DAYS = 7
 _DVDCOMPARE_HTTP_ERROR_TTL_SECONDS = 5 * 60  # 5 minutes
 _CACHE_NS = "dvdcompare"
 _PLANNED_DISC_CACHE_VERSION = 2
-_FILM_LOOKUP_CACHE_VERSION = 2
+_FILM_LOOKUP_CACHE_VERSION = 3
 
 # Global throttle: at most one dvdcompare network round-trip every N seconds
 # across the entire process, regardless of how many UI threads/tasks try to
@@ -148,7 +148,11 @@ class DiscProvider:
         year: int | None = None,
     ) -> list[PlannedDisc]:
         """Look up disc structure from dvdcompare.net (cached)."""
-        cache_key = cache.hash_key(f"{title}|{disc_format}|{release}")
+        # Converted plans must not reuse a film accepted by an older ranking
+        # policy either. Year also affects which film page is selected.
+        cache_key = cache.hash_key(
+            f"discs-v{_FILM_LOOKUP_CACHE_VERSION}|{title}|{disc_format}|{release}|{year}"
+        )
         cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
         if cached is not None:
             log.debug("dvdcompare cache hit for '%s' (format=%s, release=%s)",
@@ -214,10 +218,20 @@ class DiscProvider:
         # Positive cache.
         cached = cache.cache_get(self.cache_ns, cache_key, ttl_days=self.ttl_days)
         if cached is not None and not cached.get("_negative"):
-            log.debug("dvdcompare film cache hit for '%s'", title)
-            return _dict_to_film(cached)
+            film = _dict_to_film(cached)
+            log.debug(
+                "dvdcompare film cache hit: query=%r format=%r year=%s "
+                "policy=v%d -> fid=%s title=%r",
+                title, disc_format, year, _FILM_LOOKUP_CACHE_VERSION,
+                film.film_id, film.title,
+            )
+            return film
 
         # Real fetch (throttled).
+        log.debug(
+            "dvdcompare film cache miss: query=%r format=%r year=%s policy=v%d",
+            title, disc_format, year, _FILM_LOOKUP_CACHE_VERSION,
+        )
         try:
             film = await _throttled_find_film(title, disc_format, year=year)
         except LookupError:
@@ -461,10 +475,21 @@ async def _throttled_find_film_once(
             await asyncio.sleep(wait)
         try:
             if disc_format:
-                return await _find_film_prefer_format(title, disc_format, year)
-            return await find_film(
-                title, disc_format, year=year, resolve_pointers=True
-            )
+                film = await _find_film_prefer_format(title, disc_format, year)
+            else:
+                film = await find_film(
+                    title, disc_format, year=year, resolve_pointers=True
+                )
+            # A single-result redirect can advertise the search query as its
+            # title even when the destination is a different work. Validate
+            # the actual page before accepting or caching that result.
+            if not _title_matches_query(film.title, _title_lead(title)):
+                log.warning(
+                    "dvdcompare rejected mismatched film: query=%r -> fid=%s title=%r",
+                    title, film.film_id, film.title,
+                )
+                raise LookupError(f"No dvdcompare title match for '{title}'")
+            return film
         finally:
             _last_request_at = time.monotonic()
     finally:
@@ -524,11 +549,16 @@ async def _find_film_prefer_format(
     "American Psycho (Blu-ray)" for a "Psych" query just because it's
     alphabetically first among Blu-ray results.
 
-    If no title-matched result exists we fall back to the previous
-    format+year heuristic so we still return *something*; the user can
-    still correct via the manual fid override.
+    If no title-matched result exists, fail rather than silently accepting
+    an unrelated film with the same year or format. The caller can retry
+    article-order variants, or the user can supply a manual film id.
     """
     results = await search(title)
+    log.debug(
+        "dvdcompare search results: query=%r format=%r year=%s total=%d candidates=%s",
+        title, disc_format, year, len(results),
+        [(sr.title, sr.year, sr.disc_format, sr.url) for sr in results[:25]],
+    )
     if not results:
         raise LookupError(f"No dvdcompare results for '{title}'")
 
@@ -568,31 +598,14 @@ async def _find_film_prefer_format(
         log.debug("dvdcompare pick (title-only fallback): %s", pool[0].url)
         return await get_film_by_url(pool[0].url, resolve_pointers=True)
 
-    # No title-lead match — fall back to prior format-first heuristic.
+    # No title-lead match: matching format/year alone is not evidence of
+    # the correct work (e.g. The Pacific vs Hell in the Pacific).
     log.warning(
         "dvdcompare: no title-lead match for %r among %d result(s); "
-        "falling back to format/year heuristic",
+        "rejecting unrelated results",
         title, len(results),
     )
-    # Tier 1: format + year
-    for sr in results:
-        if fmt_matches(sr) and year_matches(sr):
-            log.debug("dvdcompare pick (format+year): %s", sr.url)
-            return await get_film_by_url(sr.url, resolve_pointers=True)
-    # Tier 2: format only
-    for sr in results:
-        if fmt_matches(sr):
-            log.debug("dvdcompare pick (format-only, year=%s actual=%s): %s",
-                      year, sr.year, sr.url)
-            return await get_film_by_url(sr.url, resolve_pointers=True)
-    # Tier 3: year only (no format listed on result)
-    for sr in results:
-        if year_matches(sr) and not sr.disc_format:
-            log.debug("dvdcompare pick (year-only, no result format): %s", sr.url)
-            return await get_film_by_url(sr.url, resolve_pointers=True)
-    # Tier 4: first result
-    log.debug("dvdcompare pick (first result fallback): %s", results[0].url)
-    return await get_film_by_url(results[0].url, resolve_pointers=True)
+    raise LookupError(f"No dvdcompare title match for '{title}'")
 
 
 # Regex for stripping trailing dvdcompare annotations from a result title.
@@ -601,7 +614,7 @@ async def _find_film_prefer_format(
 # ``(4K)``, ``(3D)``, ``(TV)``, ``(HD DVD)``, ``(DVD)``.
 _TRAILING_ANNOTATION_RE = re.compile(
     r"\s*\((?:\d{4}(?:[-/]\d{2,4})?|Blu-ray(?:\s+[34]K)?|Blu-ray\s+3D|"
-    r"4K|3D|TV|HD\s*DVD|DVD|UHD)\)\s*$",
+    r"4K|3D|TV|(?:TV\s+)?Mini[-\s]?series|HD\s*DVD|DVD|UHD)\)\s*$",
     re.IGNORECASE,
 )
 
@@ -651,7 +664,8 @@ def _title_lead(raw: str) -> str:
 
     - Collapses whitespace and strips any ``AKA …`` alias tail.
     - Repeatedly strips trailing annotations like ``(Blu-ray)``, ``(TV)``,
-      ``(YYYY)``.
+            ``(Mini-series)``, ``(YYYY)``.
+        - Normalizes dvdcompare's ``Pacific (The)`` to ``The Pacific``.
     - Returns the lowercase, whitespace-normalized remainder.
     """
     if not raw:
@@ -667,6 +681,7 @@ def _title_lead(raw: str) -> str:
         if new_s == s:
             break
         s = new_s
+    s = re.sub(r"^(.+?)\s+\(The\)(?=:|$)", r"The \1", s, flags=re.IGNORECASE)
     return s.lower()
 
 

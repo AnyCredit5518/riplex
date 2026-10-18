@@ -110,6 +110,92 @@ class TestRequestThrottle:
         ]
         assert film.title == "Lego Movie 2 (The): The Second Part"
 
+    @pytest.mark.asyncio
+    async def test_pacific_prefers_actual_miniseries_over_same_year_documentary(
+        self, monkeypatch, caplog,
+    ):
+        from dvdcompare.models import SearchResult
+        import riplex.disc.provider as provider
+
+        searches = []
+        fetched = []
+        correct_url = provider.film_url(27242)
+        wrong_url = provider.film_url(44020)
+
+        async def _search(query):
+            searches.append(query)
+            return [
+                SearchResult(
+                    title="Hell in the Pacific: The True Stories - Season 1 (TV) (Blu-ray)\t(2010)",
+                    url=wrong_url, year=2010, disc_format="Blu-ray",
+                ),
+                SearchResult(
+                    title="Pacific (The) (Mini-series) (Blu-ray)\t(2010)",
+                    url=correct_url, year=2010, disc_format="Blu-ray",
+                ),
+            ]
+
+        async def _get(url, *, resolve_pointers):
+            fetched.append(url)
+            if url == correct_url:
+                return FilmComparison(
+                    title="Pacific (The) (Mini-series)", film_id=27242,
+                    year=2010, format="Blu-ray", releases=[],
+                )
+            return FilmComparison(
+                title="Hell in the Pacific: The True Stories - Season 1 (TV)",
+                film_id=44020, year=2010, format="Blu-ray", releases=[],
+            )
+
+        monkeypatch.setattr(provider, "search", _search)
+        monkeypatch.setattr(provider, "get_film_by_url", _get)
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+        caplog.set_level("DEBUG", logger=provider.__name__)
+
+        film = await provider._throttled_find_film(
+            "The Pacific", "Blu-ray", year=2010,
+        )
+
+        assert film.film_id == 27242
+        assert searches == ["The Pacific"]
+        assert fetched == [correct_url]
+        assert "Pacific (The) (Mini-series)" in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("disc_format", ["Blu-ray", None])
+    async def test_rejects_redirect_that_borrows_the_query_as_its_result_title(
+        self, monkeypatch, disc_format, caplog,
+    ):
+        from dvdcompare.models import SearchResult
+        import riplex.disc.provider as provider
+
+        wrong_film = FilmComparison(
+            title="Hell in the Pacific: The True Stories - Season 1 (TV)",
+            film_id=44020, year=2010, format="Blu-ray", releases=[],
+        )
+
+        async def _search(query):
+            return [SearchResult(title=query, url=provider.film_url(44020))]
+
+        async def _get(_url, *, resolve_pointers):
+            return wrong_film
+
+        async def _find(_title, _format, *, year, resolve_pointers):
+            return wrong_film
+
+        monkeypatch.setattr(provider, "search", _search)
+        monkeypatch.setattr(provider, "get_film_by_url", _get)
+        monkeypatch.setattr(provider, "find_film", _find)
+        monkeypatch.setattr(provider, "_MIN_INTERVAL_S", 0.0)
+
+        with pytest.raises(LookupError, match="No dvdcompare"):
+            await provider._throttled_find_film(
+                "The Pacific: Season 1", disc_format, year=2010,
+            )
+
+        assert "44020" in caplog.text
+        assert "Hell in the Pacific" in caplog.text
+
 
 def test_disc_provider_cache_version_includes_conversion_schema(monkeypatch):
     import riplex.disc.provider as provider
@@ -162,6 +248,65 @@ async def test_film_lookup_ignores_legacy_negative_cache_key(monkeypatch):
 
     assert fetched == [title]
     assert film.title == title
+
+
+@pytest.mark.asyncio
+async def test_film_lookup_ignores_previous_incorrect_positive_cache(monkeypatch):
+    import dataclasses
+    import riplex.disc.provider as provider
+
+    title = "The Pacific"
+    old_key = provider.cache.hash_key(f"film-v2|{title}|Blu-ray|2010")
+    wrong = FilmComparison(title="Hell in the Pacific", film_id=44020, releases=[])
+    correct = FilmComparison(title="Pacific (The) (Mini-series)", film_id=27242, releases=[])
+    fetched = []
+
+    def _cache_get(_namespace, key, *, ttl_days):
+        return dataclasses.asdict(wrong) if key == old_key else None
+
+    async def _find(query, _format, *, year):
+        fetched.append(query)
+        return correct
+
+    monkeypatch.setattr(provider.cache, "ensure_ns_version", lambda *_args: None)
+    monkeypatch.setattr(provider.cache, "cache_get", _cache_get)
+    monkeypatch.setattr(provider.cache, "cache_set", lambda *_args: None)
+    monkeypatch.setattr(provider, "_throttled_find_film", _find)
+
+    film = await provider.DiscProvider().fetch_film(title, "Blu-ray", year=2010)
+
+    assert film.film_id == 27242
+    assert fetched == [title]
+
+
+@pytest.mark.asyncio
+async def test_disc_lookup_ignores_previous_unvalidated_disc_plan_cache(monkeypatch):
+    import riplex.disc.provider as provider
+    from riplex.models import PlannedDisc
+
+    old_key = provider.cache.hash_key("The Pacific|Blu-ray|1")
+    correct = [PlannedDisc(number=n, disc_format="Blu-ray") for n in range(1, 7)]
+    fetched = []
+
+    def _cache_get(_namespace, key, *, ttl_days):
+        if key == old_key:
+            return provider._discs_to_dicts(correct[:1])
+        return None
+
+    async def _fetch(self, title, disc_format, *, year):
+        fetched.append((title, disc_format, year))
+        return FilmComparison(title="Pacific (The) (Mini-series)", releases=[])
+
+    monkeypatch.setattr(provider.cache, "ensure_ns_version", lambda *_args: None)
+    monkeypatch.setattr(provider.cache, "cache_get", _cache_get)
+    monkeypatch.setattr(provider.cache, "cache_set", lambda *_args: None)
+    monkeypatch.setattr(provider.DiscProvider, "fetch_film", _fetch)
+    monkeypatch.setattr(provider, "_convert_film", lambda *_args: correct)
+
+    discs = await provider.DiscProvider().lookup_discs("The Pacific", "Blu-ray", year=2010)
+
+    assert [disc.number for disc in discs] == [1, 2, 3, 4, 5, 6]
+    assert fetched == [("The Pacific", "Blu-ray", 2010)]
 
 
 @pytest.mark.parametrize(
@@ -663,6 +808,21 @@ class TestTitleLead:
         raw = "American Psycho (Blu-ray 4K)\t\t\t\t(2000)"
         assert _title_lead(raw) == "american psycho"
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("Pacific (The) (Mini-series) (Blu-ray)\t(2010)", "the pacific"),
+            ("The Pacific (TV Mini-Series)", "the pacific"),
+            ("Pacific (The) (Miniseries)", "the pacific"),
+            ("Fast and the Furious (The): Tokyo Drift (Blu-ray)",
+             "the fast and the furious: tokyo drift"),
+            ("Thing (The) (Blu-ray)", "the thing"),
+        ],
+    )
+    def test_normalizes_article_order_and_miniseries_annotations(self, raw, expected):
+        from riplex.disc.provider import _title_lead
+        assert _title_lead(raw) == expected
+
     def test_empty(self):
         from riplex.disc.provider import _title_lead
         assert _title_lead("") == ""
@@ -846,10 +1006,10 @@ class TestFindFilmPreferFormat:
         picked = patch_scraper["picked_url"]
         assert "fid=66232" in picked
 
-    def test_falls_back_to_format_heuristic_when_no_title_match(
+    def test_rejects_unrelated_results_even_when_format_and_year_match(
         self, monkeypatch,
     ):
-        """If no result title-lead matches (weird query), we still return something."""
+        """An unrelated same-year Blu-ray must not become a successful lookup."""
         import asyncio
         from dvdcompare.models import SearchResult
         from riplex.disc import provider as prov
@@ -880,8 +1040,9 @@ class TestFindFilmPreferFormat:
         monkeypatch.setattr(prov, "get_film_by_url", _fake_get_film_by_url)
 
         from riplex.disc.provider import _find_film_prefer_format
-        asyncio.run(_find_film_prefer_format("Psych", "Blu-ray", None))
-        assert "fid=1000" in calls["picked_url"]
+        with pytest.raises(LookupError, match="No dvdcompare"):
+            asyncio.run(_find_film_prefer_format("Psych", "Blu-ray", 2001))
+        assert calls["picked_url"] is None
 
     def test_raises_on_no_results(self, monkeypatch):
         import asyncio
